@@ -100,6 +100,17 @@
           },
           "engines": {
             "dsh": ">=0.2.1"
+          }        },
+        {
+          "version": "0.7.0-dafeiyu.1",
+          "publishTimestamp": 1793181000,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
+            "commit": "fbf36e534417ea11334c40a0f373e8da025f2819"
+          },
+          "engines": {
+            "dsh": ">=0.2.1"
           }
         }
       ]
