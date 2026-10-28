@@ -1,0 +1,84 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Dafeiyu Plugin Source",
+    "zh": "大肥鱼插件源"
+  },
+  "description": {
+    "en": "Plugins by YaoyaoDeBaba — remote control for DSH with a phone app.",
+    "zh": "个人自建插件源：手机远控（大肥鱼定制）等。"
+  },
+  "metadata": {
+    "categories": {
+      "remote": {
+        "title": {
+          "en": "Remote control",
+          "zh": "远程控制"
+        }
+      }
+    },
+    "labels": {
+      "android": {
+        "title": {
+          "en": "Android",
+          "zh": "安卓"
+        }
+      }
+    },
+    "sortKeys": {
+      "stars": {
+        "title": {
+          "en": "Stars",
+          "zh": "星标"
+        },
+        "order": "desc"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-remote-dafeiyu",
+      "title": {
+        "en": "Remote Control (Dafeiyu)",
+        "zh": "手机远控（大肥鱼定制）"
+      },
+      "description": {
+        "en": "Control DSH from your phone: sessions, chat, approvals, model switching. Settings page ships an Android app QR code.",
+        "zh": "用手机远程控制 DSH：会话列表、发消息、审批工具调用、切模型；设置页自带安卓 App 扫码下载。"
+      },
+      "author": "YaoyaoDeBaba",
+      "homepage": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
+      "repository": {
+        "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu"
+      },
+      "metadata": {
+        "category": "remote",
+        "keywords": [
+          "remote",
+          "android",
+          "phone"
+        ],
+        "labels": [
+          "android"
+        ],
+        "sortKeys": {
+          "stars": 1
+        }
+      },
+      "versions": [
+        {
+          "version": "0.6.0-dafeiyu.1",
+          "publishTimestamp": 1793171007,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
+            "commit": "2daba53fe189d536774ffa1a99746abbb5cabd30"
+          },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
+        }
+      ]
+    }
+  ]
+}
