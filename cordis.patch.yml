@@ -9,7 +9,11 @@
 # 所以改包名不会丢已落盘的配对。
 - insert:
     - id: dsh-remote-control
-      name: '@dsh-remote/plugin'
+      # ⚠️ 这一行曾经是 `@dsh-remote/plugin`（fork 时漏改），后果正是上面第 6 行写的那种：
+      # 包在 bundles 里、文件也都装好了，loader 却按旧包名去解析模块 → 解析不到 → 插件静默不加载，
+      # 表现是"启动后远程控制整个消失、状态栏没了、也没报错"。2026-10-28 实测踩中。
+      # 判据：`tests/plugin-metadata.test.ts` 里那条"patch 的 name 必须等于包名"。
+      name: dsh-remote-dafeiyu
       config:
         enabled: true
         # ⚠️ **刻意不写 `serverUrl`**（2026-10-11）：默认值只有一个来源，就是

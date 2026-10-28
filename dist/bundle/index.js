@@ -27625,7 +27625,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.6.0-dafeiyu.1" : "dev";
+var PLUGIN_VERSION = true ? "0.6.0-dafeiyu.2" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {

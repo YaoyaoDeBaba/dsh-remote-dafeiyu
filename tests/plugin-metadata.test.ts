@@ -135,3 +135,45 @@ test('反向判据：去掉 icon / 把两份词典写成同一句 / 把 locale �
   const droppedFiles = { ...MANIFEST, files: MANIFEST.files.filter((entry: string) => entry !== 'locale') }
   assert.equal(droppedFiles.files.includes('locale'), false, '摘掉 locale 之后"files 里有 locale"必须不成立')
 })
+
+/**
+ * `cordis.patch.yml` 里那条 `name` 必须**等于包名**。
+ *
+ * ## 为什么单独钉这一条（2026-10-28 实测踩中）
+ *
+ * loader 是拿 `name` 去 `import` 模块的。fork 时把包名从 `@dsh-remote/plugin`
+ * 改成 `dsh-remote-dafeiyu`，却漏了这份 patch —— 症状是：
+ * 包在 `bundles` 里、`node_modules` 也装好了、启动**不报错**，
+ * 但远程控制整个消失（状态栏 pill、设置页那张卡全没有），
+ * 状态文件的 mtime 停在重启那一刻。查了半天以为是 BOM / 权限 / pnpm 的事。
+ *
+ * 这类"文件全在、就是不加载"只能靠断言 name 与包名相等来拦。
+ */
+test('cordis.patch.yml：insert 的 name 必须等于包名，否则插件静默不加载', () => {
+  const patchPath = path.join(ROOT, 'cordis.patch.yml')
+  assert.ok(existsSync(patchPath), '缺 cordis.patch.yml：宿主靠它把插件插进 loader 树')
+  assert.equal(
+    MANIFEST.dsh?.bundle?.patch,
+    './cordis.patch.yml',
+    'package.json 的 dsh.bundle.patch 要指向这份文件，否则宿主根本不知道有它',
+  )
+  assert.ok(
+    MANIFEST.files.includes('cordis.patch.yml'),
+    `files 要带上 cordis.patch.yml，实得 ${JSON.stringify(MANIFEST.files)}`,
+  )
+
+  const text = readFileSync(patchPath, 'utf8')
+  // 只认 `name:` 行；这份文件是手写 YAML，没有 yaml 依赖，正则足够且更直白。
+  const names = [...text.matchAll(/^\s+name:\s*(.+)$/gm)].map((m) => m[1]!.trim().replace(/^['"]|['"]$/g, ''))
+  assert.ok(names.length > 0, 'cordis.patch.yml 里一条 name 都没有 ⇒ 插件不会被插进 loader')
+  for (const name of names) {
+    assert.equal(
+      name,
+      MANIFEST.name,
+      `patch 里的 name 是 ${name}，但包名是 ${MANIFEST.name}：loader 会照 ${name} 去 import，` +
+        '解析不到就静默不加载（症状是启动不报错但远程控制整个消失）',
+    )
+  }
+  // 运行时 id 与包名**故意不同**：数据目录、pill 路由前缀都跟着它，改了会丢已落盘的配对。
+  assert.match(text, /id: dsh-remote-control/, '运行时 id 要保持 dsh-remote-control，别跟包名一起改')
+})
