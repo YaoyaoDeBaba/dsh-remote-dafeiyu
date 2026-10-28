@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -219,6 +219,33 @@ test('铺热树：会话 + storages + profile 配置都进 latest，并写一份
       sessions: Array<{ key: string }>
     }
     assert.equal(written.sessions[0]?.key, 'ws-a/session-1')
+  } finally {
+    cleanup(home)
+  }
+})
+
+test('铺热树：源文件是只读的也能连铺三轮（真机回归：第二轮 EPERM，且错误信息指向源文件）', () => {
+  const home = tempDir('dsh-backup-readonly-')
+  try {
+    const root = path.join(home, 'sessions')
+    const entry = makeSession(root, 'ws-a', '1', 'body')
+    // DSH 自己的附件对象就是只读的；`copyFileSync` 会把只读位一起抄到目标上。
+    chmodSync(entry.file, 0o444)
+    const staging = path.join(home, 'staging')
+    const build = (): number =>
+      buildHotTree({
+        stagingDir: staging,
+        sessionsRoot: root,
+        storagesDir: path.join(home, 'storages'),
+        profileDir: '',
+        attachmentsDir: path.join(home, 'attachments'),
+        includeAttachments: false,
+        hot: [entry],
+        nowMs: Date.UTC(2026, 9, 28),
+      }).hotCount
+    assert.equal(build(), 1, '第一轮')
+    assert.equal(build(), 1, '第二轮：上一轮留下的只读目标不许挡住覆盖')
+    assert.equal(build(), 1, '第三轮')
   } finally {
     cleanup(home)
   }

@@ -27625,7 +27625,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.0" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.1" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34218,7 +34218,7 @@ function startPill(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { copyFileSync as copyFileSync2, existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
 import path11 from "node:path";
 
 // src/backup/config.ts
@@ -34440,7 +34440,7 @@ function briefGitError(result2, limit = 300) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { copyFileSync, existsSync as existsSync2, mkdirSync as mkdirSync5, readdirSync, readFileSync as readFileSync5, rmSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { chmodSync as chmodSync2, copyFileSync, existsSync as existsSync2, mkdirSync as mkdirSync5, readdirSync, readFileSync as readFileSync5, rmSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { hostname as hostname3 } from "node:os";
 import path10 from "node:path";
 function scanSessions(sessionsRoot) {
@@ -34518,7 +34518,7 @@ function buildHotTree(input2) {
   for (const entry of input2.hot) {
     const target = path10.join(staging, "sessions", entry.relPath);
     mkdirSync5(path10.dirname(target), { recursive: true });
-    copyFileSync(entry.file, target);
+    copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
       size: entry.size,
@@ -34534,7 +34534,7 @@ function buildHotTree(input2) {
       const source = path10.join(input2.profileDir, name);
       if (!existsSync2(source)) continue;
       mkdirSync5(target, { recursive: true });
-      copyFileSync(source, path10.join(target, name));
+      copyFileFresh(source, path10.join(target, name));
       profiles.push(name);
     }
   }
@@ -34569,7 +34569,7 @@ function buildArchiveTree(stagingDir, cooling) {
     const target = path10.join(root, entry.relPath);
     if (existsSync2(target)) continue;
     mkdirSync5(path10.dirname(target), { recursive: true });
-    copyFileSync(entry.file, target);
+    copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
     keys.push(sessionKey(entry));
@@ -34577,15 +34577,33 @@ function buildArchiveTree(stagingDir, cooling) {
   return { written, bytes, keys };
 }
 function resetDir(dir) {
-  try {
-    rmrf(dir);
-  } catch {
-  }
+  rmrf(dir);
   mkdirSync5(dir, { recursive: true });
 }
 function rmrf(dir) {
   if (!existsSync2(dir)) return;
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 });
+  } catch (error62) {
+    throw new Error(
+      `\u4E34\u65F6\u76EE\u5F55\u5220\u4E0D\u6389\uFF08${dir}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`
+    );
+  }
+}
+function copyFileFresh(source, target) {
+  mkdirSync5(path10.dirname(target), { recursive: true });
+  if (existsSync2(target)) {
+    try {
+      chmodSync2(target, 420);
+    } catch {
+    }
+    rmSync(target, { force: true });
+  }
+  copyFileSync(source, target);
+  try {
+    chmodSync2(target, 420);
+  } catch {
+  }
 }
 function copyFlat(sourceDir, targetDir) {
   if (!existsSync2(sourceDir)) return [];
@@ -34593,7 +34611,7 @@ function copyFlat(sourceDir, targetDir) {
   for (const name of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name)) continue;
     mkdirSync5(targetDir, { recursive: true });
-    copyFileSync(path10.join(sourceDir, name), path10.join(targetDir, name));
+    copyFileFresh(path10.join(sourceDir, name), path10.join(targetDir, name));
     names.push(name);
   }
   return names;
@@ -34620,7 +34638,7 @@ function walk(sourceDir, targetDir, total) {
       continue;
     }
     mkdirSync5(targetDir, { recursive: true });
-    copyFileSync(source, target);
+    copyFileFresh(source, target);
     total.count += 1;
     total.bytes += size;
   }
@@ -35097,7 +35115,7 @@ function mergeTree(source, target) {
     if (!entry.isFile()) continue;
     if (existsSync3(to)) continue;
     mkdirSync6(target, { recursive: true });
-    copyFileSync2(from, to);
+    copyFileFresh(from, to);
   }
 }
 function mergeProfiles(source, profilesRoot) {
@@ -35109,7 +35127,7 @@ function mergeProfiles(source, profilesRoot) {
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      copyFileSync2(path11.join(from, file2.name), path11.join(to, file2.name));
+      copyFileFresh(path11.join(from, file2.name), path11.join(to, file2.name));
     }
   }
 }

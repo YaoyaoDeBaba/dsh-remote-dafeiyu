@@ -18,7 +18,7 @@
  * 任何一步失败都**不改**仓库状态（本地工作副本可能脏，但下一轮会 reset 掉），
  * 只把原因写进 `status.json` 与返回值。备份失败绝不许影响远控主链路。
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   DEFAULT_BACKUP_CONFIG,
@@ -39,6 +39,7 @@ import {
   buildArchiveTree,
   buildHotTree,
   classify,
+  copyFileFresh,
   copyTree,
   findProfileDir,
   resetDir,
@@ -577,7 +578,7 @@ function mergeTree(source: string, target: string): void {
     if (!entry.isFile()) continue
     if (existsSync(to)) continue
     mkdirSync(target, { recursive: true })
-    copyFileSync(from, to)
+    copyFileFresh(from, to)
   }
 }
 
@@ -591,7 +592,7 @@ function mergeProfiles(source: string, profilesRoot: string): void {
     if (!existsSync(to)) continue
     for (const file of readdirSync(from, { withFileTypes: true })) {
       if (!file.isFile()) continue
-      copyFileSync(path.join(from, file.name), path.join(to, file.name))
+      copyFileFresh(path.join(from, file.name), path.join(to, file.name))
     }
   }
 }

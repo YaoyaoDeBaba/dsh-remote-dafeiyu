@@ -24,7 +24,7 @@
  * 这三样进仓库等于把凭据交给 Git 托管平台。
  */
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { hostname } from 'node:os'
 import path from 'node:path'
 
@@ -195,7 +195,7 @@ export function buildHotTree(input: BuildHotInput): Manifest {
   for (const entry of input.hot) {
     const target = path.join(staging, 'sessions', entry.relPath)
     mkdirSync(path.dirname(target), { recursive: true })
-    copyFileSync(entry.file, target)
+    copyFileFresh(entry.file, target)
     sessionList.push({
       key: sessionKey(entry),
       size: entry.size,
@@ -213,7 +213,7 @@ export function buildHotTree(input: BuildHotInput): Manifest {
       const source = path.join(input.profileDir, name)
       if (!existsSync(source)) continue
       mkdirSync(target, { recursive: true })
-      copyFileSync(source, path.join(target, name))
+      copyFileFresh(source, path.join(target, name))
       profiles.push(name)
     }
   }
@@ -258,7 +258,7 @@ export function buildArchiveTree(stagingDir: string, cooling: SessionEntry[]): A
     const target = path.join(root, entry.relPath)
     if (existsSync(target)) continue
     mkdirSync(path.dirname(target), { recursive: true })
-    copyFileSync(entry.file, target)
+    copyFileFresh(entry.file, target)
     written += 1
     bytes += entry.size
     keys.push(sessionKey(entry))
@@ -268,17 +268,50 @@ export function buildArchiveTree(stagingDir: string, cooling: SessionEntry[]): A
 
 /** 清空并重建一个目录（暂存目录专用：里面只有我们自己铺的东西）。 */
 export function resetDir(dir: string): void {
-  try {
-    rmrf(dir)
-  } catch {
-    /* 删不掉就往上铺（同名文件会被覆盖） */
-  }
+  rmrf(dir)
   mkdirSync(dir, { recursive: true })
 }
 
 function rmrf(dir: string): void {
   if (!existsSync(dir)) return
-  rmSync(dir, { recursive: true, force: true })
+  try {
+    // `maxRetries` 是给杀毒软件/索引器放手用的：Windows 上它偶尔会短暂占住文件。
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 })
+  } catch (error) {
+    // ⚠️ **不许**吞掉：真机上这里吞过一次，症状是"第一轮备份成功，之后每轮都 EPERM"——
+    // 因为上一轮留下的只读文件还在，`copyFileSync` 往上覆盖就 EPERM，而错误信息指向
+    // 完全无关的源文件。宁可这一轮失败并说清"临时目录删不掉"，也不要带着脏目录往下走。
+    throw new Error(
+      `临时目录删不掉（${dir}）：${String((error as Error)?.message ?? error).slice(0, 120)}`,
+    )
+  }
+}
+
+/**
+ * 拷贝一个文件，并且**保证目标可覆盖**。
+ *
+ * 两个 Windows 上的坑，都是真机踩出来的：
+ * 1. `copyFileSync` 会连**只读属性**一起抄过去（DSH 自己的附件对象就是只读的）
+ *    ⇒ 下一轮清临时目录删不掉它 ⇒ 再下一轮覆盖它 EPERM。所以抄完要把只读位摘掉。
+ * 2. 目标已存在且只读时，`copyFileSync` 直接 EPERM ⇒ 先删再抄（删之前先摘只读）。
+ */
+export function copyFileFresh(source: string, target: string): void {
+  mkdirSync(path.dirname(target), { recursive: true })
+  if (existsSync(target)) {
+    try {
+      chmodSync(target, 0o644)
+    } catch {
+      /* 摘不掉就让下面的删除/覆盖自己报错 */
+    }
+    rmSync(target, { force: true })
+  }
+  copyFileSync(source, target)
+  try {
+    // 摘掉抄过来的只读位：下一轮这一份要能被删掉/覆盖。
+    chmodSync(target, 0o644)
+  } catch {
+    /* POSIX 上无副作用；Windows 上失败也不影响本轮 */
+  }
 }
 
 function copyFlat(sourceDir: string, targetDir: string): string[] {
@@ -287,7 +320,7 @@ function copyFlat(sourceDir: string, targetDir: string): string[] {
   for (const name of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name)) continue
     mkdirSync(targetDir, { recursive: true })
-    copyFileSync(path.join(sourceDir, name), path.join(targetDir, name))
+    copyFileFresh(path.join(sourceDir, name), path.join(targetDir, name))
     names.push(name)
   }
   return names
@@ -322,7 +355,7 @@ function walk(sourceDir: string, targetDir: string, total: CopyCount): void {
       continue
     }
     mkdirSync(targetDir, { recursive: true })
-    copyFileSync(source, target)
+    copyFileFresh(source, target)
     total.count += 1
     total.bytes += size
   }
