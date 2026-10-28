@@ -10,6 +10,11 @@ DSH 远程控制插件的**大肥鱼定制版**（基于上游 [`dsh-remote/plug
 
 ## 装法一：插件市场（推荐）
 
+需要 DSH 里已经有「插件 → 发现」这个 tab。DSH 的市场界面是实验功能，打包在
+`@deepseek-ai/dsh-experimental-plugin-market-bundle` 里、**默认不启用**——只看到
+「添加插件」一个输入框就属于这种情况，先把它加进 profile 的 `dsh.profile.bundles`
+再重启（见「没有『发现』怎么办」）。
+
 DSH → 插件 → **发现** → 添加索引源，填：
 
 ```
@@ -31,6 +36,25 @@ https://cdn.jsdelivr.net/gh/YaoyaoDeBaba/dsh-remote-dafeiyu@main/market/index.js
 ```json
 "dsh-remote-dafeiyu": "git+https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu.git#2daba53fe189d536774ffa1a99746abbb5cabd30"
 ```
+
+同时要改三处，漏一处启动就会报找不到模块：
+
+1. `dependencies` 里删掉 `@dsh-remote/plugin`、加上上面这一行（两者互斥，会抢同一个中转连接）；
+2. `dsh.profile.bundles` 里同样把 `@dsh-remote/plugin` 换成 `dsh-remote-dafeiyu`；
+3. `cordis.yml` 里那条插件登记（`id: dsh-remote-control`）的 `name` 改成 `dsh-remote-dafeiyu`。
+
+然后 `pnpm install` 再重启。旧插件的配对密钥在 `~/.dsh/dsh-remote-control`，没动过就不用重新配对。
+
+## 没有「发现」怎么办
+
+`@deepseek-ai/dsh-experimental-plugin-market-bundle` 默认不在 bundles 列表里，插件页就只剩
+「添加插件」。两种走法：
+
+- 想用市场：往 `dsh.profile.bundles` 追加这个包名，重启后插件页会出现「发现」，再按装法一加索引；
+- 不想动 bundles：用装法二（或插件页「添加插件」里直接填仓库地址 `https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu`）。
+
+注意「添加插件」那个框要的是**仓库地址或包名**，填索引 JSON 的 URL 会被拒
+（提示「无法连接 raw.githubusercontent.com…」），因为索引文件不是仓库。
 
 ## 手机 App
 
