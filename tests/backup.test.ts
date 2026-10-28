@@ -24,7 +24,7 @@ import {
   writeBackupConfig,
   writeToken,
 } from '../src/backup/config.js'
-import { gitAvailable, runGit } from '../src/backup/git.js'
+import { gitAvailable, runGit, runGitAsync } from '../src/backup/git.js'
 import {
   archivedKeysFromLsTree,
   buildArchiveTree,
@@ -478,6 +478,38 @@ test('路由：不认识的 action 回 400（别静默成功）', async () => {
 // ── 真 git 端到端（没有 git 就跳过，跳过会说出来）───────────────────────
 
 const GIT = gitAvailable()
+
+test('异步 git：起不来时回 -1、不抛异常（后台任务不许把宿主炸掉）', async () => {
+  const result = await runGitAsync(['--version'], { cwd: path.join(tempDir('dsh-git-missing-'), 'nope') })
+  assert.equal(result.code, -1, 'cwd 不存在时 git 起不来，应当回 -1 而不是 throw')
+  assert.equal(result.timedOut, false)
+  assert.equal(typeof result.stderr, 'string')
+})
+
+test(
+  '异步 git：不阻塞事件循环（同步实现会把宿主的定时器全钉住，远控跟着卡死）',
+  { skip: GIT ? false : '本机没有 git' },
+  async () => {
+    const dir = tempDir('dsh-git-async-')
+    try {
+      // 判据是**顺序**：0 ms 的定时器必须比 git 子进程先出结果。
+      // 同步实现（`spawnSync`）下不可能——定时器回调只能等子进程返回才轮得到，
+      // 于是顺序永远是 git 在前；而那样一来宿主的一分半钟就是死的（真机实测）。
+      const order: string[] = []
+      const git = runGitAsync(['log', '--oneline', '--all'], { cwd: dir }).then(() => order.push('git'))
+      const timer = new Promise<void>((resolve) =>
+        setTimeout(() => {
+          order.push('timer')
+          resolve()
+        }, 0),
+      )
+      await Promise.all([git, timer])
+      assert.deepEqual(order, ['timer', 'git'], `定时器应当先跑，实际顺序：${order.join(' → ')}`)
+    } finally {
+      cleanup(dir)
+    }
+  },
+)
 
 test('端到端：真 git —— 热快照推到 latest（只有一个提交），冷却的进 archive', { skip: GIT ? false : '本机没有 git' }, async () => {
   const home = tempDir('dsh-backup-e2e-')

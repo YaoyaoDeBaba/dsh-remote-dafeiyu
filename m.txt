@@ -1,0 +1,9 @@
+perf: 0.7.0-dafeiyu.2 —— git 全部改异步，备份不再卡住宿主
+
+真机实测（2026-10-28，67 MB 首推）：spawnSync 把事件循环钉死一分半，
+那一分半里设置页和远控全都没响应 —— 备份是后台任务，不许借走主线程。
+
+- 新增 runGitAsync（spawn + 超时 + 输出上限 + stdin 不接管）
+- fetchBranch / prepareRepo / publish / restore 全链路 await
+- 只有 gitAvailable() 和测试夹具还用同步版（一行就返回）
+- 新增判据：起不来回 -1 不抛；0 ms 定时器必须比 git 先出结果

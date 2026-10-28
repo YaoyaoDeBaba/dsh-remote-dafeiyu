@@ -15,7 +15,7 @@
  * 3. **输出有上限**：`maxBuffer` 32 MB，`git ls-tree` 在几千个会话时输出也就几百 KB，
  *    但 `git push` 的进度行可能很长；超了宁可截断/失败，也别把宿主内存吃光。
  */
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 
 export interface GitResult {
   /** 退出码；-1 = 起不来（git 不在 PATH / 被超时杀掉）。 */
@@ -89,4 +89,56 @@ export function briefGitError(result: GitResult, limit = 300): string {
   if (result.code === -1) return raw === '' ? 'git 起不来（不在 PATH？）' : raw.slice(0, limit)
   const line = raw.split('\n').filter((entry) => entry.trim() !== '').slice(-2).join(' / ')
   return line.slice(0, limit)
+}
+
+/**
+ * 异步版：**备份/恢复的所有 git 调用都走这个**。
+ *
+ * ⚠️ 为什么不能用 `spawnSync`：它会把宿主的**事件循环**钉住。真机上 67 MB 的首推花了
+ * 一分半，那一分半里 DSH 的整个 HTTP 服务（包括远控、包括设置页自己）全都没响应，
+ * 手机端表现为"卡死/转圈"。备份是后台任务，绝不许借走主线程。
+ *
+ * 纪律与同步版一致：不交互、有超时、输出有上限；额外一条是**不接管 stdin**（`ignore`），
+ * 免得 git 在等输入时把管道挂住。
+ */
+export function runGitAsync(args: string[], options: RunGitOptions): Promise<GitResult> {
+  return new Promise<GitResult>((resolve) => {
+    let stdout = ''
+    let stderr = ''
+    let timedOut = false
+    let settled = false
+    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+    const finish = (code: number): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve({ code, stdout, stderr, timedOut })
+    }
+    let timer: NodeJS.Timeout = setTimeout(() => undefined, 0)
+    try {
+      const child = spawn('git', args, {
+        cwd: options.cwd,
+        env: baseEnv(options.env),
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      timer = setTimeout(() => {
+        timedOut = true
+        child.kill()
+      }, timeoutMs)
+      timer.unref?.()
+      child.stdout?.setEncoding('utf8')
+      child.stderr?.setEncoding('utf8')
+      child.stdout?.on('data', (chunk: string) => {
+        if (stdout.length < MAX_BUFFER) stdout += chunk
+      })
+      child.stderr?.on('data', (chunk: string) => {
+        if (stderr.length < MAX_BUFFER) stderr += chunk
+      })
+      child.on('error', () => finish(-1))
+      child.on('close', (code) => finish(typeof code === 'number' ? code : -1))
+    } catch {
+      finish(-1)
+    }
+  })
 }

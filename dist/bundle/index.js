@@ -27625,7 +27625,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.1" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.2" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34392,7 +34392,7 @@ function redactToken(token) {
 }
 
 // src/backup/git.ts
-import { spawnSync } from "node:child_process";
+import { spawn as spawn2, spawnSync } from "node:child_process";
 var DEFAULT_TIMEOUT_MS = 12e4;
 var MAX_BUFFER = 32 * 1024 * 1024;
 function baseEnv(extra) {
@@ -34436,6 +34436,47 @@ function briefGitError(result2, limit = 300) {
   if (result2.code === -1) return raw === "" ? "git \u8D77\u4E0D\u6765\uFF08\u4E0D\u5728 PATH\uFF1F\uFF09" : raw.slice(0, limit);
   const line = raw.split("\n").filter((entry) => entry.trim() !== "").slice(-2).join(" / ");
   return line.slice(0, limit);
+}
+function runGitAsync(args, options) {
+  return new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let settled = false;
+    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const finish = (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr, timedOut });
+    };
+    let timer = setTimeout(() => void 0, 0);
+    try {
+      const child = spawn2("git", args, {
+        cwd: options.cwd,
+        env: baseEnv(options.env),
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+      timer = setTimeout(() => {
+        timedOut = true;
+        child.kill();
+      }, timeoutMs);
+      timer.unref?.();
+      child.stdout?.setEncoding("utf8");
+      child.stderr?.setEncoding("utf8");
+      child.stdout?.on("data", (chunk) => {
+        if (stdout.length < MAX_BUFFER) stdout += chunk;
+      });
+      child.stderr?.on("data", (chunk) => {
+        if (stderr.length < MAX_BUFFER) stderr += chunk;
+      });
+      child.on("error", () => finish(-1));
+      child.on("close", (code) => finish(typeof code === "number" ? code : -1));
+    } catch {
+      finish(-1);
+    }
+  });
 }
 
 // src/backup/pack.ts
@@ -34828,7 +34869,7 @@ var BackupService = class {
     try {
       const dirs = this.layout();
       mkdirSync6(dirs.base, { recursive: true });
-      const archiveRemote = this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
+      const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
       const buckets = classify({
@@ -34841,7 +34882,7 @@ var BackupService = class {
       if (buckets.cooling.length > 0) {
         const staged = buildArchiveTree(dirs.staging, buckets.cooling);
         if (staged.written > 0) {
-          const pushed2 = this.publish(dirs.archiveRepo, this.config.archiveBranch, {
+          const pushed2 = await this.publish(dirs.archiveRepo, this.config.archiveBranch, {
             message: `archive: ${staged.written} \u4E2A\u51B7\u5374\u4F1A\u8BDD\uFF08${new Date(this.now()).toISOString()}\uFF09`
           });
           if (!pushed2.ok) return this.finish(empty, `\u5F52\u6863\u63A8\u9001\u5931\u8D25\uFF1A${pushed2.reason}`, started);
@@ -34858,7 +34899,7 @@ var BackupService = class {
         hot: buckets.hot,
         nowMs: this.now()
       });
-      const pushed = this.publish(dirs.hotRepo, this.config.latestBranch, {
+      const pushed = await this.publish(dirs.hotRepo, this.config.latestBranch, {
         message: `latest: ${manifest.hotCount} \u4E2A\u4F1A\u8BDD / ${formatBytes(manifest.hotBytes)}\uFF08\u5FEB\u7167\u81F3 ${manifest.snapshotAt}\uFF09`
       });
       if (!pushed.ok) return this.finish(empty, `\u70ED\u5FEB\u7167\u63A8\u9001\u5931\u8D25\uFF1A${pushed.reason}`, started);
@@ -34927,9 +34968,9 @@ var BackupService = class {
    * 同步一个分支：`init`（缺则建）→ `fetch` → `reset --hard origin/<branch>`。
    * 分支不存在（第一次备份）返回空 stdout，调用方按"空归档"处理。
    */
-  fetchBranch(repo, branch) {
-    this.prepareRepo(repo);
-    const fetched = runGit(["fetch", "--depth", "1", "origin", branch], {
+  async fetchBranch(repo, branch) {
+    await this.prepareRepo(repo);
+    const fetched = await runGitAsync(["fetch", "--depth", "1", "origin", branch], {
       cwd: repo,
       env: this.gitEnv()
     });
@@ -34937,58 +34978,58 @@ var BackupService = class {
       if (isMissingRef(fetched)) return { ...fetched, code: 0, stdout: "", stderr: "" };
       return fetched;
     }
-    const reset = runGit(["reset", "--hard", `origin/${branch}`], { cwd: repo, env: this.gitEnv() });
+    const reset = await runGitAsync(["reset", "--hard", `origin/${branch}`], { cwd: repo, env: this.gitEnv() });
     if (reset.code !== 0) return reset;
-    return runGit(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
+    return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
-  prepareRepo(repo) {
+  async prepareRepo(repo) {
     mkdirSync6(repo, { recursive: true });
     if (!existsSync3(path11.join(repo, ".git"))) {
-      runGit(["init", "-q"], { cwd: repo, env: this.gitEnv() });
-      runGit(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
-      runGit(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
+      await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
+      await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
+      await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
     }
-    const current = runGit(["remote", "get-url", "origin"], { cwd: repo, env: this.gitEnv() });
+    const current = await runGitAsync(["remote", "get-url", "origin"], { cwd: repo, env: this.gitEnv() });
     if (current.code !== 0) {
-      runGit(["remote", "add", "origin", this.config.repoUrl], { cwd: repo, env: this.gitEnv() });
+      await runGitAsync(["remote", "add", "origin", this.config.repoUrl], { cwd: repo, env: this.gitEnv() });
     } else if (current.stdout.trim() !== this.config.repoUrl) {
-      runGit(["remote", "set-url", "origin", this.config.repoUrl], { cwd: repo, env: this.gitEnv() });
+      await runGitAsync(["remote", "set-url", "origin", this.config.repoUrl], { cwd: repo, env: this.gitEnv() });
     }
-    runGit(["config", "commit.gpgsign", "false"], { cwd: repo, env: this.gitEnv() });
+    await runGitAsync(["config", "commit.gpgsign", "false"], { cwd: repo, env: this.gitEnv() });
   }
   /** 把工作副本里的文件提交并推到远端分支（`--force`：单写者模型）。 */
-  publish(repo, branch, options) {
-    this.prepareRepo(repo);
-    const tracked = runGit(["ls-files"], { cwd: repo, env: this.gitEnv() });
+  async publish(repo, branch, options) {
+    await this.prepareRepo(repo);
+    const tracked = await runGitAsync(["ls-files"], { cwd: repo, env: this.gitEnv() });
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
     const source = path11.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     copyTree(source, repo);
-    const added = runGit(["add", "-A"], { cwd: repo, env: this.gitEnv() });
+    const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
-    const status = runGit(["status", "--porcelain"], { cwd: repo, env: this.gitEnv() });
+    const status = await runGitAsync(["status", "--porcelain"], { cwd: repo, env: this.gitEnv() });
     const dirty = status.stdout.trim() !== "";
     if (!dirty && keep.size > 0) {
-      const head = runGit(["rev-parse", "--short", "HEAD"], { cwd: repo, env: this.gitEnv() });
+      const head = await runGitAsync(["rev-parse", "--short", "HEAD"], { cwd: repo, env: this.gitEnv() });
       return { ok: true, reason: "", commit: head.stdout.trim() };
     }
-    const tree = runGit(["write-tree"], { cwd: repo, env: this.gitEnv() });
+    const tree = await runGitAsync(["write-tree"], { cwd: repo, env: this.gitEnv() });
     if (tree.code !== 0) return { ok: false, reason: briefGitError(tree), commit: "" };
-    const commitTree = runGit(["commit-tree", tree.stdout.trim(), "-m", options.message], {
+    const commitTree = await runGitAsync(["commit-tree", tree.stdout.trim(), "-m", options.message], {
       cwd: repo,
       env: this.gitEnv()
     });
     if (commitTree.code !== 0) return { ok: false, reason: briefGitError(commitTree), commit: "" };
     const commitSha = commitTree.stdout.trim();
-    const pushed = runGit(["push", "--force", "origin", `${commitSha}:refs/heads/${branch}`], {
+    const pushed = await runGitAsync(["push", "--force", "origin", `${commitSha}:refs/heads/${branch}`], {
       cwd: repo,
       env: this.gitEnv(),
       timeoutMs: 20 * 60 * 1e3
     });
     if (pushed.code !== 0) return { ok: false, reason: briefGitError(pushed), commit: "" };
-    runGit(["update-ref", "HEAD", commitSha], { cwd: repo, env: this.gitEnv() });
+    await runGitAsync(["update-ref", "HEAD", commitSha], { cwd: repo, env: this.gitEnv() });
     return { ok: true, reason: "", commit: commitSha.slice(0, 7) };
   }
   /**
@@ -35035,11 +35076,11 @@ var BackupService = class {
       const dirs = this.layout();
       const staging = dirs.staging;
       resetDir(staging);
-      const latest = this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
+      const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
       copyTree(dirs.hotRepo, path11.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
-      const archive = this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
+      const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
         copyTree(archiveRepoDir, path11.join(staging, "archive"));

@@ -33,7 +33,7 @@ import {
   writeToken,
   type BackupConfig,
 } from './config.js'
-import { briefGitError, gitAvailable, runGit, type GitResult } from './git.js'
+import { briefGitError, gitAvailable, runGitAsync, type GitResult } from './git.js'
 import {
   archivedKeysFromLsTree,
   buildArchiveTree,
@@ -247,7 +247,7 @@ export class BackupService {
       const dirs = this.layout()
       mkdirSync(dirs.base, { recursive: true })
 
-      const archiveRemote = this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch)
+      const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch)
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout)
       const sessions = scanSessions(dirs.sessionsRoot)
       const buckets = classify({
@@ -262,7 +262,7 @@ export class BackupService {
       if (buckets.cooling.length > 0) {
         const staged = buildArchiveTree(dirs.staging, buckets.cooling)
         if (staged.written > 0) {
-          const pushed = this.publish(dirs.archiveRepo, this.config.archiveBranch, {
+          const pushed = await this.publish(dirs.archiveRepo, this.config.archiveBranch, {
             message: `archive: ${staged.written} 个冷却会话（${new Date(this.now()).toISOString()}）`,
           })
           if (!pushed.ok) return this.finish(empty, `归档推送失败：${pushed.reason}`, started)
@@ -281,7 +281,7 @@ export class BackupService {
         hot: buckets.hot,
         nowMs: this.now(),
       })
-      const pushed = this.publish(dirs.hotRepo, this.config.latestBranch, {
+      const pushed = await this.publish(dirs.hotRepo, this.config.latestBranch, {
         message: `latest: ${manifest.hotCount} 个会话 / ${formatBytes(manifest.hotBytes)}（快照至 ${manifest.snapshotAt}）`,
       })
       if (!pushed.ok) return this.finish(empty, `热快照推送失败：${pushed.reason}`, started)
@@ -355,9 +355,11 @@ export class BackupService {
    * 同步一个分支：`init`（缺则建）→ `fetch` → `reset --hard origin/<branch>`。
    * 分支不存在（第一次备份）返回空 stdout，调用方按"空归档"处理。
    */
-  private fetchBranch(repo: string, branch: string): GitResult {
-    this.prepareRepo(repo)
-    const fetched = runGit(['fetch', '--depth', '1', 'origin', branch], {
+  private async fetchBranch(repo: string, branch: string): Promise<GitResult> {
+    await this.prepareRepo(repo)
+    // ⚠️ 备份/恢复的每个 git 调用都走 `runGitAsync`：`fetch`/`push` 是网络操作，
+    // 慢起来几十秒；同步调用会把宿主的整个事件循环钉住（远控和设置页一起卡死）。
+    const fetched = await runGitAsync(['fetch', '--depth', '1', 'origin', branch], {
       cwd: repo,
       env: this.gitEnv(),
     })
@@ -366,36 +368,40 @@ export class BackupService {
       if (isMissingRef(fetched)) return { ...fetched, code: 0, stdout: '', stderr: '' }
       return fetched
     }
-    const reset = runGit(['reset', '--hard', `origin/${branch}`], { cwd: repo, env: this.gitEnv() })
+    const reset = await runGitAsync(['reset', '--hard', `origin/${branch}`], { cwd: repo, env: this.gitEnv() })
     if (reset.code !== 0) return reset
-    return runGit(['ls-tree', '-r', '--name-only', 'HEAD'], { cwd: repo, env: this.gitEnv() })
+    return runGitAsync(['ls-tree', '-r', '--name-only', 'HEAD'], { cwd: repo, env: this.gitEnv() })
   }
 
-  private prepareRepo(repo: string): void {
+  private async prepareRepo(repo: string): Promise<void> {
     mkdirSync(repo, { recursive: true })
     if (!existsSync(path.join(repo, '.git'))) {
-      runGit(['init', '-q'], { cwd: repo, env: this.gitEnv() })
-      runGit(['config', 'user.name', 'dsh-backup'], { cwd: repo, env: this.gitEnv() })
-      runGit(['config', 'user.email', 'dsh-backup@localhost'], { cwd: repo, env: this.gitEnv() })
+      await runGitAsync(['init', '-q'], { cwd: repo, env: this.gitEnv() })
+      await runGitAsync(['config', 'user.name', 'dsh-backup'], { cwd: repo, env: this.gitEnv() })
+      await runGitAsync(['config', 'user.email', 'dsh-backup@localhost'], { cwd: repo, env: this.gitEnv() })
     }
     // 远端地址每轮对齐（用户可能在设置页改了仓库）。
-    const current = runGit(['remote', 'get-url', 'origin'], { cwd: repo, env: this.gitEnv() })
+    const current = await runGitAsync(['remote', 'get-url', 'origin'], { cwd: repo, env: this.gitEnv() })
     if (current.code !== 0) {
-      runGit(['remote', 'add', 'origin', this.config.repoUrl], { cwd: repo, env: this.gitEnv() })
+      await runGitAsync(['remote', 'add', 'origin', this.config.repoUrl], { cwd: repo, env: this.gitEnv() })
     } else if (current.stdout.trim() !== this.config.repoUrl) {
-      runGit(['remote', 'set-url', 'origin', this.config.repoUrl], { cwd: repo, env: this.gitEnv() })
+      await runGitAsync(['remote', 'set-url', 'origin', this.config.repoUrl], { cwd: repo, env: this.gitEnv() })
     }
     // 别让宿主目录里的全局配置（比如 core.hooksPath）掺进来。
-    runGit(['config', 'commit.gpgsign', 'false'], { cwd: repo, env: this.gitEnv() })
+    await runGitAsync(['config', 'commit.gpgsign', 'false'], { cwd: repo, env: this.gitEnv() })
   }
 
   /** 把工作副本里的文件提交并推到远端分支（`--force`：单写者模型）。 */
-  private publish(repo: string, branch: string, options: { message: string }): { ok: boolean; reason: string; commit: string } {
+  private async publish(
+    repo: string,
+    branch: string,
+    options: { message: string },
+  ): Promise<{ ok: boolean; reason: string; commit: string }> {
     // ⚠️ 这里必须自己 prepare：热快照那条路**不走** `fetchBranch`（它每轮整体覆盖，
     // 不需要远端的内容），少了这一句就是 `git ls-files` 在一个不存在的目录里跑，
     // 报错还长得像"git 没装"。真机回归里见过一次，记在这里。
-    this.prepareRepo(repo)
-    const tracked = runGit(['ls-files'], { cwd: repo, env: this.gitEnv() })
+    await this.prepareRepo(repo)
+    const tracked = await runGitAsync(['ls-files'], { cwd: repo, env: this.gitEnv() })
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: '' }
     const keep = new Set(tracked.stdout.split('\n').map((line) => line.trim()).filter((line) => line !== ''))
     // 清掉工作副本里除 .git 之外的东西（每轮内容整体重铺）。
@@ -404,13 +410,13 @@ export class BackupService {
     if (!existsSync(source)) return { ok: false, reason: '暂存目录是空的（这一步不该失败）', commit: '' }
     copyTree(source, repo)
 
-    const added = runGit(['add', '-A'], { cwd: repo, env: this.gitEnv() })
+    const added = await runGitAsync(['add', '-A'], { cwd: repo, env: this.gitEnv() })
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: '' }
-    const status = runGit(['status', '--porcelain'], { cwd: repo, env: this.gitEnv() })
+    const status = await runGitAsync(['status', '--porcelain'], { cwd: repo, env: this.gitEnv() })
     const dirty = status.stdout.trim() !== ''
     if (!dirty && keep.size > 0) {
       // 内容没变：不造空提交（否则每 8 小时一个空提交，仓库全是噪声）。
-      const head = runGit(['rev-parse', '--short', 'HEAD'], { cwd: repo, env: this.gitEnv() })
+      const head = await runGitAsync(['rev-parse', '--short', 'HEAD'], { cwd: repo, env: this.gitEnv() })
       return { ok: true, reason: '', commit: head.stdout.trim() }
     }
     /**
@@ -420,22 +426,22 @@ export class BackupService {
      * ⇒ 远端的 `latest` 也会长出一串历史。"只留最新一份"要的是**仓库里真的只有一份**，
      * 所以内容换一份、历史也换一份。归档分支同理：它的**内容**只增，但历史不必留。
      */
-    const tree = runGit(['write-tree'], { cwd: repo, env: this.gitEnv() })
+    const tree = await runGitAsync(['write-tree'], { cwd: repo, env: this.gitEnv() })
     if (tree.code !== 0) return { ok: false, reason: briefGitError(tree), commit: '' }
-    const commitTree = runGit(['commit-tree', tree.stdout.trim(), '-m', options.message], {
+    const commitTree = await runGitAsync(['commit-tree', tree.stdout.trim(), '-m', options.message], {
       cwd: repo,
       env: this.gitEnv(),
     })
     if (commitTree.code !== 0) return { ok: false, reason: briefGitError(commitTree), commit: '' }
     const commitSha = commitTree.stdout.trim()
-    const pushed = runGit(['push', '--force', 'origin', `${commitSha}:refs/heads/${branch}`], {
+    const pushed = await runGitAsync(['push', '--force', 'origin', `${commitSha}:refs/heads/${branch}`], {
       cwd: repo,
       env: this.gitEnv(),
       timeoutMs: 20 * 60 * 1000,
     })
     if (pushed.code !== 0) return { ok: false, reason: briefGitError(pushed), commit: '' }
     // 本地 HEAD 跟上（下一轮的 `ls-files` / `rev-parse` 才有东西可看）。
-    runGit(['update-ref', 'HEAD', commitSha], { cwd: repo, env: this.gitEnv() })
+    await runGitAsync(['update-ref', 'HEAD', commitSha], { cwd: repo, env: this.gitEnv() })
     return { ok: true, reason: '', commit: commitSha.slice(0, 7) }
   }
 
@@ -485,11 +491,11 @@ export class BackupService {
       const dirs = this.layout()
       const staging = dirs.staging
       resetDir(staging)
-      const latest = this.fetchBranch(dirs.hotRepo, this.config.latestBranch)
+      const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch)
       if (latest.code !== 0) return this.restoreDone(false, `拉取失败：${briefGitError(latest)}`)
       copyTree(dirs.hotRepo, path.join(staging, 'latest'))
       const archiveRepoDir = dirs.archiveRepo
-      const archive = this.fetchBranch(archiveRepoDir, this.config.archiveBranch)
+      const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch)
       let archivedSessions = 0
       if (archive.code === 0 && archive.stdout.trim() !== '') {
         copyTree(archiveRepoDir, path.join(staging, 'archive'))
