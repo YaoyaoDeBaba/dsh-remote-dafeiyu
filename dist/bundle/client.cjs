@@ -1193,6 +1193,7 @@ var SETTINGS_ID = "dsh-remote-control";
 var SETTINGS_ORDER = 30;
 var SETTINGS_LABEL = "\u8FDC\u7A0B\u63A7\u5236";
 var CONFIG_ROUTE = "/plugins/dsh-remote-control/config";
+var BACKUP_ROUTE = "/plugins/dsh-remote-control/backup";
 var ADV_STYLE_ID = "dsh-remote-control/settings.css";
 var hostVar2 = (name2, fallback) => `var(--dsw-alias-${name2}, ${fallback})`;
 var ADV_CSS = `
@@ -1604,6 +1605,183 @@ function buildSettingsSection(root, deps) {
       () => flash("\u590D\u5236\u5931\u8D25\uFF0C\u957F\u6309\u4E0B\u9762\u90A3\u884C")
     );
   };
+  let backupCard;
+  let bkNote;
+  let bkStatusLine;
+  let bkUrlInput;
+  let bkTokenInput;
+  let bkIntervalInput;
+  let bkIdleInput;
+  let bkToggleBtn;
+  let bkEnabled = false;
+  const bkSetNote = (message, kind) => {
+    if (!bkNote) return;
+    bkNote.textContent = message;
+    bkNote.setAttribute("data-kind", kind ?? "");
+  };
+  const numOf = (raw, fallback) => typeof raw === "number" ? raw : fallback;
+  const strOf = (raw, fallback = "") => typeof raw === "string" ? raw : fallback;
+  const paintBackupStatus = (body) => {
+    const status2 = body.status && typeof body.status === "object" ? body.status : {};
+    const config = body.config && typeof body.config === "object" ? body.config : {};
+    bkEnabled = config.enabled === true;
+    if (bkToggleBtn) bkToggleBtn.textContent = bkEnabled ? "\u505C\u7528\u5907\u4EFD" : "\u542F\u7528\u5907\u4EFD";
+    if (bkUrlInput && doc.activeElement !== bkUrlInput) bkUrlInput.value = strOf(config.repoUrl);
+    if (bkIntervalInput && doc.activeElement !== bkIntervalInput) {
+      bkIntervalInput.value = String(numOf(config.intervalHours, 8));
+    }
+    if (bkIdleInput && doc.activeElement !== bkIdleInput) {
+      bkIdleInput.value = String(numOf(config.idleDays, 15));
+    }
+    if (bkTokenInput && doc.activeElement !== bkTokenInput) {
+      bkTokenInput.value = "";
+      bkTokenInput.setAttribute("placeholder", status2.tokenSet === true ? "\u5DF2\u8BBE\u7F6E\uFF0C\u7559\u7A7A\u4E0D\u6539\u52A8" : "\u672A\u8BBE\u7F6E\uFF1A\u586B\u4F60\u7684 PAT");
+    }
+    if (!bkStatusLine) return;
+    const parts = [];
+    if (status2.gitAvailable !== true) parts.push("\u672C\u673A\u6CA1\u88C5 git\uFF1A\u5148\u88C5 Git for Windows");
+    parts.push(bkEnabled ? "\u5DF2\u542F\u7528" : "\u672A\u542F\u7528");
+    const interval = numOf(config.intervalHours, 8);
+    parts.push(interval > 0 ? `\u6BCF ${interval} \u5C0F\u65F6` : "\u53EA\u624B\u52A8");
+    parts.push(`\u51B7\u5374 ${numOf(config.idleDays, 15)} \u5929\u5F52\u6863`);
+    if (status2.running === true) {
+      parts.push("\u6B63\u5728\u8DD1\u2026");
+    } else if (typeof status2.lastRunAt === "string" && status2.lastRunAt !== "") {
+      const when = status2.lastRunAt.replace("T", " ").replace(/\..*$/, "");
+      const result = status2.lastResult === "ok" ? "\u6210\u529F" : status2.lastResult === "skipped" ? "\u8DF3\u8FC7" : "\u5931\u8D25";
+      parts.push(`\u4E0A\u6B21 ${when} ${result}`);
+      if (result === "\u6210\u529F") {
+        const mb = (numOf(status2.lastHotBytes, 0) / (1024 * 1024)).toFixed(1);
+        parts.push(`${numOf(status2.lastHotCount, 0)} \u4E2A\u4F1A\u8BDD / ${mb} MB`);
+        if (numOf(status2.lastArchivedCount, 0) > 0) parts.push(`\u5F52\u6863 ${numOf(status2.lastArchivedCount, 0)} \u4E2A`);
+      } else if (typeof status2.lastError === "string" && status2.lastError !== "") {
+        parts.push(status2.lastError.slice(0, 120));
+      }
+    } else {
+      parts.push("\u8FD8\u6CA1\u8DD1\u8FC7");
+    }
+    const restore = status2.restore && typeof status2.restore === "object" ? status2.restore : {};
+    if (typeof restore.lastMessage === "string" && restore.lastMessage !== "") {
+      parts.push(`\u6062\u590D\uFF1A${restore.lastMessage.slice(0, 120)}`);
+    }
+    bkStatusLine.textContent = parts.join("\u3000");
+  };
+  const loadBackup = async () => {
+    if (disposed) return;
+    const answer = await call(BACKUP_ROUTE, { method: "GET" });
+    if (disposed) return;
+    if (!answer.ok) {
+      if (bkStatusLine) bkStatusLine.textContent = `\u8BFB\u4E0D\u5230\u5907\u4EFD\u72B6\u6001\uFF08HTTP ${answer.status}\uFF09`;
+      return;
+    }
+    paintBackupStatus(answer.body);
+  };
+  const postBackup = async (payload, okText) => {
+    if (disposed) return;
+    const answer = await call(BACKUP_ROUTE, {
+      method: "POST",
+      headers: { ...MARKER, "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (disposed) return;
+    if (!answer.ok) {
+      const detail = String(answer.body.detail ?? answer.body.error ?? `HTTP ${answer.status}`);
+      bkSetNote(`\u5931\u8D25\uFF1A${detail}`, "failed");
+      return;
+    }
+    bkSetNote(okText, "ok");
+    await loadBackup();
+  };
+  const saveBackup = async () => {
+    const config = {
+      repoUrl: bkUrlInput?.value.trim() ?? "",
+      intervalHours: Number(bkIntervalInput?.value.trim() ?? "8"),
+      idleDays: Number(bkIdleInput?.value.trim() ?? "15"),
+      enabled: bkEnabled
+    };
+    const token = bkTokenInput?.value.trim() ?? "";
+    const payload = { action: "save", config };
+    if (token !== "") payload.token = token;
+    await postBackup(payload, "\u5DF2\u4FDD\u5B58\u3002\u6539\u4E86\u8282\u594F\u7ACB\u523B\u751F\u6548\uFF0C\u4E0D\u7528\u91CD\u542F\u3002");
+  };
+  const buildBackup = () => {
+    const section = card("\u4F1A\u8BDD\u5907\u4EFD\uFF08git\uFF09");
+    section.setAttribute("data-role", "backup");
+    section.appendChild(
+      text(
+        "p",
+        "drc-sec-note",
+        "\u628A\u672C\u673A\u7684\u4F1A\u8BDD\u8BB0\u5F55\u5B9A\u65F6\u4F20\u5230\u4F60\u7684\u79C1\u6709\u4ED3\u5E93\uFF1A\u6D3B\u8DC3\u7684\u6BCF 8 \u5C0F\u65F6\u4E00\u4EFD\uFF08\u53EA\u7559\u6700\u65B0\uFF09\uFF0C15 \u5929\u6CA1\u804A\u7684\u8F6C\u5B58\u5230\u5F52\u6863\u5206\u652F\u3002\u6362\u7535\u8111\u540E\u5728\u8FD9\u91CC\u4E00\u952E\u62C9\u56DE\u6765\u3002"
+      )
+    );
+    const grid2 = doc.createElement("div");
+    grid2.className = "drc-adv-grid";
+    const urlLabel = text("label", "drc-adv-label", "\u4ED3\u5E93\u5730\u5740");
+    const urlInput = doc.createElement("input");
+    urlInput.className = "drc-adv-input";
+    urlInput.setAttribute("type", "text");
+    urlInput.setAttribute("spellcheck", "false");
+    urlInput.setAttribute("autocomplete", "off");
+    urlInput.setAttribute("placeholder", "https://github.com/\u4F60\u7684\u8D26\u53F7/dsh-backup-\u4E3B\u673A\u540D.git");
+    bkUrlInput = urlInput;
+    const tokenLabel = text("label", "drc-adv-label", "\u8BBF\u95EE\u4EE4\u724C\uFF08PAT\uFF09");
+    const tokenInput = doc.createElement("input");
+    tokenInput.className = "drc-adv-input";
+    tokenInput.setAttribute("type", "password");
+    tokenInput.setAttribute("autocomplete", "off");
+    tokenInput.setAttribute("placeholder", "\u672A\u8BBE\u7F6E\uFF1A\u586B\u4F60\u7684 PAT");
+    bkTokenInput = tokenInput;
+    const intervalLabel = text("label", "drc-adv-label", "\u95F4\u9694\uFF08\u5C0F\u65F6\uFF0C0 = \u53EA\u624B\u52A8\uFF09");
+    const intervalInput = doc.createElement("input");
+    intervalInput.className = "drc-adv-input";
+    intervalInput.setAttribute("type", "number");
+    intervalInput.setAttribute("min", "0");
+    intervalInput.setAttribute("max", "168");
+    intervalInput.setAttribute("value", "8");
+    bkIntervalInput = intervalInput;
+    const idleLabel = text("label", "drc-adv-label", "\u51B7\u5374\u5929\u6570\uFF08\u591A\u4E45\u6CA1\u804A\u8F6C\u5F52\u6863\uFF09");
+    const idleInput = doc.createElement("input");
+    idleInput.className = "drc-adv-input";
+    idleInput.setAttribute("type", "number");
+    idleInput.setAttribute("min", "1");
+    idleInput.setAttribute("max", "3650");
+    idleInput.setAttribute("value", "15");
+    bkIdleInput = idleInput;
+    for (const node of [urlLabel, urlInput, tokenLabel, tokenInput, intervalLabel, intervalInput, idleLabel, idleInput]) {
+      grid2.appendChild(node);
+    }
+    section.appendChild(grid2);
+    const actions = doc.createElement("div");
+    actions.className = "drc-sec-actions";
+    const toggle = button("\u542F\u7528\u5907\u4EFD", () => {
+      bkEnabled = !bkEnabled;
+      void saveBackup();
+    }, "primary");
+    bkToggleBtn = toggle;
+    actions.appendChild(button("\u4FDD\u5B58", () => void saveBackup(), "primary"));
+    actions.appendChild(toggle);
+    actions.appendChild(
+      button("\u7ACB\u5373\u5907\u4EFD", () => {
+        bkSetNote("\u5DF2\u5F00\u59CB\uFF0C\u8DD1\u5B8C\u8FD9\u4E00\u884C\u4F1A\u81EA\u5DF1\u66F4\u65B0\uFF08\u51E0\u5206\u949F\uFF09", "ok");
+        void postBackup({ action: "run" }, "\u5DF2\u5F00\u59CB\u5907\u4EFD\u2026");
+      })
+    );
+    actions.appendChild(
+      button("\u4ECE\u5907\u4EFD\u6062\u590D", () => {
+        const view2 = doc.defaultView;
+        const sure = typeof view2?.confirm === "function" ? view2.confirm("\u8981\u7528\u4ED3\u5E93\u91CC\u7684\u5907\u4EFD\u8986\u76D6\u672C\u673A\u4F1A\u8BDD\u5417\uFF1F\u73B0\u6709\u4F1A\u8BDD\u4F1A\u88AB\u6539\u540D\u7559\u5E95\uFF0C\u4E0D\u4F1A\u5220\u9664\u3002") : true;
+        if (!sure) return;
+        void postBackup({ action: "restore" }, "\u5DF2\u5F00\u59CB\u6062\u590D\uFF0C\u5B8C\u6210\u540E\u91CD\u542F\u98DE\u9C7C");
+      })
+    );
+    section.appendChild(actions);
+    bkStatusLine = text("p", "drc-adv-note", "\u6B63\u5728\u8BFB\u53D6\u5907\u4EFD\u72B6\u6001\u2026");
+    section.appendChild(bkStatusLine);
+    bkNote = text("p", "drc-adv-note", "");
+    bkNote.setAttribute("data-kind", "");
+    section.appendChild(bkNote);
+    return section;
+  };
   const paint = () => {
     if (disposed) return;
     const topChildren = [];
@@ -1677,6 +1855,10 @@ function buildSettingsSection(root, deps) {
       appCard = buildAppCard();
       rightCol.appendChild(appCard);
     }
+    if (!backupCard) {
+      backupCard = buildBackup();
+      rightCol.appendChild(backupCard);
+    }
     topHost.replaceChildren(...topChildren);
     leftCol.replaceChildren(...leftChildren);
   };
@@ -1684,7 +1866,13 @@ function buildSettingsSection(root, deps) {
   void loadStatus();
   void mint();
   void loadConfig();
-  statusTimer = setInterval(() => void loadStatus(), 2e3);
+  let backupTick = 0;
+  statusTimer = setInterval(() => {
+    void loadStatus();
+    backupTick += 1;
+    if (backupTick % 3 === 0) void loadBackup();
+  }, 2e3);
+  void loadBackup();
   return () => {
     disposed = true;
     if (statusTimer !== void 0) clearInterval(statusTimer);

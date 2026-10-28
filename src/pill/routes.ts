@@ -38,6 +38,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createHash } from 'node:crypto'
 import { configRouteHandler, PLUGIN_CONFIG_ROUTE, type ConfigRouteDeps } from './config-routes.js'
+// 备份那条路由（2026-10-28）：与 /config 同前缀、同守卫，但**它是可选件**——
+// 没接线时（`deps.backup` 缺）这里一条都不挂，配对链路一个字不受影响。
+import { backupRouteHandler, BACKUP_ROUTE, type BackupRouteDeps } from '../backup/routes.js'
 
 export const PAIR_NEW_ROUTE = '/plugins/dsh-remote-control/pairing/new'
 export const PAIR_IMAGE_ROUTE = '/plugins/dsh-remote-control/pairing.png'
@@ -565,7 +568,10 @@ function clientReportHandler(): (request: IncomingMessage, response: ServerRespo
   }
 }
 
-export function registerPillRoutes(webServer: WebServerLike, deps: PillRouteDeps & ConfigRouteDeps): () => void {
+export function registerPillRoutes(
+  webServer: WebServerLike,
+  deps: PillRouteDeps & ConfigRouteDeps & { backup?: BackupRouteDeps },
+): () => void {
   const off: Array<() => void> = []
   const definitions = [
     { kind: 'exact' as const, path: PAIR_NEW_ROUTE, handler: pairNewHandler(deps) },
@@ -577,6 +583,13 @@ export function registerPillRoutes(webServer: WebServerLike, deps: PillRouteDeps
     // 2026-10-21 加：用户确认「数字一致」后的放行口。**排在最后**，前面各条的编号语义不变。
     { kind: 'exact' as const, path: PAIR_APPROVE_ROUTE, handler: pairApproveHandler(deps) },
   ]
+  /**
+   * 备份用的那一条（2026-10-28）。可选：没接线就一条都不挂。
+   * 与上面七条**同一个注册循环**（一起挂、一起回滚），因为它同样要过 CORS 与守卫。
+   */
+  if (deps.backup) {
+    definitions.push({ kind: 'exact' as const, path: BACKUP_ROUTE, handler: backupRouteHandler(deps.backup) })
+  }
   /**
    * 每条路由都过一遍 CORS，并把预检就地答掉（`OPTIONS` 不进 handler）：
    * 预检不带自定义头也不带 body，走业务守卫只会回 403/405，而浏览器要的是 2xx + 那几个头。

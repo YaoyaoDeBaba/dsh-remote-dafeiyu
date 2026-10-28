@@ -49,6 +49,9 @@ import {
   type PluginConfig,
 } from './shell/config.js'
 import { startPill, type PillHandle } from './pill/start.js'
+// 会话备份（2026-10-28）：一个包两件事。备份**永远不许**影响远控主链路，
+// 所以它下面每一处调用都自带 try/catch，起不来也只是少一张卡片。
+import { BackupService } from './backup/service.js'
 import type { ConfigSource, EffectivePluginConfig } from './pill/config-routes.js'
 import { claimHostToken, readStoredHostToken, resolveHostTokenFile, writeStoredHostToken } from './shell/claim-token.js'
 import { readUserConfig, resolveUserConfigFile, writeUserConfig, type UserOverrides } from './shell/user-config.js'
@@ -1344,6 +1347,31 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     config.hostToken = fresh.hostToken
     return { ok: true }
   }
+  /**
+   * ── 会话备份（2026-10-28）────────────────────────────────────────────
+   *
+   * 与远控**同包但不同生命周期**：远控是主链路，备份是旁路。
+   * 所以这里整段包 try——备份起不来（配置坏了 / git 不在 / 磁盘满）时，
+   * 表现必须是"少一张卡片"，而不是"插件不加载"。
+   *
+   * `dshHome` 从 `statusFile` 反推（`~/.dsh/dsh-remote-control/status.json` 的上两级）：
+   * 关掉状态快照时它可能是空串，那就退回 `os.homedir()`——不猜别的。
+   */
+  const dshHome =
+    config.statusFile !== ''
+      ? path.dirname(path.dirname(config.statusFile))
+      : path.join(process.env.USERPROFILE ?? process.env.HOME ?? '', '.dsh')
+  let backup: BackupService | undefined
+  try {
+    backup = new BackupService({ dshHome, log })
+    backup.start()
+  } catch (error) {
+    backup = undefined
+    log('备份服务起不来（远控不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   try {
     pillRoutes = startPill(ctx, {
       enabled: config.pill.enabled,
@@ -1376,6 +1404,19 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       // 设置页「进阶」那一栏：路由那一层**不碰文件系统**，读写都收在这里。
       config: () => describeEffectiveConfig(),
       saveConfig: (overrides) => saveUserOverrides(overrides),
+      // 备份那张卡片的接线（handler 在 `backup/routes.ts`，逻辑在 `backup/service.ts`）。
+      // 这里只做转发，**一行都不能少**（`startPill` 那边是逐个字段重建对象的）。
+      backup: backup
+        ? {
+            status: () => backup!.snapshot(),
+            config: () => backup!.currentConfig(),
+            saveConfig: (patch) => backup!.saveConfig(patch),
+            setToken: (token) => backup!.setToken(token),
+            runNow: (reason) => backup!.runOnce(reason),
+            restore: () => backup!.restore(),
+            log,
+          }
+        : undefined,
       log,
     })
   } catch (error) {
@@ -1398,6 +1439,12 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       oneShot.cancelAll()
       // pill 那七条路由也要一起收：它是不在主链路上的旁路，所以单独一句。
       pillRoutes?.stop()
+      // 备份的定时器同理：停机之后它再去推仓库，推的是"半个现场"。
+      try {
+        backup?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
       status.stop()
       for (const hook of stopHooks) {
         try {

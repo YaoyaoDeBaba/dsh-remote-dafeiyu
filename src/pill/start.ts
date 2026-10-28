@@ -21,6 +21,7 @@
  */
 import { registerPillRoutes, type PillRouteDeps, type WebServerLike } from './routes.js'
 import type { ConfigRouteDeps } from './config-routes.js'
+import type { BackupRouteDeps } from '../backup/routes.js'
 
 /** 只用到 ctx 的几个成员，所以不硬依赖 `@deepseek-ai/cordis` 的类型。 */
 interface LooseContext {
@@ -37,7 +38,10 @@ export interface PillHandle {
 }
 
 /** 起那七条路由。`enabled:false` 时什么都不做。返回句柄；`stop()` 幂等。 */
-export function startPill(ctx: LooseContext, deps: PillRouteDeps & ConfigRouteDeps & { enabled: boolean }): PillHandle {
+export function startPill(
+  ctx: LooseContext,
+  deps: PillRouteDeps & ConfigRouteDeps & { enabled: boolean; backup?: BackupRouteDeps },
+): PillHandle {
   const { log } = deps
   const probe: Record<string, string> = {}
   let web: WebServerLike | undefined
@@ -69,6 +73,9 @@ export function startPill(ctx: LooseContext, deps: PillRouteDeps & ConfigRouteDe
         // —— 读写都在 `index.ts` 那一侧（它知道落盘文件在哪、也知道此刻生效的是哪一层）。
         config: () => deps.config(),
         saveConfig: (overrides) => deps.saveConfig(overrides),
+        // 备份那张卡（2026-10-28）：**同样只是转发**。⚠️ 这一行漏过一次的教训见上面
+        // `mpCodeFor`——逐个字段重建对象时漏一行，症状是"卡片在、按钮永远没反应、全程无日志"。
+        backup: deps.backup,
         log,
       })
       probe.routes = 'registered'

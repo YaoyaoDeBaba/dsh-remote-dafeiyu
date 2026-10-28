@@ -4784,7 +4784,7 @@ var require_websocket = __commonJS({
     var http = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes5, createHash: createHash5 } = __require("crypto");
+    var { randomBytes: randomBytes5, createHash: createHash6 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -5465,7 +5465,7 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash5("sha1").update(key + GUID).digest("base64");
+        const digest = createHash6("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -5834,7 +5834,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter = __require("events");
     var http = __require("http");
     var { Duplex } = __require("stream");
-    var { createHash: createHash5 } = __require("crypto");
+    var { createHash: createHash6 } = __require("crypto");
     var extension2 = require_extension();
     var PerMessageDeflate2 = require_permessage_deflate();
     var subprotocol2 = require_subprotocol();
@@ -6141,7 +6141,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash5("sha1").update(key + GUID).digest("base64");
+        const digest = createHash6("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path10 from "node:path";
+import path13 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path11) {
-  if (!path11)
+function getElementAtPath(obj, path14) {
+  if (!path14)
     return obj;
-  return path11.reduce((acc, key) => acc?.[key], obj);
+  return path14.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path11, issues) {
+function prefixIssues(path14, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path11);
+    iss.path.unshift(path14);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path14 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path14, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path14 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path14, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path11) {
+  const path14 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path14) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -9237,9 +9237,9 @@ var asciiTabOrNewline = /[\t\n\r]/g;
 function stripTabAndNewline(value) {
   return value.replace(asciiTabOrNewline, "");
 }
-function urlHostnameOk(url2, hostname3) {
-  hostname3.lastIndex = 0;
-  return hostname3.test(url2.hostname);
+function urlHostnameOk(url2, hostname4) {
+  hostname4.lastIndex = 0;
+  return hostname4.test(url2.hostname);
 }
 function urlProtocolOk(url2, protocol) {
   protocol.lastIndex = 0;
@@ -22058,13 +22058,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json4, params, message) {
+function handleUnrepresentable(schema, ctx, json5, params, message) {
   const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result2 === "any")
     return false;
   if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json4, result2);
+  Object.assign(json5, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -22300,12 +22300,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json4) {
-  const allOf = json4.allOf;
+function foldIntersection(json5) {
+  const allOf = json5.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json4)
+    if (key in json5)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -22324,8 +22324,8 @@ function foldIntersection(json4) {
   }
   if (!folded)
     return;
-  delete json4.allOf;
-  assignProps(json4, folded);
+  delete json5.allOf;
+  assignProps(json5, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -22407,20 +22407,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json4 of [seen.schema, seen.def]) {
-          const allOf = json4?.allOf;
+        for (const json5 of [seen.schema, seen.def]) {
+          const allOf = json5?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json4);
+            existing.push(json5);
           else
-            carriers.set(allOf, [json4]);
+            carriers.set(allOf, [json5]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json4 of carriers.get(allOf) ?? [])
-          foldIntersection(json4);
+        for (const json5 of carriers.get(allOf) ?? [])
+          foldIntersection(json5);
       }
     }
   }
@@ -22655,29 +22655,29 @@ var exactPatterns = /* @__PURE__ */ new Map([
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
 var stringProcessor = (schema, ctx, _json, _params) => {
-  const json4 = _json;
-  json4.type = "string";
+  const json5 = _json;
+  json5.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json4.minLength = minimum;
+    json5.minLength = minimum;
   if (typeof maximum === "number")
-    json4.maxLength = maximum;
+    json5.maxLength = maximum;
   if (format) {
-    json4.format = formatMap[format] ?? format;
-    if (json4.format === "")
-      delete json4.format;
+    json5.format = formatMap[format] ?? format;
+    if (json5.format === "")
+      delete json5.format;
     if (format === "time" || laxFormat) {
-      delete json4.format;
+      delete json5.format;
     }
   }
   if (contentEncoding)
-    json4.contentEncoding = contentEncoding;
+    json5.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const patternList = [...patterns].map(exactPattern);
     if (patternList.length === 1)
-      json4.pattern = patternList[0].source;
+      json5.pattern = patternList[0].source;
     else if (patternList.length > 1) {
-      json4.allOf = [
+      json5.allOf = [
         ...patternList.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -22687,31 +22687,31 @@ var stringProcessor = (schema, ctx, _json, _params) => {
   }
 };
 var numberProcessor = (schema, ctx, _json, params) => {
-  const json4 = _json;
+  const json5 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-  json4.type = isInt ? "integer" : "number";
+  json5.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json4.minimum = exclusiveMinimum;
-      json4.exclusiveMinimum = true;
+      json5.minimum = exclusiveMinimum;
+      json5.exclusiveMinimum = true;
     } else {
-      json4.exclusiveMinimum = exclusiveMinimum;
+      json5.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json4.minimum = minimum;
+    json5.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json4.maximum = exclusiveMaximum;
-      json4.exclusiveMaximum = true;
+      json5.maximum = exclusiveMaximum;
+      json5.exclusiveMaximum = true;
     } else {
-      json4.exclusiveMaximum = exclusiveMaximum;
+      json5.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json4.maximum = maximum;
+    json5.maximum = maximum;
   }
   if (multipleOf) {
     const divisors = /* @__PURE__ */ new Set();
@@ -22719,75 +22719,75 @@ var numberProcessor = (schema, ctx, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema, ctx, json4, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema, ctx, json5, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
-      json4.multipleOf = first;
+      json5.multipleOf = first;
     if (rest.length)
-      json4.allOf = [...json4.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+      json5.allOf = [...json5.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
   }
 };
-var booleanProcessor = (_schema, _ctx, json4, _params) => {
-  json4.type = "boolean";
+var booleanProcessor = (_schema, _ctx, json5, _params) => {
+  json5.type = "boolean";
 };
-var bigintProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx, json4, _params) => {
+var nullProcessor = (_schema, ctx, json5, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json4.type = "string";
-    json4.nullable = true;
-    json4.enum = [null];
+    json5.type = "string";
+    json5.nullable = true;
+    json5.enum = [null];
   } else {
-    json4.type = "null";
+    json5.type = "null";
   }
 };
-var undefinedProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Void cannot be represented in JSON Schema");
 };
-var neverProcessor = (_schema, _ctx, json4, _params) => {
-  json4.not = {};
+var neverProcessor = (_schema, _ctx, json5, _params) => {
+  json5.not = {};
 };
 var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Date cannot be represented in JSON Schema");
 };
-var enumProcessor = (schema, _ctx, json4, _params) => {
+var enumProcessor = (schema, _ctx, json5, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.length === 0) {
-    json4.not = {};
+    json5.not = {};
     return;
   }
   if (values.every((v) => typeof v === "number"))
-    json4.type = "number";
+    json5.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json4.type = "string";
-  json4.enum = values;
+    json5.type = "string";
+  json5.enum = values;
 };
-var literalProcessor = (schema, ctx, json4, params) => {
+var literalProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   if (def.values.length === 0) {
-    json4.not = {};
+    json5.not = {};
     return;
   }
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema, ctx, json4, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json5, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema, ctx, json4, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json5, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -22797,37 +22797,37 @@ var literalProcessor = (schema, ctx, json4, params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json4.type = val === null ? "null" : typeof val;
+    json5.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json4.enum = [val];
+      json5.enum = [val];
     } else {
-      json4.const = val;
+      json5.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json4.type = "number";
+      json5.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json4.type = "string";
+      json5.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json4.type = "boolean";
+      json5.type = "boolean";
     if (vals.every((v) => v === null))
-      json4.type = "null";
-    json4.enum = vals;
+      json5.type = "null";
+    json5.enum = vals;
   }
 };
-var nanProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "NaN cannot be represented in JSON Schema");
 };
-var templateLiteralProcessor = (schema, _ctx, json4, _params) => {
-  const _json = json4;
+var templateLiteralProcessor = (schema, _ctx, json5, _params) => {
+  const _json = json5;
   const pattern = schema._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json4, _params) => {
-  const _json = json4;
+var fileProcessor = (schema, _ctx, json5, _params) => {
+  const _json = json5;
   _json.type = "string";
   _json.format = "binary";
   _json.contentEncoding = "binary";
@@ -22845,34 +22845,34 @@ var fileProcessor = (schema, _ctx, json4, _params) => {
   else
     _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
 };
-var successProcessor = (_schema, _ctx, json4, _params) => {
-  json4.type = "boolean";
+var successProcessor = (_schema, _ctx, json5, _params) => {
+  json5.type = "boolean";
 };
-var customProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema, ctx, json4, params) => {
-  handleUnrepresentable(schema, ctx, json4, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema, ctx, json5, params) => {
+  handleUnrepresentable(schema, ctx, json5, params, "Set cannot be represented in JSON Schema");
 };
 var arrayProcessor = (schema, ctx, _json, params) => {
-  const json4 = _json;
+  const json5 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json4.minItems = minimum;
+    json5.minItems = minimum;
   if (typeof maximum === "number")
-    json4.maxItems = maximum;
-  json4.type = "array";
-  json4.items = processSchema(def.element, ctx, {
+    json5.maxItems = maximum;
+  json5.type = "array";
+  json5.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -22888,17 +22888,17 @@ function inputOptin(schema) {
   return schema._zod.optin;
 }
 var objectProcessor = (schema, ctx, _json, params) => {
-  const json4 = _json;
+  const json5 = _json;
   const def = schema._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json4, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json5, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
-  json4.type = "object";
-  json4.properties = {};
+  json5.type = "object";
+  json5.properties = {};
   for (const key in shape) {
-    assignProp(json4.properties, key, processSchema(shape[key], ctx, {
+    assignProp(json5.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -22911,21 +22911,21 @@ var objectProcessor = (schema, ctx, _json, params) => {
     }
   }
   if (requiredKeys.length > 0) {
-    json4.required = requiredKeys;
+    json5.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
-    json4.additionalProperties = false;
+    json5.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json4.additionalProperties = false;
+      json5.additionalProperties = false;
   } else if (def.catchall) {
-    json4.additionalProperties = processSchema(def.catchall, ctx, {
+    json5.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema, ctx, json4, params) => {
+var unionProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -22933,12 +22933,12 @@ var unionProcessor = (schema, ctx, json4, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json4.oneOf = options;
+    json5.oneOf = options;
   } else {
-    json4.anyOf = options;
+    json5.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json4, params) => {
+var intersectionProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   const a = processSchema(def.left, ctx, {
     ...params,
@@ -22953,13 +22953,13 @@ var intersectionProcessor = (schema, ctx, json4, params) => {
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json4.allOf = allOf;
+  json5.allOf = allOf;
   ctx.intersections.push(allOf);
 };
 var tupleProcessor = (schema, ctx, _json, params) => {
-  const json4 = _json;
+  const json5 = _json;
   const def = schema._zod.def;
-  json4.type = "array";
+  json5.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
   const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -22981,70 +22981,70 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   const maxItems = def.items.length;
   const isClosed = !def.rest;
   if (ctx.target === "draft-2020-12") {
-    json4.prefixItems = prefixItems;
+    json5.prefixItems = prefixItems;
     if (isClosed) {
-      json4.items = false;
+      json5.items = false;
     } else if (rest) {
-      json4.items = rest;
+      json5.items = rest;
     }
     if (minItems > 0)
-      json4.minItems = minItems;
+      json5.minItems = minItems;
     if (isClosed)
-      json4.maxItems = maxItems;
+      json5.maxItems = maxItems;
   } else if (ctx.target === "openapi-3.0") {
-    json4.items = {
+    json5.items = {
       anyOf: prefixItems
     };
     if (rest) {
-      json4.items.anyOf.push(rest);
+      json5.items.anyOf.push(rest);
     }
     if (minItems > 0)
-      json4.minItems = minItems;
+      json5.minItems = minItems;
     if (isClosed)
-      json4.maxItems = maxItems;
+      json5.maxItems = maxItems;
   } else {
-    json4.items = prefixItems;
+    json5.items = prefixItems;
     if (isClosed) {
-      json4.additionalItems = false;
+      json5.additionalItems = false;
     } else if (rest) {
-      json4.additionalItems = rest;
+      json5.additionalItems = rest;
     }
     if (minItems > 0)
-      json4.minItems = minItems;
+      json5.minItems = minItems;
     if (isClosed)
-      json4.maxItems = maxItems;
+      json5.maxItems = maxItems;
   }
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json4.minItems = minimum;
+    json5.minItems = minimum;
   if (typeof maximum === "number")
-    json4.maxItems = maximum;
+    json5.maxItems = maximum;
 };
-function stringifyKeyNames(bySchema, json4, visited) {
-  if (json4.$ref) {
-    if (visited.has(json4))
-      return json4;
-    visited.add(json4);
-    const def = bySchema.get(json4)?.def;
+function stringifyKeyNames(bySchema, json5, visited) {
+  if (json5.$ref) {
+    if (visited.has(json5))
+      return json5;
+    visited.add(json5);
+    const def = bySchema.get(json5)?.def;
     if (!def)
-      return json4;
+      return json5;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json4 : inlined;
+    return inlined === def ? json5 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json4[keyword];
+    const branches = json5[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json4 = { ...json4, [keyword]: mapped };
+      json5 = { ...json5, [keyword]: mapped };
   }
-  const types = Array.isArray(json4.type) ? json4.type : [json4.type];
+  const types = Array.isArray(json5.type) ? json5.type : [json5.type];
   const numericType = !types.includes("string") && types.some((t) => t === "number" || t === "integer");
-  const values = json4.enum ?? (json4.const !== void 0 ? [json4.const] : void 0);
+  const values = json5.enum ?? (json5.const !== void 0 ? [json5.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json4;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json4;
+    return json5;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json5;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23084,9 +23084,9 @@ function rewriteKeyNames(ctx) {
   }
 }
 var recordProcessor = (schema, ctx, _json, params) => {
-  const json4 = _json;
+  const json5 = _json;
   const def = schema._zod.def;
-  json4.type = "object";
+  json5.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -23094,13 +23094,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json4.patternProperties = {};
+    json5.patternProperties = {};
     for (const pattern of patterns) {
-      assignProp(json4.patternProperties, exactPattern(pattern).source, valueSchema);
+      assignProp(json5.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json4.propertyNames = processSchema(def.keyType, ctx, {
+      json5.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
@@ -23112,7 +23112,7 @@ var recordProcessor = (schema, ctx, _json, params) => {
       }
       pending.push(schema);
     }
-    json4.additionalProperties = processSchema(def.valueType, ctx, {
+    json5.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -23122,19 +23122,19 @@ var recordProcessor = (schema, ctx, _json, params) => {
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json4.required = validKeyValues.map(String);
+      json5.required = validKeyValues.map(String);
     }
   }
 };
-var nullableProcessor = (schema, ctx, json4, params) => {
+var nullableProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   const inner = processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json4.nullable = true;
+    json5.nullable = true;
   } else {
-    json4.anyOf = [inner, { type: "null" }];
+    json5.anyOf = [inner, { type: "null" }];
   }
 };
 var nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -23144,7 +23144,7 @@ var nonoptionalProcessor = (schema, ctx, _json, params) => {
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
-function serializeDefaultValue(value, schema, ctx, json4, params) {
+function serializeDefaultValue(value, schema, ctx, json5, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23154,30 +23154,30 @@ function serializeDefaultValue(value, schema, ctx, json4, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema, ctx, json4, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json5, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema, ctx, json4, params) => {
+var defaultProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json4, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json5, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json4.default = value;
+    json5.default = value;
 };
-var prefaultProcessor = (schema, ctx, json4, params) => {
+var prefaultProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json4, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json5, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json4._prefault = value;
+    json5._prefault = value;
 };
-var catchProcessor = (schema, ctx, json4, params) => {
+var catchProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -23186,10 +23186,10 @@ var catchProcessor = (schema, ctx, json4, params) => {
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema, ctx, json4, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema, ctx, json5, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
-  json4.default = catchValue;
+  json5.default = catchValue;
 };
 var pipeProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23199,12 +23199,12 @@ var pipeProcessor = (schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json4, params) => {
+var readonlyProcessor = (schema, ctx, json5, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json4.readOnly = true;
+  json5.readOnly = true;
 };
 var promiseProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23846,7 +23846,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json4, params) => stringProcessor(inst, ctx, json4, params);
+    inst._zod.processJSONSchema = (ctx, json5, params) => stringProcessor(inst, ctx, json5, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -24205,7 +24205,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json4, params) => numberProcessor(inst, ctx, json4, params);
+    inst._zod.processJSONSchema = (ctx, json5, params) => numberProcessor(inst, ctx, json5, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -24295,7 +24295,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => booleanProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => booleanProcessor(inst, ctx, json5, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -24305,7 +24305,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json4, params) => bigintProcessor(inst, ctx, json4, params);
+    inst._zod.processJSONSchema = (ctx, json5, params) => bigintProcessor(inst, ctx, json5, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -24363,7 +24363,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => symbolProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => symbolProcessor(inst, ctx, json5, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -24371,7 +24371,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => undefinedProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => undefinedProcessor(inst, ctx, json5, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -24379,7 +24379,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => nullProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => nullProcessor(inst, ctx, json5, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -24387,7 +24387,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => anyProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => anyProcessor(inst, ctx, json5, params);
 });
 function any() {
   return _any(ZodAny);
@@ -24395,7 +24395,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => unknownProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => unknownProcessor(inst, ctx, json5, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -24403,7 +24403,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => neverProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => neverProcessor(inst, ctx, json5, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -24411,7 +24411,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => voidProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => voidProcessor(inst, ctx, json5, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -24421,7 +24421,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json4, params) => dateProcessor(inst, ctx, json4, params);
+    inst._zod.processJSONSchema = (ctx, json5, params) => dateProcessor(inst, ctx, json5, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -24443,7 +24443,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => arrayProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => arrayProcessor(inst, ctx, json5, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -24473,7 +24473,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => objectProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => objectProcessor(inst, ctx, json5, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -24546,7 +24546,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => unionProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => unionProcessor(inst, ctx, json5, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -24559,7 +24559,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => unionProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => unionProcessor(inst, ctx, json5, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -24585,7 +24585,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => intersectionProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => intersectionProcessor(inst, ctx, json5, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -24598,7 +24598,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => tupleProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => tupleProcessor(inst, ctx, json5, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -24631,7 +24631,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => recordProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => recordProcessor(inst, ctx, json5, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -24673,7 +24673,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => mapProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => mapProcessor(inst, ctx, json5, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -24693,7 +24693,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => setProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => setProcessor(inst, ctx, json5, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -24709,7 +24709,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => enumProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => enumProcessor(inst, ctx, json5, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -24762,7 +24762,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => literalProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => literalProcessor(inst, ctx, json5, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -24783,7 +24783,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => fileProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => fileProcessor(inst, ctx, json5, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -24795,7 +24795,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => transformProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => transformProcessor(inst, ctx, json5, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -24834,7 +24834,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => optionalProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => optionalProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -24846,7 +24846,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => optionalProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => optionalProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -24858,7 +24858,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => nullableProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => nullableProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -24873,7 +24873,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => defaultProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => defaultProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -24889,7 +24889,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => prefaultProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => prefaultProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -24904,7 +24904,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => nonoptionalProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => nonoptionalProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -24917,7 +24917,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => successProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => successProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -24929,7 +24929,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => catchProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => catchProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -24943,7 +24943,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => nanProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => nanProcessor(inst, ctx, json5, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -24951,7 +24951,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => pipeProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => pipeProcessor(inst, ctx, json5, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -24993,7 +24993,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => readonlyProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => readonlyProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -25005,7 +25005,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => templateLiteralProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => templateLiteralProcessor(inst, ctx, json5, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -25017,7 +25017,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => lazyProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => lazyProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -25029,7 +25029,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => promiseProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => promiseProcessor(inst, ctx, json5, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -25041,7 +25041,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => functionProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => functionProcessor(inst, ctx, json5, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -25053,7 +25053,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json4, params) => customProcessor(inst, ctx, json4, params);
+  inst._zod.processJSONSchema = (ctx, json5, params) => customProcessor(inst, ctx, json5, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path11 = ref.slice(1).split("/").filter(Boolean);
-  if (path11.length === 0) {
+  const path14 = ref.slice(1).split("/").filter(Boolean);
+  if (path14.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path11[0] === defsKey) {
-    const key = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
+  if (path14[0] === defsKey) {
+    const key = path14[1] === void 0 ? void 0 : decodeJSONPointerSegment(path14[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27625,7 +27625,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.6.0-dafeiyu.2" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.0" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -33161,9 +33161,9 @@ function safeSegment2(hostId) {
   const tag = createHash3("sha256").update(hostId).digest("hex").slice(0, 8);
   return `${cleaned || "host"}-${tag}`;
 }
-function defaultPairStoreFile(statusFile, hostId) {
-  if (!statusFile) return "";
-  return path6.join(path6.dirname(statusFile), `conversations-${safeSegment2(hostId)}.json`);
+function defaultPairStoreFile(statusFile2, hostId) {
+  if (!statusFile2) return "";
+  return path6.join(path6.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
 }
 var PairStore = class {
   constructor(options) {
@@ -33501,8 +33501,8 @@ import { mkdirSync as mkdirSync4, readFileSync as readFileSync3 } from "node:fs"
 import path8 from "node:path";
 var USER_CONFIG_FILE = "user-config.json";
 var MAX_TOKEN_INPUT = 256;
-function resolveUserConfigFile(statusFile) {
-  const base = statusFile ? path8.dirname(statusFile) : dataDir();
+function resolveUserConfigFile(statusFile2) {
+  const base = statusFile2 ? path8.dirname(statusFile2) : dataDir();
   return path8.join(base, USER_CONFIG_FILE);
 }
 function normalizeUserOverrides(input2) {
@@ -33677,6 +33677,116 @@ function configRouteHandler(deps) {
   return (request, response) => request.method === "POST" ? write(request, response) : read(request, response);
 }
 
+// src/backup/routes.ts
+var BACKUP_ROUTE = "/plugins/dsh-remote-control/backup";
+var MAX_BODY_BYTES = 16 * 1024;
+function json3(response, code, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function readJson(request) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        finish(void 0);
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8").trim();
+        finish(text === "" ? {} : JSON.parse(text));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function publicConfig(config2) {
+  return { ...config2 };
+}
+function backupRouteHandler(deps) {
+  return async (request, response) => {
+    if (request.method === "GET" || request.method === "HEAD") {
+      if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+        json3(response, 403, { state: "failed", error: "request-not-trusted" });
+        return;
+      }
+      try {
+        const status = deps.status();
+        json3(response, 200, { state: "ok", status, config: publicConfig(deps.config()) });
+      } catch (error62) {
+        json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
+      }
+      return;
+    }
+    if (request.method !== "POST") {
+      json3(response, 405, { state: "failed", error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u5907\u4EFD\u8DEF\u7531\u88AB\u5B88\u536B\u62D2", { guard });
+      json3(response, 403, { state: "failed", error: "request-not-trusted", detail: guard });
+      return;
+    }
+    const body = await readJson(request);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      json3(response, 400, { state: "failed", error: "invalid", detail: "body \u8981\u662F\u4E00\u4E2A JSON \u5BF9\u8C61" });
+      return;
+    }
+    const payload = body;
+    const action = typeof payload.action === "string" ? payload.action : "";
+    try {
+      if (action === "save") {
+        const patch = payload.config && typeof payload.config === "object" && !Array.isArray(payload.config) ? payload.config : {};
+        const saved = deps.saveConfig(patch);
+        if (!saved.ok) {
+          json3(response, 400, { state: "failed", error: "invalid", field: saved.field, detail: saved.error });
+          return;
+        }
+        if ("token" in payload) {
+          const token = typeof payload.token === "string" ? payload.token.trim() : "";
+          const set2 = deps.setToken(token);
+          if (!set2.ok) {
+            json3(response, 400, { state: "failed", error: "invalid", field: "token", detail: set2.error ?? "" });
+            return;
+          }
+        }
+        json3(response, 200, { state: "ok", config: publicConfig(saved.config), status: deps.status() });
+        return;
+      }
+      if (action === "run") {
+        void deps.runNow("\u624B\u52A8").catch(() => {
+        });
+        json3(response, 202, { state: "ok", started: "run" });
+        return;
+      }
+      if (action === "restore") {
+        void deps.restore().catch(() => {
+        });
+        json3(response, 202, { state: "ok", started: "restore" });
+        return;
+      }
+      json3(response, 400, { state: "failed", error: "invalid", field: "action", detail: "\u53EA\u8BA4 save / run / restore" });
+    } catch (error62) {
+      json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+
 // src/pill/routes.ts
 var PAIR_NEW_ROUTE = "/plugins/dsh-remote-control/pairing/new";
 var PAIR_IMAGE_ROUTE = "/plugins/dsh-remote-control/pairing.png";
@@ -33744,7 +33854,7 @@ function applyCors(request, response) {
   } catch {
   }
 }
-function json3(response, status, body) {
+function json4(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
@@ -33752,42 +33862,42 @@ function json3(response, status, body) {
 function pairNewHandler(deps) {
   return (request, response) => {
     if (request.method !== "POST") {
-      json3(response, 405, { error: "method not allowed" });
+      json4(response, 405, { error: "method not allowed" });
       return;
     }
     const guard = rejectedBy(request);
     if (guard) {
       deps.log("\u53D1\u7801\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
-      json3(response, 403, { error: "request-not-trusted", guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
       return;
     }
     try {
       const pairing = deps.ensureFresh();
       if (!pairing) {
-        json3(response, 200, { state: "unavailable", reason: "relay-offline" });
+        json4(response, 200, { state: "unavailable", reason: "relay-offline" });
         return;
       }
       const epoch = pairingEpoch(pairing.token);
       deps.log("\u914D\u5BF9\u7801\u7ECF\u72B6\u6001\u680F\u53D1\u51FA", { epoch: epoch.slice(0, 8), tokenLength: pairing.token.length });
-      json3(response, 200, {
+      json4(response, 200, {
         state: "ready",
         epoch,
         token: pairing.token,
         expiresInMs: Math.max(0, pairing.expiresAt - Date.now())
       });
     } catch (error62) {
-      json3(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function pairImageHandler(deps) {
   return async (request, response) => {
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json3(response, 405, { error: "method not allowed" });
+      json4(response, 405, { error: "method not allowed" });
       return;
     }
     if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json3(response, 403, { error: "request-not-trusted" });
+      json4(response, 403, { error: "request-not-trusted" });
       return;
     }
     try {
@@ -33799,7 +33909,7 @@ function pairImageHandler(deps) {
       }
       const bytes = await deps.mpCodeFor(pairing.token);
       if (!bytes || bytes.length === 0) {
-        json3(response, 503, { error: "mp_code_unavailable" });
+        json4(response, 503, { error: "mp_code_unavailable" });
         return;
       }
       response.writeHead(200, {
@@ -33812,23 +33922,23 @@ function pairImageHandler(deps) {
       if (request.method === "HEAD") response.end();
       else response.end(bytes);
     } catch (error62) {
-      json3(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function pillStatusHandler(deps) {
   return (request, response) => {
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json3(response, 405, { error: "method not allowed" });
+      json4(response, 405, { error: "method not allowed" });
       return;
     }
     if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json3(response, 403, { error: "request-not-trusted" });
+      json4(response, 403, { error: "request-not-trusted" });
       return;
     }
     try {
       const status = deps.status();
-      json3(response, 200, {
+      json4(response, 200, {
         relay: status.relay,
         paired: status.paired,
         pairings: status.pairings,
@@ -33850,68 +33960,68 @@ function pillStatusHandler(deps) {
         lastPairApproval: status.lastPairApproval
       });
     } catch (error62) {
-      json3(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function pairApproveHandler(deps) {
   return (request, response) => {
     if (request.method !== "POST") {
-      json3(response, 405, { error: "method not allowed" });
+      json4(response, 405, { error: "method not allowed" });
       return;
     }
     const guard = rejectedBy(request);
     if (guard) {
       deps.log("\u914D\u5BF9\u653E\u884C\u88AB\u5B88\u536B\u62D2", { guard });
-      json3(response, 403, { error: "request-not-trusted", guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
       return;
     }
     try {
       const approved = deps.approvePair();
       deps.log("\u7ECF\u72B6\u6001\u680F\u653E\u884C\u914D\u5BF9", { approved });
       if (!approved) {
-        json3(response, 409, { state: "stale" });
+        json4(response, 409, { state: "stale" });
         return;
       }
-      json3(response, 200, { state: "ok" });
+      json4(response, 200, { state: "ok" });
     } catch (error62) {
-      json3(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function unpairHandler(deps) {
   return (request, response) => {
     if (request.method !== "POST") {
-      json3(response, 405, { error: "method not allowed" });
+      json4(response, 405, { error: "method not allowed" });
       return;
     }
     const guard = rejectedBy(request);
     if (guard) {
       deps.log("\u89E3\u914D\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
-      json3(response, 403, { error: "request-not-trusted", guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
       return;
     }
     try {
       const unpaired = deps.unpair();
       deps.log("\u7ECF\u72B6\u6001\u680F\u9000\u51FA\u914D\u5BF9", { unpaired });
-      json3(response, 200, { state: "ok", unpaired });
+      json4(response, 200, { state: "ok", unpaired });
     } catch (error62) {
-      json3(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function clientReportHandler() {
   return (request, response) => {
     if (request.method !== "POST") {
-      json3(response, 405, { error: "method not allowed" });
+      json4(response, 405, { error: "method not allowed" });
       return;
     }
     if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json3(response, 403, { error: "request-not-trusted" });
+      json4(response, 403, { error: "request-not-trusted" });
       return;
     }
     if (request.headers[PAIR_MARKER_HEADER] === void 0) {
-      json3(response, 403, { error: "request-not-trusted" });
+      json4(response, 403, { error: "request-not-trusted" });
       return;
     }
     const chunks = [];
@@ -33922,19 +34032,19 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path11 = __require("node:path");
+        const path14 = __require("node:path");
         const fs2 = __require("node:fs");
-        const dir = path11.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path14.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs2.mkdirSync(dir, { recursive: true, mode: 448 });
         fs2.writeFileSync(
-          path11.join(dir, "client-report.json"),
+          path14.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
         );
-        json3(response, 200, { ok: true });
+        json4(response, 200, { ok: true });
       } catch (error62) {
-        json3(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+        json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
       }
     });
   };
@@ -33951,6 +34061,9 @@ function registerPillRoutes(webServer, deps) {
     // 2026-10-21 加：用户确认「数字一致」后的放行口。**排在最后**，前面各条的编号语义不变。
     { kind: "exact", path: PAIR_APPROVE_ROUTE, handler: pairApproveHandler(deps) }
   ];
+  if (deps.backup) {
+    definitions.push({ kind: "exact", path: BACKUP_ROUTE, handler: backupRouteHandler(deps.backup) });
+  }
   const wrapped = definitions.map((definition) => ({
     ...definition,
     handler: (request, response) => {
@@ -34016,6 +34129,9 @@ function startPill(ctx, deps) {
         // —— 读写都在 `index.ts` 那一侧（它知道落盘文件在哪、也知道此刻生效的是哪一层）。
         config: () => deps.config(),
         saveConfig: (overrides) => deps.saveConfig(overrides),
+        // 备份那张卡（2026-10-28）：**同样只是转发**。⚠️ 这一行漏过一次的教训见上面
+        // `mpCodeFor`——逐个字段重建对象时漏一行，症状是"卡片在、按钮永远没反应、全程无日志"。
+        backup: deps.backup,
         log
       });
       probe.routes = "registered";
@@ -34101,9 +34217,929 @@ function startPill(ctx, deps) {
   };
 }
 
-// src/shell/claim-token.ts
-import { readFileSync as readFileSync4 } from "node:fs";
+// src/backup/service.ts
+import { copyFileSync as copyFileSync2, existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import path11 from "node:path";
+
+// src/backup/config.ts
+import { existsSync, readFileSync as readFileSync4 } from "node:fs";
 import path9 from "node:path";
+var DEFAULT_BACKUP_CONFIG = {
+  enabled: false,
+  repoUrl: "",
+  intervalHours: 8,
+  idleDays: 15,
+  latestBranch: "latest",
+  archiveBranch: "archive",
+  includeAttachments: true,
+  restoreBackupSuffix: "before-restore"
+};
+function backupDir(dshHome) {
+  return path9.join(dshHome, "dsh-backup-git");
+}
+function configFile(dshHome) {
+  return path9.join(backupDir(dshHome), "config.json");
+}
+function credentialFile(dshHome) {
+  return path9.join(backupDir(dshHome), "credential.json");
+}
+function statusFile(dshHome) {
+  return path9.join(backupDir(dshHome), "status.json");
+}
+function workDir(dshHome) {
+  return path9.join(backupDir(dshHome), "work");
+}
+function readBackupConfig(dshHome) {
+  const file2 = configFile(dshHome);
+  if (!existsSync(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync4(file2, "utf8"));
+  } catch (error62) {
+    return {
+      config: { ...DEFAULT_BACKUP_CONFIG },
+      problem: `config.json \u8BFB\u4E0D\u52A8\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`
+    };
+  }
+  const normalized = normalizeConfig(patchOf(parsed));
+  if (!normalized.ok) {
+    return {
+      config: { ...DEFAULT_BACKUP_CONFIG },
+      problem: `config.json \u6709\u95EE\u9898\uFF1A${normalized.field} ${normalized.error}`
+    };
+  }
+  return { config: normalized.value };
+}
+function patchOf(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const source = raw;
+  const patch = {};
+  for (const key of Object.keys(DEFAULT_BACKUP_CONFIG)) {
+    if (key in source) patch[key] = source[key];
+  }
+  return patch;
+}
+function normalizeConfig(patch, base = DEFAULT_BACKUP_CONFIG) {
+  const next = { ...base };
+  if ("enabled" in patch) {
+    if (typeof patch.enabled !== "boolean") return { ok: false, field: "enabled", error: "\u8981\u5E03\u5C14\u503C" };
+    next.enabled = patch.enabled;
+  }
+  if ("repoUrl" in patch) {
+    const raw = typeof patch.repoUrl === "string" ? patch.repoUrl.trim() : void 0;
+    if (raw === void 0) return { ok: false, field: "repoUrl", error: "\u8981\u5B57\u7B26\u4E32" };
+    if (raw !== "" && !looksLikeRepoUrl(raw)) {
+      return { ok: false, field: "repoUrl", error: "\u8981 https:// \u5F00\u5934\u7684\u4ED3\u5E93\u5730\u5740\uFF0C\u6216 git@host:owner/repo.git" };
+    }
+    next.repoUrl = raw;
+  }
+  if ("intervalHours" in patch) {
+    const value = asNumber(patch.intervalHours);
+    if (value === void 0 || !Number.isFinite(value) || value < 0 || value > 168) {
+      return { ok: false, field: "intervalHours", error: "\u8981\u5728 0\u2013168 \u4E4B\u95F4\uFF080 = \u53EA\u624B\u52A8\u5907\u4EFD\uFF09" };
+    }
+    next.intervalHours = value;
+  }
+  if ("idleDays" in patch) {
+    const value = asNumber(patch.idleDays);
+    if (value === void 0 || !Number.isFinite(value) || value < 1 || value > 3650) {
+      return { ok: false, field: "idleDays", error: "\u8981\u5728 1\u20133650 \u5929\u4E4B\u95F4" };
+    }
+    next.idleDays = Math.round(value);
+  }
+  for (const key of ["latestBranch", "archiveBranch"]) {
+    if (!(key in patch)) continue;
+    const value = typeof patch[key] === "string" ? patch[key].trim() : "";
+    if (value === "" || !/^[\w./-]{1,120}$/.test(value) || value.startsWith("-") || value.includes("..")) {
+      return { ok: false, field: key, error: "\u8981\u5408\u6CD5\u7684\u5206\u652F\u540D\uFF08\u5B57\u6BCD\u6570\u5B57 . _ - /\uFF0C\u4E0D\u80FD\u4EE5 - \u5F00\u5934\uFF09" };
+    }
+    next[key] = value;
+  }
+  if (next.latestBranch === next.archiveBranch) {
+    return { ok: false, field: "archiveBranch", error: "\u4E24\u4E2A\u5206\u652F\u4E0D\u80FD\u540C\u540D" };
+  }
+  if ("includeAttachments" in patch) {
+    if (typeof patch.includeAttachments !== "boolean") {
+      return { ok: false, field: "includeAttachments", error: "\u8981\u5E03\u5C14\u503C" };
+    }
+    next.includeAttachments = patch.includeAttachments;
+  }
+  if ("restoreBackupSuffix" in patch) {
+    const value = typeof patch.restoreBackupSuffix === "string" ? patch.restoreBackupSuffix.trim() : "";
+    if (value === "" || !/^[\w.-]{1,40}$/.test(value)) {
+      return { ok: false, field: "restoreBackupSuffix", error: "\u8981\u5408\u6CD5\u7684\u540E\u7F00\uFF08\u5B57\u6BCD\u6570\u5B57 . _ -\uFF09" };
+    }
+    next.restoreBackupSuffix = value;
+  }
+  if (next.enabled && next.repoUrl === "") {
+    return { ok: false, field: "repoUrl", error: "\u542F\u7528\u5907\u4EFD\u5FC5\u987B\u5148\u586B\u4ED3\u5E93\u5730\u5740" };
+  }
+  return { ok: true, value: next };
+}
+function asNumber(raw) {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string" && raw.trim() !== "") {
+    const parsed = Number(raw.trim());
+    return Number.isFinite(parsed) ? parsed : void 0;
+  }
+  return void 0;
+}
+function looksLikeRepoUrl(raw) {
+  if (/^git@[^:]+:[^\s]+$/.test(raw)) return true;
+  if (/^file:\/\/\/?[^\s]+$/i.test(raw)) return true;
+  if (!/^https?:\/\//i.test(raw)) return false;
+  try {
+    const url2 = new URL(raw);
+    return url2.hostname.includes(".") && url2.pathname.split("/").filter((part) => part !== "").length >= 2;
+  } catch {
+    return false;
+  }
+}
+function writeBackupConfig(dshHome, config2) {
+  try {
+    ensureSecureDir(backupDir(dshHome));
+    writeSecure(configFile(dshHome), `${JSON.stringify(config2, null, 2)}
+`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function readToken(dshHome) {
+  const file2 = credentialFile(dshHome);
+  if (!existsSync(file2)) return "";
+  try {
+    const parsed = JSON.parse(readFileSync4(file2, "utf8"));
+    return typeof parsed.token === "string" ? parsed.token.trim() : "";
+  } catch {
+    return "";
+  }
+}
+function writeToken(dshHome, token) {
+  try {
+    ensureSecureDir(backupDir(dshHome));
+    writeSecure(credentialFile(dshHome), `${JSON.stringify({ token }, null, 2)}
+`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function redactToken(token) {
+  if (token === "") return "";
+  if (token.length <= 12) return `${token.slice(0, 2)}\u2026(${token.length})`;
+  return `${token.slice(0, 6)}\u2026${token.slice(-4)}(${token.length})`;
+}
+
+// src/backup/git.ts
+import { spawnSync } from "node:child_process";
+var DEFAULT_TIMEOUT_MS = 12e4;
+var MAX_BUFFER = 32 * 1024 * 1024;
+function baseEnv(extra) {
+  return {
+    ...process.env,
+    // 后台任务不许等人：没有终端可问，问了就是挂死。
+    GIT_TERMINAL_PROMPT: "0",
+    GCM_INTERACTIVE: "never",
+    // 中文路径/分支名不出乱码；提交信息由我们自己拼。
+    LC_ALL: "C.UTF-8",
+    ...extra
+  };
+}
+function runGit(args, options) {
+  const result2 = spawnSync("git", args, {
+    cwd: options.cwd,
+    env: baseEnv(options.env),
+    encoding: "utf8",
+    timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER,
+    windowsHide: true
+  });
+  const timedOut = result2.error?.code === "ETIMEDOUT";
+  return {
+    code: typeof result2.status === "number" ? result2.status : -1,
+    stdout: typeof result2.stdout === "string" ? result2.stdout : "",
+    stderr: typeof result2.stderr === "string" ? result2.stderr : "",
+    timedOut
+  };
+}
+var cachedAvailability;
+function gitAvailable() {
+  if (cachedAvailability !== void 0) return cachedAvailability;
+  const probe = runGit(["--version"], { cwd: process.cwd(), timeoutMs: 1e4 });
+  cachedAvailability = probe.code === 0 && /\bgit version\b/.test(probe.stdout);
+  return cachedAvailability;
+}
+function briefGitError(result2, limit = 300) {
+  const raw = (result2.stderr || result2.stdout || "").trim();
+  if (result2.timedOut) return "git \u8D85\u65F6\uFF08\u8FDB\u7A0B\u5DF2\u88AB\u6740\u6389\uFF09";
+  if (result2.code === -1) return raw === "" ? "git \u8D77\u4E0D\u6765\uFF08\u4E0D\u5728 PATH\uFF1F\uFF09" : raw.slice(0, limit);
+  const line = raw.split("\n").filter((entry) => entry.trim() !== "").slice(-2).join(" / ");
+  return line.slice(0, limit);
+}
+
+// src/backup/pack.ts
+import { createHash as createHash5 } from "node:crypto";
+import { copyFileSync, existsSync as existsSync2, mkdirSync as mkdirSync5, readdirSync, readFileSync as readFileSync5, rmSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { hostname as hostname3 } from "node:os";
+import path10 from "node:path";
+function scanSessions(sessionsRoot) {
+  const entries = [];
+  for (const slug of safeDirs(sessionsRoot)) {
+    const slugDir = path10.join(sessionsRoot, slug);
+    for (const dirName of safeDirs(slugDir)) {
+      const sessionDir = path10.join(slugDir, dirName);
+      for (const fileName of safeFiles(sessionDir)) {
+        if (!isSessionFile(fileName)) continue;
+        const file2 = path10.join(sessionDir, fileName);
+        let stat;
+        try {
+          stat = statSync2(file2);
+        } catch {
+          continue;
+        }
+        entries.push({
+          slug,
+          dirName,
+          fileName,
+          file: file2,
+          relPath: path10.posix.join(slug, dirName, fileName),
+          mtimeMs: stat.mtimeMs,
+          size: stat.size
+        });
+      }
+    }
+  }
+  return entries.sort((left, right) => left.relPath.localeCompare(right.relPath));
+}
+function isSessionFile(fileName) {
+  return /^session(\.[A-Za-z0-9]+)?\.jsonl(\.zstd)?$/.test(fileName);
+}
+function safeDirs(dir) {
+  try {
+    return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  } catch {
+    return [];
+  }
+}
+function safeFiles(dir) {
+  try {
+    return readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+  } catch {
+    return [];
+  }
+}
+function sessionKey(entry) {
+  return `${entry.slug}/${entry.dirName}`;
+}
+function classify(input2) {
+  const cutoff = input2.nowMs - input2.idleDays * 24 * 60 * 60 * 1e3;
+  const hot = [];
+  const cooling = [];
+  const resting = [];
+  const revived = [];
+  for (const entry of input2.sessions) {
+    const archived = input2.archived.has(sessionKey(entry));
+    const isCool = entry.mtimeMs < cutoff;
+    if (archived) {
+      if (isCool) resting.push(entry);
+      else revived.push(entry);
+      continue;
+    }
+    if (isCool) cooling.push(entry);
+    else hot.push(entry);
+  }
+  return { hot: [...hot, ...revived], cooling, resting, revived };
+}
+function buildHotTree(input2) {
+  const staging = path10.join(input2.stagingDir, "latest");
+  resetDir(staging);
+  const sessionList = [];
+  for (const entry of input2.hot) {
+    const target = path10.join(staging, "sessions", entry.relPath);
+    mkdirSync5(path10.dirname(target), { recursive: true });
+    copyFileSync(entry.file, target);
+    sessionList.push({
+      key: sessionKey(entry),
+      size: entry.size,
+      mtime: new Date(entry.mtimeMs).toISOString(),
+      sha256: sha256Of(entry.file)
+    });
+  }
+  const storages = copyFlat(input2.storagesDir, path10.join(staging, "storages"));
+  const profiles = [];
+  if (input2.profileDir !== "") {
+    const target = path10.join(staging, "profiles", path10.basename(input2.profileDir));
+    for (const name of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
+      const source = path10.join(input2.profileDir, name);
+      if (!existsSync2(source)) continue;
+      mkdirSync5(target, { recursive: true });
+      copyFileSync(source, path10.join(target, name));
+      profiles.push(name);
+    }
+  }
+  let attachments = null;
+  if (input2.includeAttachments) {
+    const counted = copyTree(input2.attachmentsDir, path10.join(staging, "attachments"));
+    if (counted.count > 0) attachments = counted;
+  }
+  const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
+  const manifest = {
+    format: 1,
+    plugin: "dsh-remote-dafeiyu",
+    snapshotAt: new Date(newestMtime > 0 ? newestMtime : input2.nowMs).toISOString(),
+    hostname: safeHostname(),
+    hotCount: sessionList.length,
+    hotBytes: sessionList.reduce((sum, entry) => sum + entry.size, 0),
+    sessions: sessionList,
+    storages,
+    profiles,
+    attachments
+  };
+  writeFileSync2(path10.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+`, "utf8");
+  return manifest;
+}
+function buildArchiveTree(stagingDir, cooling) {
+  const root = path10.join(stagingDir, "archive");
+  let written = 0;
+  let bytes = 0;
+  const keys = [];
+  for (const entry of cooling) {
+    const target = path10.join(root, entry.relPath);
+    if (existsSync2(target)) continue;
+    mkdirSync5(path10.dirname(target), { recursive: true });
+    copyFileSync(entry.file, target);
+    written += 1;
+    bytes += entry.size;
+    keys.push(sessionKey(entry));
+  }
+  return { written, bytes, keys };
+}
+function resetDir(dir) {
+  try {
+    rmrf(dir);
+  } catch {
+  }
+  mkdirSync5(dir, { recursive: true });
+}
+function rmrf(dir) {
+  if (!existsSync2(dir)) return;
+  rmSync(dir, { recursive: true, force: true });
+}
+function copyFlat(sourceDir, targetDir) {
+  if (!existsSync2(sourceDir)) return [];
+  const names = [];
+  for (const name of safeFiles(sourceDir)) {
+    if (!/\.json$/.test(name)) continue;
+    mkdirSync5(targetDir, { recursive: true });
+    copyFileSync(path10.join(sourceDir, name), path10.join(targetDir, name));
+    names.push(name);
+  }
+  return names;
+}
+function copyTree(sourceDir, targetDir) {
+  const total = { count: 0, bytes: 0 };
+  if (!existsSync2(sourceDir)) return total;
+  walk(sourceDir, targetDir, total);
+  return total;
+}
+function walk(sourceDir, targetDir, total) {
+  for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+    const source = path10.join(sourceDir, entry.name);
+    const target = path10.join(targetDir, entry.name);
+    if (entry.isDirectory()) {
+      walk(source, target, total);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    let size = 0;
+    try {
+      size = statSync2(source).size;
+    } catch {
+      continue;
+    }
+    mkdirSync5(targetDir, { recursive: true });
+    copyFileSync(source, target);
+    total.count += 1;
+    total.bytes += size;
+  }
+}
+function sha256Of(file2) {
+  try {
+    return createHash5("sha256").update(readFileSync5(file2)).digest("hex").slice(0, 16);
+  } catch {
+    return "";
+  }
+}
+function safeHostname() {
+  try {
+    return hostname3();
+  } catch {
+    return "unknown";
+  }
+}
+function findProfileDir(profilesRoot, packageNames) {
+  if (!existsSync2(profilesRoot)) return "";
+  let best = { dir: "", mtimeMs: 0 };
+  for (const name of safeDirs(profilesRoot)) {
+    const dir = path10.join(profilesRoot, name);
+    const manifest = path10.join(dir, "package.json");
+    if (!existsSync2(manifest)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
+      const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
+      if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
+      const mtimeMs = statSync2(manifest).mtimeMs;
+      if (mtimeMs > best.mtimeMs) best = { dir, mtimeMs };
+    } catch {
+      continue;
+    }
+  }
+  return best.dir;
+}
+function archivedKeysFromLsTree(stdout) {
+  const keys = /* @__PURE__ */ new Set();
+  for (const line of stdout.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed === "") continue;
+    const parts = trimmed.split("/");
+    if (parts.length < 3) continue;
+    keys.add(`${parts[0]}/${parts[1]}`);
+  }
+  return keys;
+}
+
+// src/backup/service.ts
+var PACKAGE_NAMES = ["dsh-remote-dafeiyu", "@dsh-remote/plugin"];
+var BackupService = class {
+  constructor(deps) {
+    this.deps = deps;
+    this.now = deps.now ?? (() => Date.now());
+    this.setTimer = deps.setTimer ?? defaultTimer;
+    const loaded = readBackupConfig(deps.dshHome);
+    this.config = loaded.config;
+    this.configProblem = loaded.problem ?? "";
+    this.status = {
+      enabled: this.config.enabled,
+      repoUrl: this.config.repoUrl,
+      intervalHours: this.config.intervalHours,
+      idleDays: this.config.idleDays,
+      gitAvailable: false,
+      tokenSet: false,
+      tokenShape: "",
+      running: false,
+      lastRunAt: null,
+      lastResult: null,
+      lastError: "",
+      lastHotCount: 0,
+      lastHotBytes: 0,
+      lastArchivedCount: 0,
+      lastCommit: "",
+      lastDurationMs: 0,
+      nextRunAt: null,
+      configProblem: this.configProblem,
+      restore: { running: false, lastAt: null, lastResult: "", lastMessage: "" }
+    };
+  }
+  deps;
+  config;
+  configProblem = "";
+  timer;
+  running = false;
+  status;
+  restoreState = { running: false, lastAt: null, lastResult: "", lastMessage: "" };
+  now;
+  setTimer;
+  /** 当前状态（每次现算 token/git 两项，剩下是缓存的上次结果）。 */
+  snapshot() {
+    const token = readToken(this.deps.dshHome);
+    this.status.tokenSet = token !== "";
+    this.status.tokenShape = redactToken(token);
+    this.status.gitAvailable = gitAvailable();
+    this.status.enabled = this.config.enabled;
+    this.status.repoUrl = this.config.repoUrl;
+    this.status.intervalHours = this.config.intervalHours;
+    this.status.idleDays = this.config.idleDays;
+    this.status.running = this.running;
+    this.status.configProblem = this.configProblem;
+    this.status.restore = { ...this.restoreState };
+    return { ...this.status };
+  }
+  /** 当前配置（设置页铺表单用；token 不在这里）。 */
+  currentConfig() {
+    return { ...this.config };
+  }
+  /** 设置页保存配置。返回 error 时调用方回 400（字段名一起给出去）。 */
+  saveConfig(patch) {
+    const normalized = normalizeConfig(patch, this.config);
+    if (!normalized.ok) return normalized;
+    if (!writeBackupConfig(this.deps.dshHome, normalized.value)) {
+      return { ok: false, field: "file", error: "\u914D\u7F6E\u5199\u4E0D\u8FDB\u53BB\uFF08\u76EE\u5F55\u6743\u9650\uFF1F\uFF09" };
+    }
+    this.config = normalized.value;
+    this.configProblem = "";
+    this.schedule();
+    this.deps.log("\u5907\u4EFD\u914D\u7F6E\u5DF2\u4FDD\u5B58", {
+      enabled: this.config.enabled,
+      intervalHours: this.config.intervalHours,
+      idleDays: this.config.idleDays
+    });
+    return { ok: true, config: this.config };
+  }
+  /** 写 / 清 token（空串 = 清掉）。 */
+  setToken(token) {
+    if (token !== "" && (token.length < 8 || /\s/.test(token))) {
+      return { ok: false, error: "token \u592A\u77ED\u6216\u542B\u7A7A\u767D\u5B57\u7B26" };
+    }
+    if (!writeToken(this.deps.dshHome, token)) return { ok: false, error: "token \u5199\u4E0D\u8FDB\u53BB" };
+    this.deps.log("\u5907\u4EFD token \u5DF2\u66F4\u65B0", { tokenSet: token !== "" });
+    return { ok: true };
+  }
+  /** 起定时器（关闭状态不排期）。重复调用是安全的。 */
+  start() {
+    this.schedule();
+  }
+  stop() {
+    if (this.timer) {
+      this.timer.cancel();
+      this.timer = void 0;
+    }
+  }
+  schedule() {
+    if (this.timer) {
+      this.timer.cancel();
+      this.timer = void 0;
+    }
+    this.status.nextRunAt = null;
+    if (!this.config.enabled || this.config.intervalHours <= 0) return;
+    const ms = this.config.intervalHours * 60 * 60 * 1e3;
+    const nextAt = new Date(this.now() + ms).toISOString();
+    this.status.nextRunAt = nextAt;
+    this.timer = this.setTimer(() => {
+      this.timer = void 0;
+      void this.runOnce("\u5B9A\u65F6");
+      this.schedule();
+    }, ms);
+    const handle = this.timer;
+    if (typeof handle.unref === "function") handle.unref();
+  }
+  /**
+   * 跑一次备份。
+   *
+   * 顺序：先归档（只增），再热快照。反过来的话"这一轮新冷却的那个会话"会既在热快照里
+   * 又在归档里，多推一次几十 MB。
+   */
+  async runOnce(reason) {
+    const started = this.now();
+    const empty = {
+      ok: false,
+      reason,
+      hotCount: 0,
+      hotBytes: 0,
+      archivedCount: 0,
+      commit: "",
+      durationMs: 0
+    };
+    if (this.running) return { ...empty, reason: "already-running" };
+    if (!this.config.enabled) return this.finish(empty, "\u672A\u542F\u7528\uFF08\u8BBE\u7F6E\u9875\u91CC\u6253\u5F00\u5F00\u5173\uFF09", started);
+    if (this.config.repoUrl === "") return this.finish(empty, "\u6CA1\u586B\u4ED3\u5E93\u5730\u5740", started);
+    if (!gitAvailable()) return this.finish(empty, "\u672C\u673A\u6CA1\u6709 git\uFF08\u5148\u88C5 Git for Windows\uFF09", started);
+    this.running = true;
+    this.status.running = true;
+    try {
+      const dirs = this.layout();
+      mkdirSync6(dirs.base, { recursive: true });
+      const archiveRemote = this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
+      const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
+      const sessions = scanSessions(dirs.sessionsRoot);
+      const buckets = classify({
+        sessions,
+        nowMs: this.now(),
+        idleDays: this.config.idleDays,
+        archived: archivedKeys
+      });
+      let archivedCount = 0;
+      if (buckets.cooling.length > 0) {
+        const staged = buildArchiveTree(dirs.staging, buckets.cooling);
+        if (staged.written > 0) {
+          const pushed2 = this.publish(dirs.archiveRepo, this.config.archiveBranch, {
+            message: `archive: ${staged.written} \u4E2A\u51B7\u5374\u4F1A\u8BDD\uFF08${new Date(this.now()).toISOString()}\uFF09`
+          });
+          if (!pushed2.ok) return this.finish(empty, `\u5F52\u6863\u63A8\u9001\u5931\u8D25\uFF1A${pushed2.reason}`, started);
+          archivedCount = staged.written;
+        }
+      }
+      const manifest = buildHotTree({
+        stagingDir: dirs.staging,
+        sessionsRoot: dirs.sessionsRoot,
+        storagesDir: dirs.storagesDir,
+        profileDir: findProfileDir(dirs.profilesRoot, PACKAGE_NAMES),
+        attachmentsDir: dirs.attachmentsDir,
+        includeAttachments: this.config.includeAttachments,
+        hot: buckets.hot,
+        nowMs: this.now()
+      });
+      const pushed = this.publish(dirs.hotRepo, this.config.latestBranch, {
+        message: `latest: ${manifest.hotCount} \u4E2A\u4F1A\u8BDD / ${formatBytes(manifest.hotBytes)}\uFF08\u5FEB\u7167\u81F3 ${manifest.snapshotAt}\uFF09`
+      });
+      if (!pushed.ok) return this.finish(empty, `\u70ED\u5FEB\u7167\u63A8\u9001\u5931\u8D25\uFF1A${pushed.reason}`, started);
+      const result2 = {
+        ok: true,
+        reason,
+        hotCount: manifest.hotCount,
+        hotBytes: manifest.hotBytes,
+        archivedCount,
+        commit: pushed.commit,
+        durationMs: this.now() - started
+      };
+      return this.finish(result2, "", started);
+    } catch (error62) {
+      return this.finish(empty, `\u610F\u5916\u9519\u8BEF\uFF1A${String(error62?.message ?? error62).slice(0, 200)}`, started);
+    } finally {
+      this.running = false;
+      this.status.running = false;
+    }
+  }
+  finish(result2, why, started) {
+    const ok = result2.ok;
+    this.status.lastRunAt = new Date(this.now()).toISOString();
+    this.status.lastResult = ok ? "ok" : why.startsWith("\u672A\u542F\u7528") ? "skipped" : "failed";
+    this.status.lastError = ok ? "" : why;
+    if (ok) {
+      this.status.lastHotCount = result2.hotCount;
+      this.status.lastHotBytes = result2.hotBytes;
+      this.status.lastArchivedCount = result2.archivedCount;
+      this.status.lastCommit = result2.commit;
+      this.status.lastDurationMs = result2.durationMs;
+    }
+    this.writeStatus();
+    this.deps.log(ok ? "\u5907\u4EFD\u5B8C\u6210" : "\u5907\u4EFD\u5931\u8D25", {
+      reason: result2.reason,
+      hotCount: result2.hotCount,
+      archivedCount: result2.archivedCount,
+      error: why,
+      tookMs: this.now() - started
+    });
+    return { ...result2, ok, durationMs: this.now() - started, reason: ok ? result2.reason : why };
+  }
+  writeStatus() {
+    try {
+      writeSecure(statusFile(this.deps.dshHome), `${JSON.stringify(this.snapshot(), null, 2)}
+`);
+    } catch {
+    }
+  }
+  /** 各目录一次算清（不复用 status 那套路径推导：备份的根是 `~/.dsh`）。 */
+  layout() {
+    const base = backupDir(this.deps.dshHome);
+    return {
+      base,
+      work: workDir(this.deps.dshHome),
+      staging: path11.join(base, "staging"),
+      hotRepo: path11.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path11.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path11.join(this.deps.dshHome, "sessions"),
+      storagesDir: path11.join(this.deps.dshHome, "storages"),
+      profilesRoot: path11.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path11.join(this.deps.dshHome, "attachments")
+    };
+  }
+  /**
+   * 同步一个分支：`init`（缺则建）→ `fetch` → `reset --hard origin/<branch>`。
+   * 分支不存在（第一次备份）返回空 stdout，调用方按"空归档"处理。
+   */
+  fetchBranch(repo, branch) {
+    this.prepareRepo(repo);
+    const fetched = runGit(["fetch", "--depth", "1", "origin", branch], {
+      cwd: repo,
+      env: this.gitEnv()
+    });
+    if (fetched.code !== 0) {
+      if (isMissingRef(fetched)) return { ...fetched, code: 0, stdout: "", stderr: "" };
+      return fetched;
+    }
+    const reset = runGit(["reset", "--hard", `origin/${branch}`], { cwd: repo, env: this.gitEnv() });
+    if (reset.code !== 0) return reset;
+    return runGit(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
+  }
+  prepareRepo(repo) {
+    mkdirSync6(repo, { recursive: true });
+    if (!existsSync3(path11.join(repo, ".git"))) {
+      runGit(["init", "-q"], { cwd: repo, env: this.gitEnv() });
+      runGit(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
+      runGit(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
+    }
+    const current = runGit(["remote", "get-url", "origin"], { cwd: repo, env: this.gitEnv() });
+    if (current.code !== 0) {
+      runGit(["remote", "add", "origin", this.config.repoUrl], { cwd: repo, env: this.gitEnv() });
+    } else if (current.stdout.trim() !== this.config.repoUrl) {
+      runGit(["remote", "set-url", "origin", this.config.repoUrl], { cwd: repo, env: this.gitEnv() });
+    }
+    runGit(["config", "commit.gpgsign", "false"], { cwd: repo, env: this.gitEnv() });
+  }
+  /** 把工作副本里的文件提交并推到远端分支（`--force`：单写者模型）。 */
+  publish(repo, branch, options) {
+    this.prepareRepo(repo);
+    const tracked = runGit(["ls-files"], { cwd: repo, env: this.gitEnv() });
+    if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
+    const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
+    clearExceptGit(repo);
+    const source = path11.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    copyTree(source, repo);
+    const added = runGit(["add", "-A"], { cwd: repo, env: this.gitEnv() });
+    if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
+    const status = runGit(["status", "--porcelain"], { cwd: repo, env: this.gitEnv() });
+    const dirty = status.stdout.trim() !== "";
+    if (!dirty && keep.size > 0) {
+      const head = runGit(["rev-parse", "--short", "HEAD"], { cwd: repo, env: this.gitEnv() });
+      return { ok: true, reason: "", commit: head.stdout.trim() };
+    }
+    const tree = runGit(["write-tree"], { cwd: repo, env: this.gitEnv() });
+    if (tree.code !== 0) return { ok: false, reason: briefGitError(tree), commit: "" };
+    const commitTree = runGit(["commit-tree", tree.stdout.trim(), "-m", options.message], {
+      cwd: repo,
+      env: this.gitEnv()
+    });
+    if (commitTree.code !== 0) return { ok: false, reason: briefGitError(commitTree), commit: "" };
+    const commitSha = commitTree.stdout.trim();
+    const pushed = runGit(["push", "--force", "origin", `${commitSha}:refs/heads/${branch}`], {
+      cwd: repo,
+      env: this.gitEnv(),
+      timeoutMs: 20 * 60 * 1e3
+    });
+    if (pushed.code !== 0) return { ok: false, reason: briefGitError(pushed), commit: "" };
+    runGit(["update-ref", "HEAD", commitSha], { cwd: repo, env: this.gitEnv() });
+    return { ok: true, reason: "", commit: commitSha.slice(0, 7) };
+  }
+  /**
+   * git 的环境：token 走 `GIT_ASKPASS`，**不进命令行**。
+   * 命令行参数在 Windows 上同用户的进程都看得到；凭据不该出现在那里。
+   */
+  gitEnv() {
+    const token = readToken(this.deps.dshHome);
+    if (token === "") return {};
+    const helper = this.askpassScript();
+    return {
+      GIT_ASKPASS: helper,
+      DSH_BACKUP_TOKEN: token,
+      GIT_TERMINAL_PROMPT: "0"
+    };
+  }
+  askpassScript() {
+    const base = backupDir(this.deps.dshHome);
+    mkdirSync6(base, { recursive: true });
+    if (process.platform === "win32") {
+      const file3 = path11.join(base, "askpass.cmd");
+      if (!existsSync3(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      return file3;
+    }
+    const file2 = path11.join(base, "askpass.sh");
+    if (!existsSync3(file2)) {
+      writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+    }
+    return file2;
+  }
+  /**
+   * 从备份恢复：把 `latest/` 与 `archive/` 解回 `~/.dsh`。
+   *
+   * **先挪走现有目录**（`<name>.before-restore-<时间戳>`），失败也不删原来的东西；
+   * 恢复完提示重启（会话列表是启动期扫盘的）。
+   */
+  async restore() {
+    if (this.restoreState.running) return { ok: false, message: "\u6B63\u5728\u6062\u590D\uFF0C\u522B\u91CD\u590D\u70B9", restoredSessions: 0 };
+    if (this.config.repoUrl === "") return { ok: false, message: "\u6CA1\u586B\u4ED3\u5E93\u5730\u5740", restoredSessions: 0 };
+    if (!gitAvailable()) return { ok: false, message: "\u672C\u673A\u6CA1\u6709 git", restoredSessions: 0 };
+    this.restoreState = { running: true, lastAt: null, lastResult: "running", lastMessage: "" };
+    this.writeStatus();
+    try {
+      const dirs = this.layout();
+      const staging = dirs.staging;
+      resetDir(staging);
+      const latest = this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
+      if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
+      copyTree(dirs.hotRepo, path11.join(staging, "latest"));
+      const archiveRepoDir = dirs.archiveRepo;
+      const archive = this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
+      let archivedSessions = 0;
+      if (archive.code === 0 && archive.stdout.trim() !== "") {
+        copyTree(archiveRepoDir, path11.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path11.join(staging, "archive"));
+      }
+      const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
+      const sessionsRoot = dirs.sessionsRoot;
+      const restoreLatest = path11.join(staging, "latest");
+      const restoredHot = existsSync3(path11.join(restoreLatest, "sessions")) ? countSessionFiles(path11.join(restoreLatest, "sessions")) : 0;
+      for (const name of ["sessions", "storages", "attachments"]) {
+        const target = path11.join(this.deps.dshHome, name);
+        if (existsSync3(target)) {
+          renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
+        }
+      }
+      mergeTree(path11.join(restoreLatest, "sessions"), sessionsRoot);
+      mergeTree(path11.join(restoreLatest, "storages"), path11.join(this.deps.dshHome, "storages"));
+      if (existsSync3(path11.join(restoreLatest, "attachments"))) {
+        mergeTree(path11.join(restoreLatest, "attachments"), path11.join(this.deps.dshHome, "attachments"));
+      }
+      mergeTree(path11.join(staging, "archive"), sessionsRoot);
+      const profiles = path11.join(restoreLatest, "profiles");
+      if (existsSync3(profiles)) mergeProfiles(profiles, dirs.profilesRoot);
+      return this.restoreDone(
+        true,
+        `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
+      );
+    } catch (error62) {
+      return this.restoreDone(false, `\u6062\u590D\u5931\u8D25\uFF1A${String(error62?.message ?? error62).slice(0, 200)}`);
+    }
+  }
+  restoreDone(ok, message) {
+    this.restoreState = {
+      running: false,
+      lastAt: new Date(this.now()).toISOString(),
+      lastResult: ok ? "ok" : "failed",
+      lastMessage: message
+    };
+    this.writeStatus();
+    this.deps.log(ok ? "\u5907\u4EFD\u6062\u590D\u5B8C\u6210" : "\u5907\u4EFD\u6062\u590D\u5931\u8D25", { message });
+    const matched = /恢复了 (\d+)/.exec(message);
+    return { ok, message, restoredSessions: matched ? Number(matched[1]) : 0 };
+  }
+};
+function defaultTimer(fn, ms) {
+  const handle = setTimeout(fn, ms);
+  const unref = handle.unref;
+  if (typeof unref === "function") unref.call(handle);
+  return { cancel: () => clearTimeout(handle) };
+}
+function isMissingRef(result2) {
+  const text = `${result2.stderr}
+${result2.stdout}`.toLowerCase();
+  return /couldn't find remote ref|could not find remote ref|unknown revision|no such ref/.test(text);
+}
+function clearExceptGit(repo) {
+  for (const entry of readdirSync2(repo, { withFileTypes: true })) {
+    if (entry.name === ".git") continue;
+    const target = path11.join(repo, entry.name);
+    rmSync2(target, { recursive: true, force: true });
+  }
+}
+function mergeTree(source, target) {
+  if (!existsSync3(source)) return;
+  for (const entry of readdirSync2(source, { withFileTypes: true })) {
+    const from = path11.join(source, entry.name);
+    const to = path11.join(target, entry.name);
+    if (entry.isDirectory()) {
+      mkdirSync6(to, { recursive: true });
+      mergeTree(from, to);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    if (existsSync3(to)) continue;
+    mkdirSync6(target, { recursive: true });
+    copyFileSync2(from, to);
+  }
+}
+function mergeProfiles(source, profilesRoot) {
+  if (!existsSync3(profilesRoot)) return;
+  for (const entry of readdirSync2(source, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const from = path11.join(source, entry.name);
+    const to = path11.join(profilesRoot, entry.name);
+    if (!existsSync3(to)) continue;
+    for (const file2 of readdirSync2(from, { withFileTypes: true })) {
+      if (!file2.isFile()) continue;
+      copyFileSync2(path11.join(from, file2.name), path11.join(to, file2.name));
+    }
+  }
+}
+function countSessionFiles(root) {
+  let count = 0;
+  const walk2 = (dir) => {
+    let entries;
+    try {
+      entries = readdirSync2(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path11.join(dir, entry.name);
+      if (entry.isDirectory()) walk2(full);
+      else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
+    }
+  };
+  if (existsSync3(root)) walk2(root);
+  return count;
+}
+function formatBytes(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+}
+
+// src/shell/claim-token.ts
+import { readFileSync as readFileSync7 } from "node:fs";
+import path12 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -34132,15 +35168,15 @@ function claimUrlFor(serverUrl) {
   url2.hash = "";
   return url2.toString();
 }
-function resolveHostTokenFile(statusFile) {
-  const base = statusFile ? path9.dirname(statusFile) : dataDir();
-  return path9.join(base, HOST_TOKEN_FILE);
+function resolveHostTokenFile(statusFile2) {
+  const base = statusFile2 ? path12.dirname(statusFile2) : dataDir();
+  return path12.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync4(file2, "utf8");
+    raw = readFileSync7(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -34148,12 +35184,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path9.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path12.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path9.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path12.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -34192,7 +35228,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path9.dirname(file2));
+    ensureSecureDir(path12.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -34326,7 +35362,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path10.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path13.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -34349,7 +35385,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path10.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path13.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -34898,7 +35934,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path10.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path13.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -35080,6 +36116,17 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
+  const dshHome = config2.statusFile !== "" ? path13.dirname(path13.dirname(config2.statusFile)) : path13.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  let backup;
+  try {
+    backup = new BackupService({ dshHome, log });
+    backup.start();
+  } catch (error62) {
+    backup = void 0;
+    log("\u5907\u4EFD\u670D\u52A1\u8D77\u4E0D\u6765\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09", {
+      message: String(error62?.message ?? error62).slice(0, 200)
+    });
+  }
   try {
     pillRoutes = startPill(ctx, {
       enabled: config2.pill.enabled,
@@ -35112,6 +36159,17 @@ function applyInner(ctx, injected, clock) {
       // 设置页「进阶」那一栏：路由那一层**不碰文件系统**，读写都收在这里。
       config: () => describeEffectiveConfig(),
       saveConfig: (overrides) => saveUserOverrides(overrides),
+      // 备份那张卡片的接线（handler 在 `backup/routes.ts`，逻辑在 `backup/service.ts`）。
+      // 这里只做转发，**一行都不能少**（`startPill` 那边是逐个字段重建对象的）。
+      backup: backup ? {
+        status: () => backup.snapshot(),
+        config: () => backup.currentConfig(),
+        saveConfig: (patch) => backup.saveConfig(patch),
+        setToken: (token) => backup.setToken(token),
+        runNow: (reason) => backup.runOnce(reason),
+        restore: () => backup.restore(),
+        log
+      } : void 0,
       log
     });
   } catch (error62) {
@@ -35127,6 +36185,10 @@ function applyInner(ctx, injected, clock) {
     stop() {
       oneShot.cancelAll();
       pillRoutes?.stop();
+      try {
+        backup?.stop();
+      } catch {
+      }
       status.stop();
       for (const hook of stopHooks) {
         try {

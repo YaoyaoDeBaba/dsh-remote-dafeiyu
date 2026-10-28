@@ -38,6 +38,8 @@ import { statusText, waitingText } from '../src/copy/zh.js'
  * **与宿主侧常量逐字对齐**。
  */
 const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
+/** 会话备份那张卡那条路由（2026-10-28 加）。同上：字面量，由产物那条判据对齐。 */
+const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 import {
   PAIR_IMAGE_ROUTE,
   PAIR_MARKER_HEADER,
@@ -1579,6 +1581,8 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
       PLUGIN_CONFIG_ROUTE,
       // 2026-10-20 加：客户端半的自报通道（诊断用）。
       CLIENT_REPORT_ROUTE,
+      // 2026-10-28 加：设置页「会话备份（git）」那张卡（字面量与宿主侧逐字一致）。
+      BACKUP_ROUTE,
     ].sort(),
   )
 })
@@ -2613,7 +2617,7 @@ test('设置页只有一张码：3.2 起没有「第二个入口码」这个概�
      * （扫了是去装客户端，不配对），所以上限从 1 变 2，但配对码本身仍然只有一张。
      */
     assert.ok(root.findAll('drc-qr').length <= 2, '最多两张码：配对码 + 手机 App 下载码')
-    assert.equal(root.findAll('drc-sec-card').length, 3, '三张卡：配对 + 进阶 + 手机 App')
+    assert.equal(root.findAll('drc-sec-card').length, 4, '四张卡：配对 + 进阶 + 手机 App + 会话备份（2026-10-28 加）')
   }
 })
 

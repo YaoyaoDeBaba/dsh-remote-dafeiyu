@@ -87,6 +87,8 @@ const SETTINGS_LABEL = '远程控制'
  * `client-bundle.test.ts` 的那条反证判据守着（它把产物里的 `/plugins/*` 字面量全列出来比）。
  */
 export const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
+/** 会话备份那条路由（2026-10-28）。同一个前缀、同一道守卫。 */
+export const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 
 /**
  * 「进阶」那一栏**自带**的一张小样式表。
@@ -740,6 +742,215 @@ function buildSettingsSection(root: Element, deps: PillDeps): () => void {
   }
 
   /**
+   * ── 「会话备份（git）」那张卡（2026-10-28 追加）────────────────────────
+   *
+   * 与远控**同一个插件**，但它是**旁路**：默认关闭、坏了也只影响卡片上的那一行红字。
+   *
+   * 三个动作都是"起个头就回来"（宿主那边回 202，真正的进度靠轮询 `GET` 的 `status`），
+   * 因为一次备份要传几十 MB，浏览器那侧的超时是 8 秒——在这一页等它等于必然超时。
+   *
+   * ⚠️ token 输入框默认空着、占位符写"已设置"：与「进阶」那栏同一条纪律，
+   * 无条件提交空串就等于每保存一次把凭据清空一次。
+   */
+  let backupCard: HTMLElement | undefined
+  let bkNote: HTMLElement | undefined
+  let bkStatusLine: HTMLElement | undefined
+  let bkUrlInput: HTMLInputElement | undefined
+  let bkTokenInput: HTMLInputElement | undefined
+  let bkIntervalInput: HTMLInputElement | undefined
+  let bkIdleInput: HTMLInputElement | undefined
+  let bkToggleBtn: HTMLElement | undefined
+  let bkEnabled = false
+
+  const bkSetNote = (message: string, kind?: 'ok' | 'failed'): void => {
+    if (!bkNote) return
+    bkNote.textContent = message
+    bkNote.setAttribute('data-kind', kind ?? '')
+  }
+
+  const numOf = (raw: unknown, fallback: number): number => (typeof raw === 'number' ? raw : fallback)
+  const strOf = (raw: unknown, fallback = ''): string => (typeof raw === 'string' ? raw : fallback)
+
+  /** 状态那一行：把宿主那份 status 的要点压成几句人话。 */
+  const paintBackupStatus = (body: Record<string, unknown>): void => {
+    const status = body.status && typeof body.status === 'object' ? (body.status as Record<string, unknown>) : {}
+    const config = body.config && typeof body.config === 'object' ? (body.config as Record<string, unknown>) : {}
+    bkEnabled = config.enabled === true
+    if (bkToggleBtn) bkToggleBtn.textContent = bkEnabled ? '停用备份' : '启用备份'
+    if (bkUrlInput && doc.activeElement !== bkUrlInput) bkUrlInput.value = strOf(config.repoUrl)
+    if (bkIntervalInput && doc.activeElement !== bkIntervalInput) {
+      bkIntervalInput.value = String(numOf(config.intervalHours, 8))
+    }
+    if (bkIdleInput && doc.activeElement !== bkIdleInput) {
+      bkIdleInput.value = String(numOf(config.idleDays, 15))
+    }
+    if (bkTokenInput && doc.activeElement !== bkTokenInput) {
+      bkTokenInput.value = ''
+      bkTokenInput.setAttribute('placeholder', status.tokenSet === true ? '已设置，留空不改动' : '未设置：填你的 PAT')
+    }
+    if (!bkStatusLine) return
+    const parts: string[] = []
+    if (status.gitAvailable !== true) parts.push('本机没装 git：先装 Git for Windows')
+    parts.push(bkEnabled ? '已启用' : '未启用')
+    const interval = numOf(config.intervalHours, 8)
+    parts.push(interval > 0 ? `每 ${interval} 小时` : '只手动')
+    parts.push(`冷却 ${numOf(config.idleDays, 15)} 天归档`)
+    if (status.running === true) {
+      parts.push('正在跑…')
+    } else if (typeof status.lastRunAt === 'string' && status.lastRunAt !== '') {
+      const when = status.lastRunAt.replace('T', ' ').replace(/\..*$/, '')
+      const result = status.lastResult === 'ok' ? '成功' : status.lastResult === 'skipped' ? '跳过' : '失败'
+      parts.push(`上次 ${when} ${result}`)
+      if (result === '成功') {
+        const mb = (numOf(status.lastHotBytes, 0) / (1024 * 1024)).toFixed(1)
+        parts.push(`${numOf(status.lastHotCount, 0)} 个会话 / ${mb} MB`)
+        if (numOf(status.lastArchivedCount, 0) > 0) parts.push(`归档 ${numOf(status.lastArchivedCount, 0)} 个`)
+      } else if (typeof status.lastError === 'string' && status.lastError !== '') {
+        parts.push(status.lastError.slice(0, 120))
+      }
+    } else {
+      parts.push('还没跑过')
+    }
+    const restore = status.restore && typeof status.restore === 'object' ? (status.restore as Record<string, unknown>) : {}
+    if (typeof restore.lastMessage === 'string' && restore.lastMessage !== '') {
+      parts.push(`恢复：${restore.lastMessage.slice(0, 120)}`)
+    }
+    bkStatusLine.textContent = parts.join('　')
+  }
+
+  const loadBackup = async (): Promise<void> => {
+    if (disposed) return
+    const answer = await call(BACKUP_ROUTE, { method: 'GET' })
+    if (disposed) return
+    if (!answer.ok) {
+      if (bkStatusLine) bkStatusLine.textContent = `读不到备份状态（HTTP ${answer.status}）`
+      return
+    }
+    paintBackupStatus(answer.body as Record<string, unknown>)
+  }
+
+  /** 提交配置；`token` 不在 payload 里表示"不动它"。 */
+  const postBackup = async (payload: Record<string, unknown>, okText: string): Promise<void> => {
+    if (disposed) return
+    const answer = await call(BACKUP_ROUTE, {
+      method: 'POST',
+      headers: { ...MARKER, 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (disposed) return
+    if (!answer.ok) {
+      const detail = String(answer.body.detail ?? answer.body.error ?? `HTTP ${answer.status}`)
+      bkSetNote(`失败：${detail}`, 'failed')
+      return
+    }
+    bkSetNote(okText, 'ok')
+    await loadBackup()
+  }
+
+  const saveBackup = async (): Promise<void> => {
+    const config: Record<string, unknown> = {
+      repoUrl: bkUrlInput?.value.trim() ?? '',
+      intervalHours: Number(bkIntervalInput?.value.trim() ?? '8'),
+      idleDays: Number(bkIdleInput?.value.trim() ?? '15'),
+      enabled: bkEnabled,
+    }
+    const token = bkTokenInput?.value.trim() ?? ''
+    const payload: Record<string, unknown> = { action: 'save', config }
+    if (token !== '') payload.token = token
+    await postBackup(payload, '已保存。改了节奏立刻生效，不用重启。')
+  }
+
+  const buildBackup = (): HTMLElement => {
+    const section = card('会话备份（git）')
+    section.setAttribute('data-role', 'backup')
+    section.appendChild(
+      text(
+        'p',
+        'drc-sec-note',
+        '把本机的会话记录定时传到你的私有仓库：活跃的每 8 小时一份（只留最新），15 天没聊的转存到归档分支。换电脑后在这里一键拉回来。',
+      ),
+    )
+
+    const grid = doc.createElement('div')
+    grid.className = 'drc-adv-grid'
+
+    const urlLabel = text('label', 'drc-adv-label', '仓库地址')
+    const urlInput = doc.createElement('input')
+    urlInput.className = 'drc-adv-input'
+    urlInput.setAttribute('type', 'text')
+    urlInput.setAttribute('spellcheck', 'false')
+    urlInput.setAttribute('autocomplete', 'off')
+    urlInput.setAttribute('placeholder', 'https://github.com/你的账号/dsh-backup-主机名.git')
+    bkUrlInput = urlInput
+
+    const tokenLabel = text('label', 'drc-adv-label', '访问令牌（PAT）')
+    const tokenInput = doc.createElement('input')
+    tokenInput.className = 'drc-adv-input'
+    tokenInput.setAttribute('type', 'password')
+    tokenInput.setAttribute('autocomplete', 'off')
+    tokenInput.setAttribute('placeholder', '未设置：填你的 PAT')
+    bkTokenInput = tokenInput
+
+    const intervalLabel = text('label', 'drc-adv-label', '间隔（小时，0 = 只手动）')
+    const intervalInput = doc.createElement('input')
+    intervalInput.className = 'drc-adv-input'
+    intervalInput.setAttribute('type', 'number')
+    intervalInput.setAttribute('min', '0')
+    intervalInput.setAttribute('max', '168')
+    intervalInput.setAttribute('value', '8')
+    bkIntervalInput = intervalInput
+
+    const idleLabel = text('label', 'drc-adv-label', '冷却天数（多久没聊转归档）')
+    const idleInput = doc.createElement('input')
+    idleInput.className = 'drc-adv-input'
+    idleInput.setAttribute('type', 'number')
+    idleInput.setAttribute('min', '1')
+    idleInput.setAttribute('max', '3650')
+    idleInput.setAttribute('value', '15')
+    bkIdleInput = idleInput
+
+    for (const node of [urlLabel, urlInput, tokenLabel, tokenInput, intervalLabel, intervalInput, idleLabel, idleInput]) {
+      grid.appendChild(node)
+    }
+    section.appendChild(grid)
+
+    const actions = doc.createElement('div')
+    actions.className = 'drc-sec-actions'
+    const toggle = button('启用备份', () => {
+      bkEnabled = !bkEnabled
+      void saveBackup()
+    }, 'primary')
+    bkToggleBtn = toggle
+    actions.appendChild(button('保存', () => void saveBackup(), 'primary'))
+    actions.appendChild(toggle)
+    actions.appendChild(
+      button('立即备份', () => {
+        bkSetNote('已开始，跑完这一行会自己更新（几分钟）', 'ok')
+        void postBackup({ action: 'run' }, '已开始备份…')
+      }),
+    )
+    actions.appendChild(
+      button('从备份恢复', () => {
+        // 恢复会覆盖本机 `~/.dsh/sessions`（旧的改名留底），所以问一次。
+        const view = doc.defaultView as { confirm?: (message: string) => boolean } | null
+        const sure = typeof view?.confirm === 'function'
+          ? view.confirm('要用仓库里的备份覆盖本机会话吗？现有会话会被改名留底，不会删除。')
+          : true
+        if (!sure) return
+        void postBackup({ action: 'restore' }, '已开始恢复，完成后重启飞鱼')
+      }),
+    )
+    section.appendChild(actions)
+
+    bkStatusLine = text('p', 'drc-adv-note', '正在读取备份状态…')
+    section.appendChild(bkStatusLine)
+    bkNote = text('p', 'drc-adv-note', '')
+    bkNote.setAttribute('data-kind', '')
+    section.appendChild(bkNote)
+    return section
+  }
+
+  /**
    * 整块重画。只在"状态真的变了"的时候调用，倒计时那一拍只改一行文本。
    *
    * ## 版式（2026-10-09 重排）
@@ -972,6 +1183,14 @@ function buildSettingsSection(root: Element, deps: PillDeps): () => void {
       rightCol.appendChild(appCard)
     }
     /**
+     * 「会话备份（git）」那张卡（2026-10-28）：与上面两张同一套纪律——**只建一次**，
+     * 插进常驻的右列。它里面有四个 input，重建一次就等于把用户正在填的东西抹掉。
+     */
+    if (!backupCard) {
+      backupCard = buildBackup()
+      rightCol.appendChild(backupCard)
+    }
+    /**
      * ── 放哪儿：右栏，与「配对」那张卡并排、等高（2026-10-21 用户截图三条标注）
      *
      * 小程序码成为唯一入口之后，原先右栏那张「手机端」静态码整块删掉；若这一栏仍独占
@@ -997,10 +1216,25 @@ function buildSettingsSection(root: Element, deps: PillDeps): () => void {
   // 电脑这一页马上就变"的路，而配置几乎不会在你看这一页的时候变）。
   void loadConfig()
   /**
+   * 备份那张卡的读数（2026-10-28）：**挂在状态那条节拍上，隔几拍取一次**。
+   *
+   * ⚠️ 刻意不另起 `setInterval`：这一页的节拍数量是被测试钉住的（假时钟一次只 fire 一个
+   * 定时器），凭空多一条会让"归零自动换一张"那条判据打到错的定时器上。
+   * 备份状态不是秒级的东西，6 秒一次足够。
+   */
+  let backupTick = 0
+  /**
    * 状态每 2 秒回来一次：这是"手机上刚扫完，电脑这一页马上就变"的那条路。
    * 与 pill 同一个节拍——用户在设置页停留时也应当看到别人扫码的结果。
+   *
+   * 备份那张卡的读数搭同一条节拍（每 3 拍 = 6 秒），理由见上面那段：不另起定时器。
    */
-  statusTimer = setInterval(() => void loadStatus(), 2000)
+  statusTimer = setInterval(() => {
+    void loadStatus()
+    backupTick += 1
+    if (backupTick % 3 === 0) void loadBackup()
+  }, 2000)
+  void loadBackup()
 
   return () => {
     disposed = true

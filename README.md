@@ -2,11 +2,50 @@
 
 DSH 远程控制插件的**大肥鱼定制版**（基于上游 [`dsh-remote/plugin`](https://github.com/dsh-remote/plugin) 0.5.4，MIT）。
 
-在官方插件的基础上加了三件事：
+在官方插件的基础上加了四件事：
 
 1. **三条新命令**：`cmd.rename_session`（改会话名）、`cmd.get_models`（模型清单）、`cmd.set_model`（切模型 + 推理档位）。
 2. **设置页多一张卡**：`手机 App（安卓）` —— 二维码直接指向 APK 的最新构建，扫码即装。
-3. 包名/版本独立：`dsh-remote-dafeiyu@0.6.0-dafeiyu.1`，与官方插件互斥（装了这个就不用再装官方那个）。
+3. **设置页再多一张卡（0.7 起）：`会话备份（git）`** —— 把本机的会话记录定时推到你自己的**私有**仓库，换电脑一键拉回来。
+4. 包名/版本独立：`dsh-remote-dafeiyu@0.7.0-dafeiyu.0`，与官方插件互斥（装了这个就不用再装官方那个）。
+
+## 会话备份（0.7 起）
+
+一个插件管两件事：**远控**和**搬家**。备份默认**关闭**，装完不会自己上传任何东西。
+
+配置在 设置 → 插件 → dsh-remote-dafeiyu → 「会话备份（git）」那张卡：
+
+| 填什么 | 说明 |
+| --- | --- |
+| 仓库地址 | 一个**私有**仓库，例如 `https://github.com/你的账号/dsh-backup-主机名.git`（仓库要先用你的账号建好，空仓库即可） |
+| 访问令牌（PAT） | GitHub → Settings → Developer settings → Personal access tokens，勾 `repo` 权限，只填一次 |
+| 间隔（小时） | 默认 8。填 0 = 只手动备份 |
+| 冷却天数 | 默认 15。多久没聊的会话转存到归档分支 |
+
+跑起来之后仓库里长这样：
+
+```
+latest  分支（只有一个提交，每轮整体覆盖）
+  sessions/<工作区>/session-<id>/session.v4.jsonl.zstd
+  storages/*.json
+  profiles/<名字>/{package.json,cordis.patch.yml,cordis.yml}
+  attachments/**            （图片/文件附件，可在配置里关）
+  MANIFEST.json             这一份快照的清单（每个会话的大小与校验和）
+archive 分支（只增不改）
+  <工作区>/session-<id>/session.v4.jsonl.zstd    ← 冷却的老会话
+```
+
+三条纪律：
+
+1. **只留最新**：`latest` 每轮整体替换（孤儿提交 + force push），仓库不会越推越大。
+2. **冷却即归档**：超过冷却天数没动的会话挪进 `archive`（不删；复活后又聊起来的会重新进 `latest`，归档那份不动）。
+3. **凭据不出本机**：token 存 `~/.dsh/dsh-backup-git/credential.json`（0600），git 通过 `GIT_ASKPASS` 拿，**不进命令行、不进日志、不进仓库**。
+
+换电脑：装同一个插件 → 填 URL + token → 点「从备份恢复」→ 重启飞鱼。
+恢复时本机现有的 `sessions` / `storages` / `attachments` 会被改名成
+`*.before-restore-<时间戳>` 留底（**不删除**），然后备份内容铺回去。
+
+要求：本机有 `git`（`git --version` 能跑）。没有就装 [Git for Windows](https://git-scm.com/download/win)。
 
 ## 装法一：插件市场（推荐）
 

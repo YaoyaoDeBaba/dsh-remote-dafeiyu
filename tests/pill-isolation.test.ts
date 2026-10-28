@@ -45,6 +45,8 @@ import {
 import { startPill } from '../src/pill/start.js'
 import { hasPosixModes } from './test-platform.js'
 import { PLUGIN_CONFIG_ROUTE, type ConfigRouteDeps } from '../src/pill/config-routes.js'
+// 2026-10-28：备份那条路由也挂在这个统一入口上（可选件，但真机 apply 里是接线的）。
+import { BACKUP_ROUTE } from '../src/backup/routes.js'
 
 /**
  * 设置页「进阶」那一栏那两条的读/写口（2026-10-11 加）。
@@ -338,14 +340,14 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     const state = await late.waitForCarrier()
     assert.equal((state.pill as Record<string, string>).webServer, 'via inject')
     assert.equal((state.pill as Record<string, string>).routes, 'registered', '七条配对路由补挂上了')
-    assert.equal(late.registerCalls.length, 7, '七条一起挂（五条配对 + 一条配置 + 一条客户端自报）')
+    assert.equal(late.registerCalls.length, 8, '八条一起挂（六条配对 + 一条配置 + 一条客户端自报 + 一条备份）')
     assert.equal(
       pillProblem(state),
       undefined,
       `routes 已 registered 却还报 warn:pill = 启动快照的假警报：${JSON.stringify(state.problems)}`,
     )
     late.dispose()
-    assert.equal(late.unregistered(), 7, '晚到挂上的路由，停机时同样要注销干净')
+    assert.equal(late.unregistered(), 8, '晚到挂上的路由，停机时同样要注销干净')
   } finally {
     late.dispose()
   }
@@ -401,8 +403,10 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
         PLUGIN_CONFIG_ROUTE,
         CLIENT_REPORT_ROUTE,
         PAIR_APPROVE_ROUTE,
+        // 2026-10-28 加：设置页「会话备份（git）」那张卡。
+        BACKUP_ROUTE,
       ],
-      '七条路由一起挂：发码 + 弹窗的图 + 抬头状态 + 退出配对 + 配置读写 + 客户端自报 + 确认放行',
+      '八条路由一起挂：发码 + 弹窗的图 + 抬头状态 + 退出配对 + 配置读写 + 客户端自报 + 确认放行 + 备份',
     )
     // problems 的差别必须是**恰好那一条** warn:pill，多一条少一条都算红。
     assert.ok(pillProblem(a), '没 webServer 那侧必须有 warn:pill')
@@ -417,7 +421,7 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     // 而表现是"重载一次之后那颗 pill 再也不出现"。这里在断言之后 dispose，两个 finally
     // 里的 dispose 是同一次（helper 内部有 once 守卫）。
     withWeb.dispose()
-    assert.equal(withWeb.unregistered(), 7, '七条路由都要注销')
+    assert.equal(withWeb.unregistered(), 8, '八条路由都要注销')
   } finally {
     without.dispose()
     withWeb.dispose()
@@ -517,8 +521,10 @@ test('那七条配对路由挂上去的就是带守卫的那七条（接线，�
         CLIENT_REPORT_ROUTE,
         // 2026-10-21 加：确认「数字一致」后的放行口。排在最后，前面各条编号语义不变。
         PAIR_APPROVE_ROUTE,
+        // 2026-10-28 加：设置页「会话备份（git）」那张卡。
+        BACKUP_ROUTE,
       ],
-      '七条路由一起挂：发码 + 弹窗的图 + 抬头状态 + 退出配对 + 配置读写 + 客户端自报 + 确认放行',
+      '八条路由一起挂：发码 + 弹窗的图 + 抬头状态 + 退出配对 + 配置读写 + 客户端自报 + 确认放行 + 备份',
     )
 
     const handlerFor = (p: string) => {
