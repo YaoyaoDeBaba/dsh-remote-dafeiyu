@@ -147,6 +147,12 @@ interface FakeKernel extends KernelPort {
     ensureRunnable: string[]
     /** 每一次 `archiveSession(sessionId, archived)` 的实参。 */
     archive: Array<{ sessionId: string; archived: boolean }>
+    /** 每一次 `renameSession(sessionId, title)` 的实参（dsh-remote-dafeiyu）。 */
+    rename: Array<{ sessionId: string; title: string }>
+    /** `modelCatalog()` 被调了几次（它没有入参，记数就够）。 */
+    modelCatalog: number
+    /** 每一次 `selectModel(...)` 的实参。 */
+    selectModel: Array<{ sessionId: string; provider: string; model: string; reasoningEffort?: string }>
     unsubscribes: number
   }
   failList: boolean
@@ -171,6 +177,33 @@ interface FakeKernel extends KernelPort {
    * 默认（undefined）= 一律 ok:true，与真载体一致。
    */
   archiveSessionImpl: ((sessionId: string, archived: boolean) => Promise<{ ok: boolean; message?: string }>) | undefined
+  /** 非空时替代默认实现：用来演「内核把标题修剪过」与「内核拒收」两种结局。 */
+  renameSessionImpl:
+    | ((sessionId: string, title: string) => Promise<{ ok: boolean; title?: string; message?: string }>)
+    | undefined
+  modelCatalogImpl:
+    | (() => Promise<{
+        ok: boolean
+        catalog?: {
+          default: unknown
+          groups: Array<{
+            id: string
+            name: string
+            models: Array<{ id: string; name: string; efforts?: Array<{ id: string; name: string }>; defaultEffort?: string }>
+          }>
+        }
+        failures?: Array<{ id: string; message: string }>
+        message?: string
+      }>)
+    | undefined
+  selectModelImpl:
+    | ((
+        sessionId: string,
+        provider: string,
+        model: string,
+        reasoningEffort?: string,
+      ) => Promise<{ ok: boolean; selected?: Record<string, unknown>; message?: string }>)
+    | undefined
   feed(event: KernelEvent): void
 }
 
@@ -180,7 +213,7 @@ function makeKernel(): FakeKernel {
     carrier: 'fake',
     events,
     sink: undefined,
-    calls: { listSessions: [], sendPrompt: [], interrupt: [], ensureRunnable: [], archive: [], unsubscribes: 0 },
+    calls: { listSessions: [], sendPrompt: [], interrupt: [], ensureRunnable: [], archive: [], rename: [], modelCatalog: 0, selectModel: [], unsubscribes: 0 },
     failList: false,
     throwOnSend: false,
     rejectSendFor: undefined,
@@ -191,6 +224,9 @@ function makeKernel(): FakeKernel {
     listing: undefined,
     ensureRunnableImpl: undefined,
     archiveSessionImpl: undefined,
+    renameSessionImpl: undefined,
+    modelCatalogImpl: undefined,
+    selectModelImpl: undefined,
     async listSessions(limit: number) {
       kernel.calls.listSessions.push(limit)
       if (kernel.failList) throw new Error('内核读列表失败')
@@ -246,6 +282,27 @@ function makeKernel(): FakeKernel {
       kernel.calls.archive.push({ sessionId, archived })
       if (kernel.archiveSessionImpl) return kernel.archiveSessionImpl(sessionId, archived)
       return { ok: true }
+    },
+    // ── dsh-remote-dafeiyu 追加的三条：形状与 archiveSession 同一档（只转发 + 如实回执）──
+    async renameSession(sessionId: string, title: string) {
+      kernel.calls.rename.push({ sessionId, title })
+      if (kernel.renameSessionImpl) return kernel.renameSessionImpl(sessionId, title)
+      return { ok: true, title }
+    },
+    async modelCatalog() {
+      kernel.calls.modelCatalog += 1
+      if (kernel.modelCatalogImpl) return kernel.modelCatalogImpl()
+      return { ok: true, catalog: { default: null, groups: [] } }
+    },
+    async selectModel(sessionId: string, provider: string, model: string, reasoningEffort?: string) {
+      kernel.calls.selectModel.push({
+        sessionId,
+        provider,
+        model,
+        ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+      })
+      if (kernel.selectModelImpl) return kernel.selectModelImpl(sessionId, provider, model, reasoningEffort)
+      return { ok: true, selected: { sessionId, provider, model } }
     },
     describe() {
       return { carrier: 'fake' }
@@ -3093,6 +3150,184 @@ test('反向判据：这一代主机没有归档能力时**明确拒绝**，不�
   assert.equal(res.ok, false)
   assert.match(String(res.message), /不支持归档/, '要说清是"主机这一代没有"，而不是"失败了"')
   assert.match(String(res.message), /archiveSession/, '要点名缺的那个能力，排错时不必去猜')
+})
+
+/**
+ * `cmd.rename_session` / `cmd.get_models` / `cmd.set_model`（dsh-remote-dafeiyu 追加）。
+ *
+ * 这三条的纪律与 `cmd.archive_session` 完全同一档，所以判据也照着那一组写：
+ * 1. **core 只转发**，语义（能不能改、能不能切）由载体决定；
+ * 2. **不许静默成功**：端口缺能力 / 载体拒收都必须回 `ok:false` 且带原因；
+ * 3. **改名之后必须补推一次列表**（同 A3：本端不消费 `workspace/changes`，
+ *    不自己推的话手机列表里还是旧名字，用户会以为没改成）。
+ */
+test('cmd.rename_session：转发到端口，回执报内核确认过的标题，并补推一次列表', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+  const before = transport.ofType(PAYLOAD_TYPES.evSessionChanged).length
+  // 内核会把标题修剪/截断（真载体走 sessionController.commands.rename），这里演一下。
+  kernel.renameSessionImpl = async (_sessionId, title) => ({ ok: true, title: title.trim() })
+
+  runtime.handleCommand(
+    cmd('cmd.rename_session' as CmdPayload['t'], { sessionId: 's1', title: '  新名字  ' }),
+    'c_000000000001',
+  )
+  await settle()
+
+  assert.deepEqual(
+    kernel.calls.rename,
+    [{ sessionId: 's1', title: '  新名字  ' }],
+    'core 原样转发：修剪是内核的职责，core 这一层自己动手就成了第二份口径',
+  )
+  const [res] = transport.resultReplies()
+  assert.equal(res?.ok, true, '成功要回 ok:true')
+  assert.deepEqual(
+    res?.data,
+    { kind: 'title', sessionId: 's1', title: '新名字' },
+    '回执报内核给的那个标题，不是手机发来的原文——报原文会让手机把被内核改过的名字显示成另一个',
+  )
+  assert.equal(
+    transport.ofType(PAYLOAD_TYPES.evSessionChanged).length,
+    before + 1,
+    '改名后必须补推列表，否则用户点完看到列表里还是旧名字（同归档那条 A3）',
+  )
+})
+
+test('cmd.rename_session：载体拒收时如实回 ok:false 并带出原因，且不推列表', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+  kernel.renameSessionImpl = async () => ({ ok: false, message: '会话正在运行，不能改名字' })
+  const before = transport.ofType(PAYLOAD_TYPES.evSessionChanged).length
+
+  runtime.handleCommand(
+    cmd('cmd.rename_session' as CmdPayload['t'], { sessionId: 's1', title: '新名字' }),
+    'c_000000000001',
+  )
+  await settle()
+
+  const [res] = transport.resultReplies()
+  assert.equal(res?.ok, false)
+  assert.match(String(res?.message), /正在运行/, '原因要原样透出，手机直接 toast 它')
+  assert.equal(
+    transport.ofType(PAYLOAD_TYPES.evSessionChanged).length,
+    before,
+    '失败时不许推列表：推了就是"列表没变"与"改成功了"两个矛盾信号',
+  )
+})
+
+test('反向判据：主机这一代没有改名能力时明确拒绝', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+  delete (kernel as { renameSession?: unknown }).renameSession
+  runtime.handleCommand(
+    { t: 'cmd.rename_session', cmdId: 'cmd_no_rename', sessionId: 's1', title: '新名字' } as CmdPayload,
+    'c_000000000001',
+  )
+  await settle()
+
+  const [res] = transport.resultReplies()
+  assert.equal(res?.cmdId, 'cmd_no_rename', 'cmdId 必须原样带回，否则手机那条等待永远结算不掉')
+  assert.equal(res?.ok, false, '缺能力不许静默成功')
+  assert.match(String(res?.message), /不支持改会话名/, '要说清是"主机这一代没有"')
+})
+
+test('cmd.get_models：转发到端口，回执带 catalog 与 failures', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+  const catalog = {
+    default: null,
+    groups: [
+      { id: 'main', name: '主力', models: [{ id: 'm1', name: '模型一', efforts: [{ id: 'high', name: '高' }] }] },
+    ],
+  }
+  kernel.modelCatalogImpl = async () => ({ ok: true, catalog, failures: [{ id: 'gone', message: '连不上' }] })
+
+  runtime.handleCommand(cmd('cmd.get_models' as CmdPayload['t'], {}), 'c_000000000001')
+  await settle()
+
+  assert.equal(kernel.calls.modelCatalog, 1, '必须真的问过端口')
+  const [res] = transport.resultReplies()
+  assert.equal(res?.ok, true)
+  assert.deepEqual(
+    res?.data,
+    { kind: 'catalog', catalog, failures: [{ id: 'gone', message: '连不上' }] },
+    'catalog 与 failures 都要原样带给手机：手机靠 failures 说"某些模型源挂了"，而不是干等',
+  )
+})
+
+test('cmd.get_models：端口报失败时回 ok:false，不把空目录当成功', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+  kernel.modelCatalogImpl = async () => ({ ok: false, message: '这一代宿主列不出模型清单' })
+
+  runtime.handleCommand(cmd('cmd.get_models' as CmdPayload['t'], {}), 'c_000000000001')
+  await settle()
+
+  const [res] = transport.resultReplies()
+  assert.equal(res?.ok, false)
+  assert.match(String(res?.message), /列不出模型清单/)
+  assert.equal(res?.data, undefined, '失败时不许给空目录：手机会把它当成"这台主机一个模型都没有"')
+})
+
+test('cmd.set_model：四个参数原样转发，回执带 selected', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+
+  runtime.handleCommand(
+    cmd('cmd.set_model' as CmdPayload['t'], {
+      sessionId: 's1',
+      provider: 'space-bunny',
+      model: 'space-bunny-free',
+      reasoningEffort: 'high',
+    }),
+    'c_000000000001',
+  )
+  await settle()
+
+  assert.deepEqual(
+    kernel.calls.selectModel,
+    [{ sessionId: 's1', provider: 'space-bunny', model: 'space-bunny-free', reasoningEffort: 'high' }],
+    'provider/model/reasoningEffort 一个都不能丢：少一个就会切到另一个模型、或悄悄退回默认档',
+  )
+  const [res] = transport.resultReplies()
+  assert.equal(res?.ok, true)
+  assert.deepEqual(res?.data, {
+    kind: 'model',
+    sessionId: 's1',
+    selected: { sessionId: 's1', provider: 'space-bunny', model: 'space-bunny-free' },
+  })
+})
+
+test('cmd.set_model：不带 reasoningEffort 时端口收到的也是 undefined（不是空串）', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+
+  runtime.handleCommand(
+    cmd('cmd.set_model' as CmdPayload['t'], { sessionId: 's1', provider: 'p', model: 'm' }),
+    'c_000000000001',
+  )
+  await settle()
+
+  assert.deepEqual(
+    kernel.calls.selectModel,
+    [{ sessionId: 's1', provider: 'p', model: 'm' }],
+    '带一个空串上去会被内核当成"切到一个叫空字符串的档位"——比不改更坏',
+  )
+})
+
+test('反向判据：主机这一代不能切模型时明确拒绝', async () => {
+  const { runtime, transport, kernel } = fixture()
+  transport.pair('c_000000000001')
+  delete (kernel as { selectModel?: unknown }).selectModel
+  runtime.handleCommand(
+    { t: 'cmd.set_model', cmdId: 'cmd_no_model', sessionId: 's1', provider: 'p', model: 'm' } as CmdPayload,
+    'c_000000000001',
+  )
+  await settle()
+
+  const [res] = transport.resultReplies()
+  assert.equal(res?.ok, false)
+  assert.match(String(res?.message), /不支持切模型/)
 })
 
 /**
