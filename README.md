@@ -29,12 +29,32 @@ https://cdn.jsdelivr.net/gh/YaoyaoDeBaba/dsh-remote-dafeiyu@main/market/index.js
 
 然后在这条索引里点安装即可（安装规格是 `git+https://…#<commit>`，锁到具体提交，不会跑到一半变版本）。
 
-## 装法二：直接用 git 地址装
+## 装法二：插件页「添加插件」里填一行
+
+没有「发现」的版本（市场是实验功能，默认不启用）也能装，输入框认这四种：
+
+| 填什么 | 结果 |
+| --- | --- |
+| `dsh-remote-dafeiyu` | **只有发布到 npm 才行**，本仓库没发 npm，会被当成"注册表里查不到"拒掉 |
+| `github:YaoyaoDeBaba/dsh-remote-dafeiyu` | ✓ 从 GitHub 拉，装最新 main |
+| `https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu` | ✓ 同上 |
+| `.../main/market/index.json` | ✗ 索引不是仓库地址，会报"无法连接 raw.githubusercontent.com" |
+
+```text
+github:YaoyaoDeBaba/dsh-remote-dafeiyu
+```
+
+`github:` 前缀不能省：不带前缀的 `YaoyaoDeBaba/dsh-remote-dafeiyu` 会被当成包名，
+而包名规则不允许大写字母，直接被拒。
+
+⚠️ `github:` 跟的是默认分支，每次安装都取当时的最新 main。要锁死版本就用下面这种带提交的写法。
+
+## 装法三：锁到具体提交
 
 在 profile 的 `package.json` 里把依赖换成：
 
 ```json
-"dsh-remote-dafeiyu": "git+https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu.git#2daba53fe189d536774ffa1a99746abbb5cabd30"
+"dsh-remote-dafeiyu": "git+https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu.git#6c27483c4e42cf90d9165d9284aa24bfcb8dd18c"
 ```
 
 同时要改三处，漏一处启动就会报找不到模块：
