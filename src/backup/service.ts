@@ -260,7 +260,7 @@ export class BackupService {
       // ① 归档这一批冷却会话
       let archivedCount = 0
       if (buckets.cooling.length > 0) {
-        const staged = buildArchiveTree(dirs.staging, buckets.cooling)
+        const staged = await buildArchiveTree(dirs.staging, buckets.cooling)
         if (staged.written > 0) {
           const pushed = await this.publish(dirs.archiveRepo, this.config.archiveBranch, {
             message: `archive: ${staged.written} 个冷却会话（${new Date(this.now()).toISOString()}）`,
@@ -271,7 +271,7 @@ export class BackupService {
       }
 
       // ② 热快照（force push，只留一份）
-      const manifest: Manifest = buildHotTree({
+      const manifest: Manifest = await buildHotTree({
         stagingDir: dirs.staging,
         sessionsRoot: dirs.sessionsRoot,
         storagesDir: dirs.storagesDir,
@@ -408,7 +408,7 @@ export class BackupService {
     clearExceptGit(repo)
     const source = path.join(this.layout().staging, branch === this.config.latestBranch ? 'latest' : 'archive')
     if (!existsSync(source)) return { ok: false, reason: '暂存目录是空的（这一步不该失败）', commit: '' }
-    copyTree(source, repo)
+    await copyTree(source, repo)
 
     const added = await runGitAsync(['add', '-A'], { cwd: repo, env: this.gitEnv() })
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: '' }
@@ -490,15 +490,15 @@ export class BackupService {
     try {
       const dirs = this.layout()
       const staging = dirs.staging
-      resetDir(staging)
+      await resetDir(staging)
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch)
       if (latest.code !== 0) return this.restoreDone(false, `拉取失败：${briefGitError(latest)}`)
-      copyTree(dirs.hotRepo, path.join(staging, 'latest'))
+      await copyTree(dirs.hotRepo, path.join(staging, 'latest'))
       const archiveRepoDir = dirs.archiveRepo
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch)
       let archivedSessions = 0
       if (archive.code === 0 && archive.stdout.trim() !== '') {
-        copyTree(archiveRepoDir, path.join(staging, 'archive'))
+        await copyTree(archiveRepoDir, path.join(staging, 'archive'))
         archivedSessions = countSessionFiles(path.join(staging, 'archive'))
       }
 
@@ -516,14 +516,14 @@ export class BackupService {
         }
       }
       // 再铺回去：先热（新的覆盖旧的），再归档（只补缺的）。
-      mergeTree(path.join(restoreLatest, 'sessions'), sessionsRoot)
-      mergeTree(path.join(restoreLatest, 'storages'), path.join(this.deps.dshHome, 'storages'))
+      await mergeTree(path.join(restoreLatest, 'sessions'), sessionsRoot)
+      await mergeTree(path.join(restoreLatest, 'storages'), path.join(this.deps.dshHome, 'storages'))
       if (existsSync(path.join(restoreLatest, 'attachments'))) {
-        mergeTree(path.join(restoreLatest, 'attachments'), path.join(this.deps.dshHome, 'attachments'))
+        await mergeTree(path.join(restoreLatest, 'attachments'), path.join(this.deps.dshHome, 'attachments'))
       }
-      mergeTree(path.join(staging, 'archive'), sessionsRoot)
+      await mergeTree(path.join(staging, 'archive'), sessionsRoot)
       const profiles = path.join(restoreLatest, 'profiles')
-      if (existsSync(profiles)) mergeProfiles(profiles, dirs.profilesRoot)
+      if (existsSync(profiles)) await mergeProfiles(profiles, dirs.profilesRoot)
       return this.restoreDone(
         true,
         `恢复了 ${restoredHot} 个热会话 + ${archivedSessions} 个归档会话，重启飞鱼后生效（旧目录已改名为 *-${this.config.restoreBackupSuffix}-${stamp}）`,
@@ -571,25 +571,25 @@ function clearExceptGit(repo: string): void {
 }
 
 /** 把 `source` 摊进 `target`（**不覆盖**已存在的文件：归档只补缺）。 */
-function mergeTree(source: string, target: string): void {
+async function mergeTree(source: string, target: string): Promise<void> {
   if (!existsSync(source)) return
   for (const entry of readdirSync(source, { withFileTypes: true })) {
     const from = path.join(source, entry.name)
     const to = path.join(target, entry.name)
     if (entry.isDirectory()) {
       mkdirSync(to, { recursive: true })
-      mergeTree(from, to)
+      await mergeTree(from, to)
       continue
     }
     if (!entry.isFile()) continue
     if (existsSync(to)) continue
     mkdirSync(target, { recursive: true })
-    copyFileFresh(from, to)
+    await copyFileFresh(from, to)
   }
 }
 
 /** profile 配置覆盖回去（它是"配置"，不是"记忆"，该覆盖）。 */
-function mergeProfiles(source: string, profilesRoot: string): void {
+async function mergeProfiles(source: string, profilesRoot: string): Promise<void> {
   if (!existsSync(profilesRoot)) return
   for (const entry of readdirSync(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
@@ -598,7 +598,7 @@ function mergeProfiles(source: string, profilesRoot: string): void {
     if (!existsSync(to)) continue
     for (const file of readdirSync(from, { withFileTypes: true })) {
       if (!file.isFile()) continue
-      copyFileFresh(path.join(from, file.name), path.join(to, file.name))
+      await copyFileFresh(path.join(from, file.name), path.join(to, file.name))
     }
   }
 }

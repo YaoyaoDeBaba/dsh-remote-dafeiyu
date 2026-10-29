@@ -24,7 +24,8 @@
  * 这三样进仓库等于把凭据交给 Git 托管平台。
  */
 import { createHash } from 'node:crypto'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import path from 'node:path'
 
@@ -187,24 +188,30 @@ export interface BuildHotInput {
 }
 
 /** 把热会话 + storages + profile 配置铺进 staging 目录，返回清单。 */
-export function buildHotTree(input: BuildHotInput): Manifest {
+/**
+ * 把热会话 + storages + profile 配置铺进 staging 目录，返回清单。
+ *
+ * 铺树这件事**必须异步**：67 MB / 23 个会话在真机上要铺一两秒，同步的 `copyFileSync`
+ * 会把宿主的事件循环整段钉住（实测设置页一次 1.8 秒没响应）。判据见 tests/backup.test.ts
+ * 里"事件循环不许被铺树卡住"那条。
+ */
+export async function buildHotTree(input: BuildHotInput): Promise<Manifest> {
   const staging = path.join(input.stagingDir, 'latest')
-  resetDir(staging)
+  await resetDir(staging)
 
   const sessionList: Manifest['sessions'] = []
   for (const entry of input.hot) {
     const target = path.join(staging, 'sessions', entry.relPath)
-    mkdirSync(path.dirname(target), { recursive: true })
-    copyFileFresh(entry.file, target)
+    await copyFileFresh(entry.file, target)
     sessionList.push({
       key: sessionKey(entry),
       size: entry.size,
       mtime: new Date(entry.mtimeMs).toISOString(),
-      sha256: sha256Of(entry.file),
+      sha256: await sha256Of(entry.file),
     })
   }
 
-  const storages = copyFlat(input.storagesDir, path.join(staging, 'storages'))
+  const storages = await copyFlat(input.storagesDir, path.join(staging, 'storages'))
 
   const profiles: string[] = []
   if (input.profileDir !== '') {
@@ -212,15 +219,14 @@ export function buildHotTree(input: BuildHotInput): Manifest {
     for (const name of ['package.json', 'cordis.patch.yml', 'cordis.yml', 'pnpm-workspace.yaml']) {
       const source = path.join(input.profileDir, name)
       if (!existsSync(source)) continue
-      mkdirSync(target, { recursive: true })
-      copyFileFresh(source, path.join(target, name))
+      await copyFileFresh(source, path.join(target, name))
       profiles.push(name)
     }
   }
 
   let attachments: Manifest['attachments'] = null
   if (input.includeAttachments) {
-    const counted = copyTree(input.attachmentsDir, path.join(staging, 'attachments'))
+    const counted = await copyTree(input.attachmentsDir, path.join(staging, 'attachments'))
     if (counted.count > 0) attachments = counted
   }
 
@@ -237,7 +243,7 @@ export function buildHotTree(input: BuildHotInput): Manifest {
     profiles,
     attachments,
   }
-  writeFileSync(path.join(staging, 'MANIFEST.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+  await writeFile(path.join(staging, 'MANIFEST.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
   return manifest
 }
 
@@ -249,7 +255,7 @@ export interface ArchiveResult {
 }
 
 /** 把冷却会话铺到 `archive/<slug>/<dirName>/<fileName>`（只增不改，已存在就跳过）。 */
-export function buildArchiveTree(stagingDir: string, cooling: SessionEntry[]): ArchiveResult {
+export async function buildArchiveTree(stagingDir: string, cooling: SessionEntry[]): Promise<ArchiveResult> {
   const root = path.join(stagingDir, 'archive')
   let written = 0
   let bytes = 0
@@ -257,8 +263,7 @@ export function buildArchiveTree(stagingDir: string, cooling: SessionEntry[]): A
   for (const entry of cooling) {
     const target = path.join(root, entry.relPath)
     if (existsSync(target)) continue
-    mkdirSync(path.dirname(target), { recursive: true })
-    copyFileFresh(entry.file, target)
+    await copyFileFresh(entry.file, target)
     written += 1
     bytes += entry.size
     keys.push(sessionKey(entry))
@@ -267,23 +272,68 @@ export function buildArchiveTree(stagingDir: string, cooling: SessionEntry[]): A
 }
 
 /** 清空并重建一个目录（暂存目录专用：里面只有我们自己铺的东西）。 */
-export function resetDir(dir: string): void {
-  rmrf(dir)
-  mkdirSync(dir, { recursive: true })
+export async function resetDir(dir: string): Promise<void> {
+  await removeDir(dir)
+  await mkdir(dir, { recursive: true })
 }
 
-function rmrf(dir: string): void {
+/**
+ * 删目录，**三级台阶**（每一级都是真机逼出来的）：
+ *
+ * 1. 直接 `rm -rf`：绝大多数情况这一级就完事；
+ * 2. 先递归摘只读位再删：`fs.rm` 在 Windows 上遇到只读文件会 EPERM（Node 的已知行为，
+ *    不是权限不足 —— `Remove-Item -Force` 删得掉，`fs.rm` 删不掉）。只读文件是
+ *    `copyFileSync` 把源文件属性一起抄走的产物；
+ * 3. 改名挪开：同盘 `rename` 不会因为只读位失败。挪开之后这一轮照常跑，
+ *    顺手把历史遗留的 `.stale-*` 再清一遍（清不掉就留到下一轮，不阻塞备份）。
+ */
+async function removeDir(dir: string): Promise<void> {
   if (!existsSync(dir)) return
+  const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 } as const
   try {
-    // `maxRetries` 是给杀毒软件/索引器放手用的：Windows 上它偶尔会短暂占住文件。
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 })
+    await rm(dir, options)
+    return
+  } catch {
+    /* 下一级 */
+  }
+  try {
+    await stripReadOnly(dir)
+    await rm(dir, options)
+    return
+  } catch {
+    /* 下一级 */
+  }
+  const aside = `${dir}.stale-${Date.now()}`
+  // 这一级再失败就是真的删不动（被别的进程占着），让调用方看到清楚的原因。
+  try {
+    await rename(dir, aside)
   } catch (error) {
-    // ⚠️ **不许**吞掉：真机上这里吞过一次，症状是"第一轮备份成功，之后每轮都 EPERM"——
-    // 因为上一轮留下的只读文件还在，`copyFileSync` 往上覆盖就 EPERM，而错误信息指向
-    // 完全无关的源文件。宁可这一轮失败并说清"临时目录删不掉"，也不要带着脏目录往下走。
-    throw new Error(
-      `临时目录删不掉（${dir}）：${String((error as Error)?.message ?? error).slice(0, 120)}`,
-    )
+    throw new Error(`临时目录删不掉（${dir}）：${String((error as Error)?.message ?? error).slice(0, 120)}`)
+  }
+  try {
+    await rm(aside, options)
+  } catch {
+    /* 留给下一轮 */
+  }
+}
+
+/** 递归摘掉只读位（顺带把目录也置成可写）。 */
+async function stripReadOnly(dir: string): Promise<void> {
+  let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      await stripReadOnly(full)
+      await chmod(full, 0o755).catch(() => undefined)
+      continue
+    }
+    if (!entry.isFile()) continue
+    await chmod(full, 0o644).catch(() => undefined)
   }
 }
 
@@ -295,32 +345,23 @@ function rmrf(dir: string): void {
  *    ⇒ 下一轮清临时目录删不掉它 ⇒ 再下一轮覆盖它 EPERM。所以抄完要把只读位摘掉。
  * 2. 目标已存在且只读时，`copyFileSync` 直接 EPERM ⇒ 先删再抄（删之前先摘只读）。
  */
-export function copyFileFresh(source: string, target: string): void {
-  mkdirSync(path.dirname(target), { recursive: true })
+export async function copyFileFresh(source: string, target: string): Promise<void> {
+  await mkdir(path.dirname(target), { recursive: true })
   if (existsSync(target)) {
-    try {
-      chmodSync(target, 0o644)
-    } catch {
-      /* 摘不掉就让下面的删除/覆盖自己报错 */
-    }
-    rmSync(target, { force: true })
+    await chmod(target, 0o644).catch(() => undefined)
+    await rm(target, { force: true }).catch(() => undefined)
   }
-  copyFileSync(source, target)
-  try {
-    // 摘掉抄过来的只读位：下一轮这一份要能被删掉/覆盖。
-    chmodSync(target, 0o644)
-  } catch {
-    /* POSIX 上无副作用；Windows 上失败也不影响本轮 */
-  }
+  await copyFile(source, target)
+  // 摘掉抄过来的只读位：下一轮这一份要能被删掉/覆盖。
+  await chmod(target, 0o644).catch(() => undefined)
 }
 
-function copyFlat(sourceDir: string, targetDir: string): string[] {
+async function copyFlat(sourceDir: string, targetDir: string): Promise<string[]> {
   if (!existsSync(sourceDir)) return []
   const names: string[] = []
   for (const name of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name)) continue
-    mkdirSync(targetDir, { recursive: true })
-    copyFileFresh(path.join(sourceDir, name), path.join(targetDir, name))
+    await copyFileFresh(path.join(sourceDir, name), path.join(targetDir, name))
     names.push(name)
   }
   return names
@@ -332,38 +373,37 @@ export interface CopyCount {
 }
 
 /** 递归拷贝目录（附件用）。不跟随符号链接，避免把别处的东西拖进来。 */
-export function copyTree(sourceDir: string, targetDir: string): CopyCount {
+export async function copyTree(sourceDir: string, targetDir: string): Promise<CopyCount> {
   const total: CopyCount = { count: 0, bytes: 0 }
   if (!existsSync(sourceDir)) return total
-  walk(sourceDir, targetDir, total)
+  await walk(sourceDir, targetDir, total)
   return total
 }
 
-function walk(sourceDir: string, targetDir: string, total: CopyCount): void {
-  for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+async function walk(sourceDir: string, targetDir: string, total: CopyCount): Promise<void> {
+  for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
     const source = path.join(sourceDir, entry.name)
     const target = path.join(targetDir, entry.name)
     if (entry.isDirectory()) {
-      walk(source, target, total)
+      await walk(source, target, total)
       continue
     }
     if (!entry.isFile()) continue
     let size = 0
     try {
-      size = statSync(source).size
+      size = (await stat(source)).size
     } catch {
       continue
     }
-    mkdirSync(targetDir, { recursive: true })
-    copyFileFresh(source, target)
+    await copyFileFresh(source, target)
     total.count += 1
     total.bytes += size
   }
 }
 
-function sha256Of(file: string): string {
+async function sha256Of(file: string): Promise<string> {
   try {
-    return createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)
+    return createHash('sha256').update(await readFile(file)).digest('hex').slice(0, 16)
   } catch {
     return ''
   }

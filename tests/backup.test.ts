@@ -30,6 +30,7 @@ import {
   buildArchiveTree,
   buildHotTree,
   classify,
+  resetDir,
   scanSessions,
   type SessionEntry,
 } from '../src/backup/pack.js'
@@ -183,7 +184,7 @@ test('归档清单：`git ls-tree` 的输出按 `<slug>/<session-dir>` 收敛成
   assert.deepEqual([...keys].sort(), ['a/session-1', 'a/session-2', 'b/session-3'])
 })
 
-test('铺热树：会话 + storages + profile 配置都进 latest，并写一份 MANIFEST', () => {
+test('铺热树：会话 + storages + profile 配置都进 latest，并写一份 MANIFEST', async () => {
   const home = tempDir('dsh-backup-tree-')
   try {
     const root = path.join(home, 'sessions')
@@ -197,7 +198,7 @@ test('铺热树：会话 + storages + profile 配置都进 latest，并写一份
     writeFileSync(path.join(profile, 'node_modules_marker'), 'x')
     const staging = path.join(home, 'staging')
 
-    const manifest = buildHotTree({
+    const manifest = await buildHotTree({
       stagingDir: staging,
       sessionsRoot: root,
       storagesDir: path.join(home, 'storages'),
@@ -224,7 +225,7 @@ test('铺热树：会话 + storages + profile 配置都进 latest，并写一份
   }
 })
 
-test('铺热树：源文件是只读的也能连铺三轮（真机回归：第二轮 EPERM，且错误信息指向源文件）', () => {
+test('铺热树：源文件是只读的也能连铺三轮（真机回归：第二轮 EPERM，且错误信息指向源文件）', async () => {
   const home = tempDir('dsh-backup-readonly-')
   try {
     const root = path.join(home, 'sessions')
@@ -232,34 +233,53 @@ test('铺热树：源文件是只读的也能连铺三轮（真机回归：第�
     // DSH 自己的附件对象就是只读的；`copyFileSync` 会把只读位一起抄到目标上。
     chmodSync(entry.file, 0o444)
     const staging = path.join(home, 'staging')
-    const build = (): number =>
-      buildHotTree({
-        stagingDir: staging,
-        sessionsRoot: root,
-        storagesDir: path.join(home, 'storages'),
-        profileDir: '',
-        attachmentsDir: path.join(home, 'attachments'),
-        includeAttachments: false,
-        hot: [entry],
-        nowMs: Date.UTC(2026, 9, 28),
-      }).hotCount
-    assert.equal(build(), 1, '第一轮')
-    assert.equal(build(), 1, '第二轮：上一轮留下的只读目标不许挡住覆盖')
-    assert.equal(build(), 1, '第三轮')
+    const build = async (): Promise<number> =>
+      (
+        await buildHotTree({
+          stagingDir: staging,
+          sessionsRoot: root,
+          storagesDir: path.join(home, 'storages'),
+          profileDir: '',
+          attachmentsDir: path.join(home, 'attachments'),
+          includeAttachments: false,
+          hot: [entry],
+          nowMs: Date.UTC(2026, 9, 28),
+        })
+      ).hotCount
+    assert.equal(await build(), 1, '第一轮')
+    assert.equal(await build(), 1, '第二轮：上一轮留下的只读目标不许挡住覆盖')
+    assert.equal(await build(), 1, '第三轮')
   } finally {
     cleanup(home)
   }
 })
 
-test('铺归档树：同名文件不覆盖（只增不改），第二轮铺同一批是 0 个', () => {
+test('清临时目录：里面躺着只读文件也要能清掉（真机 2026-10-29 现场：fs.rm 报 EPERM）', async () => {
+  const home = tempDir('dsh-backup-reset-')
+  try {
+    const dir = path.join(home, 'staging', 'latest', 'attachments', 'v1', 'objects')
+    mkdirSync(dir, { recursive: true })
+    const file = path.join(dir, 'blob')
+    writeFileSync(file, 'read-only payload')
+    chmodSync(file, 0o444)
+    await resetDir(path.join(home, 'staging', 'latest'))
+    assert.equal(existsSync(path.join(home, 'staging', 'latest', 'attachments')), false, '只读文件必须被清掉')
+    // 清完目录还在（resetDir 的语义是"清空并重建"）
+    assert.equal(existsSync(path.join(home, 'staging', 'latest')), true)
+  } finally {
+    cleanup(home)
+  }
+})
+
+test('铺归档树：同名文件不覆盖（只增不改），第二轮铺同一批是 0 个', async () => {
   const home = tempDir('dsh-backup-arc-')
   try {
     const root = path.join(home, 'sessions')
     const entry = makeSession(root, 'ws-a', '1', 'v1')
     const staging = path.join(home, 'staging')
-    const first = buildArchiveTree(staging, [entry])
+    const first = await buildArchiveTree(staging, [entry])
     assert.equal(first.written, 1)
-    const second = buildArchiveTree(staging, [entry])
+    const second = await buildArchiveTree(staging, [entry])
     assert.equal(second.written, 0, '已经归档过的会话不许再铺一遍（否则每轮都多推几十 MB）')
     const body = readFileSync(path.join(staging, 'archive', entry.relPath), 'utf8')
     assert.equal(body, 'v1', '归档里那份内容不许被后来的覆盖')

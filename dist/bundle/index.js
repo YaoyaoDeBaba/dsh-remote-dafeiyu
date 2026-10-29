@@ -27625,7 +27625,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.2" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.3" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -28852,12 +28852,12 @@ var HostRuntime = class {
         // 三条都走"端口可选 + 缺了明说"的老规矩：拒绝执行也绝不回 ok:true，
         // 否则手机上会显示一个根本没发生的结果（改好的名字、切好的模型）。
         case "cmd.rename_session": {
-          const rename = this.kernel.renameSession;
-          if (!rename) {
+          const rename2 = this.kernel.renameSession;
+          if (!rename2) {
             reply(false, { message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u6539\u4F1A\u8BDD\u540D\uFF08\u5185\u6838\u7AEF\u53E3\u6CA1\u6709 renameSession \u80FD\u529B\uFF09" });
             return;
           }
-          const outcome = await rename.call(this.kernel, cmd.sessionId, cmd.title);
+          const outcome = await rename2.call(this.kernel, cmd.sessionId, cmd.title);
           if (!outcome.ok) {
             reply(false, { message: outcome.message ?? "\u6539\u4F1A\u8BDD\u540D\u5931\u8D25" });
             return;
@@ -31945,15 +31945,15 @@ function createServicesKernel(services, options) {
   }
   async function renameSession(sessionId, title) {
     const commands = services.sessionController?.commands;
-    const rename = fn(commands, "rename");
-    if (!rename) {
+    const rename2 = fn(commands, "rename");
+    if (!rename2) {
       return {
         ok: false,
         message: `\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u6539\u4F1A\u8BDD\u540D\uFF08sessionController.commands \u6CA1\u6709 rename\uFF0C\u6210\u5458\uFF1A${shapeOf(commands)}\uFF09`
       };
     }
     try {
-      const out = await rename.call(commands, { sessionId, title });
+      const out = await rename2.call(commands, { sessionId, title });
       const applied = typeof out?.title === "string" && out.title !== "" ? out.title : title;
       return { ok: true, title: applied };
     } catch (error62) {
@@ -34481,7 +34481,8 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { chmodSync as chmodSync2, copyFileSync, existsSync as existsSync2, mkdirSync as mkdirSync5, readdirSync, readFileSync as readFileSync5, rmSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync2, readdirSync, readFileSync as readFileSync5, statSync as statSync2 } from "node:fs";
+import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
 import path10 from "node:path";
 function scanSessions(sessionsRoot) {
@@ -34493,9 +34494,9 @@ function scanSessions(sessionsRoot) {
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
         const file2 = path10.join(sessionDir, fileName);
-        let stat;
+        let stat2;
         try {
-          stat = statSync2(file2);
+          stat2 = statSync2(file2);
         } catch {
           continue;
         }
@@ -34505,8 +34506,8 @@ function scanSessions(sessionsRoot) {
           fileName,
           file: file2,
           relPath: path10.posix.join(slug, dirName, fileName),
-          mtimeMs: stat.mtimeMs,
-          size: stat.size
+          mtimeMs: stat2.mtimeMs,
+          size: stat2.size
         });
       }
     }
@@ -34552,36 +34553,34 @@ function classify(input2) {
   }
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
-function buildHotTree(input2) {
+async function buildHotTree(input2) {
   const staging = path10.join(input2.stagingDir, "latest");
-  resetDir(staging);
+  await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
     const target = path10.join(staging, "sessions", entry.relPath);
-    mkdirSync5(path10.dirname(target), { recursive: true });
-    copyFileFresh(entry.file, target);
+    await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
       size: entry.size,
       mtime: new Date(entry.mtimeMs).toISOString(),
-      sha256: sha256Of(entry.file)
+      sha256: await sha256Of(entry.file)
     });
   }
-  const storages = copyFlat(input2.storagesDir, path10.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path10.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
     const target = path10.join(staging, "profiles", path10.basename(input2.profileDir));
     for (const name of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
       const source = path10.join(input2.profileDir, name);
       if (!existsSync2(source)) continue;
-      mkdirSync5(target, { recursive: true });
-      copyFileFresh(source, path10.join(target, name));
+      await copyFileFresh(source, path10.join(target, name));
       profiles.push(name);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = copyTree(input2.attachmentsDir, path10.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path10.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -34597,11 +34596,11 @@ function buildHotTree(input2) {
     profiles,
     attachments
   };
-  writeFileSync2(path10.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path10.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
-function buildArchiveTree(stagingDir, cooling) {
+async function buildArchiveTree(stagingDir, cooling) {
   const root = path10.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
@@ -34609,84 +34608,108 @@ function buildArchiveTree(stagingDir, cooling) {
   for (const entry of cooling) {
     const target = path10.join(root, entry.relPath);
     if (existsSync2(target)) continue;
-    mkdirSync5(path10.dirname(target), { recursive: true });
-    copyFileFresh(entry.file, target);
+    await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
     keys.push(sessionKey(entry));
   }
   return { written, bytes, keys };
 }
-function resetDir(dir) {
-  rmrf(dir);
-  mkdirSync5(dir, { recursive: true });
+async function resetDir(dir) {
+  await removeDir(dir);
+  await mkdir(dir, { recursive: true });
 }
-function rmrf(dir) {
+async function removeDir(dir) {
   if (!existsSync2(dir)) return;
+  const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 120 });
+    await rm(dir, options);
+    return;
+  } catch {
+  }
+  try {
+    await stripReadOnly(dir);
+    await rm(dir, options);
+    return;
+  } catch {
+  }
+  const aside = `${dir}.stale-${Date.now()}`;
+  try {
+    await rename(dir, aside);
   } catch (error62) {
-    throw new Error(
-      `\u4E34\u65F6\u76EE\u5F55\u5220\u4E0D\u6389\uFF08${dir}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`
-    );
+    throw new Error(`\u4E34\u65F6\u76EE\u5F55\u5220\u4E0D\u6389\uFF08${dir}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`);
   }
-}
-function copyFileFresh(source, target) {
-  mkdirSync5(path10.dirname(target), { recursive: true });
-  if (existsSync2(target)) {
-    try {
-      chmodSync2(target, 420);
-    } catch {
-    }
-    rmSync(target, { force: true });
-  }
-  copyFileSync(source, target);
   try {
-    chmodSync2(target, 420);
+    await rm(aside, options);
   } catch {
   }
 }
-function copyFlat(sourceDir, targetDir) {
+async function stripReadOnly(dir) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = path10.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await stripReadOnly(full);
+      await chmod(full, 493).catch(() => void 0);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    await chmod(full, 420).catch(() => void 0);
+  }
+}
+async function copyFileFresh(source, target) {
+  await mkdir(path10.dirname(target), { recursive: true });
+  if (existsSync2(target)) {
+    await chmod(target, 420).catch(() => void 0);
+    await rm(target, { force: true }).catch(() => void 0);
+  }
+  await copyFile(source, target);
+  await chmod(target, 420).catch(() => void 0);
+}
+async function copyFlat(sourceDir, targetDir) {
   if (!existsSync2(sourceDir)) return [];
   const names = [];
   for (const name of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name)) continue;
-    mkdirSync5(targetDir, { recursive: true });
-    copyFileFresh(path10.join(sourceDir, name), path10.join(targetDir, name));
+    await copyFileFresh(path10.join(sourceDir, name), path10.join(targetDir, name));
     names.push(name);
   }
   return names;
 }
-function copyTree(sourceDir, targetDir) {
+async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
   if (!existsSync2(sourceDir)) return total;
-  walk(sourceDir, targetDir, total);
+  await walk(sourceDir, targetDir, total);
   return total;
 }
-function walk(sourceDir, targetDir, total) {
-  for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+async function walk(sourceDir, targetDir, total) {
+  for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
     const source = path10.join(sourceDir, entry.name);
     const target = path10.join(targetDir, entry.name);
     if (entry.isDirectory()) {
-      walk(source, target, total);
+      await walk(source, target, total);
       continue;
     }
     if (!entry.isFile()) continue;
     let size = 0;
     try {
-      size = statSync2(source).size;
+      size = (await stat(source)).size;
     } catch {
       continue;
     }
-    mkdirSync5(targetDir, { recursive: true });
-    copyFileFresh(source, target);
+    await copyFileFresh(source, target);
     total.count += 1;
     total.bytes += size;
   }
 }
-function sha256Of(file2) {
+async function sha256Of(file2) {
   try {
-    return createHash5("sha256").update(readFileSync5(file2)).digest("hex").slice(0, 16);
+    return createHash5("sha256").update(await readFile(file2)).digest("hex").slice(0, 16);
   } catch {
     return "";
   }
@@ -34880,7 +34903,7 @@ var BackupService = class {
       });
       let archivedCount = 0;
       if (buckets.cooling.length > 0) {
-        const staged = buildArchiveTree(dirs.staging, buckets.cooling);
+        const staged = await buildArchiveTree(dirs.staging, buckets.cooling);
         if (staged.written > 0) {
           const pushed2 = await this.publish(dirs.archiveRepo, this.config.archiveBranch, {
             message: `archive: ${staged.written} \u4E2A\u51B7\u5374\u4F1A\u8BDD\uFF08${new Date(this.now()).toISOString()}\uFF09`
@@ -34889,7 +34912,7 @@ var BackupService = class {
           archivedCount = staged.written;
         }
       }
-      const manifest = buildHotTree({
+      const manifest = await buildHotTree({
         stagingDir: dirs.staging,
         sessionsRoot: dirs.sessionsRoot,
         storagesDir: dirs.storagesDir,
@@ -35006,7 +35029,7 @@ var BackupService = class {
     clearExceptGit(repo);
     const source = path11.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
-    copyTree(source, repo);
+    await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
     const status = await runGitAsync(["status", "--porcelain"], { cwd: repo, env: this.gitEnv() });
@@ -35075,15 +35098,15 @@ var BackupService = class {
     try {
       const dirs = this.layout();
       const staging = dirs.staging;
-      resetDir(staging);
+      await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      copyTree(dirs.hotRepo, path11.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path11.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        copyTree(archiveRepoDir, path11.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path11.join(staging, "archive"));
         archivedSessions = countSessionFiles(path11.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
@@ -35096,14 +35119,14 @@ var BackupService = class {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      mergeTree(path11.join(restoreLatest, "sessions"), sessionsRoot);
-      mergeTree(path11.join(restoreLatest, "storages"), path11.join(this.deps.dshHome, "storages"));
+      await mergeTree(path11.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path11.join(restoreLatest, "storages"), path11.join(this.deps.dshHome, "storages"));
       if (existsSync3(path11.join(restoreLatest, "attachments"))) {
-        mergeTree(path11.join(restoreLatest, "attachments"), path11.join(this.deps.dshHome, "attachments"));
+        await mergeTree(path11.join(restoreLatest, "attachments"), path11.join(this.deps.dshHome, "attachments"));
       }
-      mergeTree(path11.join(staging, "archive"), sessionsRoot);
+      await mergeTree(path11.join(staging, "archive"), sessionsRoot);
       const profiles = path11.join(restoreLatest, "profiles");
-      if (existsSync3(profiles)) mergeProfiles(profiles, dirs.profilesRoot);
+      if (existsSync3(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -35143,23 +35166,23 @@ function clearExceptGit(repo) {
     rmSync2(target, { recursive: true, force: true });
   }
 }
-function mergeTree(source, target) {
+async function mergeTree(source, target) {
   if (!existsSync3(source)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     const from = path11.join(source, entry.name);
     const to = path11.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync6(to, { recursive: true });
-      mergeTree(from, to);
+      await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
     if (existsSync3(to)) continue;
     mkdirSync6(target, { recursive: true });
-    copyFileFresh(from, to);
+    await copyFileFresh(from, to);
   }
 }
-function mergeProfiles(source, profilesRoot) {
+async function mergeProfiles(source, profilesRoot) {
   if (!existsSync3(profilesRoot)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -35168,7 +35191,7 @@ function mergeProfiles(source, profilesRoot) {
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      copyFileFresh(path11.join(from, file2.name), path11.join(to, file2.name));
+      await copyFileFresh(path11.join(from, file2.name), path11.join(to, file2.name));
     }
   }
 }
