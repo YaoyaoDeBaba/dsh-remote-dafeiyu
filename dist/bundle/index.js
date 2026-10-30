@@ -27185,9 +27185,6 @@ function sessionChanged(sessions, reason) {
 function messageDelta(args) {
   return { t: PAYLOAD_TYPES.evMessageDelta, ...args };
 }
-function toolEvent(args) {
-  return { t: PAYLOAD_TYPES.evToolEvent, ...args };
-}
 function permissionRequest(args) {
   return { t: PAYLOAD_TYPES.evPermissionRequest, ...args };
 }
@@ -27625,7 +27622,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.3" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.4" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -27841,7 +27838,6 @@ function createKernelEventHandler(deps) {
       }
       case "tool":
         deps.window.flushSession(event.sessionId);
-        deps.broadcast(toolEvent(event), RUN_OUTPUT);
         deps.noteStep();
         deps.sleep.markActive();
         return;
@@ -27894,16 +27890,6 @@ function historyWireItem(event) {
   }
   if (event.kind === "todo") {
     return todoList({ todos: event.todos });
-  }
-  if (event.kind === "tool") {
-    return toolEvent({
-      callId: event.callId,
-      phase: event.phase,
-      ...event.tool === void 0 ? {} : { tool: event.tool },
-      ...event.title === void 0 ? {} : { title: event.title },
-      ...event.argsPreview === void 0 ? {} : { argsPreview: event.argsPreview },
-      ...event.resultPreview === void 0 ? {} : { resultPreview: event.resultPreview }
-    });
   }
   return void 0;
 }

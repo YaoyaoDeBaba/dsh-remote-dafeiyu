@@ -1502,6 +1502,12 @@ const INTENTIONAL_DROPS = new Map<string, string>([
       '这条内核事件只是审计面（asked 带 toolName）。见 carrier-services.ts 的对应注释。',
   ],
   ['approval/decided', '同上：decided 的 outcome 是"谁答的"的证据，进 status.json 就够了，卡片已由 waterfall 发出。'],
+  [
+    'tool/call',
+    '2026-10-30 用户裁决：工具调用细节不上手机（手机端能存的消息条数有限，工具行最贵、最没用）。' +
+      '现在只数步数（状态摘要里的 steps），不发 tool_event 帧。',
+  ],
+  ['tool/result', '同上：结果预览也不上手机，与 tool/call 同一条裁决。'],
 ])
 
 test('穷举自检：MAPPED_SESSION_EVENTS 产出的每一种 kind 都必须有出站面', async () => {
@@ -1572,17 +1578,22 @@ test('穷举自检：MAPPED_SESSION_EVENTS 产出的每一种 kind 都必须有�
 test('P1-3 后半步的调用点选择：内核事件带 RUN_OUTPUT、周期推送不带（噪声闸不许漂）', async () => {
   // 噪声回归（把 RUN_OUTPUT 挂到周期推上）不会自己变红——它只体现在运维的
   // droppedFrames 读数上。这条把"哪一类帧走哪条路"钉成判据：
-  //   · 内核事件管道（delta/inbox/tool/run-state/todo/retry/compaction）⇒ includeNoClient
+  //   · 内核事件管道（delta/inbox/run-state/todo/retry/compaction）⇒ includeNoClient
   //   · 状态面（session_changed/model/keep_awake_state/host_info）⇒ 不带
+  //   · 工具事件 ⇒ **不出帧**（2026-10-30 裁决，见下面那条断言）
   const { runtime, kernel, transport } = fixture()
   runtime.start()
   await settle()
   transport.pairOffline('c_live')
 
+  kernel.feed({ kind: 'delta', sessionId: 'ses_live', messageId: 'msg_noise', text: '正文', done: true })
+  const contentCall = transport.broadcastCalls.find((c) => c.t === PAYLOAD_TYPES.evMessageDelta)
+  assert.ok(contentCall, '正文没走 broadcast：run 输出的唯一出口断了')
+  assert.equal(contentCall.includeNoClient, true, '内核事件必须带 RUN_OUTPUT：断线期不上线 = 内容跳变（P1-3 的洞）')
+
   kernel.feed({ kind: 'tool', sessionId: 'ses_live', callId: 'call_1', phase: 'completed', tool: 'bash', title: 'x' })
-  const toolCall = transport.broadcastCalls.find((c) => c.t === PAYLOAD_TYPES.evToolEvent)
-  assert.ok(toolCall, '工具事件没走 broadcast：run 输出的唯一出口断了')
-  assert.equal(toolCall.includeNoClient, true, '内核事件必须带 RUN_OUTPUT：断线期不上线 = 内容跳变（P1-3 的洞）')
+  const toolFrame = transport.broadcastCalls.find((c) => c.t === PAYLOAD_TYPES.evToolEvent)
+  assert.equal(toolFrame, undefined, '工具事件不许再上手机：手机端消息容量有限，只留有效消息（2026-10-30 裁决）')
 
   kernel.feed({ kind: 'sessions-changed', reason: 'x' })
   await settle()
@@ -1720,7 +1731,7 @@ test('一条带正文的 done 必须把正文带上（内核没有 token 级增�
   assert.equal(only.role, 'assistant')
 })
 
-test('非 delta 事件之前先 flush 同会话缓冲：出站类型序列必须严格是 message_delta → tool_event → message_delta（F9）', async () => {
+test('非 delta 事件之前先 flush 同会话缓冲：出站类型序列必须是 message_delta → message_delta（工具行已不上手机）', async () => {
   const { runtime, kernel, transport, clock } = fixture()
   runtime.start()
   await settle()
@@ -1737,8 +1748,9 @@ test('非 delta 事件之前先 flush 同会话缓冲：出站类型序列必须
   const types = transport.broadcasts.map((payload) => payload.t)
   assert.deepEqual(
     types,
-    [PAYLOAD_TYPES.evMessageDelta, PAYLOAD_TYPES.evToolEvent, PAYLOAD_TYPES.evMessageDelta],
-    `出站顺序是 ${JSON.stringify(types)}：工具行插到了它自己的文本前面 → 手机先看到工具调用、后看到调用前的说明`,
+    [PAYLOAD_TYPES.evMessageDelta, PAYLOAD_TYPES.evMessageDelta],
+    `出站序列是 ${JSON.stringify(types)}：工具事件不许再切成帧（它已经把文本缓冲 flush 开了，` +
+      '两段正文仍要按到达顺序各发一段）',
   )
   const texts = transport
     .ofType(PAYLOAD_TYPES.evMessageDelta)
@@ -2033,8 +2045,8 @@ test('cmd.session_history：条目走与实时流同一批出站构造器，游�
   assert.deepEqual(asked, [{ sessionId: 'ses_live', beforeSeq: 42, limit: 3 }], '游标与条数必须逐字传给内核端口')
   assert.deepEqual(
     page.items.map((item) => item.t),
-    ['ev.message_delta', 'ev.tool_event', 'ev.message_delta'],
-    '条目顺序必须保持（升序），否则手机上整段历史是倒着讲的',
+    ['ev.message_delta', 'ev.message_delta'],
+    '条目顺序必须保持（升序），且工具行不进历史（2026-10-30 裁决：手机端只留有效消息）',
   )
   assert.equal(page.nextBeforeSeq, 9, '有更早的一页就必须把游标带回去，否则「加载更早」永远点不动')
   // 运行态不许混进历史：回放历史不该去改顶栏。类型上本来就写不出来（条目只允许三种叶子载荷），

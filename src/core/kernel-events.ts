@@ -15,7 +15,6 @@ import {
   retryNotice,
   runState,
   todoList,
-  toolEvent,
 } from '@dsh-remote/protocol/outbound'
 
 /** `run` 输出的广播选项（内容与运行态帧，断线期由中继环形缓冲接住）。 */
@@ -70,10 +69,14 @@ export function createKernelEventHandler(deps: KernelEventsDeps): (event: Kernel
         return
       }
       case 'tool':
-        // 非 delta 事件之前必须先 flush 同会话缓冲，否则工具行会插进它自己的文本里。
+        // ⚠️ 2026-10-30 用户裁决：**工具调用的细节不上手机**。
+        //
+        // 手机端能留的消息条数有限，而工具行（参数预览 / 结果预览）是里面最贵、最没用的
+        // 那一类：用户在手机上要的是"我说了什么、它答了什么"，不是"它跑了第几个 shell"。
+        // 所以这里只剩两件事：
+        //   · flushSession：工具调用之前的正文要先切成一段发出去，顺序不许乱；
+        //   · noteStep：进度面照旧数步数（手机看得到"跑到第几步"，看不到跑的是什么）。
         deps.window.flushSession(event.sessionId)
-        deps.broadcast(toolEvent(event), RUN_OUTPUT)
-        // 工具步数是状态摘要的进度面（M2）：只计数，不记 tool 名/参数 —— 那些是内容。
         deps.noteStep()
         deps.sleep.markActive()
         return
@@ -173,15 +176,7 @@ export function historyWireItem(event: KernelEvent): HistoryItem | undefined {
   if (event.kind === 'todo') {
     return todoList({ todos: event.todos })
   }
-  if (event.kind === 'tool') {
-    return toolEvent({
-      callId: event.callId,
-      phase: event.phase,
-      ...(event.tool === undefined ? {} : { tool: event.tool }),
-      ...(event.title === undefined ? {} : { title: event.title }),
-      ...(event.argsPreview === undefined ? {} : { argsPreview: event.argsPreview }),
-      ...(event.resultPreview === undefined ? {} : { resultPreview: event.resultPreview }),
-    })
-  }
+  // 工具行不进历史：与实时流同一条裁决（2026-10-30，工具细节不上手机）。
+  // 历史页的条数是手机上最稀缺的资源，翻旧会话时没人想滚过几十条 `bash 已完成`。
   return undefined
 }
