@@ -1,6 +1,6 @@
 {
   "name": "dsh-remote-dafeiyu",
-  "version": "0.7.0-dafeiyu.4",
+  "version": "0.7.0-dafeiyu.5",
   "description": "DSH Remote Control（大肥鱼定制）：在官方插件基础上加改名/模型切换两条能力，并在设置页提供手机 App 扫码下载。",
   "type": "module",
   "license": "MIT",
@@ -65,7 +65,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@dsh-remote/protocol": "github:YaoyaoDeBaba/dsh-remote-protocol#53d3c1e473f30532f692cfaf729e0423c40e2d5d",
+    "@dsh-remote/protocol": "github:YaoyaoDeBaba/dsh-remote-protocol#51b83e7c86eaeda2ed8e13ed7634bc8dcffdee86",
     "@types/node": "^26.6.3",
     "@types/qrcode": "^1.5.5",
     "@types/ws": "^8.5.12",

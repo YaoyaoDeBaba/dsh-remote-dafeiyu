@@ -63,6 +63,7 @@ import {
 } from '@dsh-remote/protocol/outbound'
 import type { EvHostInfo } from '@dsh-remote/protocol'
 import { imageAttachmentsSupported } from './capabilities.js'
+import { readImageChunk } from './file-image.js'
 import type { NotifyItem } from '@dsh-remote/protocol'
 import type {
   ApprovalDecision,
@@ -769,6 +770,22 @@ export class HostRuntime {
           reply(true, {
             data: { kind: 'model', sessionId: cmd.sessionId, selected: outcome.selected ?? null },
           })
+          return
+        }
+        case 'cmd.file_image': {
+          // 看图（2026-11-02 用户需求：DSH 出的静态效果图，手机上要看得见）。
+          //
+          // **一条命令只回一块**：中继单帧硬上限 1MB，整张图必然被掐断连接
+          // （诊断见 `file-image.ts` 的头注）。手机按 `data.next` 一直取到没有为止。
+          //
+          // `data.kind = 'image'` 是手机侧分流的判据（和 model / catalog / title 并列），
+          // 少了它手机只能把这一坨 base64 当普通回执丢掉。
+          const outcome = await readImageChunk(cmd.path, cmd.offset)
+          if (!outcome.ok) {
+            reply(false, { message: outcome.message })
+            return
+          }
+          reply(true, { data: { kind: 'image', ...outcome.chunk } })
           return
         }
       }

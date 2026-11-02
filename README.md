@@ -129,13 +129,27 @@ github:YaoyaoDeBaba/dsh-remote-dafeiyu
 手机端能存的消息条数有限，工具行是里面最贵、最没用的一类。手机上只剩用户消息、助手回复，
 以及待办清单、重试、压缩这类状态提示；「跑到第几步」仍然在状态摘要里看得到。
 
+### 手机上能看主机上的图（0.7.0-dafeiyu.5 起）
+
+DSH 在主机上干活时会产出静态效果图（Unity VFX 预览、截图之类），正文里通常就是一个路径。
+现在手机端会把这些路径认出来，变成一颗「🖼 xxx.png · 点我看图」的按钮：
+
+- **点了才拉**：不点不花流量（按用户要求做的选择，不做自动下载）。
+- **分块传**：中继单帧硬上限 1MB，一帧里只能装约 580KB 原图，整张图会被掐断连接（App 直接掉线）。
+  所以协议上只定义了「取一块」（`cmd.file_image`，带 `offset`），手机按 `next` 一直取到空，
+  本地拼成 Blob 再显示。一张 3MB 的预览图大约 12 块。
+- **只读、只认图片**：扩展名白名单 `png/jpg/jpeg/webp/gif/bmp`，单文件上限 20MB；
+  路径必须是不带空格的绝对路径或写在反引号/引号里（带空格也能认）。
+- 手机端要 **App 也升到最新版**（旧 App 不认识这条命令，点了只会超时）。
+
 ## 与官方插件的差异（维护者看）
 
 - `src/ports/index.ts`：内核端口新增 `renameSession` / `modelCatalog` / `selectModel`（都是可选方法，缺了会明确回失败）。
 - `src/platform/carrier-services.ts`：三条端口在真实宿主上的实现。
-- `src/core/runtime.ts`：`handleCommand` 里三条 `case`。
+- `src/core/runtime.ts`：`handleCommand` 里四条 `case`（含 `cmd.file_image`）。
+- `src/core/file-image.ts`：看图的实现体（只读分块 + 扩展名/大小闸）。
 - `src/client/settings.ts` + `src/copy/app-qr.ts`：设置页那张「手机 App」卡。
-- 协议侧在 [`dsh-remote-protocol`](https://github.com/YaoyaoDeBaba/dsh-remote-protocol)（同一份三条命令的 payload/schema 登记）。
+- 协议侧在 [`dsh-remote-protocol`](https://github.com/YaoyaoDeBaba/dsh-remote-protocol)（同一份命令的 payload/schema 登记）。
 
 ## 构建
 

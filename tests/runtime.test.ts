@@ -4212,3 +4212,52 @@ test('M2 状态摘要：工具事件累计进 steps，running 跟列表，挂起
   await settle()
   await side
 })
+
+// ── 看图：cmd.file_image 的接线（协议 → 回执 → 手机分流的判据）──────────────
+
+test('cmd.file_image：分块回执带 kind=image，错误路径给人话而不是抛异常', async () => {
+  // 这条钉的是**接线**：协议认了这条命令（协议仓有判据）、载体实现了它（file-image.test.ts 有判据），
+  // 但中间那一段 switch 如果没接上，手机看到的是"点了没反应"——最难查的那一类。
+  const { runtime, transport } = fixture()
+  runtime.start()
+  await settle()
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-cmd-img-'))
+  try {
+    const file = path.join(dir, 'fx.png')
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4, 5, 6, 7])
+    fs.writeFileSync(file, bytes)
+
+    const good = cmd(PAYLOAD_TYPES.cmdFileImage, { path: file })
+    await runtime.handleCommand(good, 'c_img_0001')
+    await settle()
+    type ResultPayload = Extract<EvPayload, { t: 'ev.result' }>
+    const results = transport.replies
+      .map((item) => item.payload)
+      .filter((p): p is ResultPayload => p.t === PAYLOAD_TYPES.evResult)
+    const ok = results.filter((p) => p.cmdId === good.cmdId).at(-1)
+    assert.ok(ok, '这条命令必须有回执：手机靠 cmdId 对上号')
+    assert.equal(ok.ok, true)
+    const data = (ok as { data?: Record<string, unknown> }).data ?? {}
+    assert.equal(data.kind, 'image', 'kind 是手机侧分流的判据，少了它手机只会把 base64 当普通回执丢掉')
+    assert.equal(data.name, 'fx.png')
+    assert.equal(data.mime, 'image/png')
+    assert.equal(data.next, undefined, '单块就该收尾')
+    assert.deepEqual(Buffer.from(String(data.data), 'base64'), bytes, '字节必须逐字回来，不能有损')
+
+    const bad = cmd(PAYLOAD_TYPES.cmdFileImage, { path: path.join(dir, 'nope.png') })
+    await runtime.handleCommand(bad, 'c_img_0001')
+    await settle()
+    // 重新从 transport.replies 取：results 是上面的一次快照，新回执不在里面
+    const badReply = transport.replies
+      .map((item) => item.payload)
+      .filter((p): p is ResultPayload => p.t === PAYLOAD_TYPES.evResult)
+      .filter((p) => p.cmdId === bad.cmdId)
+      .at(-1)
+    assert.ok(badReply)
+    assert.equal(badReply.ok, false)
+    assert.match(String((badReply as { message?: string }).message), /找不到/, '失败要说是哪个文件找不到，不是一句“失败了”')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})

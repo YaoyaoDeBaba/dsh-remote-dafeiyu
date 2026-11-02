@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@dsh-remote/protocol':
-        specifier: github:YaoyaoDeBaba/dsh-remote-protocol#53d3c1e473f30532f692cfaf729e0423c40e2d5d
-        version: https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/53d3c1e473f30532f692cfaf729e0423c40e2d5d
+        specifier: github:YaoyaoDeBaba/dsh-remote-protocol#51b83e7c86eaeda2ed8e13ed7634bc8dcffdee86
+        version: https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/51b83e7c86eaeda2ed8e13ed7634bc8dcffdee86
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.5
@@ -44,8 +44,8 @@ importers:
 
 packages:
 
-  '@dsh-remote/protocol@https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/53d3c1e473f30532f692cfaf729e0423c40e2d5d':
-    resolution: {gitHosted: true, integrity: sha512-zKb+Ah/gYEVteJ09beNFuhL2h/KnGj4EbU4lW+GbQ1GYBR4Y+1XeQ8UL9VUBQs0XbKveaQ5prCWjxoGL5/igag==, tarball: https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/53d3c1e473f30532f692cfaf729e0423c40e2d5d}
+  '@dsh-remote/protocol@https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/51b83e7c86eaeda2ed8e13ed7634bc8dcffdee86':
+    resolution: {gitHosted: true, integrity: sha512-l33wVhomhs+27POsWfVpm9dIwGq4ABZqI2xWj7TPOu+G1YKENxqMSdNqv9PK9M9v5RKWV7D7BNe8woIPEq+I6g==, tarball: https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/51b83e7c86eaeda2ed8e13ed7634bc8dcffdee86}
     version: 0.6.0-dafeiyu.1
     engines: {node: '>=20'}
 
@@ -481,7 +481,7 @@ packages:
 
 snapshots:
 
-  '@dsh-remote/protocol@https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/53d3c1e473f30532f692cfaf729e0423c40e2d5d':
+  '@dsh-remote/protocol@https://codeload.github.com/YaoyaoDeBaba/dsh-remote-protocol/tar.gz/51b83e7c86eaeda2ed8e13ed7634bc8dcffdee86':
     dependencies:
       tweetnacl: 1.0.3
       zod: 4.6.7
