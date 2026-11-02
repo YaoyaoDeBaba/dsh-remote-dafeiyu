@@ -5746,7 +5746,7 @@ var require_stream = __commonJS({
       };
       duplex._final = function(callback) {
         if (ws.readyState === ws.CONNECTING) {
-          ws.once("open", function open3() {
+          ws.once("open", function open4() {
             duplex._final(callback);
           });
           return;
@@ -5767,7 +5767,7 @@ var require_stream = __commonJS({
       };
       duplex._write = function(chunk, encoding, callback) {
         if (ws.readyState === ws.CONNECTING) {
-          ws.once("open", function open3() {
+          ws.once("open", function open4() {
             duplex._write(chunk, encoding, callback);
           });
           return;
@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path13 from "node:path";
+import path14 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -6252,7 +6252,7 @@ function buildLogRecord(message, fields, now) {
   return record2;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/crypto/bytes.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/crypto/bytes.js
 import { Buffer as Buffer2 } from "node:buffer";
 var encoder = new TextEncoder();
 var decoder = new TextDecoder("utf-8", { fatal: false });
@@ -6279,7 +6279,7 @@ function concat(parts) {
   return out;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/crypto/keys.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/crypto/keys.js
 import { createHash, randomBytes } from "node:crypto";
 var KDF_NAMESPACE = "dsh-rc/v1";
 var UNIT_SEPARATOR = 31;
@@ -6316,7 +6316,7 @@ function randomNonce() {
   return new Uint8Array(randomBytes(NONCE_BYTES));
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/crypto/record.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/crypto/record.js
 var import_tweetnacl = __toESM(require_nacl_fast(), 1);
 var MAC_BYTES = 16;
 var MIN_RECORD_BYTES = NONCE_BYTES + MAC_BYTES;
@@ -6349,7 +6349,7 @@ function open(key, record2) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/crypto/sas.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/crypto/sas.js
 var import_tweetnacl2 = __toESM(require_nacl_fast(), 1);
 var SAS_LABEL = "dsh-rc/sas";
 var WRAP_LABEL = "dsh-rc/psk-wrap";
@@ -6385,7 +6385,7 @@ function wrapPsk(shared, psk) {
   };
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/identity/pairing.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/identity/pairing.js
 import { randomBytes as randomBytes2 } from "node:crypto";
 function randomPairingToken() {
   let n = 0;
@@ -6400,7 +6400,7 @@ function formatPairingToken(n) {
   return String(Math.abs(Math.trunc(n)) % 1e6).padStart(6, "0");
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/limits.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/limits.js
 var MAX_RELAY_MESSAGE_BYTES = 1024 * 1024;
 var MAX_CIPHERTEXT_BYTES = MAX_RELAY_MESSAGE_BYTES - 8 * 1024;
 var MAX_IMAGE_ATTACHMENTS = 4;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path14) {
-  if (!path14)
+function getElementAtPath(obj, path15) {
+  if (!path15)
     return obj;
-  return path14.reduce((acc, key) => acc?.[key], obj);
+  return path15.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path14, issues) {
+function prefixIssues(path15, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path14);
+    iss.path.unshift(path15);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path14 = []) => {
+  const processError = (error63, path15 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else {
-        const fullpath = [...path14, ...issue2.path];
+        const fullpath = [...path15, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path14 = []) => {
+  const processError = (error63, path15 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else {
-        const fullpath = [...path14, ...issue2.path];
+        const fullpath = [...path15, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path14 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path14) {
+  const path15 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path15) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path14 = ref.slice(1).split("/").filter(Boolean);
-  if (path14.length === 0) {
+  const path15 = ref.slice(1).split("/").filter(Boolean);
+  if (path15.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path14[0] === defsKey) {
-    const key = path14[1] === void 0 ? void 0 : decodeJSONPointerSegment(path14[1]);
+  if (path15[0] === defsKey) {
+    const key = path15[1] === void 0 ? void 0 : decodeJSONPointerSegment(path15[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -26128,7 +26128,7 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/frames.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/frames.js
 var PROTOCOL_VERSION = 1;
 var PAIRING_TOKEN_RE = /^\d{6}$/;
 var nonEmpty = external_exports.string().min(1);
@@ -26533,7 +26533,7 @@ function parseRelayFrameText(raw) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/platform/sleep.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/platform/sleep.js
 var SLEEP_BACKENDS = ["caffeinate", "systemd-inhibit", "unsupported"];
 function detectBackend(platform) {
   if (platform === "darwin")
@@ -26572,7 +26572,7 @@ function buildSleepCommand(platform, ownerPid, keepDisplay = false) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/payloads.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/payloads.js
 var SESSION_STATES = [
   "idle",
   "running",
@@ -26989,6 +26989,14 @@ var cmdSetModel = external_exports.object({
   model: nonEmpty2,
   reasoningEffort: external_exports.string().optional()
 });
+var cmdFileImage = external_exports.object({
+  t: external_exports.literal("cmd.file_image"),
+  cmdId: nonEmpty2,
+  /** 主机上的绝对路径。 */
+  path: nonEmpty2,
+  /** 从第几字节开始读；省略 = 0。 */
+  offset: external_exports.number().int().nonnegative().optional()
+});
 var cmdPayload = external_exports.discriminatedUnion("t", [
   cmdSendPrompt,
   cmdAnswer,
@@ -27002,7 +27010,8 @@ var cmdPayload = external_exports.discriminatedUnion("t", [
   cmdArchiveSession,
   cmdRenameSession,
   cmdGetModels,
-  cmdSetModel
+  cmdSetModel,
+  cmdFileImage
 ]);
 function parseCmdPayload(value) {
   const parsed = cmdPayload.safeParse(value);
@@ -27022,6 +27031,7 @@ var PAYLOAD_TYPES = {
   cmdRenameSession: "cmd.rename_session",
   cmdGetModels: "cmd.get_models",
   cmdSetModel: "cmd.set_model",
+  cmdFileImage: "cmd.file_image",
   evSessionChanged: "ev.session_changed",
   evMessageDelta: "ev.message_delta",
   evToolEvent: "ev.tool_event",
@@ -27052,7 +27062,7 @@ function isoOrUndefined(value) {
   return void 0;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/registry.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/registry.js
 var ENDPOINT_FRAME_NAMES = [
   "hello",
   "pair-begin",
@@ -27103,7 +27113,8 @@ var CMD_TYPES = [
   PAYLOAD_TYPES.cmdArchiveSession,
   PAYLOAD_TYPES.cmdRenameSession,
   PAYLOAD_TYPES.cmdGetModels,
-  PAYLOAD_TYPES.cmdSetModel
+  PAYLOAD_TYPES.cmdSetModel,
+  PAYLOAD_TYPES.cmdFileImage
 ];
 var EV_TYPES = [
   PAYLOAD_TYPES.evSessionChanged,
@@ -27128,7 +27139,7 @@ function isKnownPayloadType(name) {
   return typeof name === "string" && PAYLOAD_TYPE_SET.has(name);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
 function pairGrant(sessionId, hostPub, nonce, wrappedPsk) {
   if (sessionId === "")
     throw new Error("pair-grant \u7684 sessionId \u4E0D\u80FD\u4E3A\u7A7A");
@@ -27258,7 +27269,7 @@ function sessionHistory(args) {
   };
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/errors.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/errors.js
 var RETRYABLE = /* @__PURE__ */ new Set([
   "rate_limited",
   "pair_table_full",
@@ -27269,7 +27280,7 @@ function isRetryableError(code) {
   return typeof code === "string" && RETRYABLE.has(code);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_e66c942973b9b7c630cfa14e44727b1b/node_modules/@dsh-remote/protocol/dist/src/wire/idempotency.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/idempotency.js
 var IdempotencyLedger = class {
   entries = /* @__PURE__ */ new Map();
   windowMs;
@@ -27622,13 +27633,94 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.4" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.6" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
   const face = typeof probe.imageFace === "function" ? probe.imageFace() : void 0;
   if (typeof face !== "string") return "unknown";
   return face.startsWith("absent") ? "no" : "yes";
+}
+
+// src/core/file-image.ts
+import { open as open3, stat } from "node:fs/promises";
+import path4 from "node:path";
+var IMAGE_CHUNK_BYTES = 256 * 1024;
+var MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+var IMAGE_MIME = Object.freeze({
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".bmp": "image/bmp"
+});
+function fail(message) {
+  return { ok: false, message };
+}
+async function readImageChunk(rawPath, rawOffset) {
+  if (typeof rawPath !== "string" || rawPath.trim() === "") {
+    return fail("\u6CA1\u6709\u7ED9\u56FE\u7247\u8DEF\u5F84");
+  }
+  const requested = rawPath.trim();
+  if (requested.includes("\0")) return fail("\u8DEF\u5F84\u91CC\u6709\u975E\u6CD5\u5B57\u7B26");
+  if (!path4.isAbsolute(requested)) {
+    return fail("\u8981\u7ED9\u7EDD\u5BF9\u8DEF\u5F84\uFF08\u4F8B\u5982 E:\\\u9879\u76EE\\Preview.png\uFF09\uFF0C\u76F8\u5BF9\u8DEF\u5F84\u5728\u8FD9\u8FB9\u65E0\u6CD5\u786E\u5B9A\u57FA\u51C6\u76EE\u5F55");
+  }
+  const ext = path4.extname(requested).toLowerCase();
+  const mime = IMAGE_MIME[ext];
+  if (mime === void 0) {
+    return fail(`\u8FD9\u4E2A\u6269\u5C55\u540D\u4E0D\u652F\u6301\u770B\u56FE\uFF08${ext === "" ? "\u6CA1\u6709\u6269\u5C55\u540D" : ext}\uFF09\uFF0C\u53EA\u652F\u6301 png / jpg / jpeg / webp / gif / bmp`);
+  }
+  const offset = typeof rawOffset === "number" && Number.isInteger(rawOffset) && rawOffset > 0 ? rawOffset : 0;
+  let info;
+  try {
+    info = await stat(requested);
+  } catch (error62) {
+    const code = error62?.code;
+    if (code === "ENOENT") return fail(`\u4E3B\u673A\u4E0A\u627E\u4E0D\u5230\u8FD9\u4E2A\u6587\u4EF6\uFF1A${path4.basename(requested)}`);
+    if (code === "EACCES" || code === "EPERM") return fail(`\u6CA1\u6709\u6743\u9650\u8BFB\u8FD9\u4E2A\u6587\u4EF6\uFF1A${path4.basename(requested)}`);
+    return fail(`\u8BFB\u4E0D\u5230\u8FD9\u4E2A\u6587\u4EF6\uFF1A${path4.basename(requested)}`);
+  }
+  if (!info.isFile()) return fail("\u8FD9\u4E2A\u8DEF\u5F84\u4E0D\u662F\u6587\u4EF6\uFF08\u53EF\u80FD\u662F\u76EE\u5F55\uFF09");
+  if (info.size <= 0) return fail("\u8FD9\u4E2A\u6587\u4EF6\u662F\u7A7A\u7684");
+  if (info.size > MAX_IMAGE_BYTES) {
+    return fail(`\u56FE\u7247\u592A\u5927\uFF08${Math.round(info.size / 1024 / 1024)}MB\uFF0C\u4E0A\u9650 ${MAX_IMAGE_BYTES / 1024 / 1024}MB\uFF09\uFF0C\u5148\u538B\u5C0F\u4E00\u70B9`);
+  }
+  if (offset >= info.size) {
+    return { ok: true, chunk: { name: path4.basename(requested), mime, size: info.size, offset, data: "" } };
+  }
+  const length = Math.min(IMAGE_CHUNK_BYTES, info.size - offset);
+  const buffer = Buffer.allocUnsafe(length);
+  let handle;
+  try {
+    handle = await open3(requested, "r");
+  } catch (error62) {
+    const code = error62?.code;
+    if (code === "EACCES" || code === "EPERM") return fail(`\u6CA1\u6709\u6743\u9650\u8BFB\u8FD9\u4E2A\u6587\u4EF6\uFF1A${path4.basename(requested)}`);
+    return fail(`\u6253\u4E0D\u5F00\u8FD9\u4E2A\u6587\u4EF6\uFF1A${path4.basename(requested)}`);
+  }
+  try {
+    const { bytesRead } = await handle.read(buffer, 0, length, offset);
+    if (bytesRead <= 0) return fail("\u8BFB\u5230 0 \u5B57\u8282\uFF08\u6587\u4EF6\u53EF\u80FD\u6B63\u5728\u88AB\u5199\u5165\u6216\u5DF2\u5220\u9664\uFF09");
+    const next = offset + bytesRead < info.size ? offset + bytesRead : void 0;
+    return {
+      ok: true,
+      chunk: {
+        name: path4.basename(requested),
+        mime,
+        size: info.size,
+        offset,
+        ...next === void 0 ? {} : { next },
+        data: buffer.subarray(0, bytesRead).toString("base64")
+      }
+    };
+  } catch {
+    return fail("\u8BFB\u8FD9\u4E2A\u6587\u4EF6\u65F6\u51FA\u9519\u4E86");
+  } finally {
+    await handle.close().catch(() => {
+    });
+  }
 }
 
 // src/core/runtime.ts
@@ -28884,6 +28976,15 @@ var HostRuntime = class {
           reply(true, {
             data: { kind: "model", sessionId: cmd.sessionId, selected: outcome.selected ?? null }
           });
+          return;
+        }
+        case "cmd.file_image": {
+          const outcome = await readImageChunk(cmd.path, cmd.offset);
+          if (!outcome.ok) {
+            reply(false, { message: outcome.message });
+            return;
+          }
+          reply(true, { data: { kind: "image", ...outcome.chunk } });
           return;
         }
       }
@@ -33036,7 +33137,7 @@ function createOneShotTimers(clock) {
 
 // src/shell/status.ts
 import { mkdirSync as mkdirSync2 } from "node:fs";
-import path4 from "node:path";
+import path5 from "node:path";
 var STATUS_REFRESH_MS = 3e3;
 var StatusFile = class {
   constructor(file2, clock, refreshMs = STATUS_REFRESH_MS) {
@@ -33051,7 +33152,7 @@ var StatusFile = class {
   write(snapshot) {
     if (!this.file) return;
     try {
-      mkdirSync2(path4.dirname(this.file), { recursive: true });
+      mkdirSync2(path5.dirname(this.file), { recursive: true });
       writeSecure(
         this.file,
         JSON.stringify({ ...snapshot, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), pid: process.pid }, null, 2) + "\n"
@@ -33089,7 +33190,7 @@ var StatusFile = class {
 // src/shell/host-id.ts
 import { randomBytes as randomBytes4 } from "node:crypto";
 import { mkdirSync as mkdirSync3, readFileSync } from "node:fs";
-import path5 from "node:path";
+import path6 from "node:path";
 var HOST_ID = /^drc-[0-9a-f]{12}$/;
 function newHostId() {
   return `drc-${randomBytes4(6).toString("hex")}`;
@@ -33097,7 +33198,7 @@ function newHostId() {
 function resolveHostId(dir, configured) {
   if (configured) return configured;
   if (!dir) return newHostId();
-  const file2 = path5.join(dir, "host-id");
+  const file2 = path6.join(dir, "host-id");
   let existing;
   try {
     existing = readFileSync(file2, "utf8").trim();
@@ -33124,7 +33225,7 @@ function resolveHostId(dir, configured) {
 // src/shell/pair-store.ts
 import { readFileSync as readFileSync2 } from "node:fs";
 import { createHash as createHash3 } from "node:crypto";
-import path6 from "node:path";
+import path7 from "node:path";
 var storedConversationSchema = external_exports.object({
   id: external_exports.string().min(1),
   /** 配对 PSK（base64）。两把方向密钥在恢复时由它现派生，不落盘。 */
@@ -33149,7 +33250,7 @@ function safeSegment2(hostId) {
 }
 function defaultPairStoreFile(statusFile2, hostId) {
   if (!statusFile2) return "";
-  return path6.join(path6.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
+  return path7.join(path7.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
 }
 var PairStore = class {
   constructor(options) {
@@ -33218,7 +33319,7 @@ var PairStore = class {
     if (!file2) return false;
     const body = JSON.stringify({ version: 1, hostId, savedAt: now, conversations }) + "\n";
     try {
-      ensureSecureDir(path6.dirname(file2));
+      ensureSecureDir(path7.dirname(file2));
       writeSecure(file2, body);
       this.savedAt = now;
       this.dirty = false;
@@ -33261,7 +33362,7 @@ function describeSelfHosting(serverUrl) {
 
 // src/shell/config.ts
 import { homedir } from "node:os";
-import path7 from "node:path";
+import path8 from "node:path";
 var DEFAULT_CONFIG = {
   enabled: true,
   /**
@@ -33286,7 +33387,7 @@ var DEFAULT_CONFIG = {
   hostLabel: "dsh-host",
   keepAwake: { enabled: true, idleReleaseSec: 300, keepDisplay: false },
   mockBridge: false,
-  statusFile: path7.join(homedir(), ".dsh", "dsh-remote-control", "status.json"),
+  statusFile: path8.join(homedir(), ".dsh", "dsh-remote-control", "status.json"),
   unarchiveOnPrompt: true,
   pairOnStartSec: 0,
   pairTtlMs: 12e4,
@@ -33314,8 +33415,8 @@ function resolvePairStoreFile(config2, hostId) {
 function resolveUploadDir(config2) {
   const configured = config2.uploadDir.trim();
   if (!configured) {
-    const base = config2.statusFile ? path7.dirname(config2.statusFile) : dataDir();
-    return path7.join(base, "uploads");
+    const base = config2.statusFile ? path8.dirname(config2.statusFile) : dataDir();
+    return path8.join(base, "uploads");
   }
   return resolveAgainstBase(configured, config2.statusFile);
 }
@@ -33484,12 +33585,12 @@ import { createHash as createHash4 } from "node:crypto";
 
 // src/shell/user-config.ts
 import { mkdirSync as mkdirSync4, readFileSync as readFileSync3 } from "node:fs";
-import path8 from "node:path";
+import path9 from "node:path";
 var USER_CONFIG_FILE = "user-config.json";
 var MAX_TOKEN_INPUT = 256;
 function resolveUserConfigFile(statusFile2) {
-  const base = statusFile2 ? path8.dirname(statusFile2) : dataDir();
-  return path8.join(base, USER_CONFIG_FILE);
+  const base = statusFile2 ? path9.dirname(statusFile2) : dataDir();
+  return path9.join(base, USER_CONFIG_FILE);
 }
 function normalizeUserOverrides(input2) {
   const value = {};
@@ -33531,11 +33632,11 @@ function readUserConfig(file2, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("user-config is not JSON, ignoring it", { file: path8.basename(file2) });
+    log?.("user-config is not JSON, ignoring it", { file: path9.basename(file2) });
     return {};
   }
   if (!parsed || typeof parsed !== "object") {
-    log?.("user-config has an unknown shape, ignoring it", { file: path8.basename(file2) });
+    log?.("user-config has an unknown shape, ignoring it", { file: path9.basename(file2) });
     return {};
   }
   const record2 = parsed;
@@ -33556,7 +33657,7 @@ function writeUserConfig(file2, overrides, now, log) {
   if (!file2) return false;
   const body = { version: 1, ...overrides, savedAt: now };
   try {
-    mkdirSync4(path8.dirname(file2), { recursive: true });
+    mkdirSync4(path9.dirname(file2), { recursive: true });
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -34018,12 +34119,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path14 = __require("node:path");
+        const path15 = __require("node:path");
         const fs2 = __require("node:fs");
-        const dir = path14.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path15.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs2.mkdirSync(dir, { recursive: true, mode: 448 });
         fs2.writeFileSync(
-          path14.join(dir, "client-report.json"),
+          path15.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -34205,11 +34306,11 @@ function startPill(ctx, deps) {
 
 // src/backup/service.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import path11 from "node:path";
+import path12 from "node:path";
 
 // src/backup/config.ts
 import { existsSync, readFileSync as readFileSync4 } from "node:fs";
-import path9 from "node:path";
+import path10 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -34221,19 +34322,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path9.join(dshHome, "dsh-backup-git");
+  return path10.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path9.join(backupDir(dshHome), "config.json");
+  return path10.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path9.join(backupDir(dshHome), "credential.json");
+  return path10.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path9.join(backupDir(dshHome), "status.json");
+  return path10.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path9.join(backupDir(dshHome), "work");
+  return path10.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -34468,21 +34569,21 @@ function runGitAsync(args, options) {
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
 import { existsSync as existsSync2, readdirSync, readFileSync as readFileSync5, statSync as statSync2 } from "node:fs";
-import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path10 from "node:path";
+import path11 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path10.join(sessionsRoot, slug);
+    const slugDir = path11.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path10.join(slugDir, dirName);
+      const sessionDir = path11.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path10.join(sessionDir, fileName);
-        let stat2;
+        const file2 = path11.join(sessionDir, fileName);
+        let stat3;
         try {
-          stat2 = statSync2(file2);
+          stat3 = statSync2(file2);
         } catch {
           continue;
         }
@@ -34491,9 +34592,9 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path10.posix.join(slug, dirName, fileName),
-          mtimeMs: stat2.mtimeMs,
-          size: stat2.size
+          relPath: path11.posix.join(slug, dirName, fileName),
+          mtimeMs: stat3.mtimeMs,
+          size: stat3.size
         });
       }
     }
@@ -34540,11 +34641,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path10.join(input2.stagingDir, "latest");
+  const staging = path11.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path10.join(staging, "sessions", entry.relPath);
+    const target = path11.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -34553,20 +34654,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path10.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path11.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path10.join(staging, "profiles", path10.basename(input2.profileDir));
+    const target = path11.join(staging, "profiles", path11.basename(input2.profileDir));
     for (const name of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path10.join(input2.profileDir, name);
+      const source = path11.join(input2.profileDir, name);
       if (!existsSync2(source)) continue;
-      await copyFileFresh(source, path10.join(target, name));
+      await copyFileFresh(source, path11.join(target, name));
       profiles.push(name);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path10.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path11.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -34582,17 +34683,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path10.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path11.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path10.join(stagingDir, "archive");
+  const root = path11.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path10.join(root, entry.relPath);
+    const target = path11.join(root, entry.relPath);
     if (existsSync2(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -34638,7 +34739,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path10.join(dir, entry.name);
+    const full = path11.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -34649,7 +34750,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path10.dirname(target), { recursive: true });
+  await mkdir(path11.dirname(target), { recursive: true });
   if (existsSync2(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -34662,7 +34763,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name)) continue;
-    await copyFileFresh(path10.join(sourceDir, name), path10.join(targetDir, name));
+    await copyFileFresh(path11.join(sourceDir, name), path11.join(targetDir, name));
     names.push(name);
   }
   return names;
@@ -34675,8 +34776,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path10.join(sourceDir, entry.name);
-    const target = path10.join(targetDir, entry.name);
+    const source = path11.join(sourceDir, entry.name);
+    const target = path11.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -34684,7 +34785,7 @@ async function walk(sourceDir, targetDir, total) {
     if (!entry.isFile()) continue;
     let size = 0;
     try {
-      size = (await stat(source)).size;
+      size = (await stat2(source)).size;
     } catch {
       continue;
     }
@@ -34711,8 +34812,8 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync2(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name of safeDirs(profilesRoot)) {
-    const dir = path10.join(profilesRoot, name);
-    const manifest = path10.join(dir, "package.json");
+    const dir = path11.join(profilesRoot, name);
+    const manifest = path11.join(dir, "package.json");
     if (!existsSync2(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
@@ -34964,13 +35065,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path11.join(base, "staging"),
-      hotRepo: path11.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path11.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path11.join(this.deps.dshHome, "sessions"),
-      storagesDir: path11.join(this.deps.dshHome, "storages"),
-      profilesRoot: path11.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path11.join(this.deps.dshHome, "attachments")
+      staging: path12.join(base, "staging"),
+      hotRepo: path12.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path12.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path12.join(this.deps.dshHome, "sessions"),
+      storagesDir: path12.join(this.deps.dshHome, "storages"),
+      profilesRoot: path12.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path12.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -34993,7 +35094,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync6(repo, { recursive: true });
-    if (!existsSync3(path11.join(repo, ".git"))) {
+    if (!existsSync3(path12.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -35013,7 +35114,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path11.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path12.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -35059,11 +35160,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync6(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path11.join(base, "askpass.cmd");
+      const file3 = path12.join(base, "askpass.cmd");
       if (!existsSync3(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path11.join(base, "askpass.sh");
+    const file2 = path12.join(base, "askpass.sh");
     if (!existsSync3(file2)) {
       writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -35087,31 +35188,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path11.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path12.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path11.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path11.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path12.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path12.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path11.join(staging, "latest");
-      const restoredHot = existsSync3(path11.join(restoreLatest, "sessions")) ? countSessionFiles(path11.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path12.join(staging, "latest");
+      const restoredHot = existsSync3(path12.join(restoreLatest, "sessions")) ? countSessionFiles(path12.join(restoreLatest, "sessions")) : 0;
       for (const name of ["sessions", "storages", "attachments"]) {
-        const target = path11.join(this.deps.dshHome, name);
+        const target = path12.join(this.deps.dshHome, name);
         if (existsSync3(target)) {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path11.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path11.join(restoreLatest, "storages"), path11.join(this.deps.dshHome, "storages"));
-      if (existsSync3(path11.join(restoreLatest, "attachments"))) {
-        await mergeTree(path11.join(restoreLatest, "attachments"), path11.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path12.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path12.join(restoreLatest, "storages"), path12.join(this.deps.dshHome, "storages"));
+      if (existsSync3(path12.join(restoreLatest, "attachments"))) {
+        await mergeTree(path12.join(restoreLatest, "attachments"), path12.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path11.join(staging, "archive"), sessionsRoot);
-      const profiles = path11.join(restoreLatest, "profiles");
+      await mergeTree(path12.join(staging, "archive"), sessionsRoot);
+      const profiles = path12.join(restoreLatest, "profiles");
       if (existsSync3(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -35148,15 +35249,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync2(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path11.join(repo, entry.name);
+    const target = path12.join(repo, entry.name);
     rmSync2(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync3(source)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
-    const from = path11.join(source, entry.name);
-    const to = path11.join(target, entry.name);
+    const from = path12.join(source, entry.name);
+    const to = path12.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync6(to, { recursive: true });
       await mergeTree(from, to);
@@ -35172,12 +35273,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync3(profilesRoot)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path11.join(source, entry.name);
-    const to = path11.join(profilesRoot, entry.name);
+    const from = path12.join(source, entry.name);
+    const to = path12.join(profilesRoot, entry.name);
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path11.join(from, file2.name), path11.join(to, file2.name));
+      await copyFileFresh(path12.join(from, file2.name), path12.join(to, file2.name));
     }
   }
 }
@@ -35191,7 +35292,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path11.join(dir, entry.name);
+      const full = path12.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -35207,7 +35308,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync7 } from "node:fs";
-import path12 from "node:path";
+import path13 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -35237,8 +35338,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path12.dirname(statusFile2) : dataDir();
-  return path12.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path13.dirname(statusFile2) : dataDir();
+  return path13.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -35252,12 +35353,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path12.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path13.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path12.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path13.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -35296,7 +35397,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path12.dirname(file2));
+    ensureSecureDir(path13.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -35430,7 +35531,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path13.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path14.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -35453,7 +35554,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path13.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path14.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -36002,7 +36103,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path13.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path14.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -36184,7 +36285,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path13.dirname(path13.dirname(config2.statusFile)) : path13.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path14.dirname(path14.dirname(config2.statusFile)) : path14.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
