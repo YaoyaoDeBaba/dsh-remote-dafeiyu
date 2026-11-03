@@ -206,7 +206,7 @@ type StatusShape = Parameters<typeof pillLabel>[0]
  * 与 pill 面板同一套类名与配色变量，所以外观随宿主主题走，不会自己长成另一个样子。
  * 详细的形状与"两张码各自是什么"见下面 `paint` 的注释。
  */
-function buildSettingsSection(root: Element, deps: PillDeps): () => void {
+export function buildSettingsSection(root: Element, deps: PillDeps): () => void {
   const doc = root.ownerDocument
   // 自己注入样式：没有会话时 pill 不会挂上，没有人替我们插这张表（见 `ensureStyle` 的注释）。
   ensureStyle(doc)
@@ -1250,7 +1250,7 @@ function buildSettingsSection(root: Element, deps: PillDeps): () => void {
   }
 }
 
-interface SettingsHost {
+export interface SettingsHost {
   effect?(execute: (() => unknown) | void): unknown
   /** 模块 `inject: ['slots']` 声明之后这一格直接可读（宿主自带模板就是这个写法）。 */
   slots?: unknown
@@ -1271,7 +1271,7 @@ function isSlots(value: unknown): value is SlotRegistry {
   return typeof record.inject === 'function' && typeof record.register === 'function'
 }
 
-function pickSlots(source: unknown): SlotRegistry | undefined {
+export function pickSlots(source: unknown): SlotRegistry | undefined {
   if (isSlots(source)) return source
   const gettable = source as { get?: (name: string, strict?: boolean) => unknown } | null | undefined
   if (gettable && typeof gettable.get === 'function') {
@@ -1292,13 +1292,37 @@ function pickSlots(source: unknown): SlotRegistry | undefined {
  * （这正是它存在的理由——宿主可能晚声明；直接 `register` 一个未声明的槽位会抛）。
  * 返回 false = "到这一刻还没挂上"，调用方只关心它不外抛。
  */
-export function mountSettingsSection(ctx: SettingsHost, createElement: CreateElement | undefined): boolean {
+/** 设置页那个分区的注册参数；缺省就是「远程控制」那份老配置。 */
+export interface SettingsSectionOptions {
+  id: string
+  order: number
+  label: string
+  /**
+   * 由挂载逻辑生成「注册时的组件」。
+   *
+   * 默认实现是老行为：`() => createElement('div', { ref: attach })`，宿主把设置页容器
+   * 元素传进 `attach`，由 `buildSettingsSection` 把整页 DOM 灌进去。
+   * 合页（0.8.0 的「大肥鱼」分栏）要自己决定 attach 怎么用，所以把它做成参数。
+   */
+  buildComponent?: (attach: (node: unknown) => void) => () => unknown
+}
+
+export type SettingsMountResult = 'mounted' | 'pending' | 'failed'
+
+export function mountSettingsSection(
+  ctx: SettingsHost,
+  createElement: CreateElement | undefined,
+  options?: SettingsSectionOptions,
+): SettingsMountResult {
   if (!createElement) {
     // 拿不到 react 就连挂载点都没有。pill 那边也是这条：少一页，不是整页起不来。
     warnSection('装载器给不出 react：设置里的那一页不会出现')
-    return false
+    return 'failed'
   }
   let mounted = false
+  // 晚到登记也算"接管了"：宿主把 slots 补给我的时候，这一格会自己出现。
+  // （0.8.0 合页靠这个返回值决定"要不要再挂老版远程卡"——挂重了设置页就两张卡。）
+  let scheduledLate = false
   const mount = (slots: SlotRegistry): void => {
     if (mounted) return
     /** `ref` 回调必须身份稳定，否则宿主每次重渲染都会先 `ref(null)` 再 `ref(node)`。 */
@@ -1316,7 +1340,7 @@ export function mountSettingsSection(ctx: SettingsHost, createElement: CreateEle
         cleanup = undefined
       }
     }
-    const component = (): unknown => createElement('div', { ref: attach })
+    const component = (options?.buildComponent ?? ((attachRef) => () => createElement('div', { ref: attachRef })))(attach)
     mounted = true
     try {
       slots.inject(SETTINGS_SLOT, () => {
@@ -1324,9 +1348,9 @@ export function mountSettingsSection(ctx: SettingsHost, createElement: CreateEle
           slots.register(
             {
               name: SETTINGS_SLOT,
-              id: SETTINGS_ID,
-              order: SETTINGS_ORDER,
-              label: () => SETTINGS_LABEL,
+              id: options?.id ?? SETTINGS_ID,
+              order: options?.order ?? SETTINGS_ORDER,
+              label: () => options?.label ?? SETTINGS_LABEL,
             },
             component,
           )
@@ -1367,6 +1391,7 @@ export function mountSettingsSection(ctx: SettingsHost, createElement: CreateEle
   if (early) mount(early)
 
   try {
+    scheduledLate = true
     ctx.inject?.(['slots'], ((...args: unknown[]) => {
       for (const candidate of [...args, ctx]) {
         const found = pickSlots(candidate)
@@ -1380,7 +1405,11 @@ export function mountSettingsSection(ctx: SettingsHost, createElement: CreateEle
     warnSection('ctx.inject 口不可用：slots 再晚到也没人补挂', error)
   }
   if (!mounted) {
+    if (scheduledLate) {
+      // 已登记晚到回调：宿主补 slots 时这一页会出现，不算失败。
+      return 'pending'
+    }
     warnSection('apply 时没探到 slots（已挂注入回调等它晚到）；设置里一直没有这一页就是这代宿主没这个服务')
   }
-  return mounted
+  return mounted ? 'mounted' : 'failed'
 }

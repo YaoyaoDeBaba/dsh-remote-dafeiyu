@@ -24,6 +24,7 @@
 import { findCreateElement, mountPill } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
+import { mountDafeiyuSettings } from './dafeiyu-page.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -75,48 +76,83 @@ export function apply(ctx: ClientContext): void {
   }
 
   /**
-   * ② 设置页里的「远程控制」分区（`settings.section`，**不需要会话**）。
+   * ② 设置页那一格：0.8.0 起是「大肥鱼」合页——一个入口、三个分栏（远程控制 / 人设 / 形象）。
    *
    * 这一条是配对的**正门**：pill 挂的槽位只在有会话时渲染（宿主那条条件是
    * `sessionId !== void 0`），所以"打开浏览器、还没有任何会话"的人找不到出码入口
    * （2026-08-09 用户报的就是这个）。设置页是 root 作用域，两端都渲染。
    *
-   * ⚠️ 两块**各自 try**：一个挂不上不许把另一个带走。宿主遇到抛出的组件会把那一条
-   * 整块清空，而这里连"挂不上"都不该发生（两个 mount 都自带兜底）。
+   * 流程：先把人设那一半**装起来**（合页要它的 `PersonaSettingsSection` 组件），
+   * 装得上就走合页；装不上就退回老样子——远程控制一卡 + 人设一卡。
+   * 两条路都有兜底，任何一条失败都不许把另一条带走。
    */
-  let settingsMounted = false
-  try {
-    settingsMounted = mountSettingsSection(ctx, createElement)
-  } catch (error) {
-    swallow('设置分区挂载抛错（已吞掉）', error)
-  }
-  /**
-   * ③ 人设那一半的界面（设置页人设分区 / 输入框上方小条 / 人设选择浮层 / hero 里那颗 chip）。
-   *
-   * 三条纪律：
-   * 1. **它排在后面、自己一层 try**：人设界面挂不上不许影响 pill 与远控设置页。
-   * 2. **`require` 是装载器给的**（本 bundle 的 factory 形参）。人设那份代码内部要 react，
-   *    必须靠它解析——这也是"为什么不能把 `require("react")` 提到 factory 顶层"的原因：
-   *    提到顶层，宿主给不出 react 时会在 factory 第一行就抛，整页 web boot 直接失败。
-   *    传给工厂之后它落在函数体内，只有这里真调用时才求值，抛了也只是这一块少东西。
-   * 3. 拿不到 `require` 就什么都不做并留一行日志。
-   */
-  let personaMounted = false
+  let personaClient:
+    | { apply?: (c: unknown, options?: { skipSettings?: boolean }) => void; PersonaSettingsSection?: unknown }
+    | undefined
+  let reactHooks: { useState?: <S>(initial: S) => [S, (next: S) => void] } | undefined
+  let personaLoadNote: string | undefined
   try {
     const loaderRequire = resolveLoaderRequire()
     if (loaderRequire === undefined) {
-      warnPersona('装载器没给 require，人设界面不挂')
+      personaLoadNote = '装载器没给 require'
     } else {
-      const personaClient = personaClientFactory(loaderRequire)
-      if (typeof personaClient?.apply === 'function') {
-        personaClient.apply(ctx)
-        personaMounted = true
+      personaClient = personaClientFactory(loaderRequire)
+      if (typeof personaClient?.apply !== 'function') {
+        personaLoadNote = '人设客户端没给出 apply'
       } else {
-        warnPersona('人设客户端没给出 apply，界面不挂')
+        reactHooks = (loaderRequire('react') as { useState?: <S>(initial: S) => [S, (next: S) => void] }) ?? undefined
       }
     }
   } catch (error) {
-    warnPersona('人设界面挂载抛错（已吞掉，pill 与远控设置页不受影响）', error)
+    personaLoadNote = String((error as Error)?.message ?? error)
+  }
+  if (personaLoadNote) {
+    warnPersona(`人设客户端未就绪（${personaLoadNote}：退回两张卡，或只剩远控一卡）`)
+  }
+
+  let settingsMounted = false
+  let dafeiyuMerged = false
+  let personaMounted = false
+  // ③a 优先走合页：一个入口、三个分栏。
+  try {
+    if (personaClient && typeof createElement === 'function' && reactHooks && typeof reactHooks.useState === 'function') {
+      dafeiyuMerged = mountDafeiyuSettings({
+        ctx: ctx as never,
+        createElement: createElement as never,
+        reactHooks,
+        personaSettings: personaClient.PersonaSettingsSection,
+        personaT: resolvePersonaT(ctx),
+      })
+    }
+  } catch (error) {
+    dafeiyuMerged = false
+    swallow('大肥鱼合页挂载抛错（退回两张卡）', error)
+  }
+  if (dafeiyuMerged) {
+    // 合页已把「人设」页嵌进自己的分栏：人设那半只挂其余三个席位，不再单独出一张卡。
+    // 诊断里 settingsMounted 要算真：合页就是设置页那一格，只是换了个长相。
+    settingsMounted = true
+    try {
+      personaClient?.apply?.(ctx, { skipSettings: true })
+      personaMounted = true
+    } catch (error) {
+      warnPersona('人设界面挂载抛错（已吞掉，合页与远控不受影响）', error)
+    }
+  } else {
+    // ③b 老样子：远程控制一卡 + 人设一卡，两张卡各自独立。
+    try {
+      settingsMounted = mountSettingsSection(ctx, createElement) !== 'failed'
+    } catch (error) {
+      swallow('设置分区挂载抛错（已吞掉）', error)
+    }
+    if (personaClient) {
+      try {
+        personaClient?.apply?.(ctx)
+        personaMounted = true
+      } catch (error) {
+        warnPersona('人设界面挂载抛错（已吞掉，远控设置页不受影响）', error)
+      }
+    }
   }
 
   // 诊断自报：宿主侧没有别的观测量能回答"客户端半到底跑到哪一步"。
@@ -124,6 +160,7 @@ export function apply(ctx: ClientContext): void {
     createElement: createElement !== undefined,
     pillMounted,
     settingsMounted,
+    dafeiyuMerged,
     personaMounted,
     hasSlotsCtx: (() => {
       try {
@@ -152,6 +189,20 @@ function reportClient(fields: Record<string, unknown>): void {
   } catch {
     /* 诊断通道本身不许成为故障源 */
   }
+}
+
+/** 人设那套字典的翻译函数（`personaDafeiyu` 命名空间）；拿不到就用 key 兜底。 */
+function resolvePersonaT(ctx: ClientContext): (key: string) => string {
+  try {
+    const bind = (ctx as { locale?: { bind?: (ns: string) => (key: string) => string } }).locale?.bind
+    if (typeof bind === 'function') {
+      const bound = bind('personaDafeiyu')
+      if (typeof bound === 'function') return bound
+    }
+  } catch {
+    /* 这一代宿主没把 locale 当服务给，key 兜底照样能渲染 */
+  }
+  return (key: string) => key
 }
 
 /**

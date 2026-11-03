@@ -486,6 +486,17 @@ async function openPairing(root: FakeElement): Promise<void> {
 /** 一颗够用的假 react：这一半只用 createElement。 */
 const FAKE_REACT = {
   createElement: (type: unknown, props: Record<string, unknown>) => ({ type, props }),
+  // 0.8.0 合页（「大肥鱼」分栏）要用 useState 存当前 tab。合页是"一个入口三分栏"的
+  // 那层壳，它挂不上就要退回两张卡 —— 所以这个 hook 必须能在夹具里演。
+  useState: <S>(initial: S): [S, (next: S) => void] => {
+    const state = { value: initial }
+    return [
+      state.value,
+      (next: S) => {
+        state.value = next
+      },
+    ]
+  },
 }
 
 /** `/status` 那条的默认回答：在线、一台都没配上。 */
@@ -680,6 +691,10 @@ function load(options: LoadOptions = {}): Harness {
   assert.equal(typeof spec?.factory, 'function')
   const module = spec!.factory!((id: string): never => {
     if (id === 'react' && options.react !== undefined) return options.react as never
+    // 0.8.0 合包后，人设那一份在工厂顶层就要 `react/jsx-runtime`（它的组件用 jsx 写法）。
+    // 夹具给同一份 FAKE_REACT 顶上即可——我们的合页测试只创建引用、不真渲染人设组件，
+    // jsx 不会被调用。
+    if (id === 'react/jsx-runtime' && options.react !== undefined) return options.react as never
     throw new Error(`client 产物不该 require ${id}（除了向装载器拿 react）`)
   })
 
@@ -826,6 +841,41 @@ test('外壳注册的形状：id 与包名一致，导出 name/inject/apply；in
   )
 })
 
+test('0.8.0 合页：设置页只有一格、id 是 dafeiyu，渲染出来含三个分栏', async () => {
+  const harness = load({ react: FAKE_REACT, slots: true, lateSlots: true })
+  await flush()
+  harness.flushInject()
+  await flush()
+  const registers = harness.slotRegisters()
+  const settings = registers.filter((entry) => entry.definition?.name === 'settings.section')
+  assert.equal(settings.length, 1, '合包后设置页只该有一张「大肥鱼」卡（而不是远程/人设两张）')
+  const first = settings[0]
+  assert.ok(first, '设置页那一格要存在')
+  assert.equal(first.definition?.id, 'dafeiyu', '那张卡的 id 是 dafeiyu')
+  const component = first.component
+  assert.ok(component, '那张卡要有组件')
+  // FAKE_REACT 不替函数组件执行渲染：root 只是 {type: TabPage, props}。手动把函数组件
+  // 走一遍（TabPage 的 useState 在默认分栏），再序列化检查分栏标题。
+  const render = (node: unknown): unknown => {
+    if (node === null || typeof node !== 'object') return node
+    const element = node as { type?: unknown; props?: Record<string, unknown> }
+    if (typeof element.type === 'function') {
+      return render((element.type as (props: Record<string, unknown>) => unknown)(element.props ?? {}))
+    }
+    const props = element.props ?? {}
+    if (Array.isArray(props.children)) {
+      return { type: element.type, props: { ...props, children: props.children.map((child) => render(child)) } }
+    }
+    return node
+  }
+  const root = render(component()) as { type: unknown; props: { children?: unknown[] } }
+  const text = JSON.stringify(root)
+  assert.ok(text.includes('远程控制'), '分栏一：远程控制')
+  assert.ok(text.includes('人设'), '分栏二：人设')
+  assert.ok(text.includes('形象'), '分栏三：形象')
+  assert.equal(harness.errors.length, 0, '合页不是故障，不许有 error')
+})
+
 test('反向判据：外壳 id 写成别的名字，上面那条会红（不是恒绿的 includes）', () => {
   // 证明上面那条在查**真产物里的真字符串**，而不是一个永远命中的空检查。
   const raw = readFileSync(CLIENT, 'utf8')
@@ -872,6 +922,7 @@ test('slots 晚到（真机形状：apply 时拿不到，注入回调之后才�
     harness.slotRegisters().length,
     2,
     '晚到的 slots 必须把**两个面**都补挂上（会话里那颗 pill + 设置页那一页）：' +
+      '（人设那半的三个席位在这套夹具里不出现：它的 apply 直接读 ctx.slots、没有晚到退路；' +
       '浏览器面不声明任何 inject，于是 apply 早于服务到位是常态——' +
       '2026-10-03 删掉右栏之后，这台机器上那颗 pill 整颗不出现就是这个形状打的',
   )
@@ -2077,14 +2128,42 @@ function settingsEntry(harness: ReturnType<typeof load>): {
   return { definition: found!.definition, component: found!.component! }
 }
 
-/** 走那条注册项的 `ref` 挂载点：与宿主真正做的事一致。 */
+/**
+ * 走那条注册项的 `ref` 挂载点：与宿主真正做的事一致。
+ *
+ * 0.8.0 合页之后，挂载点不再是注册组件的根节点：根是「大肥鱼」分栏壳（TabPage），
+ * 带 `ref` 的是它下面「远程控制」那一页的空 div（默认分栏）。所以这里要把
+ * FAKE_REACT 的元素树**递归走完**（函数组件先执行，再在 props.children 里找第一个
+ * 带 ref 的节点），找到真正的挂载点再调它——与真 React 的挂载顺序一致。
+ */
+function findSettingsRef(component: () => unknown, host: FakeElement): (node: unknown) => void {
+  const walk = (node: unknown): ((node: unknown) => void) | undefined => {
+    if (node === null || typeof node !== 'object') return undefined
+    const element = node as { type?: unknown; props?: Record<string, unknown> }
+    if (typeof element.type === 'function') {
+      const rendered = (element.type as (props: Record<string, unknown>) => unknown)(element.props ?? {})
+      return walk(rendered)
+    }
+    const props = element.props ?? {}
+    if (typeof props.ref === 'function') return props.ref as (node: unknown) => void
+    if (Array.isArray(props.children)) {
+      for (const child of props.children) {
+        const found = walk(child)
+        if (found) return found
+      }
+    }
+    return undefined
+  }
+  const ref = walk(component())
+  assert.equal(typeof ref, 'function', '挂载点必须带 ref，否则这一页永远进不了 DOM')
+  return ref!
+}
+
+/** 走那条注册项的 `ref` 挂载点：与宿主真正做的事一致（合页后挂载点在分栏树里，递归找）。 */
 function mountSettings(harness: ReturnType<typeof load>): FakeElement {
   const entry = settingsEntry(harness)
-  const created = entry.component() as { props?: { ref?: (node: unknown) => void } }
-  const ref = created?.props?.ref
-  assert.equal(typeof ref, 'function', '挂载点必须带 ref，否则这一页永远进不了 DOM')
   const element = harness.fakeDocument().createElement('div')
-  ref!(element)
+  findSettingsRef(entry.component, element)(element)
   return element
 }
 
@@ -2093,8 +2172,8 @@ test('设置分区：注册进 settings.section，id/order/label 齐全且 label
   await flush()
   const entry = settingsEntry(harness)
   assert.equal(entry.definition.name, 'settings.section')
-  assert.equal(entry.definition.id, 'dsh-remote-control', 'id 是宿主做 only/active 路由用的，必须稳定')
-  assert.equal(entry.definition.order, 30, 'order 决定它在设置导航里的位置')
+  assert.equal(entry.definition.id, 'dafeiyu', '0.8.0 起设置页那一格是「大肥鱼」合页，id 稳定供宿主做 only/active 路由')
+  assert.equal(entry.definition.order, 18, 'order 决定它在设置导航里的位置（与旧人设卡同位）')
   const label = entry.definition.label
   assert.equal(typeof label, 'function', 'label 是函数（照宿主 agent-presets 那份注册原文）')
   const text = (label as () => string)()
@@ -2264,9 +2343,8 @@ test('设置分区：卸载要把节点摘掉、把两个节拍都停掉', async
   const root = mountSettings(harness)
   await flush()
   assert.ok(harness.liveTimerCount() >= 2, '状态轮询 + 倒计时都该在跑')
-  const entry = settingsEntry(harness)
-  const ref = (entry.component() as { props?: { ref?: (node: unknown) => void } }).props?.ref
-  ref!(null)
+  const attach = findSettingsRef(settingsEntry(harness).component, root)
+  attach(null)
   assert.equal(root.children.length, 0, '卸载之后那一页的 DOM 必须被摘干净')
   assert.equal(harness.liveTimerCount(), 0, '两个节拍都要停：留着就是关掉设置页之后还在打路由')
 })

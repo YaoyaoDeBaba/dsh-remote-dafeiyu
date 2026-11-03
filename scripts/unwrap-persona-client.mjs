@@ -49,7 +49,7 @@ if (tailStart < 0) throw new Error('尾巴里找不到 return module.exports;')
 
 const body = lines.slice(3, tailStart + 1).join('\n')
 
-const out = `/**
+let out = `/**
  * client-factory — **生成物，别手改**。
  *
  * 由 \`scripts/unwrap-persona-client.mjs\` 从人设插件的 \`lib/client.js\` 剥掉 loader 外壳得到。
@@ -63,6 +63,25 @@ export default function personaClientFactory(require) {
 ${body}
 }
 `
+
+// ── 0.8.0 合页用的两个小改动（只改这一份生成物，不碰人设仓库那份）──────────
+// 1. `apply(ctx)` → `apply(ctx, options)`：`options.skipSettings` 为真时，人设自己的
+//    `settings.section` 不注册——「大肥鱼」合页里那份人设页由我们自己的组件渲染，
+//    不让它再单独出一张卡。
+if (!out.includes('function apply(ctx) {')) {
+  throw new Error('生成物里找不到 function apply(ctx) —— 上游签名的形状变了？')
+}
+out = out.replace('function apply(ctx) {', 'function apply(ctx, options) {', 1)
+
+const settingsBlock = `\t\t\tctx.slots.inject("settings.section", () => ctx.slots.register({\n\t\t\t\tname: "settings.section",\n\t\t\t\tid: SECTION_ID,\n\t\t\t\torder: 18,\n\t\t\t\tlabel: () => t("nav"),\n\t\t\t\tlocale: NS,\n\t\t\t\tinject: () => ({ t }),\n\t\t\t}, PersonaSettingsSection));`
+if (!out.includes(settingsBlock)) {
+  throw new Error('生成物里找不到 settings.section 注册块 —— 上游那块的样子变了？')
+}
+out = out.replace(
+  settingsBlock,
+  `\t\t\tif (!options?.skipSettings) {\n${settingsBlock}\n\t\t\t}`,
+  1,
+)
 
 writeFileSync(OUT, out, 'utf8')
 console.log(`[unwrap-persona-client] ${path.basename(SOURCE)} → ${path.relative(ROOT, OUT)}（${out.length} 字节）`)

@@ -1902,12 +1902,13 @@ function pickSlots2(source) {
   }
   return void 0;
 }
-function mountSettingsSection(ctx, createElement) {
+function mountSettingsSection(ctx, createElement, options) {
   if (!createElement) {
     warnSection("\u88C5\u8F7D\u5668\u7ED9\u4E0D\u51FA react\uFF1A\u8BBE\u7F6E\u91CC\u7684\u90A3\u4E00\u9875\u4E0D\u4F1A\u51FA\u73B0");
-    return false;
+    return "failed";
   }
   let mounted = false;
+  let scheduledLate = false;
   const mount = (slots) => {
     if (mounted) return;
     let cleanup;
@@ -1924,7 +1925,7 @@ function mountSettingsSection(ctx, createElement) {
         cleanup = void 0;
       }
     };
-    const component = () => createElement("div", { ref: attach });
+    const component = (options?.buildComponent ?? ((attachRef) => () => createElement("div", { ref: attachRef })))(attach);
     mounted = true;
     try {
       slots.inject(SETTINGS_SLOT, () => {
@@ -1932,9 +1933,9 @@ function mountSettingsSection(ctx, createElement) {
           slots.register(
             {
               name: SETTINGS_SLOT,
-              id: SETTINGS_ID,
-              order: SETTINGS_ORDER,
-              label: () => SETTINGS_LABEL
+              id: options?.id ?? SETTINGS_ID,
+              order: options?.order ?? SETTINGS_ORDER,
+              label: () => options?.label ?? SETTINGS_LABEL
             },
             component
           );
@@ -1964,6 +1965,7 @@ function mountSettingsSection(ctx, createElement) {
   }
   if (early) mount(early);
   try {
+    scheduledLate = true;
     ctx.inject?.(["slots"], ((...args) => {
       for (const candidate of [...args, ctx]) {
         const found = pickSlots2(candidate);
@@ -1977,10 +1979,100 @@ function mountSettingsSection(ctx, createElement) {
     warnSection("ctx.inject \u53E3\u4E0D\u53EF\u7528\uFF1Aslots \u518D\u665A\u5230\u4E5F\u6CA1\u4EBA\u8865\u6302", error);
   }
   if (!mounted) {
+    if (scheduledLate) {
+      return "pending";
+    }
     warnSection("apply \u65F6\u6CA1\u63A2\u5230 slots\uFF08\u5DF2\u6302\u6CE8\u5165\u56DE\u8C03\u7B49\u5B83\u665A\u5230\uFF09\uFF1B\u8BBE\u7F6E\u91CC\u4E00\u76F4\u6CA1\u6709\u8FD9\u4E00\u9875\u5C31\u662F\u8FD9\u4EE3\u5BBF\u4E3B\u6CA1\u8FD9\u4E2A\u670D\u52A1");
   }
-  return mounted;
+  return mounted ? "mounted" : "failed";
 }
+
+// src/client/dafeiyu-page.ts
+var DAFEIYU_TAB_REMOTE = "remote";
+var DAFEIYU_TAB_PERSONA = "persona";
+var DAFEIYU_TAB_AVATAR = "avatar";
+var TAB_LABELS = {
+  [DAFEIYU_TAB_REMOTE]: "\u8FDC\u7A0B\u63A7\u5236",
+  [DAFEIYU_TAB_PERSONA]: "\u4EBA\u8BBE",
+  [DAFEIYU_TAB_AVATAR]: "\u5F62\u8C61"
+};
+function mountDafeiyuSettings(deps) {
+  const { ctx, createElement, reactHooks, personaSettings, personaT } = deps;
+  const useState = reactHooks?.useState;
+  if (typeof createElement !== "function" || typeof useState !== "function") {
+    return false;
+  }
+  let cleanupRemote;
+  const attach = (node) => {
+    const element = node;
+    if (element && typeof element.appendChild === "function" && element.ownerDocument) {
+      if (cleanupRemote) return;
+      cleanupRemote = buildSettingsSection(element, {
+        fetchImpl: (input, init) => globalThis.fetch(resolveHostUrl(String(input)), init),
+        warn: (message) => {
+          try {
+            console.warn(`[dsh-remote-control settings] ${String(message)}`);
+          } catch {
+          }
+        }
+      });
+    } else if (cleanupRemote) {
+      cleanupRemote();
+      cleanupRemote = void 0;
+    }
+  };
+  const TabPage = () => {
+    const [tab, setTab] = useState(DAFEIYU_TAB_REMOTE);
+    const tabBar = createElement("div", {
+      style: { display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" },
+      children: Object.entries(TAB_LABELS).map(
+        ([id, label]) => createElement("button", {
+          type: "button",
+          key: id,
+          style: tab === id ? activeTabStyle : tabStyle,
+          onClick: () => setTab(id),
+          children: label
+        })
+      )
+    });
+    let body = null;
+    if (tab === DAFEIYU_TAB_REMOTE) {
+      body = createElement("div", { ref: attach });
+    } else if (tab === DAFEIYU_TAB_PERSONA) {
+      body = createElement(personaSettings, { t: personaT });
+    } else {
+      body = createElement("p", {
+        style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+        children: "\u5F62\u8C61\u9875\u5F85\u7D20\u6750\u843D\u5730\uFF08\u7BA1\u9053\u5DF2\u901A\uFF0C\u7EAF\u65F6\u95F4\u6D3B\uFF09\u3002"
+      });
+    }
+    return createElement("div", {
+      style: { display: "flex", flexDirection: "column", gap: "12px" },
+      children: [tabBar, body]
+    });
+  };
+  const result = mountSettingsSection(ctx, createElement, {
+    id: "dafeiyu",
+    order: 18,
+    label: "\u5927\u80A5\u9C7C",
+    buildComponent: () => () => createElement(TabPage, {})
+  });
+  return result !== "failed";
+}
+var tabStyle = {
+  padding: "4px 14px",
+  borderRadius: "8px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-secondary)",
+  fontSize: "13px",
+  cursor: "pointer"
+};
+var activeTabStyle = {
+  ...tabStyle,
+  borderColor: "var(--dsw-alias-state-business-primary, #4b7bec)",
+  color: "var(--dsw-alias-state-business-primary, #4b7bec)"
+};
 
 // src/persona/client-factory.js
 function personaClientFactory(require2) {
@@ -3567,18 +3659,20 @@ function personaClientFactory(require2) {
     });
   }
   const inject2 = ["slots", "locale"];
-  function apply2(ctx) {
+  function apply2(ctx, options) {
     ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-persona-dafeiyu: dictionaries");
     ctx.effect(() => injectHoverStyles(), "dsh-persona-dafeiyu: hover styles");
     const t = ctx.locale.bind(NS);
-    ctx.slots.inject("settings.section", () => ctx.slots.register({
-      name: "settings.section",
-      id: SECTION_ID,
-      order: 18,
-      label: () => t("nav"),
-      locale: NS,
-      inject: () => ({ t })
-    }, PersonaSettingsSection));
+    if (!options?.skipSettings) {
+      ctx.slots.inject("settings.section", () => ctx.slots.register({
+        name: "settings.section",
+        id: SECTION_ID,
+        order: 18,
+        label: () => t("nav"),
+        locale: NS,
+        inject: () => ({ t })
+      }, PersonaSettingsSection));
+    }
     ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
       name: "conversation.composer.dock",
       id: "persona-dock",
@@ -3623,33 +3717,72 @@ function apply(ctx) {
   } catch (error) {
     swallow("pill \u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
   }
-  let settingsMounted = false;
-  try {
-    settingsMounted = mountSettingsSection(ctx, createElement);
-  } catch (error) {
-    swallow("\u8BBE\u7F6E\u5206\u533A\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
-  }
-  let personaMounted = false;
+  let personaClient;
+  let reactHooks;
+  let personaLoadNote;
   try {
     const loaderRequire = resolveLoaderRequire();
     if (loaderRequire === void 0) {
-      warnPersona("\u88C5\u8F7D\u5668\u6CA1\u7ED9 require\uFF0C\u4EBA\u8BBE\u754C\u9762\u4E0D\u6302");
+      personaLoadNote = "\u88C5\u8F7D\u5668\u6CA1\u7ED9 require";
     } else {
-      const personaClient = personaClientFactory(loaderRequire);
-      if (typeof personaClient?.apply === "function") {
-        personaClient.apply(ctx);
-        personaMounted = true;
+      personaClient = personaClientFactory(loaderRequire);
+      if (typeof personaClient?.apply !== "function") {
+        personaLoadNote = "\u4EBA\u8BBE\u5BA2\u6237\u7AEF\u6CA1\u7ED9\u51FA apply";
       } else {
-        warnPersona("\u4EBA\u8BBE\u5BA2\u6237\u7AEF\u6CA1\u7ED9\u51FA apply\uFF0C\u754C\u9762\u4E0D\u6302");
+        reactHooks = loaderRequire("react") ?? void 0;
       }
     }
   } catch (error) {
-    warnPersona("\u4EBA\u8BBE\u754C\u9762\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF0Cpill \u4E0E\u8FDC\u63A7\u8BBE\u7F6E\u9875\u4E0D\u53D7\u5F71\u54CD\uFF09", error);
+    personaLoadNote = String(error?.message ?? error);
+  }
+  if (personaLoadNote) {
+    warnPersona(`\u4EBA\u8BBE\u5BA2\u6237\u7AEF\u672A\u5C31\u7EEA\uFF08${personaLoadNote}\uFF1A\u9000\u56DE\u4E24\u5F20\u5361\uFF0C\u6216\u53EA\u5269\u8FDC\u63A7\u4E00\u5361\uFF09`);
+  }
+  let settingsMounted = false;
+  let dafeiyuMerged = false;
+  let personaMounted = false;
+  try {
+    if (personaClient && typeof createElement === "function" && reactHooks && typeof reactHooks.useState === "function") {
+      dafeiyuMerged = mountDafeiyuSettings({
+        ctx,
+        createElement,
+        reactHooks,
+        personaSettings: personaClient.PersonaSettingsSection,
+        personaT: resolvePersonaT(ctx)
+      });
+    }
+  } catch (error) {
+    dafeiyuMerged = false;
+    swallow("\u5927\u80A5\u9C7C\u5408\u9875\u6302\u8F7D\u629B\u9519\uFF08\u9000\u56DE\u4E24\u5F20\u5361\uFF09", error);
+  }
+  if (dafeiyuMerged) {
+    settingsMounted = true;
+    try {
+      personaClient?.apply?.(ctx, { skipSettings: true });
+      personaMounted = true;
+    } catch (error) {
+      warnPersona("\u4EBA\u8BBE\u754C\u9762\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF0C\u5408\u9875\u4E0E\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09", error);
+    }
+  } else {
+    try {
+      settingsMounted = mountSettingsSection(ctx, createElement) !== "failed";
+    } catch (error) {
+      swallow("\u8BBE\u7F6E\u5206\u533A\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
+    }
+    if (personaClient) {
+      try {
+        personaClient?.apply?.(ctx);
+        personaMounted = true;
+      } catch (error) {
+        warnPersona("\u4EBA\u8BBE\u754C\u9762\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF0C\u8FDC\u63A7\u8BBE\u7F6E\u9875\u4E0D\u53D7\u5F71\u54CD\uFF09", error);
+      }
+    }
   }
   reportClient({
     createElement: createElement !== void 0,
     pillMounted,
     settingsMounted,
+    dafeiyuMerged,
     personaMounted,
     hasSlotsCtx: (() => {
       try {
@@ -3676,6 +3809,17 @@ function reportClient(fields) {
     });
   } catch {
   }
+}
+function resolvePersonaT(ctx) {
+  try {
+    const bind = ctx.locale?.bind;
+    if (typeof bind === "function") {
+      const bound = bind("personaDafeiyu");
+      if (typeof bound === "function") return bound;
+    }
+  } catch {
+  }
+  return (key) => key;
 }
 function resolveLoaderRequire() {
   try {

@@ -2002,12 +2002,13 @@ export default function personaClientFactory(require) {
 		 * 把「人设」注册成设置页里的一个小节。
 		 * @param ctx - 浏览器插件上下文。
 		 */
-		function apply(ctx) {
+		function apply(ctx, options) {
 			ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-persona-dafeiyu: dictionaries");
 			// 悬停 / 按下 / 键盘聚焦的样式表。内联样式命中不到伪类，必须走样式表
 			// （issue #6 评论：暗色下按钮没有 hover 反馈）。卸载时一起撤掉。
 			ctx.effect(() => injectHoverStyles(), "dsh-persona-dafeiyu: hover styles");
 			const t = ctx.locale.bind(NS);
+			if (!options?.skipSettings) {
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",
 				id: SECTION_ID,
@@ -2016,6 +2017,7 @@ export default function personaClientFactory(require) {
 				locale: NS,
 				inject: () => ({ t }),
 			}, PersonaSettingsSection));
+			}
 
 			// 输入框上方的「人设」小条：当前人设 + 全局/会话开关。
 			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
