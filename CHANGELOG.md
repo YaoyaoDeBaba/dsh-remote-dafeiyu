@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.8.0-dafeiyu.1 —— 「人设」搬进来了：一个包、一行
+
+原来的分工是**两个包、两行、两个设置入口**：`dsh-remote-dafeiyu` 管手机远控，
+`dsh-persona-dafeiyu` 管人设。用户装一次要配两遍，设置页里两块互不相干，
+而人设那半的"远控时手机上看的是谁"这种问题根本没有地方回答。
+
+### 做了什么
+
+- **host 半合并**：人设的宿主代码（段落注入、人设库、四条回环路由、时间差段、体积守门）
+  原样搬进本包的 `src/persona/host.ts`（`@ts-nocheck`，不类型化——一旦"顺手类型化一遍"，
+  上游每发一版都得人工重看一千行）。挂载点是 `src/persona/mount.ts`，
+  由 `apply()` 在远控之后单独一层 try 挂上：**远控起不来照样能配对，人设挂不上照样能远控**。
+- **client 半合并**：人设的 `lib/client.js` 是**已裹好 loader 外壳**的文件（第一行就是
+  `window.__ModuleLoader__.load({ id: "dsh-persona-dafeiyu", ... })`）。直接并进来等于在
+  本包的 factory 里再注册一个别人的 id——装载器按包名查、对不上就整页白屏。
+  所以新增 `scripts/unwrap-persona-client.mjs`：把外壳剥成 `export default function (require)`，
+  生成 `src/persona/client-factory.js`（生成物入库），由 `apply()` 拿装载器的 `require` 调它。
+- **清单**：`dsh.client.inject` 补上人设那两条包图边（`dsh-client-ui-renderer` /
+  `dsh-client-locale`）；模块级 `inject` 并成 `['slots', 'locale']`。
+- **存储与路由一个都没动**：人设库仍是 `<DSH_HOME>/storages/dsh-persona-dafeiyu/personas.json`，
+  路由仍是 `/api/dsh-persona-dafeiyu/{status,mutate,persona,preview}`。
+  ⇒ 装回旧包、或两边都有，数据都在。
+
+### 合包踩到、并且已经钉住的三件事
+
+1. **静态 `require("react")` 的位置**：构建脚本原来禁止产物里出现它（会提到 factory 顶层，
+   宿主给不出 react 时在 factory 第一行抛 ⇒ 整页 boot 失败）。人设那份的 `require("react")`
+   现在落在 `personaClientFactory()` 的**函数体内**、外面还有 try/catch，与禁的那个形状不是
+   一回事。判据改成"只许出现在人设工厂定义之后"。
+2. **体积上限 128 → 256 KB**：两份界面共处一个 bundle，190 KB 是正常的；内联 react 会到
+   400 KB 以上，所以这条探针仍然拦得住它。
+3. **降级日志走 `warn` 不走 `error`**：人设界面没挂上（宿主没 react / 没给 slots / 装载器没给
+   `require`）是代际差异，不是故障。远控那半的判据里 `console.error` 的条数就是"有没有故障"
+   的指标，混进降级信号等于把两件事搅在一起。
+
+### 判据
+
+763 → 767 项（新增 `tests/persona-mount.test.ts` 四条：Proxy 探测不抛、探不到不挂且说得出
+原因、有 `systemPrompt` 时段落真的注册、`persona.enabled=false` 时一个段落都不注册）。
+
+
 ## 0.5.4 —— 「只允许一台」不再误伤**同一台手机**的旧通道
 
 线上取证（2026-10-27，生产 relay `/v05` 的容器日志 10:29–10:38Z）：

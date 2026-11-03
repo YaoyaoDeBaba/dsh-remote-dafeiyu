@@ -24,6 +24,9 @@
 import { findCreateElement, mountPill } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
+// 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
+// loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
+import personaClientFactory from '../persona/client-factory.js'
 
 interface ClientContext {
   slots?: unknown
@@ -56,7 +59,7 @@ export const name = 'dsh-remote-dafeiyu'
  * 那条边指向的客户端包若不在 boot 图里，本条目就永远等不到）—— 那一格已删。
  * 服务名这条留着。
  */
-export const inject = ['slots']
+export const inject = ['slots', 'locale']
 
 export function apply(ctx: ClientContext): void {
   const createElement = findCreateElement()
@@ -87,11 +90,41 @@ export function apply(ctx: ClientContext): void {
   } catch (error) {
     swallow('设置分区挂载抛错（已吞掉）', error)
   }
+  /**
+   * ③ 人设那一半的界面（设置页人设分区 / 输入框上方小条 / 人设选择浮层 / hero 里那颗 chip）。
+   *
+   * 三条纪律：
+   * 1. **它排在后面、自己一层 try**：人设界面挂不上不许影响 pill 与远控设置页。
+   * 2. **`require` 是装载器给的**（本 bundle 的 factory 形参）。人设那份代码内部要 react，
+   *    必须靠它解析——这也是"为什么不能把 `require("react")` 提到 factory 顶层"的原因：
+   *    提到顶层，宿主给不出 react 时会在 factory 第一行就抛，整页 web boot 直接失败。
+   *    传给工厂之后它落在函数体内，只有这里真调用时才求值，抛了也只是这一块少东西。
+   * 3. 拿不到 `require` 就什么都不做并留一行日志。
+   */
+  let personaMounted = false
+  try {
+    const loaderRequire = resolveLoaderRequire()
+    if (loaderRequire === undefined) {
+      warnPersona('装载器没给 require，人设界面不挂')
+    } else {
+      const personaClient = personaClientFactory(loaderRequire)
+      if (typeof personaClient?.apply === 'function') {
+        personaClient.apply(ctx)
+        personaMounted = true
+      } else {
+        warnPersona('人设客户端没给出 apply，界面不挂')
+      }
+    }
+  } catch (error) {
+    warnPersona('人设界面挂载抛错（已吞掉，pill 与远控设置页不受影响）', error)
+  }
+
   // 诊断自报：宿主侧没有别的观测量能回答"客户端半到底跑到哪一步"。
   reportClient({
     createElement: createElement !== undefined,
     pillMounted,
     settingsMounted,
+    personaMounted,
     hasSlotsCtx: (() => {
       try {
         return (ctx as { slots?: unknown }).slots !== undefined
@@ -121,8 +154,43 @@ function reportClient(fields: Record<string, unknown>): void {
   }
 }
 
+/**
+ * 取装载器注入的 `require`。
+ *
+ * 模块名走**变量**（与 `pill.ts` 的 `findCreateElement` 同一套做法）：写成字面量
+ * `require('react')` 会被打包器在构建期解析掉，产物里就变成了 Factory 顶层的静态 require。
+ * 这里要的是"运行时问装载器要"，所以只把 `require` 当值传出去，不在本文件里 require 任何东西。
+ */
+declare const require: ((id: string) => unknown) | undefined
+
+function resolveLoaderRequire(): ((id: string) => unknown) | undefined {
+  try {
+    if (typeof require !== 'function') return undefined
+    return require
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 人设那半的降级留痕（0.8.0 合包后新增）。
+ *
+ * **走 warn 不走 error**：人设界面没挂上是"少一块界面"，不是故障——宿主没有 react、
+ * 没给 `slots`、装载器没给 `require`，这三种都是正常的代际差异。
+ * 拿 error 报它会把"降级"和"崩了"混成同一个信号（远控那半的判据里，
+ * `console.error` 的条数就是"有没有故障"的指标）。
+ */
+function warnPersona(message: string, error?: unknown): void {
+  try {
+    const detail = error instanceof Error ? error.message : error === undefined ? '' : String(error)
+    console.warn(`[dsh-remote-control persona] ${message} ${detail}`)
+  } catch {
+    /* 控制台也可能不可用 */
+  }
+}
+
 /** 降级留痕：任何一条路抛错都只留一行日志，绝不把异常递回宿主。 */
-function swallow(what: string, error: unknown): void {
+function swallow(what: string, error?: unknown): void {
   try {
     console.error(`[dsh-remote-control] ${what}：`, error)
   } catch {

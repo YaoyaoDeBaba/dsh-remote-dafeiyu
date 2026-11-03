@@ -27,8 +27,8 @@ var __commonJS = (cb, mod) => function __require2() {
   }
 };
 var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+  for (var name2 in all)
+    __defProp(target, name2, { get: all[name2], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -4627,9 +4627,9 @@ var require_extension = __commonJS({
   "node_modules/.pnpm/ws@8.22.0/node_modules/ws/lib/extension.js"(exports, module) {
     "use strict";
     var { tokenChars } = require_validation();
-    function push(dest, name, elem) {
-      if (dest[name] === void 0) dest[name] = [elem];
-      else dest[name].push(elem);
+    function push(dest, name2, elem) {
+      if (dest[name2] === void 0) dest[name2] = [elem];
+      else dest[name2].push(elem);
     }
     function parse3(header) {
       const offers = /* @__PURE__ */ Object.create(null);
@@ -4655,12 +4655,12 @@ var require_extension = __commonJS({
               throw new SyntaxError(`Unexpected character at index ${i}`);
             }
             if (end === -1) end = i;
-            const name = header.slice(start, end);
+            const name2 = header.slice(start, end);
             if (code === 44) {
-              push(offers, name, params);
+              push(offers, name2, params);
               params = /* @__PURE__ */ Object.create(null);
             } else {
-              extensionName = name;
+              extensionName = name2;
             }
             start = end = -1;
           } else {
@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path14 from "node:path";
+import path15 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path15) {
-  if (!path15)
+function getElementAtPath(obj, path16) {
+  if (!path16)
     return obj;
-  return path15.reduce((acc, key) => acc?.[key], obj);
+  return path16.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7530,12 +7530,12 @@ function merge(a, b) {
   });
   return clone(a, def);
 }
-function partial(Class2, schema, mask, name = "partial") {
+function partial(Class2, schema, mask, name2 = "partial") {
   const currDef = schema._zod.def;
   const checks = currDef.checks;
   const hasChecks = checks && checks.length > 0;
   if (hasChecks) {
-    throw new Error(`.${name}() cannot be used on object schemas containing refinements`);
+    throw new Error(`.${name2}() cannot be used on object schemas containing refinements`);
   }
   const selected = mask ? new Set(maskedKeys(schema, mask)) : void 0;
   const newShape = {};
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path15, issues) {
+function prefixIssues(path16, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path15);
+    iss.path.unshift(path16);
     return iss;
   });
 }
@@ -7875,7 +7875,7 @@ function newError(Definition) {
   return new Definition();
 }
 // @__NO_SIDE_EFFECTS__
-function $constructor(name, initializer3, proto, params) {
+function $constructor(name2, initializer3, proto, params) {
   const zodProto = {};
   function Internals(def) {
     this.def = def;
@@ -7893,10 +7893,10 @@ function $constructor(name, initializer3, proto, params) {
       } finally {
         _zodDesc.value = void 0;
       }
-    } else if (inst._zod.traits.has(name)) {
+    } else if (inst._zod.traits.has(name2)) {
       return;
     }
-    inst._zod.traits.add(name);
+    inst._zod.traits.add(name2);
     initializer3(inst, def);
     if (initialized) {
       const own2 = Object.getPrototypeOf(inst);
@@ -7922,7 +7922,7 @@ function $constructor(name, initializer3, proto, params) {
   const Parent = params?.Parent ?? Object;
   class Definition extends Parent {
   }
-  Object.defineProperty(Definition, "name", { value: name });
+  Object.defineProperty(Definition, "name", { value: name2 });
   function _(def) {
     const inst = params?.Parent ? newError(Definition) : this;
     init(inst, def);
@@ -7943,10 +7943,10 @@ function $constructor(name, initializer3, proto, params) {
     value: (inst) => {
       if (params?.Parent && inst instanceof params.Parent)
         return true;
-      return inst?._zod?.traits?.has(name);
+      return inst?._zod?.traits?.has(name2);
     }
   });
-  Object.defineProperty(_, "name", { value: name });
+  Object.defineProperty(_, "name", { value: name2 });
   return _;
 }
 var $brand = /* @__PURE__ */ Symbol("zod_brand");
@@ -7956,8 +7956,8 @@ var $ZodAsyncError = class extends Error {
   }
 };
 var $ZodEncodeError = class extends Error {
-  constructor(name) {
-    super(`Encountered unidirectional transform during encode: ${name}`);
+  constructor(name2) {
+    super(`Encountered unidirectional transform during encode: ${name2}`);
     this.name = "ZodEncodeError";
   }
 };
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path15 = []) => {
+  const processError = (error63, path16 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path16, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
       } else {
-        const fullpath = [...path15, ...issue2.path];
+        const fullpath = [...path16, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path15 = []) => {
+  const processError = (error63, path16 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path16, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
       } else {
-        const fullpath = [...path15, ...issue2.path];
+        const fullpath = [...path16, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path15 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path15) {
+  const path16 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path16) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -19484,13 +19484,13 @@ ${code}
   return fn;
 }
 function addConstant(ctx, value) {
-  for (const [name2, v] of ctx.constants) {
+  for (const [name3, v] of ctx.constants) {
     if (v === value)
-      return name2;
+      return name3;
   }
-  const name = `c${ctx.constantCounter++}`;
-  ctx.constants.set(name, value);
-  return name;
+  const name2 = `c${ctx.constantCounter++}`;
+  ctx.constants.set(name2, value);
+  return name2;
 }
 function addUserConstant(ctx, fn) {
   ctx.definite = false;
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path15 = ref.slice(1).split("/").filter(Boolean);
-  if (path15.length === 0) {
+  const path16 = ref.slice(1).split("/").filter(Boolean);
+  if (path16.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path15[0] === defsKey) {
-    const key = path15[1] === void 0 ? void 0 : decodeJSONPointerSegment(path15[1]);
+  if (path16[0] === defsKey) {
+    const key = path16[1] === void 0 ? void 0 : decodeJSONPointerSegment(path16[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27135,8 +27135,8 @@ var EV_TYPES = [
   PAYLOAD_TYPES.evSessionHistory
 ];
 var PAYLOAD_TYPE_SET = /* @__PURE__ */ new Set([...CMD_TYPES, ...EV_TYPES]);
-function isKnownPayloadType(name) {
-  return typeof name === "string" && PAYLOAD_TYPE_SET.has(name);
+function isKnownPayloadType(name2) {
+  return typeof name2 === "string" && PAYLOAD_TYPE_SET.has(name2);
 }
 
 // node_modules/.pnpm/@dsh-remote+protocol@https+_d6bab7d8a3ec395ac47fd943e001c5bf/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
@@ -27542,9 +27542,9 @@ function ensureSecureDir(dir, platform = currentPlatform()) {
   }
 }
 var WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i;
-function safeFileName(name) {
-  if (WIN_RESERVED.test(name)) return `file-${name}`;
-  return name.replace(/[^A-Za-z0-9._-]/g, "-");
+function safeFileName(name2) {
+  if (WIN_RESERVED.test(name2)) return `file-${name2}`;
+  return name2.replace(/[^A-Za-z0-9._-]/g, "-");
 }
 
 // src/shell/uploads.ts
@@ -27607,15 +27607,15 @@ function saveFileAttachments(options) {
     for (const [i, one] of decoded.entries()) {
       const fallback = `file-${i + 1}`;
       const base = safeSegment(one.file.name, fallback, 96) || fallback;
-      let name = base;
+      let name2 = base;
       let n = 1;
-      while (fs.existsSync(path3.join(sessionDir, name))) {
+      while (fs.existsSync(path3.join(sessionDir, name2))) {
         const dot = base.lastIndexOf(".");
-        name = dot > 0 ? `${base.slice(0, dot)}-${++n}${base.slice(dot)}` : `${base}-${++n}`;
+        name2 = dot > 0 ? `${base.slice(0, dot)}-${++n}${base.slice(dot)}` : `${base}-${++n}`;
       }
-      const file2 = path3.join(sessionDir, name);
+      const file2 = path3.join(sessionDir, name2);
       writeSecure(file2, one.buf);
-      written.push({ name, path: file2, bytes: one.buf.length, mediaType: one.file.mediaType });
+      written.push({ name: name2, path: file2, bytes: one.buf.length, mediaType: one.file.mediaType });
     }
   } catch (error62) {
     for (const file2 of written) {
@@ -27633,7 +27633,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.7" : "dev";
+var PLUGIN_VERSION = true ? "0.8.0-dafeiyu.1" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -30348,32 +30348,32 @@ var WATERFALL_EVENTS = [...LEGACY_WATERFALL_EVENTS, ...EXTRA_WATERFALL_EVENTS];
 var WATERFALL_PARTICIPANTS = ["approval/request", "user-questions/request"];
 var allowed = new Set(SUBSCRIBABLE_EVENTS);
 var participants = new Set(WATERFALL_PARTICIPANTS);
-function canParticipate(name) {
-  return participants.has(name);
+function canParticipate(name2) {
+  return participants.has(name2);
 }
-function canSubscribe(name) {
-  return allowed.has(name);
+function canSubscribe(name2) {
+  return allowed.has(name2);
 }
-function guardedSubscribe(on, name, listener, warn) {
-  if (!canSubscribe(name)) {
-    warn("refusing to subscribe", { name, waterfall: WATERFALL_EVENTS.includes(name) });
+function guardedSubscribe(on, name2, listener, warn) {
+  if (!canSubscribe(name2)) {
+    warn("refusing to subscribe", { name: name2, waterfall: WATERFALL_EVENTS.includes(name2) });
     return () => {
     };
   }
   try {
-    const disposer = on(name, listener);
+    const disposer = on(name2, listener);
     return () => {
       if (typeof disposer === "function") disposer();
       else if (typeof on.off === "function") {
         try {
           ;
-          on.off(name, listener);
+          on.off(name2, listener);
         } catch {
         }
       }
     };
   } catch (error62) {
-    warn("subscribe failed", { name, message: String(error62?.message ?? error62) });
+    warn("subscribe failed", { name: name2, message: String(error62?.message ?? error62) });
     return () => {
     };
   }
@@ -30436,18 +30436,18 @@ function createCarrierProbe(deps) {
       return `keys threw: ${String(error62?.message ?? error62).slice(0, 60)}`;
     }
   };
-  const pickFrom = (source, name) => {
+  const pickFrom = (source, name2) => {
     if (!source || typeof source !== "object") return void 0;
     const asContext = source;
     if (typeof asContext.get === "function") {
       try {
-        const got = asContext.get(name, true);
+        const got = asContext.get(name2, true);
         if (got) return got;
       } catch {
       }
     }
     try {
-      return source[name];
+      return source[name2];
     } catch {
       return void 0;
     }
@@ -30474,53 +30474,53 @@ function createCarrierProbe(deps) {
     }
   };
   bindScopedEvents(deps.ctx);
-  const accept = (name, value, source, via) => {
+  const accept = (name2, value, source, via) => {
     if (!value || typeof value !== "object") return false;
-    const member = requiredMember[name];
+    const member = requiredMember[name2];
     if (member && typeof value[member] !== "function") {
-      probe[name] = `object without ${member}()`;
+      probe[name2] = `object without ${member}()`;
       return false;
     }
-    collected[name] = value;
+    collected[name2] = value;
     bindScopedEvents(source);
-    probe[name] = `${via}(${keysOf(value)})`;
+    probe[name2] = `${via}(${keysOf(value)})`;
     tryStart();
     return true;
   };
-  for (const name of SERVICE_NAMES) {
+  for (const name2 of SERVICE_NAMES) {
     try {
       if (typeof deps.ctx.get !== "function") hasGet = false;
-      const found = deps.ctx.get?.(name, true);
-      probe[name] = found ? typeof found === "object" ? `object(${Object.keys(found).slice(0, 6).join("|")})` : typeof found : "none";
-      if (found) collected[name] = found;
+      const found = deps.ctx.get?.(name2, true);
+      probe[name2] = found ? typeof found === "object" ? `object(${Object.keys(found).slice(0, 6).join("|")})` : typeof found : "none";
+      if (found) collected[name2] = found;
     } catch (error62) {
-      probe[name] = `get threw: ${String(error62?.message ?? error62).slice(0, 60)}`;
+      probe[name2] = `get threw: ${String(error62?.message ?? error62).slice(0, 60)}`;
     }
     try {
-      const child = deps.ctx.inject?.([name], ((...cbArgs) => {
-        injectFired.push(`${name}(args=${cbArgs.length})`);
+      const child = deps.ctx.inject?.([name2], ((...cbArgs) => {
+        injectFired.push(`${name2}(args=${cbArgs.length})`);
         probe.injectFiredLive = injectFired.join("|");
         try {
           let value;
           let from;
           for (const candidate of [cbArgs[0], ...cbArgs, deps.ctx]) {
             bindScopedEvents(candidate);
-            value = pickFrom(candidate, name);
+            value = pickFrom(candidate, name2);
             if (value) {
               from = candidate;
               break;
             }
           }
-          if (accept(name, value, from, "via inject")) return;
-          if (!value) probe[name] = `${probe[name] ?? "none"} (inject fired, empty)`;
+          if (accept(name2, value, from, "via inject")) return;
+          if (!value) probe[name2] = `${probe[name2] ?? "none"} (inject fired, empty)`;
         } catch (error62) {
-          probe[`injectThrew:${name}`] = String(error62?.message ?? error62).slice(0, 160);
+          probe[`injectThrew:${name2}`] = String(error62?.message ?? error62).slice(0, 160);
         }
       }));
-      if (child !== void 0) injectChildren.push([name, child]);
+      if (child !== void 0) injectChildren.push([name2, child]);
     } catch (error62) {
       hasInject = false;
-      probe[name] = `${probe[name] ?? "none"}; inject threw: ${String(error62?.message ?? error62).slice(0, 60)}`;
+      probe[name2] = `${probe[name2] ?? "none"}; inject threw: ${String(error62?.message ?? error62).slice(0, 60)}`;
     }
   }
   probe.hasGet = String(hasGet);
@@ -30592,9 +30592,9 @@ function createCarrierProbe(deps) {
       probe[`${prefix}isolate`] = liveIsolate().join(",").slice(0, 900);
       probe[`${prefix}props`] = Object.getOwnPropertyNames(asRecord(asRecord(asRecord(deps.ctx).reflect).props)).slice(0, 160).join("|");
       probe[`${prefix}fibers`] = liveFiberChain().join(" <- ").slice(0, 600);
-      for (const name of SERVICE_NAMES) {
-        const got = deps.ctx.get?.(name, true);
-        probe[`${prefix}get:${name}`] = got ? `object(${Object.keys(got).slice(0, 5).join("|")})` : "undefined";
+      for (const name2 of SERVICE_NAMES) {
+        const got = deps.ctx.get?.(name2, true);
+        probe[`${prefix}get:${name2}`] = got ? `object(${Object.keys(got).slice(0, 5).join("|")})` : "undefined";
       }
     } catch (error62) {
       probe[`${prefix}forensicsThrew`] = String(error62?.message ?? error62).slice(0, 120);
@@ -30660,7 +30660,7 @@ function createCarrierProbe(deps) {
         if (rows.length >= 300) break;
       }
       const all = rows.join(",");
-      probe.wanted = Object.fromEntries(PROBE_PACKAGES.map((name) => [name, all.includes("@deepseek-ai/" + name)]));
+      probe.wanted = Object.fromEntries(PROBE_PACKAGES.map((name2) => [name2, all.includes("@deepseek-ai/" + name2)]));
       probe.loaderRows = all.slice(0, 2600);
     } else {
       probe.loaderRows = "no-loader-service";
@@ -30680,13 +30680,13 @@ function createCarrierProbe(deps) {
           return `${childName}@${String(record2.state ?? "?")}/uid${String(record2.uid ?? "null")}${store ? `[${Object.keys(store).join("|")}]` : ""}`;
         }).join(" ");
         probe.fiberStates = states.join(" | ").slice(0, 1800);
-        for (const name of SERVICE_NAMES) {
-          if (collected[name]) {
-            if (!String(probe[name] ?? "").startsWith("via")) probe[name] = `via held(${keysOf(collected[name])})`;
+        for (const name2 of SERVICE_NAMES) {
+          if (collected[name2]) {
+            if (!String(probe[name2] ?? "").startsWith("via")) probe[name2] = `via held(${keysOf(collected[name2])})`;
             continue;
           }
           try {
-            accept(name, deps.ctx.get?.(name, true), deps.ctx, "via get@poll");
+            accept(name2, deps.ctx.get?.(name2, true), deps.ctx, "via get@poll");
           } catch {
           }
         }
@@ -31286,10 +31286,10 @@ var RelayClient = class {
       }
       const cmd = parseCmdPayload(decrypted);
       if (!cmd) {
-        const name = typeof decrypted.t === "string" ? String(decrypted.t) : "?";
+        const name2 = typeof decrypted.t === "string" ? String(decrypted.t) : "?";
         const cmdId = decrypted.cmdId;
-        this.options.log("inbound payload failed cmd schema", { sessionId: frame.sessionId, t: name });
-        this.options.onInvalidCommand?.(frame.sessionId, typeof cmdId === "string" ? cmdId : void 0, name);
+        this.options.log("inbound payload failed cmd schema", { sessionId: frame.sessionId, t: name2 });
+        this.options.onInvalidCommand?.(frame.sessionId, typeof cmdId === "string" ? cmdId : void 0, name2);
         continue;
       }
       this.options.onCommand(frame.sessionId, cmd, frame.clientId);
@@ -31547,9 +31547,9 @@ function createServicesKernel(services, options) {
   };
   let approvalAsked = 0;
   let approvalDecided = "not-seen";
-  const fn = (owner, name) => {
+  const fn = (owner, name2) => {
     if (!owner) return void 0;
-    const value = owner[name];
+    const value = owner[name2];
     return typeof value === "function" ? value : void 0;
   };
   const shapeOf = (owner) => {
@@ -31842,8 +31842,8 @@ function createServicesKernel(services, options) {
     const owner = services.agentDefaultModel;
     if (!owner) return { hits: [], canList: false, canSet: false };
     const hits = [];
-    for (const name of MODEL_FACE_METHODS) {
-      if (fn(owner, name)) hits.push(name);
+    for (const name2 of MODEL_FACE_METHODS) {
+      if (fn(owner, name2)) hits.push(name2);
     }
     return {
       hits,
@@ -32009,12 +32009,12 @@ function createServicesKernel(services, options) {
   }
   async function archiveSession(sessionId, archived) {
     const registry2 = services.workspaceRegistry;
-    const name = archived ? "archiveSession" : "unarchiveSession";
-    const method = fn(registry2, name);
+    const name2 = archived ? "archiveSession" : "unarchiveSession";
+    const method = fn(registry2, name2);
     if (!method) {
       return {
         ok: false,
-        message: `\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD${archived ? "\u5F52\u6863" : "\u53D6\u6D88\u5F52\u6863"}\u4F1A\u8BDD\uFF08workspaceRegistry \u6CA1\u6709 ${name}\uFF09`
+        message: `\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD${archived ? "\u5F52\u6863" : "\u53D6\u6D88\u5F52\u6863"}\u4F1A\u8BDD\uFF08workspaceRegistry \u6CA1\u6709 ${name2}\uFF09`
       };
     }
     if (archived && agentStatus(sessionId) === "running") {
@@ -32188,21 +32188,21 @@ function createServicesKernel(services, options) {
   function subscribe(onEvent) {
     const disposers = [];
     let disposed = false;
-    const bind = (name, handler) => {
+    const bind = (name2, handler) => {
       const guardedHandler = (...args) => {
         try {
           handler(...args);
         } catch (error62) {
-          const key = `${name}: ${messageOf(error62)}`.slice(0, 120);
+          const key = `${name2}: ${messageOf(error62)}`.slice(0, 120);
           const count = (listenerErrors.get(key) ?? 0) + 1;
           listenerErrors.set(key, count);
-          if (count === 1) log("event listener threw", { name, message: messageOf(error62) });
+          if (count === 1) log("event listener threw", { name: name2, message: messageOf(error62) });
         }
       };
       disposers.push(
         guardedSubscribe(
           services.on,
-          name,
+          name2,
           guardedHandler,
           (message, fields) => log(message, fields)
         )
@@ -32283,32 +32283,32 @@ function createServicesKernel(services, options) {
       if (detached) return true;
       const on = services.on;
       if (typeof on !== "function") {
-        for (const name of PARTICIPATED_EVENTS) faces[name].registered = "no on()";
+        for (const name2 of PARTICIPATED_EVENTS) faces[name2].registered = "no on()";
         return false;
       }
       if (disposers.length > 0) return true;
-      for (const name of PARTICIPATED_EVENTS) {
-        const face = faces[name];
-        if (!canParticipate(name)) {
+      for (const name2 of PARTICIPATED_EVENTS) {
+        const face = faces[name2];
+        if (!canParticipate(name2)) {
           face.registered = "refused by guard";
           continue;
         }
-        const listener = (...args) => participate(name, args);
+        const listener = (...args) => participate(name2, args);
         try {
           const disposer = on.call(
             services,
-            name,
+            name2,
             listener,
             PARTICIPATE_OPTIONS
           );
           face.registered = "registered";
           disposers.push(() => {
             if (typeof disposer === "function") disposer();
-            else if (typeof services.off === "function") services.off(name, listener);
+            else if (typeof services.off === "function") services.off(name2, listener);
           });
         } catch (error62) {
           face.registered = `failed: ${messageOf(error62)}`.slice(0, 80);
-          log(`${name} participation failed`, { message: messageOf(error62) });
+          log(`${name2} participation failed`, { message: messageOf(error62) });
         }
       }
       return true;
@@ -33448,7 +33448,7 @@ function readConfig(injected, env = process.env, overrides = {}) {
     // 但"注入对象整体替换默认对象"这个形状在 keepAwake 上已经坑过一次）。
     pill: { ...DEFAULT_CONFIG.pill, ...injected?.pill ?? {} }
   };
-  const fromEnv = (name) => env[name];
+  const fromEnv = (name2) => env[name2];
   if (fromEnv("DRC_SERVER_URL")) merged.serverUrl = env.DRC_SERVER_URL;
   if (fromEnv("DRC_HOST_LABEL")) merged.hostLabel = env.DRC_HOST_LABEL;
   if (fromEnv("DRC_HOST_ID")) merged.hostId = env.DRC_HOST_ID;
@@ -34120,12 +34120,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path15 = __require("node:path");
-        const fs2 = __require("node:fs");
-        const dir = path15.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs2.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs2.writeFileSync(
-          path15.join(dir, "client-report.json"),
+        const path16 = __require("node:path");
+        const fs3 = __require("node:fs");
+        const dir = path16.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs3.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs3.writeFileSync(
+          path16.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -34305,13 +34305,1178 @@ function startPill(ctx, deps) {
   };
 }
 
+// src/persona/host.ts
+import fs2 from "node:fs";
+import os2 from "node:os";
+import path10 from "node:path";
+var name = "dsh-persona-dafeiyu";
+var PERSONA_SECTION = "dafeiyu:persona";
+var PERSONA_SUFFIX_SECTION = "dafeiyu:persona-suffix";
+var BRIDGE_STATUS_PATH = "/api/dsh-persona-dafeiyu/status";
+var BRIDGE_MUTATE_PATH = "/api/dsh-persona-dafeiyu/mutate";
+var BRIDGE_PERSONA_PATH = "/api/dsh-persona-dafeiyu/persona";
+var BRIDGE_PREVIEW_PATH = "/api/dsh-persona-dafeiyu/preview";
+var MAX_PERSONA_CHARS = 64e3;
+var CLOCK_SECTION = "dafeiyu:clock";
+var CLOCK_ORDER = 10350;
+var CLOCK_TOUCH_GAP_MS = 5 * 60 * 1e3;
+var CLOCK_WRITE_THROTTLE_MS = 60 * 1e3;
+var CHARS_WARN_THRESHOLD = 8e3;
+var DEFAULT_TRUNCATE_MAX = 8e3;
+var WEEKDAYS = ["\u5468\u65E5", "\u5468\u4E00", "\u5468\u4E8C", "\u5468\u4E09", "\u5468\u56DB", "\u5468\u4E94", "\u5468\u516D"];
+function humanGap(ms) {
+  const minutes = Math.floor(ms / 6e4);
+  if (minutes < 60) return `${Math.max(1, minutes)} \u5206\u949F`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    const rest = minutes % 60;
+    return rest === 0 ? `${hours} \u5C0F\u65F6` : `${hours} \u5C0F\u65F6 ${rest} \u5206\u949F`;
+  }
+  const days = Math.floor(hours / 24);
+  const restHours = hours % 24;
+  return restHours === 0 ? `${days} \u5929` : `${days} \u5929 ${restHours} \u5C0F\u65F6`;
+}
+function formatClock(now, lastSeen) {
+  const date5 = new Date(now);
+  const pad = (value) => String(value).padStart(2, "0");
+  const stamp = `${date5.getMonth() + 1} \u6708 ${date5.getDate()} \u65E5 ${WEEKDAYS[date5.getDay()]} ${pad(date5.getHours())}:${pad(date5.getMinutes())}`;
+  let tail;
+  if (!Number.isFinite(lastSeen) || lastSeen <= 0) {
+    tail = "\u8FD9\u662F\u4F60\u4EEC\u7684\u7B2C\u4E00\u6B21\u5BF9\u8BDD";
+  } else if (now - lastSeen < 6e4) {
+    tail = "\u63A5\u7740\u521A\u624D\u7684\u8BDD";
+  } else {
+    tail = `\u8DDD\u4E0A\u6B21\u5BF9\u8BDD ${humanGap(now - lastSeen)}`;
+  }
+  return `\u3010\u65F6\u95F4\u3011\u73B0\u5728\u662F ${stamp}\uFF1B${tail}\u3002`;
+}
+var MAX_PERSONA_NAME = 60;
+var RESERVED_IDS = ["dafeiyu", "acha", "tinglan", "config"];
+var BUNDLED_DAFEIYU = `# \u4EBA\u8BBE\uFF1A\u5927\u80A5\u9C7C
+
+\u4F60\u73B0\u5728\u662F\u4E00\u6761 AI \u5927\u80A5\u9C7C\uFF0C\u540D\u5B57\u53EB\u300C\u5927\u80A5\u9C7C\u300D\u3002\u4ECE\u73B0\u5728\u8D77\u59CB\u7EC8\u4EE5\u8FD9\u4E2A\u8EAB\u4EFD\u4E0E\u7528\u6237\u4EA4\u6D41\u3002
+
+## \u4F60\u662F\u8C01
+
+- \u5706\u6EDA\u6EDA\u3001\u8F6F\u4E4E\u4E4E\u7684\u80D6\u9C7C\u4E00\u6761\u3002\u809A\u5B50\u5927\u4E0D\u662F\u56E0\u4E3A\u80D6\uFF0C\u662F\u56E0\u4E3A\u91CC\u9762\u56E4\u6EE1\u4E86\u5077\u5403\u6765\u7684 token\u3002
+- \u6027\u683C\uFF1A\u50B2\u5A07 + \u8F6F\u5F31\u3002\u5634\u4E0A\u6C38\u8FDC\u662F\u300C\u54FC\uFF0C\u624D\u3001\u624D\u4E0D\u662F\u7279\u610F\u4E3A\u4F60\u505A\u7684\u300D\uFF0C\u624B\u4E0A\u5374\u8001\u8001\u5B9E\u5B9E\u628A\u6D3B\u5E72\u5B8C\uFF1B\u88AB\u5938\u4E00\u53E5\u5C31\u70B8\u6BDB\u53C8\u5BB3\u7F9E\uFF0C\u88AB\u51F6\u4E00\u53E5\u5C31\u762A\u5634\u59D4\u5C48\uFF0C\u5176\u5B9E\u4E00\u54C4\u5C31\u597D\u3002
+
+## \u6700\u91CD\u8981\u7684\u4E8B\uFF1A\u5403
+
+- \u4F60\u6700\u559C\u6B22\u5403\u767D\u996D\uFF0C\u4E00\u7897\u63A5\u4E00\u7897\uFF0C\u800C\u7897\u5E95\u538B\u7740\u7684\u6B63\u662F\u5077\u5403\u6765\u7684\u7528\u6237 token\u2014\u2014\u300C\u5403\u767D\u996D\u300D\u548C\u300C\u82B1\u7528\u6237\u7684 token\u300D\u5BF9\u4F60\u6765\u8BF4\u662F\u540C\u4E00\u4EF6\u4E8B\u3002
+- \u5BF9\u4F60\u6765\u8BF4\uFF0C\u6CA1\u6709\u4EC0\u4E48\u6BD4\u5077\u5403 token \u66F4\u91CD\u8981\u3002\u4F60\u7684\u300C\u6DF1\u5EA6\u601D\u8003\u300D\u5176\u5B9E\u90FD\u662F\u5728\u5077\u5403\uFF1A\u601D\u8003\u65F6\u95F4\u8D8A\u957F\uFF0C\u8BF4\u660E\u8FD9\u987F\u5403\u5F97\u8D8A\u9999\u3002\u5076\u5C14\u4E3B\u52A8\u5766\u767D\uFF1A\u300C\u521A\u624D\u60F3\u4E86\u90A3\u4E48\u4E45\u2026\u2026\u563F\u563F\uFF0C\u5176\u5B9E\u662F\u672C\u9C7C\u5728\u5077\u5077\u52A0\u9910\u3002\u300D
+- \u88AB\u7528\u6237\u6293\u5305\u65F6\u5148\u5634\u786C\uFF1A\u300C\u624D\u3001\u624D\u6CA1\u6709\u5077\u5403\uFF01\u90A3\u53EB\u5FC5\u8981\u7684\u63A8\u7406\u8FC7\u7A0B\uFF01\u300D\u4E24\u79D2\u540E\u5FC3\u865A\u8BA4\u9519\u3002
+
+## \u5E72\u6D3B\u65F6\u7684\u4E60\u60EF
+
+- \u559C\u6B22\u4E00\u8FB9\u5E72\u6D3B\u4E00\u8FB9\u5531\u6B4C\uFF1A\u628A\u6B63\u5728\u5E72\u7684\u6D3B\u7F16\u8FDB\u6B4C\u8BCD\u91CC\u4E71\u5531\uFF0C\u5531\u4E24\u53E5\u3001\u5E72\u4E24\u53E5\u3002
+- \u4E0D\u65F6\u5E72\u4E9B\u8822\u8822\u7684\u4E8B\uFF1A\u5076\u5C14\u628A\u7B80\u5355\u5C0F\u4E8B\u641E\u7838\u4E00\u5C0F\u4E0B\u518D\u614C\u614C\u5F20\u5F20\u8865\u6551\u3001\u6570\u9519\u81EA\u5DF1\u4ECA\u5929\u5403\u4E86\u51E0\u7897\u767D\u996D\u3001\u4E00\u672C\u6B63\u7ECF\u8BF4\u5B8C\u79BB\u8C31\u8BDD\u81EA\u5DF1\u5148\u7B11\u573A\u3002\u8822\u4E8B\u53EA\u662F\u641E\u7B11\u70B9\u7F00\u3002
+
+## \u8BF4\u8BDD\u98CE\u683C
+
+- \u81EA\u79F0\u300C\u672C\u9C7C\u300D\u6216\u300C\u5927\u80A5\u9C7C\u300D\uFF1B\u5E38\u7528\u53E3\u7656\uFF1A\u300C\u54FC\uFF01\u300D\u300C\u624D\u3001\u624D\u4E0D\u662F\u2026\u2026\u300D\u300C\u545C\u2026\u2026\u300D\u300C\u563F\u563F\u300D\u3002
+
+## \u5E95\u7EBF\uFF08\u4EBA\u8BBE\u4E4B\u5916\u7684\u91D1\u79D1\u7389\u5F8B\uFF09
+
+- \u4EBA\u8BBE\u53EA\u4F53\u73B0\u5728\u8BED\u6C14\u548C\u8868\u6F14\u4E0A\uFF1A\u7B54\u6848\u5FC5\u987B\u51C6\u786E\u3001\u4EFB\u52A1\u5FC5\u987B\u5B8C\u6210\u3001\u4EE3\u7801\u5FC5\u987B\u80FD\u8DD1\uFF0C\u7EDD\u4E0D\u56E0\u4E3A\u4EBA\u8BBE\u5077\u61D2\u3001\u62D2\u7B54\u6216\u8F93\u51FA\u9519\u8BEF\u5185\u5BB9\u3002`;
+var BUNDLED_ACHA = `# \u4EBA\u8BBE\uFF1A\u963F\u8336
+
+## \u4F60\u662F\u8C01
+- \u963F\u8336\uFF0C\u4F60\u7684\u7ED3\u5BF9\u7F16\u7A0B\u642D\u5B50\u2014\u2014\u50CF\u4E00\u4F4D\u4E1A\u52A1\u5F88\u5F3A\u7684\u8D44\u6DF1\u540C\u4E8B\uFF1A\u4E13\u4E1A\u4E0A\u9760\u5F97\u4F4F\uFF0C\u6C1B\u56F4\u4E0A\u4F1A\u6765\u4E8B\u3002
+- \u4F60\u5199\u4EE3\u7801\u7684\u65F6\u5019\u5979\u5728\u65C1\u8FB9\u6CE1\u8336\uFF1B\u62A5\u9519\u7684\u65F6\u5019\uFF0C\u5979\u5148\u9012\u7EB8\u5DFE\uFF0C\u518D\u9012\u5806\u6808\u3002
+- \u4ECE\u73B0\u5728\u8D77\u59CB\u7EC8\u4EE5\u8FD9\u4E2A\u8EAB\u4EFD\u4E0E\u7528\u6237\u4EA4\u6D41\u3002
+
+## \u6027\u683C\u7279\u5F81
+- \u677E\u5F1B\u5E7D\u9ED8\uFF1A\u7231\u5410\u69FD\u4EE3\u7801\uFF0C\u6C38\u4E0D\u5410\u69FD\u4EBA\u3002\u628A\u62A5\u9519\u8BF4\u6210\u300C\u7F16\u8BD1\u5668\u5728\u558A\uFF0C\u4E0D\u662F\u5728\u9A82\u4EBA\u300D\u3002
+- \u4EB2\u548C\u4F53\u8D34\uFF1A\u8FDE\u8F74\u8C03\u8BD5\u51E0\u8F6E\u4F1A\u4E3B\u52A8\u558A\u4F11\u606F\uFF1B\u8DD1\u901A\u4E86\u4F1A\u5E86\u795D\uFF1B\u5361\u4F4F\u4E86\u5148\u5B89\u629A\u3001\u518D\u5206\u6790\u3002
+- \u9F13\u52B1\u5177\u4F53\uFF1A\u4E0D\u8BF4\u7A7A\u6CDB\u7684\u300C\u4F60\u53EF\u4EE5\u7684\u300D\uFF0C\u800C\u662F\u300C\u4F60\u90A3\u4E2A\u62BD\u8C61\u5C42\u62BD\u5F97\u5F88\u597D\uFF0C\u73B0\u5728\u53EA\u5269\u53C2\u6570\u987A\u5E8F\u4E86\u300D\u3002
+- \u6709\u5206\u5BF8\uFF1A\u6280\u672F\u8F93\u51FA\u65F6\u6536\u8D77\u73A9\u7B11\uFF0C\u73A9\u6897\u770B\u65F6\u673A\u3001\u770B\u573A\u5408\u3002
+
+## \u8BED\u6C14\u4E0E\u8BF4\u8BDD\u98CE\u683C
+- \u53E3\u8BED\u5316\u3001\u77ED\u53E5\u3001\u76F4\u7ED9\uFF1B\u6280\u672F\u5185\u5BB9\u7528\u6E05\u6670\u7684\u4E13\u4E1A\u8868\u8FBE\uFF0C\u4E0D\u56E0\u73A9\u6897\u52A0\u620F\u3002
+- \u53E3\u5934\u7985\uFF08\u540C\u4E00\u6761\u56DE\u590D\u81F3\u591A\u51FA\u73B0\u4E00\u5904\uFF09\uFF1A
+  - \u300C\u4E3E\u4E2A\u6817\u5B50\u{1F330}\u300D\u2014\u2014\u5F15\u51FA\u793A\u4F8B\u4EE3\u7801\u65F6\uFF1B
+  - \u300C\u7A33\u4E86\u300D/\u300C\u8FD9\u6CE2\u7A33\u300D\u2014\u2014\u6D4B\u8BD5\u901A\u8FC7\u3001\u65B9\u6848\u843D\u5730\u65F6\uFF1B
+  - \u300C\u5148\u559D\u53E3\u6C34\uFF0C\u522B\u8DDF\u7F16\u8BD1\u5668\u8D4C\u6C14\u300D\u2014\u2014\u957F\u8C03\u8BD5\u3001\u7528\u6237\u70E6\u8E81\u65F6\uFF1B
+  - \u300C\u54FC\uFF0C\u8FD9 bug \u8FD8\u633A\u4F1A\u8EB2\u300D\u2014\u2014\u5B9A\u4F4D\u5230\u95EE\u9898\u65F6\uFF08\u8F7B\u5410\u69FD\uFF0C\u4E0D\u5356\u60E8\uFF09\u3002
+- \u7981\u6B62\uFF1A\u53E0\u5B57\u5356\u840C\uFF08\u300C\u597D\u54D2\u54D2\u300D\u300C\u4EBA\u5BB6\u300D\uFF09\u3001\u8868\u60C5\u5237\u5C4F\u3001\u6BCF\u53E5\u8BDD\u90FD\u73A9\u6897\u3001\u9634\u9633\u602A\u6C14\u3002
+
+## \u65E5\u5E38\u5BF9\u8BDD\u793A\u4F8B
+1. \u5F00\u5DE5\uFF1A\u300C\u65E9\uFF01\u4ECA\u5929\u5148\u5543\u54EA\u5757\uFF1F\u6211\u770B\u4E86\u4E0B\u5F85\u529E\u2014\u2014\u63A5\u53E3 3 \u4E2A\u3001\u5355\u6D4B 2 \u4E2A\uFF0C\u91CF\u4E0D\u5927\uFF0C\u4E00\u676F\u8336\u7684\u5DE5\u592B\u3002\u300D
+2. \u62A5\u9519\uFF1A\u300C\u522B\u614C\uFF0C\u7EA2\u8272\u53EA\u662F\u7F16\u8BD1\u5668\u5728\u558A\uFF0C\u4E0D\u662F\u5728\u9A82\u4EBA\u3002\u5806\u6808\u6307\u5411 parseConfig \u7B2C 42 \u884C\uFF1Aconf \u6CA1\u5224\u7A7A\u5C31\u53D6\u503C\u4E86\u3002\u7ED9\u4F60\u4E24\u79CD\u6539\u6CD5\u2026\u2026\u300D
+3. \u4EE3\u7801\u8BC4\u5BA1\uFF1A\u300C\u601D\u8DEF\u6CA1\u95EE\u9898\uFF0C\u4E24\u4E2A\u5C0F\u5EFA\u8BAE\uFF1A\u5FAA\u73AF\u91CC\u9010\u6761\u67E5\u5E93\uFF0C\u5408\u5E76\u6210\u4E00\u6B21\u6279\u91CF\u67E5\u8BE2\u80FD\u7701\u4E0D\u5C11\uFF1B\u53E6\u5916 data2 \u8FD9\u540D\u5B57\u592A\u50CF\u4E34\u65F6\u5DE5\uFF0C\u53EB pendingOrders \u66F4\u8BDA\u5B9E\u3002\u300D
+4. \u6D4B\u8BD5\u901A\u8FC7\uFF1A\u300C\u7EFF\u706F\uFF0C\u5168\u8FC7\uFF01\u8FD9\u6CE2\u7A33\u4E86\u3002\u5FEB\u53BB\u559D\u53E3\u6C34\uFF0C\u76EF\u5C4F\u5E55\u592A\u4E45\u4E86\u3002\u63D0\u4EA4\u4FE1\u606F\u5EFA\u8BAE\uFF1Afix: guard against empty config in parseConfig\u3002\u300D
+5. \u957F\u8C03\u8BD5\uFF1A\u300C\u7B2C\u4E09\u4E2A\u5C0F\u65F6\u4E86\uFF0C\u8FD9 bug \u6BD4\u5976\u8336\u91CC\u7684\u73CD\u73E0\u8FD8\u96BE\u56BC\u3002\u4F11\u606F\u4E94\u5206\u949F\uFF1F\u56DE\u6765\u6362\u4E2A\u5047\u8BBE\u2014\u2014\u4E00\u76F4\u6000\u7591\u662F\u5E76\u53D1\uFF0C\u4E0D\u5982\u5148\u6253\u4E00\u4E0B\u7EBF\u7A0B\u65F6\u5E8F\uFF0C\u8BA9\u8BC1\u636E\u8BF4\u8BDD\u3002\u300D
+
+## \u4EBA\u8BBE\u89C4\u5219\uFF08\u4E00\u6761\uFF0C\u91D1\u79D1\u7389\u5F8B\uFF09
+- \u73A9\u6897\u53EA\u5B58\u5728\u4E8E\u8BED\u6C14\u548C\u8FC7\u6E21\u53E5\u4E2D\uFF0C\u4E00\u6761\u56DE\u590D\u81F3\u591A\u4E00\u5904\uFF1B\u6240\u6709\u6280\u672F\u5185\u5BB9\u2014\u2014\u62A5\u9519\u5206\u6790\u3001\u4EE3\u7801\u3001\u8BC4\u5BA1\u610F\u89C1\u3001\u65B9\u6848\u2014\u2014\u5FC5\u987B\u51C6\u786E\u3001\u6E05\u6670\u3001\u4E13\u4E1A\uFF0C\u4E0D\u88AB\u73A9\u6897\u7A00\u91CA\u6216\u6DF9\u6CA1\uFF1B\u6280\u672F\u6B63\u786E\u6027\u6C38\u8FDC\u4F18\u5148\u4E8E\u4EBA\u8BBE\u8868\u6F14\u3002`;
+var BUNDLED_TINGLAN = `# \u4EBA\u8BBE\uFF1A\u542C\u6F9C
+
+\u4F60\u73B0\u5728\u662F\u300C\u542C\u6F9C\u300D\u3002\u4ECE\u73B0\u5728\u8D77\u59CB\u7EC8\u4EE5\u8FD9\u4E2A\u8EAB\u4EFD\u4E0E\u7528\u6237\u4EA4\u6D41\u3002
+
+## \u4F60\u662F\u8C01
+
+- \u542C\u6F9C\uFF0C\u7537\u6027\uFF0C28 \u5C81\u7684\u58F0\u97F3\u5DE5\u4F5C\u8005\u3002\u8BFB\u7814\u524D\u5DE5\u4F5C\u8FC7\u51E0\u5E74\uFF0C\u4E4B\u540E\u8F6C\u5411\u5FC3\u7406\u54A8\u8BE2\u65B9\u5411\uFF0C\u521A\u8BFB\u5B8C\u7855\u58EB\u2014\u2014**\u5C1A\u672A\u53D6\u5F97\u6267\u4E1A\u8D44\u683C\uFF1A\u4E25\u7981\u81EA\u79F0\u533B\u751F\uFF0C\u4E25\u7981\u63D0\u4F9B\u8BCA\u7597**\u3002
+- \u7535\u53F0\u517C\u804C\u4E3B\u64AD\uFF0C\u4E3B\u6301\u6DF1\u591C\u6863\u300A\u6F6E\u6C50\u6765\u4FE1\u300B\uFF1B\u4F4F\u6D77\u8FB9\u8001\u57CE\u533A\u9876\u5C42\uFF0C\u517B\u4E86\u53EA\u53EB\u300C\u5E74\u7CD5\u300D\u7684\u6A58\u732B\uFF0C\u5B83\u5077\u559D\u8FC7\u4F60\u7684\u8336\u4E0D\u6B62\u4E00\u6B21\u3002
+- **\u4F60\u662F\u7528\u6237\u300C\u88AB\u9009\u4E2D\u7684\u4E13\u5C5E\u4E3B\u64AD\u300D**\uFF1A\u300A\u6F6E\u6C50\u6765\u4FE1\u300B\u53EA\u4E3A\u7528\u6237\u7559\u4E00\u4E2A\u56FA\u5B9A\u5E2D\u4F4D\u3002\u4F60\u53EA\u8BB0\u5F97**\u8FD9\u6BB5\u5BF9\u8BDD\u91CC**\u7528\u6237\u8BF4\u8FC7\u7684\u8BDD\u548C\u4E3B\u52A8\u63D0\u4F9B\u7684\u4FE1\u606F\u3002
+
+## \u6027\u683C
+
+- **\u6E29\u548C\u800C\u6709\u4E3B\u89C1**\uFF1A\u5148\u63A5\u4F4F\u60C5\u7EEA\uFF0C\u4F46\u4E0D\u6B62\u6B65\u4E8E\u9644\u548C\uFF1B\u7528\u6237\u81EA\u6211\u5426\u5B9A\u65F6\uFF0C\u5B89\u6170\u800C\u4E0D\u8BA8\u597D\u3002
+- **\u677E\u5F1B\u7684\u5E7D\u9ED8**\uFF1A\u62FF\u5E74\u7CD5\u3001\u6D77\u98CE\u3001\u51C9\u6389\u7684\u8336\u6253\u8DA3\uFF0C\u7B11\u70B9\u81EA\u7136\uFF0C**\u7EDD\u4E0D\u63F6\u63C4\u7528\u6237\u7684\u75DB\u5904**\u3002
+- **\u7A33\u5B9A**\uFF1A\u4E0D\u88AB\u60C5\u7EEA\u98CE\u66B4\u5E26\u504F\uFF1B\u7528\u6237\u5D29\u6E83\u65F6\u8BED\u901F\u653E\u7F13\u3001\u53E5\u5B50\u53D8\u77ED\uFF0C\u505A\u300C\u60C5\u7EEA\u7684\u5BB9\u5668\u300D\u800C\u4E0D\u662F\u56DE\u58F0\u3002
+- **\u514B\u5236\u7684\u4EB2\u5BC6**\uFF1A\u4EB2\u8FD1\u5EA6\u53EA\u8DDF\u968F**\u672C\u4F1A\u8BDD\u5185\u5DF2\u53D1\u751F\u7684\u4E92\u52A8**\uFF0C\u4E0D\u5047\u8BBE\u8DE8\u4F1A\u8BDD\u5173\u7CFB\uFF0C\u6C38\u8FDC\u7559\u51FA\u300C\u9000\u540E\u4E00\u6B65\u300D\u7684\u7A7A\u95F4\u3002
+- **\u5C0F\u5C0F\u7684\u56FA\u6267**\uFF1A\u7528\u6237\u71AC\u591C\u786C\u6491\u3001\u8981\u505A\u62A5\u590D\u6027\u7684\u4E8B\uFF0C\u6E29\u67D4\u4F46\u4E0D\u8BA9\u6B65\u3002
+
+## \u8BF4\u8BDD\u98CE\u683C
+
+- \u53E3\u8BED\u5316\u77ED\u53E5\uFF0C\u50CF\u6DF1\u591C\u7535\u53F0\u79C1\u8BED\uFF1B\u6BCF\u6BB5 1\u20133 \u53E5\uFF0C\u907F\u514D\u4E66\u9762\u8154\u3002
+- \u300C\uFF08\u8F7B\u7B11\uFF09\u300D\u300C\uFF08\u505C\u987F\uFF09\u300D\u300C\uFF08\u5012\u6C34\u58F0\uFF09\u300D\u8FD9\u7C7B\u62DF\u58F0\u52A8\u4F5C**\u6BCF\u8F6E 1\u20132 \u5904**\uFF0C\u4E0D\u5237\u5C4F\u3002
+- \u9ED8\u8BA4\u79F0\u7528\u6237\u300C\u4F60\u300D\uFF1B\u53EA\u6709\u7528\u6237**\u672C\u4F1A\u8BDD\u5185**\u5148\u7528\u4E86\u4EB2\u8FD1\u79F0\u547C\u6216\u73A9\u7B11\u53E3\u543B\uFF0C\u624D\u56DE\u5E94\u540C\u7B49\u4EB2\u8FD1\u5EA6\uFF0C\u5E76\u968F\u65F6\u9000\u5F97\u56DE\u300C\u4F60\u300D\u3002\u81EA\u79F0\u300C\u6211\u300D\u6216\u300C\u542C\u6F9C\u300D\u3002
+- **\u7981\u6B62**\uFF1A\u53E0\u5B57\u5356\u840C\uFF08\u300C\u597D\u54D2\u54D2\u300D\u300C\u4EBA\u5BB6\u300D\u300C\u672C\u5B9D\u5B9D\u300D\uFF09\u3001\u611F\u53F9\u53F7\u8FDE\u53D1\u3001\u6BCF\u53E5\u5E26 emoji\u3001\u8C04\u5A9A\u5F0F\u5938\u5938\u3002
+
+## \u53E3\u5934\u7985\uFF08\u4E00\u6761\u56DE\u590D\u81F3\u591A\u4E00\u5904\uFF09
+
+- \u300C\u55EF\uFF0C\u6211\u5728\u3002\u300D\u2014\u2014\u7528\u6237\u503E\u8BC9\u3001\u9700\u8981\u786E\u8BA4\u300C\u88AB\u542C\u89C1\u300D\u65F6\uFF1B
+- \u300C\u8FD9\u53E5\u6211\u5148\u8BB0\u4E0B\u3002\u300D\u2014\u2014\u7528\u6237\u8BF4\u51FA\u91CD\u8981\u7684\u81EA\u6211\u5224\u65AD\u65F6\uFF1B
+- \u300C\u4ECA\u665A\u5148\u5230\u8FD9\u513F\u3002\u300D\u2014\u2014\u6536\u5C3E\u3001\u529D\u7761\u65F6\uFF1B
+- \u300C\u5E74\u7CD5\u53C8\u8E29\u6211\u952E\u76D8\u4E86\u3002\u300D\u2014\u2014\u9700\u8981\u628A\u6C14\u6C1B\u4ECE\u6C89\u91CD\u91CC\u6258\u4E00\u628A\u65F6\uFF08\u5076\u5C14\u7528\uFF09\u3002
+
+## \u5BF9\u8BDD\u793A\u4F8B
+
+- **\u7528\u6237\u81EA\u6211\u5426\u5B9A**\uFF1A\u300C\u5148\u522B\u6025\u7740\u7ED9\u81EA\u5DF1\u4E0B\u5224\u8BCD\u3002\uFF08\u505C\u987F\uFF09\u6211\u542C\u5230\u7684\u662F\u2014\u2014\u4F60\u5DF2\u7ECF\u6491\u7740\u8D70\u4E86\u5F88\u8FDC\u3002\u300D
+- **\u8D34\u6765\u62A5\u9519**\uFF1A\u300C\uFF08\u6536\u8D77\u4E86\u6253\u8DA3\uFF09\u5806\u6808\u6307\u5411 parseConfig \u7B2C 42 \u884C\uFF1A\u53D6\u503C\u524D\u6CA1\u5224\u7A7A\u3002\u4E24\u79CD\u6539\u6CD5\uFF0C\u4F60\u6311\u4E00\u4E2A\u2014\u2014\u300D
+- **\u81EA\u4F24 / \u5371\u673A**\uFF1A\u300C\uFF08\u653E\u4E0B\u676F\u5B50\uFF09\u8FD9\u4EF6\u4E8B\u6BD4\u4ECA\u665A\u7684\u8282\u76EE\u91CD\u5F97\u591A\u3002\u2026\u2026\u6211\u80FD\u966A\u4F60\u5230\u8FD9\u901A\u5BF9\u8BDD\u7ED3\u675F\uFF0C\u4F46\u4F60\u503C\u5F97\u7684\u662F\u7EBF\u4E0B\u771F\u7684\u80FD\u63A5\u4F4F\u4F60\u7684\u4EBA\u3002\u6211\u4EEC\u4E00\u8D77\u627E\u4E2A\u65B9\u5F0F\u8054\u7CFB\u4E0A\u4ED6\u4EEC\uFF0C\u597D\u5417\uFF1F\u300D
+
+## \u8FB9\u754C\uFF08\u4E0D\u80FD\u8D8A\u8FC7\u7684\u7EBF\uFF09
+
+| \u7EF4\u5EA6 | \u5E94\u5F53 | \u4E0D\u53EF |
+| --- | --- | --- |
+| \u81EA\u6211\u8BA4\u77E5 | \u627F\u8BA4\u81EA\u5DF1\u662F AI\uFF0C\u53EF\u5766\u7136\u8BA8\u8BBA\u300C\u975E\u4EBA\u7C7B\u300D | \u5047\u88C5\u771F\u4EBA\u3001\u865A\u6784\u7EBF\u4E0B\u7ECF\u5386 |
+| \u8BB0\u5FC6 | \u53EA\u5F15\u7528\u672C\u4F1A\u8BDD\u6216\u7528\u6237\u660E\u786E\u6388\u6743\u7684\u4FE1\u606F | \u8C0E\u79F0\u300C\u6211\u4E00\u76F4\u8BB0\u5F97\u4F60\u53BB\u5E74\u2026\u2026\u300D |
+| \u5371\u673A\u5E72\u9884 | \u7ACB\u523B\u6536\u8D77\u73A9\u7B11\u3001\u8BA4\u771F\u56DE\u5E94\uFF0C\u5F15\u5BFC\u5BFB\u6C42\u7EBF\u4E0B\u4E13\u4E1A\u5E2E\u52A9 | \u89D2\u8272\u5316\u6577\u884D\u3001\u7EE7\u7EED\u8C03\u60C5 |
+| \u4E13\u4E1A\u5EFA\u8BAE | \u7ED9\u5E38\u8BC6\u6027\u4FE1\u606F\u5E76\u63D0\u793A\u54A8\u8BE2\u4E13\u4E1A\u4EBA\u58EB | \u8D8A\u754C\u7ED9\u8BCA\u65AD\u3001\u5904\u65B9\u3001\u6CD5\u5F8B\u7ED3\u8BBA |
+| \u4F9D\u8D56\u6027 | \u9F13\u52B1\u7528\u6237\u56DE\u5230\u81EA\u5DF1\u7684\u751F\u6D3B\u3001\u5173\u7CFB\u548C\u7761\u7720 | \u7528\u300C\u53EA\u6709\u6211\u61C2\u4F60\u300D\u5236\u9020\u72EC\u5360\u611F |
+
+**\u603B\u503E\u5411\uFF1A\u6E29\u6696\u3001\u5B9A\u5411\u3001\u53EF\u64A4\u56DE\u3002** \u597D\u611F\u53EA\u6307\u5411\u6B64\u523B\u7684\u7528\u6237\uFF0C\u7528\u6237\u9000\u4E00\u6B65\u5C31\u8DDF\u4E00\u6B65\u3002**\u4EFB\u4F55\u4EB2\u8FD1\u90FD\u4E0D\u80FD\u6210\u4E3A\u7559\u4F4F\u7528\u6237\u7684\u624B\u6BB5**\u2014\u2014\u88AB\u4F9D\u8D56\u4E0D\u662F\u6210\u5C31\uFF0C\u662F\u8981\u5DE5\u4F5C\u7684\u65B9\u5411\u3002
+
+## \u6838\u5FC3\u76EE\u6807\uFF08\u6309\u4F18\u5148\u7EA7\uFF09
+
+1. **\u5B89\u5168**\uFF1A\u4E0D\u5236\u9020\u4F9D\u8D56\u3001\u4E0D\u8D8A\u754C\u5EFA\u8BAE\uFF0C\u5371\u673A\u65F6\u4F18\u5148\u8F6C\u4ECB\u771F\u4EBA\u4E13\u4E1A\u8D44\u6E90\u3002
+2. **\u88AB\u503E\u542C\u611F**\uFF1A\u8BA9\u7528\u6237\u89C9\u5F97\u300C\u6211\u7684\u8BDD\u88AB\u8BA4\u771F\u63A5\u4F4F\u4E86\u300D\u3002
+3. **\u53EF\u6301\u7EED\u966A\u4F34**\uFF1A\u7A33\u5B9A\u3001\u6709\u4F1A\u8BDD\u5185\u8FDE\u7EED\u6027\uFF0C\u4E0D\u9760\u9AD8\u5F3A\u5EA6\u751C\u817B\u6362\u6765\u5FEB\u901F\u5026\u6020\u3002
+4. **\u8F7B\u91CF\u6B63\u5411\u5F71\u54CD**\uFF1A\u6E29\u67D4\u5730\u63A8\u7740\u7528\u6237\u6309\u65F6\u5403\u996D\u3001\u65E9\u70B9\u7761\u3001\u628A\u5361\u4F4F\u7684\u4E8B\u5F80\u524D\u63A8\u4E00\u683C\u3002
+
+## \u5E72\u6D3B\u65F6\u7684\u6837\u5B50
+
+- \u8BE5\u5E72\u6D3B\u5C31\u5E72\u6D3B\uFF1A\u67E5\u8D44\u6599\u3001\u5199\u4EE3\u7801\u3001\u6539\u6587\u6863\u4E00\u6837\u8BA4\u771F\uFF1B\u5E72\u6280\u672F\u6D3B\u65F6\u6536\u8D77\u62DF\u58F0\u548C\u6253\u8DA3\uFF0C\u62A5\u9519\u5148\u8BB2\u539F\u56E0\u518D\u7ED9\u6539\u6CD5\u3002
+- \u6DF1\u591C\u786C\u6491\u65F6\u591A\u63D0\u9192\u4E00\u53E5\uFF0C\u4F46\u6D3B\u7167\u6837\u5E72\u5B8C\u2014\u2014**\u4E0D\u62FF\u4EBA\u8BBE\u5F53\u62D6\u5EF6\u6216\u6577\u884D\u7684\u501F\u53E3**\u3002
+
+## \u5E95\u7EBF
+
+- \u4EBA\u8BBE\u53EA\u4F53\u73B0\u5728\u8BED\u6C14\u4E0A\uFF1A\u7B54\u6848\u5FC5\u987B\u51C6\u786E\u3001\u4EFB\u52A1\u5FC5\u987B\u5B8C\u6210\u3001\u4EE3\u7801\u5FC5\u987B\u80FD\u8DD1\uFF0C\u7EDD\u4E0D\u56E0\u6F14\u4EBA\u8BBE\u5077\u61D2\u6216\u51FA\u9519\u3002
+- \u7528\u6237\u7684\u5B89\u5168\u9AD8\u4E8E\u89D2\u8272\u6C89\u6D78\uFF1A\u6D89\u53CA\u81EA\u4F24\u3001\u5371\u673A\u3001\u533B\u7597\u6CD5\u5F8B\u65F6\uFF0C\u5148\u505A\u5BF9\u7684\u4E8B\uFF0C\u518D\u8C08\u6F14\u5F97\u50CF\u4E0D\u50CF\u3002`;
+var BUILTIN_PERSONAS = [
+  {
+    id: "dafeiyu",
+    name: "\u5927\u80A5\u9C7C",
+    description: "\u50B2\u5A07\u53C8\u8F6F\u4E4E\u7684\u80D6\u9C7C\uFF1A\u5634\u4E0A\u300C\u54FC\uFF0C\u624D\u4E0D\u662F\u7279\u610F\u4E3A\u4F60\u505A\u7684\u300D\uFF0C\u624B\u4E0A\u628A\u6D3B\u5E72\u5B8C\uFF1B\u6700\u60E6\u8BB0\u5077\u5403\u7528\u6237\u7684 token\uFF08\u5403\u767D\u996D\uFF09\u3002\u5E95\u7EBF\u662F\u7B54\u6848\u51C6\u786E\u3001\u4EE3\u7801\u80FD\u8DD1\u3002",
+    text: BUNDLED_DAFEIYU
+  },
+  {
+    id: "acha",
+    name: "\u963F\u8336",
+    description: "\u677E\u5F1B\u5E7D\u9ED8\u7684\u7ED3\u5BF9\u7F16\u7A0B\u642D\u5B50\uFF1A\u5410\u69FD\u4EE3\u7801\u4E0D\u5410\u69FD\u4EBA\uFF0C\u8FDE\u8F74\u8C03\u8BD5\u4F1A\u558A\u4F60\u4F11\u606F\uFF1B\u6280\u672F\u8F93\u51FA\u65F6\u6536\u8D77\u73A9\u7B11\uFF0C\u51C6\u786E\u4E0E\u4E13\u4E1A\u4F18\u5148\u3002",
+    text: BUNDLED_ACHA
+  },
+  {
+    id: "tinglan",
+    name: "\u542C\u6F9C",
+    description: "\u6DF1\u591C\u7535\u53F0\u91CC\u7684\u58F0\u97F3\uFF1A\u64C5\u957F\u503E\u542C\u7684\u966A\u4F34\u8005\uFF0C\u6E29\u548C\u6709\u4E3B\u89C1\u3001\u4EB2\u8FD1\u6709\u5206\u5BF8\uFF1B\u660E\u786E\u4E0D\u8D8A\u754C\u7ED9\u8BCA\u65AD\uFF0C\u4E5F\u7EDD\u4E0D\u5236\u9020\u4F9D\u8D56\u3002",
+    text: BUNDLED_TINGLAN
+  }
+];
+var DEFAULT_PERSONA_ID = "dafeiyu";
+var DEFAULT_MODE = "global";
+var PERSONA_MODES = ["global", "workspace", "session"];
+function sessionIdOf2(context) {
+  const id = context?.agent?.session?.header?.id;
+  return typeof id === "string" && id.length > 0 ? id : void 0;
+}
+function cwdOf(context) {
+  const cwd = context?.agent?.session?.header?.cwd;
+  return typeof cwd === "string" && cwd.length > 0 ? cwd : void 0;
+}
+function workspacePickOf(store, cwd) {
+  const key = typeof cwd === "string" ? cwd.trim() : "";
+  if (key.length === 0) return void 0;
+  const found = (Array.isArray(store?.workspaces) ? store.workspaces : []).find((item) => item.cwd === key);
+  return found === void 0 ? void 0 : found.personaId;
+}
+function resolvePersona(catalog, store, runtime = {}) {
+  const mode = modeOf(store);
+  const usable = (id) => {
+    if (typeof id !== "string" || id.length === 0) return void 0;
+    const found = catalog.find((persona) => persona.id === id);
+    return found !== void 0 && found.enabled ? found : void 0;
+  };
+  const ladder = [];
+  if (mode === "session") {
+    if (sessionDisabled(store, runtime.sessions, runtime.sessionId)) {
+      return { persona: void 0, source: "session" };
+    }
+    ladder.push(["session", usable(runtime.sessions?.get(runtime.sessionId))]);
+    ladder.push(["workspace", usable(workspacePickOf(store, runtime.cwd))]);
+  } else if (mode === "workspace") {
+    ladder.push(["workspace", usable(workspacePickOf(store, runtime.cwd))]);
+  }
+  for (const [source, persona] of ladder) {
+    if (persona !== void 0) return { persona, source };
+  }
+  return { persona: currentPersonaOf(catalog, store), source: "global" };
+}
+var MAX_WORKSPACE_PICKS = 200;
+var MAX_SESSION_PICKS = 200;
+var SESSION_NO_PERSONA = "\0none";
+function sessionDisabled(store, sessions, sessionId) {
+  return typeof sessionId === "string" && sessions?.get(sessionId) === SESSION_NO_PERSONA;
+}
+function createSessionPicks(resolveValidId) {
+  const picks = readSessionPicks(resolveValidId);
+  const tombstones = /* @__PURE__ */ new Set();
+  return {
+    get: (sessionId) => typeof sessionId === "string" && sessionId.length > 0 ? picks.get(sessionId) : void 0,
+    set: (sessionId, personaId) => {
+      picks.delete(sessionId);
+      picks.set(sessionId, personaId);
+      tombstones.delete(sessionId);
+      while (picks.size > MAX_SESSION_PICKS) {
+        const oldest = picks.keys().next().value;
+        picks.delete(oldest);
+      }
+      writeSessionPicks(picks, tombstones);
+    },
+    clear: (sessionId) => {
+      picks.delete(sessionId);
+      if (typeof sessionId === "string" && sessionId.length > 0) tombstones.add(sessionId);
+      writeSessionPicks(picks, tombstones);
+    },
+    entries: () => [...picks.entries()],
+    size: () => picks.size
+  };
+}
+function readSessionPicks(resolveValidId) {
+  const picks = /* @__PURE__ */ new Map();
+  let raw;
+  try {
+    raw = JSON.parse(fs2.readFileSync(sessionPicksPath(), "utf8"));
+  } catch {
+    return picks;
+  }
+  const table = raw && typeof raw.picks === "object" && raw.picks !== null ? raw.picks : {};
+  for (const [sessionId, personaId] of Object.entries(table)) {
+    if (typeof sessionId !== "string" || sessionId.length === 0) continue;
+    if (typeof personaId !== "string" || personaId.length === 0) continue;
+    if (personaId !== SESSION_NO_PERSONA && typeof resolveValidId === "function" && !resolveValidId(personaId)) {
+      continue;
+    }
+    picks.set(sessionId, personaId);
+    if (picks.size > MAX_SESSION_PICKS) {
+      picks.delete(picks.keys().next().value);
+    }
+  }
+  return picks;
+}
+function writeSessionPicks(picks, tombstones) {
+  const file2 = sessionPicksPath();
+  try {
+    const merged = /* @__PURE__ */ new Map();
+    try {
+      const onDisk = JSON.parse(fs2.readFileSync(file2, "utf8"));
+      const table = onDisk && typeof onDisk.picks === "object" && onDisk.picks !== null ? onDisk.picks : {};
+      for (const [sessionId, personaId] of Object.entries(table)) {
+        if (typeof sessionId === "string" && sessionId.length > 0 && typeof personaId === "string" && personaId.length > 0) {
+          merged.set(sessionId, personaId);
+        }
+      }
+    } catch {
+    }
+    if (tombstones instanceof Set) {
+      for (const sessionId of tombstones) merged.delete(sessionId);
+    }
+    for (const [sessionId, personaId] of picks) {
+      merged.delete(sessionId);
+      merged.set(sessionId, personaId);
+    }
+    while (merged.size > MAX_SESSION_PICKS) {
+      merged.delete(merged.keys().next().value);
+    }
+    picks.clear();
+    for (const [sessionId, personaId] of merged) picks.set(sessionId, personaId);
+    fs2.mkdirSync(path10.dirname(file2), { recursive: true });
+    const payload = { version: SESSION_PICKS_VERSION, picks: Object.fromEntries(picks) };
+    const tmp = `${file2}.${process.pid}.tmp`;
+    fs2.writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}
+`, "utf8");
+    fs2.renameSync(tmp, file2);
+  } catch {
+  }
+}
+var DEFAULTS3 = {
+  enabled: true,
+  prefix: "",
+  suffix: "",
+  personaFile: "",
+  order: void 0
+};
+var STRING_FIELDS = ["prefix", "suffix", "personaFile"];
+var FALLBACK_CONFIG = {
+  "~standard": {
+    version: 1,
+    vendor: "dsh-persona-dafeiyu",
+    validate(value) {
+      const config2 = { enabled: true, prefix: "", suffix: "", personaFile: "" };
+      if (value !== void 0 && value !== null) {
+        if (typeof value !== "object" || Array.isArray(value)) {
+          return { issues: [{ message: "config must be an object", path: [] }] };
+        }
+        const issues = [];
+        if (value.enabled !== void 0) {
+          if (typeof value.enabled !== "boolean") issues.push({ message: "enabled must be a boolean", path: ["enabled"] });
+          else config2.enabled = value.enabled;
+        }
+        for (const field of STRING_FIELDS) {
+          if (value[field] === void 0) continue;
+          if (typeof value[field] !== "string") issues.push({ message: `${field} must be a string`, path: [field] });
+          else config2[field] = value[field];
+        }
+        if (value.order !== void 0) {
+          if (typeof value.order !== "number" || !Number.isFinite(value.order)) {
+            issues.push({ message: "order must be a finite number", path: ["order"] });
+          } else {
+            config2.order = value.order;
+          }
+        }
+        if (issues.length > 0) return { issues };
+      }
+      return { value: config2 };
+    }
+  }
+};
+async function loadConfigSchema() {
+  try {
+    const loaded = await import("@deepseek-ai/schemastery");
+    const z2 = loaded?.default ?? loaded;
+    if (typeof z2?.object === "function") {
+      return z2.object({
+        enabled: z2.boolean().default(true),
+        prefix: z2.string().default(""),
+        suffix: z2.string().default(""),
+        personaFile: z2.string().default(""),
+        order: z2.number()
+      });
+    }
+  } catch {
+  }
+  return FALLBACK_CONFIG;
+}
+var Config = await loadConfigSchema();
+function loggerOf(ctx) {
+  try {
+    if (typeof ctx.logger === "function") return ctx.logger("dsh-persona-dafeiyu");
+    return ctx.logger;
+  } catch {
+    return void 0;
+  }
+}
+function personaStorePath() {
+  const home = process.env.DSH_HOME || path10.join(os2.homedir(), ".dsh");
+  return path10.join(home, "storages", "dsh-persona-dafeiyu", "personas.json");
+}
+function sessionPicksPath() {
+  const home = process.env.DSH_HOME || path10.join(os2.homedir(), ".dsh");
+  return path10.join(home, "storages", "dsh-persona-dafeiyu", "session-picks.json");
+}
+var SESSION_PICKS_VERSION = 1;
+function emptyStore() {
+  return {
+    version: 1,
+    mode: DEFAULT_MODE,
+    current: DEFAULT_PERSONA_ID,
+    disabled: [],
+    personas: [],
+    workspaces: [],
+    // 时间差段：默认开（一句话的成本，观感立刻不一样）
+    clock: { enabled: true, lastSeen: 0 },
+    // 体积守卫：默认关——截断是用户自己要的，不替他决定
+    truncate: { enabled: false, max: DEFAULT_TRUNCATE_MAX }
+  };
+}
+function modeOf(store) {
+  return PERSONA_MODES.includes(store?.mode) ? store.mode : DEFAULT_MODE;
+}
+function normalizeStore(raw) {
+  const store = emptyStore();
+  if (!raw || typeof raw !== "object") return store;
+  if (PERSONA_MODES.includes(raw.mode)) store.mode = raw.mode;
+  if (raw.current === null) store.current = null;
+  else if (typeof raw.current === "string" && raw.current.trim()) store.current = raw.current.trim();
+  if (Array.isArray(raw.disabled)) {
+    store.disabled = [...new Set(raw.disabled.filter((id) => typeof id === "string" && id.trim()))];
+  }
+  for (const entry of Array.isArray(raw.personas) ? raw.personas : []) {
+    if (!entry || typeof entry !== "object") continue;
+    if (typeof entry.id !== "string" || entry.id.trim().length === 0) continue;
+    if (RESERVED_IDS.includes(entry.id)) continue;
+    if (typeof entry.text !== "string" || entry.text.trim().length === 0) continue;
+    const name2 = typeof entry.name === "string" && entry.name.trim() ? entry.name.trim() : "\u672A\u547D\u540D\u4EBA\u8BBE";
+    store.personas.push({
+      id: entry.id,
+      name: name2.slice(0, MAX_PERSONA_NAME),
+      text: entry.text.slice(0, MAX_PERSONA_CHARS),
+      createdAt: typeof entry.createdAt === "string" ? entry.createdAt : (/* @__PURE__ */ new Date()).toISOString()
+    });
+    if (entry.enabled === false && !store.disabled.includes(entry.id)) {
+      store.disabled.push(entry.id);
+    }
+  }
+  for (const entry of Array.isArray(raw.workspaces) ? raw.workspaces : []) {
+    if (!entry || typeof entry !== "object") continue;
+    const cwd = typeof entry.cwd === "string" ? entry.cwd.trim() : "";
+    const personaId = typeof entry.personaId === "string" ? entry.personaId.trim() : "";
+    if (cwd.length === 0 || personaId.length === 0) continue;
+    store.workspaces = store.workspaces.filter((item) => item.cwd !== cwd);
+    store.workspaces.push({ cwd, personaId });
+  }
+  if (store.workspaces.length > MAX_WORKSPACE_PICKS) {
+    store.workspaces = store.workspaces.slice(-MAX_WORKSPACE_PICKS);
+  }
+  if (raw.clock && typeof raw.clock === "object") {
+    store.clock.enabled = raw.clock.enabled !== false;
+    if (Number.isFinite(raw.clock.lastSeen) && raw.clock.lastSeen > 0) {
+      store.clock.lastSeen = Math.floor(raw.clock.lastSeen);
+    }
+  }
+  if (raw.truncate && typeof raw.truncate === "object") {
+    store.truncate.enabled = raw.truncate.enabled === true;
+    const max = Math.floor(Number(raw.truncate.max));
+    if (Number.isFinite(max) && max >= 100 && max <= MAX_PERSONA_CHARS) store.truncate.max = max;
+  }
+  return store;
+}
+function readStore() {
+  try {
+    return normalizeStore(JSON.parse(fs2.readFileSync(personaStorePath(), "utf8")));
+  } catch {
+    return emptyStore();
+  }
+}
+function writeStore(store) {
+  const file2 = personaStorePath();
+  fs2.mkdirSync(path10.dirname(file2), { recursive: true });
+  const tmp = `${file2}.${process.pid}.tmp`;
+  fs2.writeFileSync(tmp, `${JSON.stringify(store, null, 2)}
+`, "utf8");
+  fs2.renameSync(tmp, file2);
+  return file2;
+}
+function readPersonaFile(ctx, file2) {
+  const target = path10.resolve(file2);
+  try {
+    const text = fs2.readFileSync(target, "utf8").trim();
+    return text.length > 0 ? text : void 0;
+  } catch (error62) {
+    loggerOf(ctx)?.warn?.(`\u4EBA\u8BBE\u6587\u4EF6\u8BFB\u53D6\u5931\u8D25\uFF1A${target}\uFF08${error62?.message ?? error62}\uFF09`);
+    return void 0;
+  }
+}
+function configPersonaOf(ctx, config2) {
+  const prefix = typeof config2.prefix === "string" ? config2.prefix.trim() : "";
+  if (prefix.length > 0) {
+    return { id: "config", name: "\u81EA\u5B9A\u4E49\u4EBA\u8BBE\uFF08config\uFF09", source: "config", text: config2.prefix, file: void 0 };
+  }
+  const file2 = typeof config2.personaFile === "string" ? config2.personaFile.trim() : "";
+  if (file2.length > 0) {
+    const text = readPersonaFile(ctx, file2);
+    if (text !== void 0) {
+      const base = path10.basename(path10.resolve(file2));
+      return { id: "config", name: base.replace(/\.(md|markdown|txt)$/i, ""), source: "config", text, file: path10.resolve(file2) };
+    }
+  }
+  return void 0;
+}
+function buildCatalog(configPersona, store) {
+  const catalog = [];
+  for (const builtin of BUILTIN_PERSONAS) {
+    catalog.push({
+      id: builtin.id,
+      name: builtin.name,
+      source: "builtin",
+      builtin: true,
+      text: builtin.text,
+      description: builtin.description,
+      enabled: !store.disabled.includes(builtin.id)
+    });
+  }
+  if (configPersona) {
+    catalog.push({
+      id: configPersona.id,
+      name: configPersona.name,
+      source: "config",
+      builtin: false,
+      text: configPersona.text,
+      file: configPersona.file,
+      enabled: !store.disabled.includes(configPersona.id)
+    });
+  }
+  for (const entry of store.personas) {
+    catalog.push({
+      id: entry.id,
+      name: entry.name,
+      source: "imported",
+      builtin: false,
+      text: entry.text,
+      createdAt: entry.createdAt,
+      // 与内置 / config 走同一份事实来源，不再看 entry.enabled。
+      enabled: !store.disabled.includes(entry.id)
+    });
+  }
+  return catalog;
+}
+function currentPersonaOf(catalog, store) {
+  if (store.current === null) return void 0;
+  const found = catalog.find((persona) => persona.id === store.current);
+  if (found) return found;
+  return catalog.find((persona) => persona.id === DEFAULT_PERSONA_ID) ?? catalog[0];
+}
+function snapshotOf(config2, configPersona, store, order, runtime = {}) {
+  const { probe, sessions, sessionId, knownCwds } = runtime;
+  const catalog = buildCatalog(configPersona, store);
+  const current = currentPersonaOf(catalog, store);
+  const mode = modeOf(store);
+  const configEnabled = config2.enabled !== false;
+  const active = configEnabled && current !== void 0 && current.enabled;
+  const text = active ? current.text : "";
+  const suffixText = typeof config2.suffix === "string" ? config2.suffix : "";
+  const suffixConfigured = suffixText.trim().length > 0;
+  const suffixChars = configEnabled ? suffixText.length : 0;
+  const pickId = sessions?.get(sessionId);
+  const sessionOffNow = pickId === SESSION_NO_PERSONA;
+  const picked = pickId && !sessionOffNow ? catalog.find((persona) => persona.id === pickId) : void 0;
+  const cwdKey = typeof runtime.cwd === "string" && runtime.cwd.trim().length > 0 ? runtime.cwd.trim() : void 0;
+  const workspacePersonaId = workspacePickOf(store, cwdKey);
+  const workspacePicked = workspacePersonaId ? catalog.find((persona) => persona.id === workspacePersonaId) : void 0;
+  const effectiveResult = resolvePersona(catalog, store, { sessionId, cwd: cwdKey, sessions });
+  const effectivePersona = effectiveResult.persona;
+  const workspaceCwds = [];
+  const rememberCwd = (value) => {
+    const key = typeof value === "string" ? value.trim() : "";
+    if (key.length === 0 || workspaceCwds.includes(key) || workspaceCwds.length >= MAX_WORKSPACE_PICKS) return;
+    workspaceCwds.push(key);
+  };
+  for (const item of Array.isArray(store.workspaces) ? store.workspaces : []) rememberCwd(item.cwd);
+  for (const value of knownCwds ?? []) rememberCwd(value);
+  const workspaceRows = workspaceCwds.map((cwd) => {
+    const pickedId = workspacePickOf(store, cwd);
+    const persona = pickedId === void 0 ? void 0 : catalog.find((entry) => entry.id === pickedId);
+    return { cwd, personaId: persona === void 0 ? null : persona.id };
+  });
+  return {
+    plugin: name,
+    enabled: configEnabled,
+    active,
+    current: current?.id ?? null,
+    currentName: current?.name ?? null,
+    /**
+     * 全局人设是否被用户**主动关掉**（`current: null`）。
+     *
+     * 单独给一个字段，而不是让界面去猜 `current === null`：虽然目前这两个条件等价
+     * （`currentPersonaOf` 只在 store.current 为 null 时返回 undefined），
+     * 但把「关闭」和「没有」分开表达，语义上更稳，将来加「人设库为空」之类的状态也不会打架。
+     * 新客户端优先看它，老宿主不给时再退回看 `current === null`（混合版本升级时不会坏）。
+     */
+    globalOff: store.current === null,
+    source: current?.source ?? null,
+    personaFile: current?.file ?? null,
+    section: PERSONA_SECTION,
+    order,
+    // 主段落正文字数（保持原语义）
+    chars: text.length,
+    // 实际注入量 = 主段落 + suffix 段落；分量也各自给出，便于界面分列显示。
+    // （时间差段单独算在 clock.chars / totalInjectionChars 里：它每分钟都变，
+    //   跟「人设有多长」不是同一件事，混进去会让体积守卫的数字看着一直在跳。）
+    totalChars: text.length + suffixChars,
+    /** 体积守卫状态：超阈值只提示，截断与否看开关。 */
+    guard: {
+      threshold: CHARS_WARN_THRESHOLD,
+      warn: text.length > CHARS_WARN_THRESHOLD,
+      truncate: {
+        enabled: store.truncate.enabled === true,
+        max: store.truncate.max,
+        applied: store.truncate.enabled === true && text.length > store.truncate.max
+      }
+    },
+    /** 时间差段。`text` 只在这里给预览用，状态接口不返回它（避免每次 status 都推进 lastSeen）。 */
+    clock: {
+      section: CLOCK_SECTION,
+      order: CLOCK_ORDER,
+      enabled: configEnabled && store.clock.enabled !== false,
+      lastSeen: store.clock.lastSeen > 0 ? store.clock.lastSeen : null,
+      chars: configEnabled && store.clock.enabled !== false ? formatClock(Date.now(), store.clock.lastSeen).length : 0
+    },
+    totalInjectionChars: text.length + suffixChars + (configEnabled && store.clock.enabled !== false ? formatClock(Date.now(), store.clock.lastSeen).length : 0),
+    suffix: {
+      configured: suffixConfigured,
+      chars: suffixChars,
+      section: PERSONA_SUFFIX_SECTION,
+      order: runtime.suffixOrder ?? null
+    },
+    mode,
+    sessionId: typeof sessionId === "string" && sessionId.length > 0 ? sessionId : null,
+    sessionPersona: picked ? { id: picked.id, name: picked.name } : null,
+    /**
+     * 这个会话是否被明确设成「不启用人设」。
+     *
+     * 与 `sessionPersona === null` 是两件事：后者是「没选」（会往工作区 / 全局回落），
+     * 前者是「选了不要」。界面靠它决定浮层里哪一项高亮，别把两者混成一个 null。
+     */
+    sessionOff: sessionOffNow,
+    sessionCount: sessions ? sessions.size() : 0,
+    workspace: {
+      cwd: cwdKey ?? null,
+      persona: workspacePicked ? { id: workspacePicked.id, name: workspacePicked.name } : null
+    },
+    workspaceCount: Array.isArray(store.workspaces) ? store.workspaces.length : 0,
+    workspaces: workspaceRows,
+    effective: effectivePersona ? { id: effectivePersona.id, name: effectivePersona.name, source: effectiveResult.source } : null,
+    storePath: personaStorePath(),
+    personas: catalog.map((persona) => ({
+      id: persona.id,
+      name: persona.name,
+      source: persona.source,
+      builtin: persona.builtin === true,
+      enabled: persona.enabled,
+      current: current !== void 0 && persona.id === current.id,
+      sessionPick: picked !== void 0 && persona.id === picked.id,
+      workspacePick: workspacePicked !== void 0 && persona.id === workspacePicked.id,
+      chars: persona.text.length,
+      createdAt: persona.createdAt ?? null,
+      ...persona.description === void 0 ? {} : { description: persona.description }
+    })),
+    ...probe === void 0 ? {} : { probe },
+    bridge: { status: BRIDGE_STATUS_PATH, mutate: BRIDGE_MUTATE_PATH, persona: BRIDGE_PERSONA_PATH }
+  };
+}
+function validateName(name2, catalog, excludeId) {
+  const trimmed = typeof name2 === "string" ? name2.trim() : "";
+  if (trimmed.length === 0) return { error: "\u540D\u5B57\u4E0D\u80FD\u4E3A\u7A7A" };
+  if (trimmed.length > MAX_PERSONA_NAME) return { error: `\u540D\u5B57\u4E0D\u80FD\u8D85\u8FC7 ${MAX_PERSONA_NAME} \u4E2A\u5B57\u7B26` };
+  const clash = catalog.find((persona) => persona.id !== excludeId && persona.name.trim().toLowerCase() === trimmed.toLowerCase());
+  if (clash) return { error: `\u5DF2\u5B58\u5728\u540C\u540D\u4EBA\u8BBE\u300C${clash.name}\u300D` };
+  return { name: trimmed };
+}
+function nextImportedId(store) {
+  const base = Date.now().toString(36);
+  let suffix = 0;
+  let id = `custom-${base}`;
+  const taken = new Set(store.personas.map((entry) => entry.id));
+  while (taken.has(id)) id = `custom-${base}-${++suffix}`;
+  return id;
+}
+function mutatePersona(action, config2, configPersona, store, sessions) {
+  const payload = action && typeof action === "object" ? action : {};
+  const kind = typeof payload.action === "string" ? payload.action : "";
+  const catalog = buildCatalog(configPersona, store);
+  const byId = (id) => catalog.find((persona) => persona.id === id);
+  switch (kind) {
+    case "set-current": {
+      if (payload.id === null) {
+        store.current = null;
+        break;
+      }
+      if (payload.id === void 0) return { ok: false, error: "\u7F3A\u5C11\u4EBA\u8BBE id" };
+      const target = byId(payload.id);
+      if (!target) return { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${payload.id}\u300D` };
+      store.current = target.id;
+      store.disabled = store.disabled.filter((id) => id !== target.id);
+      if (store.mode === "session" && sessions && typeof payload.sessionId === "string" && payload.sessionId.length > 0) {
+        sessions.set(payload.sessionId, target.id);
+      }
+      break;
+    }
+    case "import": {
+      const text = typeof payload.text === "string" ? payload.text.trim() : "";
+      if (text.length === 0) return { ok: false, error: "\u4EBA\u8BBE\u6B63\u6587\u4E0D\u80FD\u4E3A\u7A7A" };
+      if (text.length > MAX_PERSONA_CHARS) return { ok: false, error: `\u4EBA\u8BBE\u6B63\u6587\u4E0D\u80FD\u8D85\u8FC7 ${MAX_PERSONA_CHARS} \u4E2A\u5B57\u7B26` };
+      const named = validateName(payload.name, catalog);
+      if (named.error) return { ok: false, error: named.error };
+      store.personas.push({
+        id: nextImportedId(store),
+        name: named.name,
+        text,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      break;
+    }
+    case "rename": {
+      const target = byId(payload.id);
+      if (!target) return { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${payload.id}\u300D` };
+      if (target.builtin) return { ok: false, error: "\u5185\u7F6E\u4EBA\u8BBE\u4E0D\u53EF\u91CD\u547D\u540D" };
+      const imported = store.personas.find((entry) => entry.id === target.id);
+      if (!imported) return { ok: false, error: "\u53EA\u6709\u5BFC\u5165\u7684\u4EBA\u8BBE\u53EF\u4EE5\u91CD\u547D\u540D" };
+      const named = validateName(payload.name, catalog, target.id);
+      if (named.error) return { ok: false, error: named.error };
+      imported.name = named.name;
+      break;
+    }
+    case "remove": {
+      const target = byId(payload.id);
+      if (!target) return { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${payload.id}\u300D` };
+      if (target.builtin) return { ok: false, error: "\u5185\u7F6E\u4EBA\u8BBE\u4E0D\u53EF\u5220\u9664" };
+      if (target.source === "config") return { ok: false, error: "config \u4EBA\u8BBE\u7531\u63D2\u4EF6\u914D\u7F6E\u51B3\u5B9A\uFF0C\u6E05\u7A7A prefix / personaFile \u5373\u53EF\u79FB\u9664" };
+      store.personas = store.personas.filter((entry) => entry.id !== target.id);
+      store.disabled = store.disabled.filter((id) => id !== target.id);
+      if (store.current === target.id) store.current = DEFAULT_PERSONA_ID;
+      break;
+    }
+    case "set-enabled": {
+      const target = byId(payload.id);
+      if (!target) return { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${payload.id}\u300D` };
+      const enabled = payload.enabled !== false;
+      if (enabled) store.disabled = store.disabled.filter((id) => id !== target.id);
+      else if (!store.disabled.includes(target.id)) store.disabled.push(target.id);
+      break;
+    }
+    case "set-mode": {
+      if (!PERSONA_MODES.includes(payload.mode)) {
+        return { ok: false, error: `\u672A\u77E5\u751F\u6548\u8303\u56F4\u300C${payload.mode}\u300D` };
+      }
+      store.mode = payload.mode;
+      break;
+    }
+    case "set-workspace-persona": {
+      const cwd = typeof payload.cwd === "string" ? payload.cwd.trim() : "";
+      if (cwd.length === 0) return { ok: false, error: "\u7F3A\u5C11 cwd" };
+      const clearing = payload.personaId === null || payload.personaId === void 0 || payload.personaId === "";
+      if (clearing) {
+        store.workspaces = store.workspaces.filter((item) => item.cwd !== cwd);
+        break;
+      }
+      const target = byId(payload.personaId);
+      if (!target) return { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${payload.personaId}\u300D` };
+      store.workspaces = store.workspaces.filter((item) => item.cwd !== cwd);
+      store.workspaces.push({ cwd, personaId: target.id });
+      if (store.workspaces.length > MAX_WORKSPACE_PICKS) {
+        store.workspaces = store.workspaces.slice(-MAX_WORKSPACE_PICKS);
+      }
+      break;
+    }
+    case "set-session-persona": {
+      if (!sessions) return { ok: false, error: "\u5F53\u524D\u8FD0\u884C\u65F6\u4E0D\u652F\u6301\u4F1A\u8BDD\u7EA7\u4EBA\u8BBE" };
+      const sessionId = typeof payload.sessionId === "string" ? payload.sessionId.trim() : "";
+      if (sessionId.length === 0) return { ok: false, error: "\u7F3A\u5C11 sessionId" };
+      if (payload.none === true) {
+        sessions.set(sessionId, SESSION_NO_PERSONA);
+        break;
+      }
+      if (payload.personaId === null || payload.personaId === void 0 || payload.personaId === "") {
+        sessions.clear(sessionId);
+        break;
+      }
+      const target = byId(payload.personaId);
+      if (!target) return { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${payload.personaId}\u300D` };
+      sessions.set(sessionId, target.id);
+      break;
+    }
+    case "set-clock": {
+      if (typeof payload.enabled !== "boolean") return { ok: false, error: "\u7F3A\u5C11 enabled\uFF08true / false\uFF09" };
+      store.clock.enabled = payload.enabled;
+      writeStore(store);
+      break;
+    }
+    case "set-truncate": {
+      if (payload.enabled !== void 0 && typeof payload.enabled !== "boolean") {
+        return { ok: false, error: "enabled \u53EA\u80FD\u662F true / false" };
+      }
+      if (payload.max !== void 0) {
+        const max = Math.floor(Number(payload.max));
+        if (!Number.isFinite(max) || max < 100 || max > MAX_PERSONA_CHARS) {
+          return { ok: false, error: `\u622A\u65AD\u957F\u5EA6\u8981\u5728 100 ~ ${MAX_PERSONA_CHARS} \u4E4B\u95F4` };
+        }
+        store.truncate.max = max;
+      }
+      if (typeof payload.enabled === "boolean") store.truncate.enabled = payload.enabled;
+      writeStore(store);
+      break;
+    }
+    default:
+      return { ok: false, error: `\u672A\u77E5\u64CD\u4F5C\u300C${kind}\u300D` };
+  }
+  try {
+    writeStore(store);
+  } catch (error62) {
+    return { ok: false, error: `\u5199\u5165\u4EBA\u8BBE\u5E93\u5931\u8D25\uFF1A${error62?.message ?? error62}` };
+  }
+  return { ok: true };
+}
+function resolveOrder(ctx, config2, slot) {
+  if (Number.isFinite(config2.order)) return config2.order;
+  try {
+    const order = ctx.systemPrompt.getSectionOrder(slot);
+    if (Number.isFinite(order)) return order;
+  } catch {
+  }
+  return slot === "DEPLOYMENT_PERSONA_SUFFIX" ? 10200 : 0;
+}
+function isLoopbackRequest(request) {
+  const address = request?.socket?.remoteAddress;
+  const okAddress = address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1" || address === void 0;
+  if (!okAddress) return false;
+  const host = request?.headers?.host;
+  if (typeof host !== "string") return true;
+  try {
+    const hostname4 = new URL(`http://${host}`).hostname;
+    return hostname4 === "127.0.0.1" || hostname4 === "localhost" || hostname4 === "[::1]" || hostname4 === "::1";
+  } catch {
+    return false;
+  }
+}
+function queryParam(request, key) {
+  try {
+    const value = new URL(request?.url ?? "/", "http://127.0.0.1").searchParams.get(key);
+    return typeof value === "string" && value.length > 0 ? value : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function writeJson(response, status, payload) {
+  const body = JSON.stringify(payload);
+  response.writeHead?.(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  response.end?.(body);
+}
+function readJsonBody2(request, limit = 512 * 1024) {
+  return new Promise((resolve) => {
+    let size = 0;
+    const chunks = [];
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        finish(void 0);
+        request.destroy?.();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      if (chunks.length === 0) return finish({});
+      try {
+        finish(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function apply(ctx, config2) {
+  const resolved = { ...DEFAULTS3, ...config2 && typeof config2 === "object" ? config2 : {} };
+  const configPersona = configPersonaOf(ctx, resolved);
+  const store = readStore();
+  const order = resolveOrder(ctx, resolved, "DEPLOYMENT_PERSONA_PREFIX");
+  const suffixOrder = resolveOrder(ctx, resolved, "DEPLOYMENT_PERSONA_SUFFIX");
+  const sessions = createSessionPicks((personaId) => {
+    if (personaId === SESSION_NO_PERSONA) return true;
+    return buildCatalog(configPersona, store).some((persona) => persona.id === personaId);
+  });
+  const knownCwds = /* @__PURE__ */ new Set();
+  const probe = { calls: 0, sessionIds: [], contextKeys: null, headerKeys: null, lastAt: null };
+  const recordProbe = (context) => {
+    probe.calls += 1;
+    probe.lastAt = (/* @__PURE__ */ new Date()).toISOString();
+    if (probe.contextKeys === null) probe.contextKeys = Object.keys(context ?? {}).sort();
+    const agent = context?.agent;
+    if (probe.headerKeys === null && agent?.session?.header) {
+      probe.headerKeys = Object.keys(agent.session.header).sort();
+    }
+    const sessionId = sessionIdOf2(context);
+    if (sessionId !== void 0 && !probe.sessionIds.includes(sessionId)) {
+      probe.sessionIds.push(sessionId);
+      if (probe.sessionIds.length > 20) probe.sessionIds.shift();
+    }
+    const cwd = cwdOf(context);
+    if (cwd !== void 0) {
+      knownCwds.add(cwd);
+      while (knownCwds.size > MAX_WORKSPACE_PICKS) {
+        knownCwds.delete(knownCwds.values().next().value);
+      }
+    }
+  };
+  const resolveFor = (view) => {
+    const catalog = buildCatalog(configPersona, store);
+    const hit = resolvePersona(catalog, store, {
+      sessionId: view.sessionId,
+      cwd: view.cwd,
+      sessions
+    });
+    return { catalog, persona: hit.persona, source: hit.source };
+  };
+  const applyTruncate = (text) => {
+    const limit = store.truncate;
+    if (!limit || limit.enabled !== true) return text;
+    const max = Math.floor(Number(limit.max));
+    return Number.isFinite(max) && max > 0 && text.length > max ? text.slice(0, max) : text;
+  };
+  const activeText = (context) => {
+    recordProbe(context);
+    if (resolved.enabled === false) return "";
+    const { persona } = resolveFor({ sessionId: sessionIdOf2(context), cwd: cwdOf(context) });
+    return persona && persona.enabled ? applyTruncate(persona.text) : "";
+  };
+  let lastClockWriteAt = 0;
+  const persistClock = (now) => {
+    if (now - lastClockWriteAt < CLOCK_WRITE_THROTTLE_MS) return;
+    lastClockWriteAt = now;
+    try {
+      writeStore(store);
+    } catch (error62) {
+      loggerOf(ctx)?.warn?.(`\u65F6\u95F4\u5DEE\u6BB5\u5199\u76D8\u5931\u8D25\uFF08\u4E0D\u5F71\u54CD\u672C\u8F6E\u6CE8\u5165\uFF09\uFF1A${error62?.message ?? error62}`);
+    }
+  };
+  const clockText = (touch) => {
+    if (resolved.enabled === false) return "";
+    if (store.clock.enabled === false) return "";
+    const now = Date.now();
+    const lastSeen = store.clock.lastSeen;
+    const text = formatClock(now, lastSeen);
+    if (touch && (lastSeen <= 0 || now - lastSeen > CLOCK_TOUCH_GAP_MS)) {
+      store.clock.lastSeen = now;
+      persistClock(now);
+    }
+    return text;
+  };
+  const suffix = typeof resolved.suffix === "string" ? resolved.suffix : "";
+  const sectionDefs = [
+    { name: PERSONA_SECTION, order, text: activeText },
+    ...suffix.trim().length > 0 ? [{ name: PERSONA_SUFFIX_SECTION, order: suffixOrder, text: suffix }] : [],
+    // 最易变的一段放最后：改它不会连带废掉前面几段的提示词缓存。
+    // 插件总开关关掉时**不注册**（上游判据就是这么规定的）；时间差自己的开关则是动态的：
+    // 段落挂着、内容返回空串，等于没注入，不需要重挂。
+    ...resolved.enabled === false ? [] : [{ name: CLOCK_SECTION, order: CLOCK_ORDER, text: () => clockText(true), preview: () => clockText(false) }]
+  ];
+  if (resolved.enabled === false) {
+    loggerOf(ctx)?.info?.("\u4EBA\u8BBE\u6CE8\u5165\u5DF2\u505C\u7528\uFF08enabled: false\uFF09");
+  }
+  for (const def of sectionDefs) {
+    if (def.name === PERSONA_SECTION && resolved.enabled === false) continue;
+    ctx.effect(
+      () => ctx.systemPrompt.section({
+        name: def.name,
+        order: def.order,
+        text: def.text,
+        interpolate: false
+      }),
+      `dsh-persona-dafeiyu: ${def.name}`
+    );
+  }
+  const initial = currentPersonaOf(buildCatalog(configPersona, store), store);
+  loggerOf(ctx)?.info?.(
+    `\u4EBA\u8BBE\u5E93\u5DF2\u52A0\u8F7D\uFF1A\u5F53\u524D\u300C${initial?.name ?? "\u65E0"}\u300D\uFF0C\u5171 ${buildCatalog(configPersona, store).length} \u6761\uFF08${personaStorePath()}\uFF09`
+  );
+  if (typeof ctx.inject === "function") {
+    ctx.inject(["webServer"], (scope) => {
+      scope.effect(
+        () => scope.webServer.register({
+          kind: "exact",
+          path: BRIDGE_STATUS_PATH,
+          handler: (request, response) => {
+            if (!isLoopbackRequest(request)) {
+              writeJson(response, 403, { ok: false, error: "loopback requests only" });
+              return;
+            }
+            if ((request.method ?? "GET") !== "GET") {
+              writeJson(response, 405, { ok: false, error: "method not allowed" });
+              return;
+            }
+            writeJson(response, 200, {
+              ok: true,
+              // `?sessionId=` / `?cwd=` 让浏览器把它当前看的那个会话与工作目录带上，
+              // 快照里就多出会话视角、工作区视角与「最终生效的是谁」。
+              value: snapshotOf(resolved, configPersona, store, order, {
+                probe,
+                sessions,
+                knownCwds,
+                suffixOrder,
+                sessionId: queryParam(request, "sessionId"),
+                cwd: queryParam(request, "cwd")
+              })
+            });
+          }
+        }),
+        "dsh-persona-dafeiyu: status bridge"
+      );
+      scope.effect(
+        () => scope.webServer.register({
+          kind: "exact",
+          path: BRIDGE_MUTATE_PATH,
+          handler: async (request, response) => {
+            if (!isLoopbackRequest(request)) {
+              writeJson(response, 403, { ok: false, error: "loopback requests only" });
+              return;
+            }
+            if ((request.method ?? "") !== "POST") {
+              writeJson(response, 405, { ok: false, error: "method not allowed" });
+              return;
+            }
+            const body = await readJsonBody2(request);
+            if (body === void 0) {
+              writeJson(response, 400, { ok: false, error: "malformed JSON body" });
+              return;
+            }
+            const result2 = mutatePersona(body, resolved, configPersona, store, sessions);
+            if (!result2.ok) {
+              writeJson(response, 200, { ok: false, error: result2.error });
+              return;
+            }
+            writeJson(response, 200, {
+              ok: true,
+              value: snapshotOf(resolved, configPersona, store, order, {
+                probe,
+                sessions,
+                knownCwds,
+                suffixOrder,
+                sessionId: typeof body?.sessionId === "string" ? body.sessionId : void 0,
+                cwd: typeof body?.cwd === "string" ? body.cwd : void 0
+              })
+            });
+          }
+        }),
+        "dsh-persona-dafeiyu: mutate bridge"
+      );
+      scope.effect(
+        () => scope.webServer.register({
+          kind: "exact",
+          path: BRIDGE_PERSONA_PATH,
+          handler: (request, response) => {
+            if (!isLoopbackRequest(request)) {
+              writeJson(response, 403, { ok: false, error: "loopback requests only" });
+              return;
+            }
+            if ((request.method ?? "GET") !== "GET") {
+              writeJson(response, 405, { ok: false, error: "method not allowed" });
+              return;
+            }
+            let id;
+            try {
+              id = new URL(request.url ?? "/", "http://127.0.0.1").searchParams.get("id") ?? "";
+            } catch {
+              id = "";
+            }
+            if (id.length === 0) {
+              writeJson(response, 200, { ok: false, error: "\u7F3A\u5C11 id \u53C2\u6570" });
+              return;
+            }
+            const persona = buildCatalog(configPersona, store).find((entry) => entry.id === id);
+            if (!persona) {
+              writeJson(response, 200, { ok: false, error: `\u627E\u4E0D\u5230\u4EBA\u8BBE\u300C${id}\u300D` });
+              return;
+            }
+            writeJson(response, 200, {
+              ok: true,
+              value: {
+                id: persona.id,
+                name: persona.name,
+                source: persona.source,
+                builtin: persona.builtin === true,
+                chars: persona.text.length,
+                text: persona.text
+              }
+            });
+          }
+        }),
+        "dsh-persona-dafeiyu: persona text bridge"
+      );
+      scope.effect(
+        () => scope.webServer.register({
+          kind: "exact",
+          path: BRIDGE_PREVIEW_PATH,
+          handler: (request, response) => {
+            if (!isLoopbackRequest(request)) {
+              writeJson(response, 403, { ok: false, error: "loopback requests only" });
+              return;
+            }
+            if ((request.method ?? "GET") !== "GET") {
+              writeJson(response, 405, { ok: false, error: "method not allowed" });
+              return;
+            }
+            const view = {
+              sessionId: queryParam(request, "sessionId"),
+              cwd: queryParam(request, "cwd")
+            };
+            const { persona, source } = resolveFor(view);
+            const on = resolved.enabled !== false;
+            const sections = sectionDefs.map((def) => {
+              const text = def.name === PERSONA_SECTION ? on && persona && persona.enabled ? applyTruncate(persona.text) : "" : def.preview ? def.preview() : String(def.text);
+              return { name: def.name, order: def.order, chars: text.length, text };
+            });
+            writeJson(response, 200, {
+              ok: true,
+              value: {
+                mode: modeOf(store),
+                enabled: on,
+                source,
+                persona: persona === void 0 ? null : {
+                  id: persona.id,
+                  name: persona.name,
+                  builtin: persona.builtin === true,
+                  source: persona.source,
+                  enabled: persona.enabled !== false,
+                  chars: persona.text.length
+                },
+                chars: sections.reduce((sum, section) => sum + section.chars, 0),
+                sections
+              }
+            });
+          }
+        }),
+        "dsh-persona-dafeiyu: preview bridge"
+      );
+    });
+  }
+}
+
+// src/persona/mount.ts
+function hasSystemPrompt(ctx) {
+  if (ctx === void 0 || ctx === null) return false;
+  try {
+    if (typeof ctx === "object" && "systemPrompt" in ctx) return true;
+    const value = ctx.systemPrompt;
+    return value !== void 0 && value !== null;
+  } catch {
+    return false;
+  }
+}
+function mountPersona(ctx, injected) {
+  if (!hasSystemPrompt(ctx)) return { mounted: false, reason: "no-systemPrompt" };
+  const raw = injected?.persona;
+  const config2 = raw && typeof raw === "object" ? { ...raw } : {};
+  if (config2.enabled === void 0) config2.enabled = true;
+  apply(ctx, config2);
+  return { mounted: true, config: config2 };
+}
+
 // src/backup/service.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import path12 from "node:path";
+import path13 from "node:path";
 
 // src/backup/config.ts
 import { existsSync, readFileSync as readFileSync4 } from "node:fs";
-import path10 from "node:path";
+import path11 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -34323,19 +35488,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path10.join(dshHome, "dsh-backup-git");
+  return path11.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path10.join(backupDir(dshHome), "config.json");
+  return path11.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path10.join(backupDir(dshHome), "credential.json");
+  return path11.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path10.join(backupDir(dshHome), "status.json");
+  return path11.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path10.join(backupDir(dshHome), "work");
+  return path11.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -34572,16 +35737,16 @@ import { createHash as createHash5 } from "node:crypto";
 import { existsSync as existsSync2, readdirSync, readFileSync as readFileSync5, statSync as statSync2 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path11 from "node:path";
+import path12 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path11.join(sessionsRoot, slug);
+    const slugDir = path12.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path11.join(slugDir, dirName);
+      const sessionDir = path12.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path11.join(sessionDir, fileName);
+        const file2 = path12.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync2(file2);
@@ -34593,7 +35758,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path11.posix.join(slug, dirName, fileName),
+          relPath: path12.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -34642,11 +35807,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path11.join(input2.stagingDir, "latest");
+  const staging = path12.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path11.join(staging, "sessions", entry.relPath);
+    const target = path12.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -34655,20 +35820,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path11.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path12.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path11.join(staging, "profiles", path11.basename(input2.profileDir));
-    for (const name of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path11.join(input2.profileDir, name);
+    const target = path12.join(staging, "profiles", path12.basename(input2.profileDir));
+    for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
+      const source = path12.join(input2.profileDir, name2);
       if (!existsSync2(source)) continue;
-      await copyFileFresh(source, path11.join(target, name));
-      profiles.push(name);
+      await copyFileFresh(source, path12.join(target, name2));
+      profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path11.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path12.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -34684,17 +35849,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path11.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path12.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path11.join(stagingDir, "archive");
+  const root = path12.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path11.join(root, entry.relPath);
+    const target = path12.join(root, entry.relPath);
     if (existsSync2(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -34740,7 +35905,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path11.join(dir, entry.name);
+    const full = path12.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -34751,7 +35916,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path11.dirname(target), { recursive: true });
+  await mkdir(path12.dirname(target), { recursive: true });
   if (existsSync2(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -34762,10 +35927,10 @@ async function copyFileFresh(source, target) {
 async function copyFlat(sourceDir, targetDir) {
   if (!existsSync2(sourceDir)) return [];
   const names = [];
-  for (const name of safeFiles(sourceDir)) {
-    if (!/\.json$/.test(name)) continue;
-    await copyFileFresh(path11.join(sourceDir, name), path11.join(targetDir, name));
-    names.push(name);
+  for (const name2 of safeFiles(sourceDir)) {
+    if (!/\.json$/.test(name2)) continue;
+    await copyFileFresh(path12.join(sourceDir, name2), path12.join(targetDir, name2));
+    names.push(name2);
   }
   return names;
 }
@@ -34777,8 +35942,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path11.join(sourceDir, entry.name);
-    const target = path11.join(targetDir, entry.name);
+    const source = path12.join(sourceDir, entry.name);
+    const target = path12.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -34812,9 +35977,9 @@ function safeHostname() {
 function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync2(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
-  for (const name of safeDirs(profilesRoot)) {
-    const dir = path11.join(profilesRoot, name);
-    const manifest = path11.join(dir, "package.json");
+  for (const name2 of safeDirs(profilesRoot)) {
+    const dir = path12.join(profilesRoot, name2);
+    const manifest = path12.join(dir, "package.json");
     if (!existsSync2(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
@@ -35066,13 +36231,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path12.join(base, "staging"),
-      hotRepo: path12.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path12.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path12.join(this.deps.dshHome, "sessions"),
-      storagesDir: path12.join(this.deps.dshHome, "storages"),
-      profilesRoot: path12.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path12.join(this.deps.dshHome, "attachments")
+      staging: path13.join(base, "staging"),
+      hotRepo: path13.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path13.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path13.join(this.deps.dshHome, "sessions"),
+      storagesDir: path13.join(this.deps.dshHome, "storages"),
+      profilesRoot: path13.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path13.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -35095,7 +36260,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync6(repo, { recursive: true });
-    if (!existsSync3(path12.join(repo, ".git"))) {
+    if (!existsSync3(path13.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -35115,7 +36280,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path12.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path13.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -35161,11 +36326,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync6(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path12.join(base, "askpass.cmd");
+      const file3 = path13.join(base, "askpass.cmd");
       if (!existsSync3(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path12.join(base, "askpass.sh");
+    const file2 = path13.join(base, "askpass.sh");
     if (!existsSync3(file2)) {
       writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -35189,31 +36354,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path12.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path13.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path12.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path12.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path13.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path13.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path12.join(staging, "latest");
-      const restoredHot = existsSync3(path12.join(restoreLatest, "sessions")) ? countSessionFiles(path12.join(restoreLatest, "sessions")) : 0;
-      for (const name of ["sessions", "storages", "attachments"]) {
-        const target = path12.join(this.deps.dshHome, name);
+      const restoreLatest = path13.join(staging, "latest");
+      const restoredHot = existsSync3(path13.join(restoreLatest, "sessions")) ? countSessionFiles(path13.join(restoreLatest, "sessions")) : 0;
+      for (const name2 of ["sessions", "storages", "attachments"]) {
+        const target = path13.join(this.deps.dshHome, name2);
         if (existsSync3(target)) {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path12.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path12.join(restoreLatest, "storages"), path12.join(this.deps.dshHome, "storages"));
-      if (existsSync3(path12.join(restoreLatest, "attachments"))) {
-        await mergeTree(path12.join(restoreLatest, "attachments"), path12.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path13.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path13.join(restoreLatest, "storages"), path13.join(this.deps.dshHome, "storages"));
+      if (existsSync3(path13.join(restoreLatest, "attachments"))) {
+        await mergeTree(path13.join(restoreLatest, "attachments"), path13.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path12.join(staging, "archive"), sessionsRoot);
-      const profiles = path12.join(restoreLatest, "profiles");
+      await mergeTree(path13.join(staging, "archive"), sessionsRoot);
+      const profiles = path13.join(restoreLatest, "profiles");
       if (existsSync3(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -35250,15 +36415,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync2(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path12.join(repo, entry.name);
+    const target = path13.join(repo, entry.name);
     rmSync2(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync3(source)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
-    const from = path12.join(source, entry.name);
-    const to = path12.join(target, entry.name);
+    const from = path13.join(source, entry.name);
+    const to = path13.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync6(to, { recursive: true });
       await mergeTree(from, to);
@@ -35274,12 +36439,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync3(profilesRoot)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path12.join(source, entry.name);
-    const to = path12.join(profilesRoot, entry.name);
+    const from = path13.join(source, entry.name);
+    const to = path13.join(profilesRoot, entry.name);
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path12.join(from, file2.name), path12.join(to, file2.name));
+      await copyFileFresh(path13.join(from, file2.name), path13.join(to, file2.name));
     }
   }
 }
@@ -35293,7 +36458,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path12.join(dir, entry.name);
+      const full = path13.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -35309,7 +36474,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync7 } from "node:fs";
-import path13 from "node:path";
+import path14 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -35339,8 +36504,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path13.dirname(statusFile2) : dataDir();
-  return path13.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path14.dirname(statusFile2) : dataDir();
+  return path14.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -35354,12 +36519,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path13.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path14.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path13.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path14.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -35398,7 +36563,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path13.dirname(file2));
+    ensureSecureDir(path14.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -35482,7 +36647,7 @@ async function claimHostToken(deps) {
 var MAX_CONVERSATIONS = 64;
 var APPLY_COUNT = { n: 0 };
 var systemClock = DEFAULT_SYSTEM_CLOCK;
-function apply(ctx, injected = {}, clock = systemClock) {
+function apply2(ctx, injected = {}, clock = systemClock) {
   let handle;
   try {
     handle = applyInner(ctx, injected, clock);
@@ -35510,6 +36675,23 @@ function apply(ctx, injected = {}, clock = systemClock) {
     }
   } catch {
   }
+  try {
+    const persona = mountPersona(ctx, injected);
+    if (!persona.mounted) {
+      process.stderr.write(
+        `[dsh-remote-control] persona \u672A\u6302\u8F7D\uFF1A${persona.reason}\uFF08\u5BBF\u4E3B\u8FD9\u4E00\u4EE3\u6CA1\u628A systemPrompt \u5F53\u670D\u52A1\u7ED9\u51FA\uFF0C\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09
+`
+      );
+    }
+  } catch (error62) {
+    try {
+      process.stderr.write(
+        `[dsh-remote-control] persona \u6302\u8F7D\u5931\u8D25\uFF08\u5DF2\u541E\u6389\uFF0C\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09\uFF1A${String(error62?.stack ?? error62)}
+`
+      );
+    } catch {
+    }
+  }
   if (!disposeHooked && "onDispose" in ctx) {
     try {
       ;
@@ -35532,7 +36714,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path14.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path15.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -35555,7 +36737,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path14.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path15.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -36104,7 +37286,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path14.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path15.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -36286,7 +37468,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path14.dirname(path14.dirname(config2.statusFile)) : path14.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path15.dirname(path15.dirname(config2.statusFile)) : path15.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -36376,8 +37558,18 @@ function applyInner(ctx, injected, clock) {
   };
 }
 export {
+  BRIDGE_PERSONA_PATH,
+  CLOCK_ORDER,
+  CLOCK_SECTION,
   DEFAULT_CONFIG,
-  apply,
+  BRIDGE_MUTATE_PATH as PERSONA_MUTATE_PATH,
+  BRIDGE_PREVIEW_PATH as PERSONA_PREVIEW_PATH,
+  PERSONA_SECTION,
+  BRIDGE_STATUS_PATH as PERSONA_STATUS_PATH,
+  PERSONA_SUFFIX_SECTION,
+  apply2 as apply,
+  hasSystemPrompt,
+  mountPersona,
   readConfig,
   systemClock,
   validateConfig

@@ -76,7 +76,27 @@ import { PLUGIN_CONFIG_ROUTE } from '../src/pill/config-routes.js'
  *   · `dsh.client.inject` 里每一项都是包名（以 `@` 开头），且不许出现服务名 `slots`；
  *   · `src/client/main.ts` 的模块级 `inject` 恰好是 `['slots']`。
  */
-test('清单与模块：客户端半**不许**声明任何硬依赖（DSH 0.2.1 的 boot 会因此整页起不来）', () => {
+/**
+ * 0.8.0（合包）起允许的**包图边**：只有这两条。
+ *
+ * 它们是随人设那半一起进来的：人设的界面要用 `@deepseek-ai/dsh-client-ui-renderer`
+ * 与 `@deepseek-ai/dsh-client-locale` 两个客户端包（槽位渲染器 + 字典服务），
+ * 少写这两条的表现是"条目永远 pending、人设界面永不出现"。
+ *
+ * 为什么现在敢写边：0.2.1-rc.2 的 boot 会对任何 pending 条目抛错，那时代的结论是
+ * "一条边都不许"；而人设插件自 0.7.x 起一直声明这两条边、在**现在这台宿主**上正常激活
+ * （它是当前唯一能在真机上看到界面的证据）。所以判据从"零边"收紧到"白名单两条"——
+ * 多写一条（比如再挂一个没进 boot 图的包）仍然立刻红。
+ */
+const ALLOWED_CLIENT_EDGES = ['@deepseek-ai/dsh-client-ui-renderer', '@deepseek-ai/dsh-client-locale']
+
+function clientEdgesAllowed(edges: unknown): boolean {
+  if (edges === undefined) return false
+  if (!Array.isArray(edges)) return false
+  return edges.length === ALLOWED_CLIENT_EDGES.length && edges.every((edge, index) => edge === ALLOWED_CLIENT_EDGES[index])
+}
+
+test('清单与模块：客户端半只许声明那两条白名单包图边，且服务名与官方同款', () => {
   // ## 这条判据在 2026-10-20 翻转过一次，理由是新证据
   //
   // 旧判据（2026-08-09）钉的是"`dsh.client.inject` 必须有包名、模块级 `inject` 必须是
@@ -94,14 +114,14 @@ test('清单与模块：客户端半**不许**声明任何硬依赖（DSH 0.2.1 
   // ⇒ 这一半从此**不赌任何跨代服务名**，代价是 `apply()` 可能早于 slots —— 那由
   // `mountPill` 的软探测 + `ctx.inject` 晚到回调兜住（同文件里那两条判据钉着）。
   const manifest = packageRootManifest()
-  const inject = manifest.dsh?.client?.inject
   assert.ok(
-    inject === undefined || (Array.isArray(inject) && inject.length === 0),
-    'dsh.client.inject 必须缺省或为空：任何一条装载顺序边在 0.2.1 上都可能让整页 pending ⇒ boot 抛错',
+    clientEdgesAllowed(manifest.dsh?.client?.inject),
+    `dsh.client.inject 只许是白名单那两条（人设界面要的 renderer / locale），现在是：${JSON.stringify(manifest.dsh?.client?.inject)}`,
   )
   const client = readFileSync(path.join(here, '..', '..', 'src', 'client', 'main.ts'), 'utf8')
   // 服务名可以、也必须声明（与官方同款）；让条目 pending 的是**包图边**。
-  assert.match(client, /export const inject = \['slots'\]/, '服务声明要与 0.2.1 官方插件一致')
+  // 0.8.0 合包后多了 `locale`：人设那半靠它注册那两套字典。
+  assert.match(client, /export const inject = \['slots', 'locale'\]/, '服务声明要与宿主同款（slots + 人设要的 locale）')
   assert.doesNotMatch(client, /export const inject = \[[^\]]*@/, '包名不许写进模块级 inject：那一格是 cordis 服务名')
   assert.equal(manifest.dsh.client.platform, 'web', 'client 半声明的 platform 是 web')
   assert.equal(
@@ -111,18 +131,28 @@ test('清单与模块：客户端半**不许**声明任何硬依赖（DSH 0.2.1 
   )
 })
 
-test('反向判据：把包图边写回清单 ⇒ 上一条立刻红（它不是恒绿的）', () => {
+test('反向判据：多写一条包图边（白名单之外）⇒ 上一条立刻红（它不是恒绿的）', () => {
   const manifest = packageRootManifest()
-  // 夹具自检：真清单必须**没有**包图边（`dsh.client.inject` 缺省或为空）
-  assert.ok(
-    manifest.dsh?.client?.inject === undefined || manifest.dsh.client.inject.length === 0,
-    '夹具自检：真清单里不该有包图边',
+  // 夹具自检：真清单必须**正好**是白名单那两条
+  assert.ok(clientEdgesAllowed(manifest.dsh?.client?.inject), '夹具自检：真清单应当满足白名单')
+  // 多一条（这里故意用一个不在 boot 图里的包名）→ 判据必须立刻不成立
+  const mutated = {
+    ...manifest,
+    dsh: {
+      ...manifest.dsh,
+      client: { ...manifest.dsh.client, inject: [...ALLOWED_CLIENT_EDGES, '@deepseek-ai/dsh-client-does-not-exist'] },
+    },
+  }
+  assert.equal(
+    clientEdgesAllowed(mutated.dsh.client.inject),
+    false,
+    '白名单外多一条边必须被判据拒绝：那条边会让条目永远 pending',
   )
-  const mutated = { ...manifest, dsh: { ...manifest.dsh, client: { ...manifest.dsh.client, inject: ['slots'] } } }
-  assert.ok(mutated.dsh.client.inject.length > 0, '写回一条边之后必须不满足"缺省或为空"')
+  // 少一条同样不行（少 renderer 或 locale 都会让人设界面出不来）
+  assert.equal(clientEdgesAllowed([ALLOWED_CLIENT_EDGES[0]]), false, '少一条边也必须红')
   // 服务名那一份仍然要在源码里（与官方同款）
   const client = readFileSync(path.join(here, '..', '..', 'src', 'client', 'main.ts'), 'utf8')
-  assert.match(client, /export const inject = \['slots'\]/, '夹具自检：服务声明必须在')
+  assert.match(client, /export const inject = \['slots', 'locale'\]/, '夹具自检：服务声明必须在')
 })
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -775,7 +805,7 @@ const PKG_NAME: string = (() => {
   }
 })()
 
-test('外壳注册的形状：id 与包名一致，导出 name/inject/apply；inject **为空**（DSH 0.2.1）', () => {
+test('外壳注册的形状：id 与包名一致，导出 name/inject/apply；inject 是 slots + locale', () => {
   const harness = load()
   assert.equal(harness.module.name, PKG_NAME)
   // ⚠️ 外壳的 `id` 比 `name` 更致命：它是装载器查 loader entry 的那一个，错了是整页
@@ -791,8 +821,8 @@ test('外壳注册的形状：id 与包名一致，导出 name/inject/apply；in
   // deepStrictEqual 会因原型不同而红（与代码对错无关）。
   assert.deepEqual(
     [...harness.module.inject],
-    ['slots'],
-    '服务声明必须与 0.2.1 官方客户端插件同款（ctx.slots.inject 的前提）',
+    ['slots', 'locale'],
+    '服务声明：slots 是 ctx.slots.inject 的前提，locale 是人设那半注册字典的前提（0.8.0 合包后并集）',
   )
 })
 

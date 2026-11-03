@@ -159,19 +159,34 @@ if (!clientText.includes('conversation.composer.dock')) {
   process.exit(1)
 }
 // 状态栏那颗 pill 要向装载器拿 react。它**必须**是运行期那一句（模块名走变量），
-// 不能是构建期解析出来的 `require("react")`：后者会被提到 factory 顶层，宿主给不出这个
-// 模块时抛出发生在 factory 第一行——表现是"web boot: N entry/entries did not activate"，
+// 不能是构建期解析出来的、落在 factory 顶层的 `require("react")`：宿主给不出这个模块时
+// 抛出会发生在 factory 第一行——表现是"web boot: N entry/entries did not activate"，
 // 连已经在生产跑的右栏自动弹码一起没。运行期那一句最坏只少一颗 pill。
-if (/require\(["']react["']\)/.test(clientText)) {
-  console.error('[bundle-plugin] client.cjs 里出现了静态 require("react")：那会让装载失败变成整页起不来')
+//
+// 0.8.0 起合进了人设那一半：那份客户端是**已裹好外壳**的 loader 文件，内部写着
+// `const react = require("react")`。它现在落在 `personaClientFactory()` 的**函数体内**，
+// 只有 `apply` 真调它时才求值，外层还有 try/catch —— 与上面禁的那一形状不是一回事。
+// 所以判据从"文本里有没有"改成"有没有落在顶层"：静态 require 只许出现在人设工厂定义之后。
+const personaFactoryAt = clientText.indexOf('function personaClientFactory')
+const staticReactAt = clientText.search(/require\(["']react["']\)/)
+if (staticReactAt >= 0 && (personaFactoryAt < 0 || staticReactAt < personaFactoryAt)) {
+  console.error(
+    '[bundle-plugin] client.cjs 的 factory 顶层出现了静态 require("react")：' +
+      '那会让装载失败变成整页起不来（人设工厂函数体内的那一句不算）',
+  )
   process.exit(1)
 }
 // 反向也钉一条：react 被**内联**进来同样致命（宿主那份与我们这份是两套 fiber，钩子互相
 // 不认识，一点 dock 就白屏）。内联的产物体积会跳一个数量级，所以这里用体积上限当探针。
-if (clientBytes > 128 * 1024) {
+//
+// 上限 128 → 256 KB（0.8.0 合包）：人设那一半的界面自己就有 ~77 KB（四个席位 + 两套字典），
+// 加起来 190 KB 上下是正常的。**内联 react 会到 400 KB 以上**，所以 256 KB 这条线
+// 仍然能把它拦住——探针的作用没丢，只是挪了个位置。
+const CLIENT_BUDGET = 256 * 1024
+if (clientBytes > CLIENT_BUDGET) {
   console.error(
-    `[bundle-plugin] client.cjs ${(clientBytes / 1024).toFixed(0)} KB，超过 128 KB 上限：` +
-      '浏览器那一半只该有轮询 + pill 那点代码，超了八成是把 react 打进来了',
+    `[bundle-plugin] client.cjs ${(clientBytes / 1024).toFixed(0)} KB，超过 ${CLIENT_BUDGET / 1024} KB 上限：` +
+      '浏览器那一半是「远控 + 人设」两份界面，超了八成是把 react 打进来了',
   )
   process.exit(1)
 }

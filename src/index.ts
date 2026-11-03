@@ -49,6 +49,9 @@ import {
   type PluginConfig,
 } from './shell/config.js'
 import { startPill, type PillHandle } from './pill/start.js'
+// 人设那一半（0.8.0 起与远控共用一个包、一行）。挂载点单列一个文件：
+// 它的判据是「探不到 systemPrompt 就不挂」，那一条必须能单独测，也必须留下原因。
+import { mountPersona } from './persona/mount.js'
 // 会话备份（2026-10-28）：一个包两件事。备份**永远不许**影响远控主链路，
 // 所以它下面每一处调用都自带 try/catch，起不来也只是少一张卡片。
 import { BackupService } from './backup/service.js'
@@ -132,6 +135,30 @@ export function apply(ctx: LooseContext, injected: Partial<PluginConfig> = {}, c
   } catch {
     /* 没有 effect 口的代际 */
   }
+  // ③ 人设那一半。**它在远控之后挂、且自己一层 try**：远控起不来照样要能配对，
+  // 人设挂不上照样要能远控。两条链路谁都不许把谁带走。
+  //
+  // 注意这里传的是 `injected`（profile 里那一行配置）而不是 `handle.config`：
+  // 人设的配置口是 `persona: { enabled, ... }`，而远控的 `validateConfig` 只认自己的键，
+  // 走校验后的 config 会把它丢掉。
+  try {
+    const persona = mountPersona(ctx, injected as { persona?: unknown })
+    if (!persona.mounted) {
+      // 「没挂上」必须说得出为什么——否则表现就是"设置页里人设那栏没了"，且日志全绿。
+      process.stderr.write(
+        `[dsh-remote-control] persona 未挂载：${persona.reason}（宿主这一代没把 systemPrompt 当服务给出，远控不受影响）\n`,
+      )
+    }
+  } catch (error) {
+    try {
+      process.stderr.write(
+        `[dsh-remote-control] persona 挂载失败（已吞掉，远控不受影响）：${String((error as Error)?.stack ?? error)}\n`,
+      )
+    } catch {
+      /* stderr 也可能不可用 */
+    }
+  }
+
   if (!disposeHooked && 'onDispose' in ctx) {
     // `'x' in ctx` 走的是 Proxy 的 has trap，不抛错——这是在这个宿主上"探测一个属性
     // 到底有没有"的唯一安全姿势；直接点属性就等着抛。测试替身/别的代际才提供 onDispose。
@@ -1465,6 +1492,17 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   }
 }
 
+export { mountPersona, hasSystemPrompt } from './persona/mount.js'
+export {
+  PERSONA_SECTION,
+  PERSONA_SUFFIX_SECTION,
+  CLOCK_SECTION,
+  CLOCK_ORDER,
+  BRIDGE_STATUS_PATH as PERSONA_STATUS_PATH,
+  BRIDGE_MUTATE_PATH as PERSONA_MUTATE_PATH,
+  BRIDGE_PERSONA_PATH,
+  BRIDGE_PREVIEW_PATH as PERSONA_PREVIEW_PATH,
+} from './persona/host.js'
 export { DEFAULT_CONFIG }
 export { readConfig, validateConfig } from './shell/config.js'
 export type { KernelPort, Clock } from './ports/index.js'

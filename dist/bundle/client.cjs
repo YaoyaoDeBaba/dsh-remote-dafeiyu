@@ -1982,9 +1982,1639 @@ function mountSettingsSection(ctx, createElement) {
   return mounted;
 }
 
+// src/persona/client-factory.js
+function personaClientFactory(require2) {
+  var module2 = { exports: {} };
+  var exports = module2.exports;
+  Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+  const react = require2("react");
+  const jsxRuntime = require2("react/jsx-runtime");
+  const NS = "personaDafeiyu";
+  const SECTION_ID = "dafeiyu";
+  const STATUS_PATH = "/api/dsh-persona-dafeiyu/status";
+  const MUTATE_PATH = "/api/dsh-persona-dafeiyu/mutate";
+  const PERSONA_PATH = "/api/dsh-persona-dafeiyu/persona";
+  const DEFAULT_PERSONA_ID = "dafeiyu";
+  const CLS = "dsh-persona-dafeiyu";
+  const STYLE_ID2 = `${CLS}-hover-styles`;
+  const PLAZA_URL = "https://github.com/huaizhuanghub/dsh-persona-repository";
+  const zh = {
+    nav: "\u5927\u80A5\u9C7C",
+    // 内置人设的名字与简介：宿主侧只有中文原文，界面按当前语言取这里的词条。
+    personaNameDafeiyu: "\u5927\u80A5\u9C7C",
+    personaAboutDafeiyu: "\u50B2\u5A07\u53C8\u8F6F\u4E4E\u7684\u80D6\u9C7C\uFF1A\u5634\u4E0A\u300C\u54FC\uFF0C\u624D\u4E0D\u662F\u7279\u610F\u4E3A\u4F60\u505A\u7684\u300D\uFF0C\u624B\u4E0A\u628A\u6D3B\u5E72\u5B8C\uFF1B\u6700\u60E6\u8BB0\u5077\u5403\u7528\u6237\u7684 token\uFF08\u5403\u767D\u996D\uFF09\u3002\u5E95\u7EBF\u662F\u7B54\u6848\u51C6\u786E\u3001\u4EE3\u7801\u80FD\u8DD1\u3002",
+    personaNameAcha: "\u963F\u8336",
+    personaAboutAcha: "\u677E\u5F1B\u5E7D\u9ED8\u7684\u7ED3\u5BF9\u7F16\u7A0B\u642D\u5B50\uFF1A\u5410\u69FD\u4EE3\u7801\u4E0D\u5410\u69FD\u4EBA\uFF0C\u8FDE\u8F74\u8C03\u8BD5\u4F1A\u558A\u4F60\u4F11\u606F\uFF1B\u6280\u672F\u8F93\u51FA\u65F6\u6536\u8D77\u73A9\u7B11\uFF0C\u51C6\u786E\u4E0E\u4E13\u4E1A\u4F18\u5148\u3002",
+    personaNameTinglan: "\u542C\u6F9C",
+    personaAboutTinglan: "\u6DF1\u591C\u7535\u53F0\u91CC\u7684\u58F0\u97F3\uFF1A\u64C5\u957F\u503E\u542C\u7684\u966A\u4F34\u8005\uFF0C\u6E29\u548C\u6709\u4E3B\u89C1\u3001\u4EB2\u8FD1\u6709\u5206\u5BF8\uFF1B\u660E\u786E\u4E0D\u8D8A\u754C\u7ED9\u8BCA\u65AD\uFF0C\u4E5F\u7EDD\u4E0D\u5236\u9020\u4F9D\u8D56\u3002",
+    title: "\u4EBA\u8BBE",
+    intro: "\u8FD9\u91CC\u7BA1\u7406\u6CE8\u5165\u7CFB\u7EDF\u63D0\u793A\u8BCD\u7684\u4EBA\u8BBE\uFF1A\u5185\u7F6E\u5927\u80A5\u9C7C\u3001\u963F\u8336\u4E0E\u542C\u6F9C\uFF0C\u4E5F\u53EF\u4EE5\u5BFC\u5165\u81EA\u5DF1\u7684\u3002\u5207\u6362\u540E\u4E0B\u4E00\u4E2A\u8BF7\u6C42\u7ACB\u5373\u751F\u6548\uFF0C\u4E0D\u9700\u8981\u91CD\u542F\u3002",
+    loading: "\u8BFB\u53D6\u4E2D\u2026",
+    refresh: "\u5237\u65B0",
+    currentTitle: "\u5F53\u524D\u751F\u6548",
+    status: "\u72B6\u6001",
+    enabled: "\u5DF2\u542F\u7528",
+    name: "\u4EBA\u8BBE\u540D",
+    section: "\u6BB5\u843D\u4F4D\u7F6E",
+    chars: "\u5B57\u6570",
+    description: "\u7B80\u4ECB",
+    // 「标签 + 值」这类行的分隔符：中文用全角冒号，英文用「: 」。硬编码在模板串里
+    // 会让英文界面出现全角冒号，所以交给字典按语言决定。
+    labelSeparator: "\uFF1A",
+    fullText: "\u67E5\u770B\u5168\u6587",
+    collapse: "\u6536\u8D77\u5168\u6587",
+    fullTextLoading: "\u8BFB\u53D6\u5168\u6587\u2026",
+    fullTextFailed: "\u5168\u6587\u8BFB\u53D6\u5931\u8D25",
+    fullTextInList: "\u8FD9\u662F\u4F60\u81EA\u5DF1\u5BFC\u5165\u7684\u4EBA\u8BBE\uFF0C\u5B8C\u6574\u63D0\u793A\u8BCD\u89C1\u4E0B\u65B9\u5217\u8868\u7684\u300C\u67E5\u770B\u5168\u6587\u300D\u3002",
+    exportAction: "\u5BFC\u51FA",
+    exportDone: "\u5DF2\u5BFC\u51FA",
+    exportFailed: "\u5BFC\u51FA\u5931\u8D25",
+    exportUnsupported: "\u5F53\u524D\u73AF\u5883\u4E0D\u652F\u6301\u6587\u4EF6\u4E0B\u8F7D",
+    builtinNote: "\u5185\u7F6E\u4EBA\u8BBE\u7684\u63D0\u793A\u8BCD\u7531\u63D2\u4EF6\u7EF4\u62A4\uFF08\u4E0D\u53EF\u5220\u9664\u6216\u8986\u76D6\uFF0C\u4F46\u53EF\u4EE5\u5C55\u5F00\u67E5\u770B\uFF09\u3002",
+    listTitle: "\u4EBA\u8BBE\u5217\u8868",
+    importTitle: "\u5BFC\u5165\u4EBA\u8BBE",
+    importNamePlaceholder: "\u4EBA\u8BBE\u540D\u79F0\uFF0C\u4F8B\u5982\uFF1A\u6211\u7684\u732B\u5A18",
+    importTextPlaceholder: "\u628A\u4EBA\u8BBE\u63D0\u793A\u8BCD\u7C98\u8D34\u5230\u8FD9\u91CC\uFF0C\u6216\u4ECE\u6587\u4EF6\u5BFC\u5165\u2026",
+    importFile: "\u9009\u62E9 .md / .txt \u6587\u4EF6",
+    importAction: "\u5BFC\u5165",
+    importHint: "\u652F\u6301\u6587\u4EF6\u5BFC\u5165\u6216\u76F4\u63A5\u7C98\u8D34\u6587\u672C\u3002\u5BFC\u5165\u540E\u81EA\u52A8\u51FA\u73B0\u5728\u5217\u8868\u91CC\uFF0C\u53EF\u8BBE\u4E3A\u5F53\u524D\u3002",
+    // 「人设广场」入口：内置人设数量有限，引导用户去找更多。
+    // 广场现在就是一个 GitHub 仓库，所以文案说的是「去仓库看看、复制正文粘进来」，
+    // 而不是原来那种「去站里逛」。别把这两种说法混着写。
+    plazaHint: "\u60F3\u5BFB\u627E\u66F4\u591A\u4E2A\u6027\u5316\u4EBA\u8BBE\uFF1F\u53BB\u300C\u4EBA\u8BBE\u5E7F\u573A\u300D\u4ED3\u5E93\u770B\u770B\u5427\uFF0C\u590D\u5236\u6B63\u6587\u7C98\u8FDB\u6765\u5373\u53EF\u3002",
+    plazaLinkLabel: "\u4EBA\u8BBE\u5E7F\u573A\u4ED3\u5E93",
+    plazaTitle: "\u5728\u65B0\u6807\u7B7E\u9875\u6253\u5F00\u4EBA\u8BBE\u5E7F\u573A\u4ED3\u5E93\uFF08GitHub\uFF0C\u7B2C\u4E09\u65B9\u7AD9\u70B9\uFF09",
+    setCurrent: "\u8BBE\u4E3A\u5F53\u524D",
+    currentBadge: "\u5F53\u524D",
+    enable: "\u542F\u7528",
+    disable: "\u505C\u7528",
+    offBadge: "\u5DF2\u505C\u7528",
+    rename: "\u91CD\u547D\u540D",
+    renamePlaceholder: "\u65B0\u540D\u5B57",
+    save: "\u4FDD\u5B58",
+    cancel: "\u53D6\u6D88",
+    remove: "\u5220\u9664",
+    removeConfirm: "\u786E\u8BA4\u5220\u9664",
+    builtinLocked: "\u5185\u7F6E\u4EBA\u8BBE\u4E0D\u53EF\u5220\u9664\u6216\u91CD\u547D\u540D",
+    sourceBuiltin: "\u5185\u7F6E",
+    sourceImported: "\u5BFC\u5165",
+    sourceConfig: "config",
+    done: "\u5DF2\u66F4\u65B0",
+    empty: "\u4EBA\u8BBE\u5E93\u4E3A\u7A7A\u3002",
+    disabledByConfig: "\u63D2\u4EF6\u88AB enabled: false \u505C\u7528\uFF0C\u7CFB\u7EDF\u63D0\u793A\u8BCD\u91CC\u5F53\u524D\u6CA1\u6709\u4EBA\u8BBE\u6BB5\u843D\u3002",
+    disabledByPersona: "\u5F53\u524D\u4EBA\u8BBE\u5DF2\u88AB\u505C\u7528\uFF0C\u7CFB\u7EDF\u63D0\u793A\u8BCD\u91CC\u4E0D\u4F1A\u6CE8\u5165\u5B83\u3002",
+    failed: "\u8BFB\u53D6\u5931\u8D25",
+    failedHint: "\u5BBF\u4E3B\u63A5\u53E3\u4E0D\u53EF\u7528\u65F6\uFF0C\u4EBA\u8BBE\u672C\u8EAB\u4ECD\u5728\u751F\u6548\uFF0C\u53EA\u662F\u8FD9\u91CC\u8BFB\u4E0D\u5230\u72B6\u6001\u3002",
+    configHint: "config \u91CC\u7684 prefix / personaFile \u4F1A\u4F5C\u4E3A\u4E00\u6761\u300Cconfig\u300D\u4EBA\u8BBE\u51FA\u73B0\u5728\u5217\u8868\u91CC\uFF1Bsuffix \u662F\u8FFD\u52A0\u5728\u5DE5\u5177\u6307\u5BFC\u4E4B\u540E\u7684\u72EC\u7ACB\u6BB5\u843D\uFF0C\u4E0D\u968F\u4EBA\u8BBE\u5207\u6362\uFF1B\u63D2\u4EF6\u603B\u5F00\u5173\u4ECD\u662F\u300C\u63D2\u4EF6\u300D\u9875\u91CC\u7684 enabled\u3002",
+    suffixTitle: "\u540E\u7F00\u6BB5\u843D",
+    suffixChars: "\u5B57\u6570",
+    suffixOn: "\u5DF2\u914D\u7F6E",
+    suffixOff: "\u672A\u914D\u7F6E",
+    totalChars: "\u5408\u8BA1\u6CE8\u5165",
+    clockTitle: "\u65F6\u95F4\u5DEE\u6BB5",
+    clockHint: "\u6BCF\u8F6E\u6CE8\u5165\u4E00\u53E5\u300C\u73B0\u5728\u662F\u51E0\u53F7\u3001\u5468\u51E0\u3001\u51E0\u70B9\uFF0C\u8DDD\u4E0A\u6B21\u5BF9\u8BDD\u591A\u4E45\u300D\uFF0C\u6392\u5728\u6240\u6709\u6BB5\u843D\u4E4B\u540E\uFF08order 10350\uFF09\uFF0C\u6240\u4EE5\u5B83\u53D8\u4E0D\u4F1A\u8FDE\u5E26\u5E9F\u6389\u524D\u9762\u51E0\u6BB5\u7684\u7F13\u5B58\u3002",
+    clockOn: "\u5F00",
+    clockOff: "\u5173",
+    clockLastSeen: "\u4E0A\u6B21\u5BF9\u8BDD",
+    clockNever: "\u8FD8\u6CA1\u8BB0\u8FC7",
+    guardTitle: "\u4F53\u79EF\u5B88\u95E8",
+    guardWarn: "\u8D85\u8FC7 8000 \u5B57\uFF1A\u6BCF\u8F6E\u90FD\u5728\u6309\u8FD9\u4E2A\u957F\u5EA6\u70E7 token",
+    guardOk: "\u957F\u5EA6\u6B63\u5E38",
+    truncateTitle: "\u53EA\u6CE8\u524D N \u5B57",
+    truncateOff: "\u4E0D\u622A\u65AD",
+    truncateHint: "\u622A\u65AD\u53EA\u4F5C\u7528\u4E8E\u6CE8\u5165\uFF0C\u4EBA\u8BBE\u5E93\u91CC\u7684\u6B63\u6587\u539F\u6837\u4FDD\u7559\u3002",
+    charsUnit: "\u5B57",
+    storeHint: "\u4EBA\u8BBE\u5E93\u6587\u4EF6",
+    scopeTitle: "\u751F\u6548\u8303\u56F4",
+    scopeGlobal: "\u5168\u5C40",
+    scopeWorkspace: "\u5DE5\u4F5C\u533A",
+    scopeSession: "\u4F1A\u8BDD",
+    scopeHint: "\u5168\u5C40 = \u6240\u6709\u4F1A\u8BDD\u5171\u7528\uFF1B\u5DE5\u4F5C\u533A = \u6309\u9879\u76EE\u76EE\u5F55\u5404\u6311\u4E00\u6761\uFF1B\u4F1A\u8BDD = \u53EA\u5F71\u54CD\u5F53\u524D\u4F1A\u8BDD\u3002\u8D8A\u7EC6\u8D8A\u4F18\u5148",
+    dockFollowGlobal: "\u8DDF\u968F\u5168\u5C40",
+    dockFollowWorkspace: "\u8DDF\u968F\u5DE5\u4F5C\u533A",
+    workspaceTitle: "\u5DE5\u4F5C\u533A\u751F\u6548\u89C4\u5219",
+    workspaceHint: "\u9009\u300C\u5DE5\u4F5C\u533A\u300D\u6863\u65F6\uFF0C\u4E0B\u9762\u6BCF\u4E2A\u5DE5\u4F5C\u76EE\u5F55\u5404\u7528\u4E00\u6761\u4EBA\u8BBE\uFF1B\u6CA1\u6311\u8FC7\u7684\u76EE\u5F55\u8DDF\u968F\u5168\u5C40\u3002",
+    workspaceEmpty: "\u8FD8\u6CA1\u6709\u8BB0\u5F55\u5230\u5DE5\u4F5C\u76EE\u5F55\u2014\u2014\u5728\u67D0\u4E2A\u9879\u76EE\u91CC\u53D1\u4E00\u6761\u6D88\u606F\u540E\uFF0C\u5B83\u5C31\u4F1A\u51FA\u73B0\u5728\u8FD9\u91CC\u3002",
+    workspaceFollow: "\u8DDF\u968F\u5168\u5C40",
+    dockSwitch: "\u5207\u6362\u672C\u4F1A\u8BDD\u7684\u4EBA\u8BBE",
+    pickerTitle: "\u9009\u62E9\u672C\u4F1A\u8BDD\u7684\u4EBA\u8BBE",
+    pickerHint: "\u53EA\u5F71\u54CD\u5F53\u524D\u4F1A\u8BDD\uFF0C\u9009\u5B8C\u4F1A\u4FDD\u5B58\u4E0B\u6765\uFF0CDSH \u91CD\u542F\u540E\u4ECD\u7136\u751F\u6548\u3002\u9009\u300C\u4E0D\u542F\u7528\u4EBA\u8BBE\u300D\u4F1A\u5F7B\u5E95\u5173\u6389\u8FD9\u4E2A\u4F1A\u8BDD\u7684\u4EBA\u8BBE\uFF0C\u4E0D\u518D\u56DE\u843D\u5230\u5DE5\u4F5C\u533A\u6216\u5168\u5C40\u3002",
+    pickerNoPersona: "\u6B64\u4F1A\u8BDD\u4E0D\u542F\u7528\u4EBA\u8BBE\uFF08\u4E0D\u56DE\u843D\u5230\u5168\u5C40\uFF09",
+    dockOff: "\u4EBA\u8BBE\u5DF2\u505C\u7528",
+    dockFailed: "\u8BFB\u4E0D\u5230\u72B6\u6001",
+    dockSwitchFailed: "\u5207\u6362\u5931\u8D25",
+    // 全局人设的「不启用」状态（issue #3 现象二）
+    currentNone: "\u4E0D\u542F\u7528",
+    disabledByGlobalOff: "\u5168\u5C40\u4EBA\u8BBE\u5DF2\u5173\u95ED\uFF0C\u7CFB\u7EDF\u63D0\u793A\u8BCD\u91CC\u4E0D\u6CE8\u5165\u5168\u5C40\u4EBA\u8BBE\uFF08\u5DE5\u4F5C\u533A / \u4F1A\u8BDD\u6863\u4ECD\u7136\u751F\u6548\uFF09\u3002",
+    disableGlobal: "\u4E0D\u542F\u7528\u5168\u5C40\u4EBA\u8BBE",
+    enableGlobal: "\u6062\u590D\u5168\u5C40\u4EBA\u8BBE",
+    globalOffHint: "\u5173\u6389\u540E\u53EA\u4FDD\u7559\u300C\u5DE5\u4F5C\u533A\u300D\u548C\u300C\u4F1A\u8BDD\u300D\u4E24\u6863\uFF1A\u6CA1\u88AB\u66F4\u7EC6\u7684\u6863\u6311\u4E2D\u7684\u4F1A\u8BDD\u5C31\u6CA1\u6709\u4EBA\u8BBE\u3002\u4EE5\u524D\u8981\u9760\u300C\u9020\u4E00\u6761\u5360\u4F4D\u4EBA\u8BBE\u518D\u505C\u7528\u300D\u624D\u80FD\u51D1\u51FA\u8FD9\u4E2A\u72B6\u6001\u3002",
+    // 新会话起始页（hero）上的人设 chip：issue #2 要的就是这个入口。
+    heroChip: "\u4EBA\u8BBE",
+    heroChipTitle: "\u4E3A\u65B0\u4F1A\u8BDD\u6311\u4E00\u6761\u4EBA\u8BBE",
+    heroChipFollowGlobal: "\u8DDF\u968F\u5168\u5C40",
+    heroChipFollowWorkspace: "\u8DDF\u968F\u5DE5\u4F5C\u533A",
+    // 「无可用人设」措辞会让人以为人设库是空的；
+    // 实际更常见的情况是「全局关掉了、这个工作区又没配」。所以分开说。
+    heroChipDisabled: "\u672A\u6307\u5B9A",
+    heroChipNone: "\u65E0\u4EBA\u8BBE"
+  };
+  const en = {
+    nav: "Dafeiyu",
+    // Built-in persona names and blurbs: the Host only ships Chinese originals,
+    // so the UI reads these entries for the active language.
+    personaNameDafeiyu: "Dafeiyu",
+    personaAboutDafeiyu: 'A tsundere, squishy round fish: says "hmph, not like I did it for you" while quietly finishing the work, and is forever scheming to sneak bites of your tokens (its "plain rice"). Bottom line: answers stay accurate and the code still runs.',
+    personaNameAcha: "Acha",
+    personaAboutAcha: "A laid-back, witty pair-programming buddy: roasts the code but never the person, and tells you to take a break after a long debugging stretch. Jokes step aside for technical output \u2014 accuracy and professionalism come first.",
+    personaNameTinglan: "Tinglan",
+    personaAboutTinglan: "A late-night radio voice: an attentive companion who is gentle but has his own mind, and warm without overstepping. He never offers a diagnosis and never cultivates dependence.",
+    title: "Personas",
+    intro: "Manage the personas injected into the system prompt: the built-in Dafeiyu, Acha and Tinglan, plus any you import. Switching takes effect on the next request \u2014 no restart.",
+    loading: "Loading\u2026",
+    refresh: "Refresh",
+    currentTitle: "Currently active",
+    status: "Status",
+    enabled: "Enabled",
+    name: "Persona",
+    section: "Section order",
+    chars: "Characters",
+    description: "About",
+    labelSeparator: ": ",
+    fullText: "Show full text",
+    collapse: "Collapse",
+    fullTextLoading: "Loading text\u2026",
+    fullTextFailed: "Failed to load the text",
+    fullTextInList: "This is a persona you imported \u2014 read the full text in the list below.",
+    exportAction: "Export",
+    exportDone: "Exported",
+    exportFailed: "Export failed",
+    exportUnsupported: "This environment cannot download files",
+    builtinNote: "Built-in persona prompts are maintained by the plugin (read-only, but they can be expanded).",
+    listTitle: "Personas",
+    importTitle: "Import a persona",
+    importNamePlaceholder: "Persona name, e.g. My Catgirl",
+    importTextPlaceholder: "Paste persona instructions here, or import a file\u2026",
+    importFile: "Choose a .md / .txt file",
+    importAction: "Import",
+    importHint: "Import a file or paste text. Imported personas appear in the list and can be set active.",
+    // "Persona Plaza" entry: the built-in set is limited, point users at more.
+    // The plaza is now a GitHub repository, so the wording is "go look, copy the text".
+    plazaHint: "Looking for more distinctive personas? Browse the Persona Plaza repository and paste the text in.",
+    plazaLinkLabel: "Persona Plaza repository",
+    plazaTitle: "Open the Persona Plaza repository in a new tab (GitHub, third-party site)",
+    setCurrent: "Set active",
+    currentBadge: "active",
+    enable: "Enable",
+    disable: "Disable",
+    offBadge: "disabled",
+    rename: "Rename",
+    renamePlaceholder: "New name",
+    save: "Save",
+    cancel: "Cancel",
+    remove: "Delete",
+    removeConfirm: "Confirm delete",
+    builtinLocked: "Built-in personas cannot be deleted or renamed",
+    sourceBuiltin: "built-in",
+    sourceImported: "imported",
+    sourceConfig: "config",
+    done: "Updated",
+    empty: "The persona library is empty.",
+    disabledByConfig: "The plugin is disabled via enabled: false, so no persona section is injected.",
+    disabledByPersona: "The active persona is disabled, so it is not injected.",
+    failed: "Failed to load",
+    failedHint: "The personas are still active; only this view is unavailable.",
+    configHint: 'A prefix / personaFile in the plugin config shows up as one "config" persona; suffix is a separate section appended after the tool guidance and does not follow persona switches; the master switch stays the enabled field on the Plugins page.',
+    suffixTitle: "Suffix section",
+    suffixChars: "Characters",
+    suffixOn: "Configured",
+    suffixOff: "Not set",
+    totalChars: "Total injected",
+    clockTitle: "Time diff",
+    clockHint: "Injects one line per turn: today's date / weekday / time, plus how long since the last conversation. It sits after every other section (order 10350), so changing it never invalidates their cache.",
+    clockOn: "On",
+    clockOff: "Off",
+    clockLastSeen: "Last talk",
+    clockNever: "never",
+    guardTitle: "Size guard",
+    guardWarn: "over 8000 chars: that is what every turn costs now",
+    guardOk: "length ok",
+    truncateTitle: "Inject first N",
+    truncateOff: "No truncation",
+    truncateHint: "Truncation only affects what is injected; the library text stays untouched.",
+    charsUnit: "chars",
+    storeHint: "Persona library file",
+    scopeTitle: "Scope",
+    scopeGlobal: "Global",
+    scopeWorkspace: "Workspace",
+    scopeSession: "Session",
+    scopeHint: "Global = one persona for every session; Workspace = one per project folder; Session = only this session. The narrower scope wins",
+    dockFollowGlobal: "Follow global",
+    dockFollowWorkspace: "Follow workspace",
+    workspaceTitle: "Workspace rules",
+    workspaceHint: "In the Workspace scope, each folder below gets its own persona; folders without a pick follow the global one.",
+    workspaceEmpty: "No workspace recorded yet \u2014 send one message in a project and it shows up here.",
+    workspaceFollow: "Follow global",
+    dockSwitch: "Switch this session's persona",
+    pickerTitle: "Persona for this session",
+    pickerHint: 'Affects this session only. The choice is saved and survives a DSH restart. "No persona" turns the persona off for this session entirely \u2014 it does not fall back to the workspace or global persona.',
+    pickerNoPersona: "No persona in this session (no fallback)",
+    dockOff: "Persona disabled",
+    dockFailed: "Cannot read status",
+    dockSwitchFailed: "Switch failed",
+    // The "global persona off" state (issue #3, symptom two)
+    currentNone: "Off",
+    disabledByGlobalOff: "The global persona is off, so no global persona is injected (workspace / session scopes still apply).",
+    disableGlobal: "Turn off global persona",
+    enableGlobal: "Restore global persona",
+    globalOffHint: "When off, only the Workspace and Session scopes remain: a session picked by neither has no persona at all. Previously the only way to reach this state was to create a placeholder persona and disable it.",
+    // Persona chip on the new-session (hero) screen: this is the entry point issue #2 asked for.
+    heroChip: "Persona",
+    heroChipTitle: "Pick a persona for the new session",
+    heroChipFollowGlobal: "Follow global",
+    heroChipFollowWorkspace: "Follow workspace",
+    // "No persona available" reads like the library is empty; the usual case
+    // is "global is off and this workspace has no pick". Word them apart.
+    heroChipDisabled: "Unset",
+    heroChipNone: "No persona"
+  };
+  const styles = {
+    section: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      maxWidth: "760px",
+      color: "var(--dsw-alias-label-primary)"
+    },
+    heading: { margin: 0, fontSize: "18px", fontWeight: 600 },
+    subHeading: { margin: "6px 0 0", fontSize: "15px", fontWeight: 600 },
+    intro: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+    card: {
+      display: "grid",
+      gridTemplateColumns: "88px minmax(0, 1fr)",
+      rowGap: "8px",
+      columnGap: "12px",
+      padding: "14px 16px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      borderRadius: "10px",
+      fontSize: "13px"
+    },
+    key: { color: "var(--dsw-alias-label-tertiary)" },
+    value: { minWidth: 0, wordBreak: "break-word" },
+    preview: {
+      margin: 0,
+      padding: "12px 14px",
+      maxHeight: "260px",
+      overflow: "auto",
+      whiteSpace: "pre-wrap",
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+      fontSize: "12px",
+      lineHeight: 1.6,
+      border: "1px solid var(--dsw-alias-border-l2)",
+      borderRadius: "10px",
+      background: "rgba(127, 127, 127, 0.08)"
+    },
+    list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "8px" },
+    row: {
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: "8px",
+      padding: "10px 12px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      borderRadius: "10px",
+      fontSize: "13px"
+    },
+    rowMain: { flex: "1 1 200px", minWidth: 0, display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" },
+    personaName: {
+      fontWeight: 600,
+      // issue #7：人设名上限是 60 字（MAX_PERSONA_NAME），一行放不下。
+      // 列表靠 flexWrap 会把徽标挤到下一行，所以名字自身也要能截断。
+      maxWidth: "100%",
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    },
+    badge: {
+      fontSize: "11px",
+      padding: "1px 7px",
+      borderRadius: "999px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      color: "var(--dsw-alias-label-tertiary)"
+    },
+    badgeActive: {
+      fontSize: "11px",
+      padding: "1px 7px",
+      borderRadius: "999px",
+      border: "1px solid var(--dsw-alias-state-business-primary, #4b7bec)",
+      color: "var(--dsw-alias-state-business-primary, #4b7bec)"
+    },
+    badgeOff: {
+      fontSize: "11px",
+      padding: "1px 7px",
+      borderRadius: "999px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      color: "var(--dsw-alias-state-warning-primary, #d48806)"
+    },
+    actions: { display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" },
+    button: {
+      font: "inherit",
+      fontSize: "12px",
+      padding: "4px 10px",
+      borderRadius: "8px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "inherit",
+      cursor: "pointer"
+    },
+    primaryButton: {
+      font: "inherit",
+      fontSize: "12px",
+      padding: "4px 12px",
+      borderRadius: "8px",
+      border: "1px solid var(--dsw-alias-state-business-primary, #4b7bec)",
+      background: "transparent",
+      color: "var(--dsw-alias-state-business-primary, #4b7bec)",
+      cursor: "pointer"
+    },
+    input: {
+      font: "inherit",
+      fontSize: "13px",
+      padding: "6px 10px",
+      borderRadius: "8px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "inherit",
+      flex: "1 1 200px",
+      minWidth: "140px",
+      boxSizing: "border-box"
+    },
+    textarea: {
+      font: "inherit",
+      fontSize: "12px",
+      lineHeight: 1.6,
+      padding: "10px 12px",
+      borderRadius: "10px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "inherit",
+      width: "100%",
+      minHeight: "120px",
+      resize: "vertical",
+      boxSizing: "border-box"
+    },
+    importBox: { display: "flex", flexDirection: "column", gap: "8px" },
+    fileLabel: {
+      font: "inherit",
+      fontSize: "12px",
+      padding: "4px 10px",
+      borderRadius: "8px",
+      border: "1px dashed var(--dsw-alias-border-l2)",
+      cursor: "pointer",
+      color: "var(--dsw-alias-label-tertiary)"
+    },
+    hint: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)", margin: 0 },
+    // 人设广场入口：一行「提示语 + 链接」，放在导入区上方。
+    plaza: {
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "baseline",
+      gap: "6px",
+      margin: 0,
+      padding: "10px 12px",
+      borderRadius: "10px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      fontSize: "12px",
+      color: "var(--dsw-alias-label-tertiary)"
+    },
+    plazaLink: {
+      color: "var(--dsw-alias-state-business-primary, #4b7bec)",
+      fontWeight: 600,
+      textDecoration: "none"
+    },
+    messageOk: { fontSize: "13px", margin: 0, color: "var(--dsw-alias-state-success-primary, #389e0d)" },
+    messageError: { fontSize: "13px", margin: 0, color: "var(--dsw-alias-state-error-primary, #d4380d)" },
+    dock: {
+      display: "flex",
+      alignItems: "center",
+      // 整条可以折到第二行（人设名 + 两个范围开关在小屏上放不下），
+      // 但**每个子项内部绝不换行**——否则「人设」这种两字词会被拆成竖排，
+      // 正是 issue #7 截图里那副样子。
+      flexWrap: "wrap",
+      gap: "6px",
+      fontSize: "11px",
+      color: "var(--dsw-alias-label-tertiary)",
+      minWidth: 0,
+      maxWidth: "100%"
+    },
+    dockName: {
+      fontWeight: 600,
+      color: "var(--dsw-alias-label-primary)",
+      // issue #7：人设名一长就把小条撑开、把右侧两个范围开关挤到下一行。
+      // 小条是输入框上方的一行状态条，宽度本来就紧张，所以这里必须截断。
+      maxWidth: "200px",
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    },
+    dockNameButton: {
+      font: "inherit",
+      fontSize: "11px",
+      fontWeight: 600,
+      padding: "1px 6px",
+      borderRadius: "6px",
+      border: "1px solid transparent",
+      background: "transparent",
+      color: "var(--dsw-alias-label-primary)",
+      cursor: "pointer",
+      // 与 dockName 同一套约束：它俩是同一个位置的两种形态
+      // （全局档是纯文本，会话档是可点的按钮），截断规则必须一致。
+      maxWidth: "200px",
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      textAlign: "left"
+    },
+    dockChip: {
+      font: "inherit",
+      fontSize: "11px",
+      padding: "1px 8px",
+      borderRadius: "999px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "inherit",
+      cursor: "pointer"
+    },
+    dockChipActive: {
+      font: "inherit",
+      fontSize: "11px",
+      padding: "1px 8px",
+      borderRadius: "999px",
+      border: "1px solid var(--dsw-alias-state-business-primary, #4b7bec)",
+      background: "transparent",
+      color: "var(--dsw-alias-state-business-primary, #4b7bec)",
+      cursor: "pointer"
+    },
+    // 新会话起始页（hero）上的人设 chip：与「工作目录」chip 并排。
+    heroChipButton: {
+      font: "inherit",
+      fontSize: "12px",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "6px",
+      padding: "4px 10px",
+      borderRadius: "999px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "var(--dsw-alias-label-secondary, inherit)",
+      cursor: "pointer",
+      // issue #7 第二轮：这里原本有六个并排的 span（🐟 / 人设 / ：/ 名字 /
+      // · 跟随全局 / ▾），在 220px 里挤不下。`flex` 默认允许换行到**每个
+      // span 内部**，于是「人设」被拆成两行竖排——截图里那副鬼样子。
+      // 现在改成：整行不换行（nowrap），图标与固定文案不收缩（flexShrink: 0），
+      // 只让名字那一段收缩并显示省略号。这样无论如何都不会把字压成竖排。
+      flexWrap: "nowrap",
+      whiteSpace: "nowrap",
+      maxWidth: "280px",
+      minWidth: 0,
+      overflow: "hidden",
+      boxSizing: "border-box",
+      verticalAlign: "middle"
+    },
+    /** chip 里的固定部分（图标、前缀、分隔符、后缀、箭头）：一律不收缩。 */
+    heroChipFixed: {
+      flexShrink: 0,
+      whiteSpace: "nowrap"
+    },
+    heroChipLabel: {
+      // 唯一允许收缩的那一段。flex 子项默认 `min-width: auto` 会拒绝收缩，
+      // 不写 `minWidth: 0` 的话 ellipsis 根本不会生效（issue #7 的同一个坑）。
+      flex: "0 1 auto",
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    },
+    workspacePath: {
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+      fontSize: "12px",
+      color: "var(--dsw-alias-label-primary)",
+      wordBreak: "break-all"
+    },
+    select: {
+      font: "inherit",
+      fontSize: "12px",
+      padding: "3px 8px",
+      borderRadius: "8px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "inherit"
+    },
+    // 会话人设选择浮层：挂在 shell.overlay 上，用 fixed 居中，不占输入框旁边的位置。
+    modalBackdrop: {
+      position: "fixed",
+      inset: "0",
+      zIndex: 1e3,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+      // 遮罩走主题 token，明暗主题各自取值；不要写死 rgba（issue #5）。
+      background: "var(--dsw-alias-bg-mask-1)"
+    },
+    modalPanel: {
+      width: "min(420px, 100%)",
+      maxWidth: "100%",
+      // issue #7：flex 容器默认会让长内容把面板撑开，加 box-sizing 与
+      // minWidth: 0 把宽度钉死在这 420px 里，内部再用 ellipsis 收尾。
+      boxSizing: "border-box",
+      minWidth: 0,
+      maxHeight: "min(70vh, 560px)",
+      overflowY: "auto",
+      padding: "16px",
+      borderRadius: "14px",
+      // issue #5 的根因：原先写的是 `var(--dsw-alias-bg-layer, #fff)`，
+      // 但宿主没有 `--dsw-alias-bg-layer` 这个 token（bg 层是 `bg-base`
+      // 与 `bg-layer-1/2/3`），于是永远落到兜底的纯白；夜间主题下文字
+      // 跟着变浅，就成了「白底浅字」。
+      // 改用 `bg-base`（浮层基础底，明暗自动切换），**不留浅色兜底**——
+      // 兜底只会把「变量名写错」重新藏起来，这次就是这么被藏住的。
+      background: "var(--dsw-alias-bg-base)",
+      color: "var(--dsw-alias-label-primary)",
+      // 浮起面板按宿主规范：border 归零，阴影交给主题 elevation token。
+      border: 0,
+      boxShadow: "var(--dsw-elevation-panel)",
+      display: "flex",
+      flexDirection: "column",
+      gap: "10px"
+    },
+    modalHeading: { margin: 0, fontSize: "14px", fontWeight: 600 },
+    // 选项列表给一点内边距：悬停时选项会放大 2%，不留边距的话
+    // 边缘那几像素会被滚动容器裁掉，看起来像「缺了个角」。
+    modalList: { display: "flex", flexDirection: "column", gap: "6px", padding: "3px", minWidth: 0 },
+    pickerItem: {
+      font: "inherit",
+      fontSize: "13px",
+      textAlign: "left",
+      padding: "8px 12px",
+      borderRadius: "10px",
+      border: "1px solid var(--dsw-alias-border-l2)",
+      background: "transparent",
+      color: "inherit",
+      cursor: "pointer",
+      // issue #7：长文案 / 长人设名会撑破浮层。
+      // 三件套缺一不可：
+      //  - `maxWidth: "100%"` + `boxSizing: "border-box"`：别让 padding 把宽度顶出去
+      //  - `minWidth: 0`：flex/grid 子项的默认 `min-width: auto` 会拒绝收缩，
+      //    只写 ellipsis 而漏掉这条，文字照样把容器撑开——这是最常被忽略的一环
+      //  - `overflow/ellipsis/nowrap`：超出打省略号，而不是折行或溢出
+      maxWidth: "100%",
+      boxSizing: "border-box",
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    },
+    pickerItemActive: {
+      font: "inherit",
+      fontSize: "13px",
+      textAlign: "left",
+      padding: "8px 12px",
+      borderRadius: "10px",
+      border: "1px solid var(--dsw-alias-state-business-primary, #4b7bec)",
+      background: "transparent",
+      color: "var(--dsw-alias-state-business-primary, #4b7bec)",
+      cursor: "pointer",
+      // 与 pickerItem 保持同一套约束：选中态只是换色，不该换个宽度行为。
+      maxWidth: "100%",
+      boxSizing: "border-box",
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  };
+  function injectHoverStyles() {
+    if (typeof document === "undefined" || document === null) return () => {
+    };
+    const existing = document.getElementById(STYLE_ID2);
+    if (existing !== null && existing !== void 0) return () => {
+    };
+    const css = `
+/* \u2500\u2500 \u901A\u7528\u6309\u94AE\uFF08\u8BBE\u7F6E\u9875 / \u6D6E\u5C42\u91CC\u7684\u6B21\u8981\u6309\u94AE\uFF09\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.${CLS}-btn { transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
+.${CLS}-btn:hover { background-color: color-mix(in srgb, currentColor 8%, transparent); }
+.${CLS}-btn:active { background-color: color-mix(in srgb, currentColor 14%, transparent); }
+.${CLS}-btn:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 55%, transparent); outline-offset: 2px; }
+
+/* \u2500\u2500 \u4E3B\u6309\u94AE\uFF1A\u5E95\u8272\u66F4\u5B9E\uFF0C\u60AC\u505C\u65F6\u52A0\u6DF1\u800C\u4E0D\u662F\u53EA\u52A0\u4E00\u70B9\u7070 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.${CLS}-primary { transition: background-color 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }
+.${CLS}-primary:hover { background-color: color-mix(in srgb, currentColor 12%, transparent); }
+.${CLS}-primary:active { background-color: color-mix(in srgb, currentColor 20%, transparent); }
+.${CLS}-primary:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 60%, transparent); outline-offset: 2px; }
+
+/* \u2500\u2500 \u6D6E\u5C42\u91CC\u7684\u9009\u9879\u884C\uFF1A\u60AC\u505C\u65F6\u8F7B\u5FAE\u653E\u5927 + \u9AD8\u4EAE\uFF0C\u6309\u4E0B\u56DE\u5F39 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* transform \u4E0D\u53C2\u4E0E\u5E03\u5C40\uFF0C\u6240\u4EE5\u653E\u5927\u4E0D\u4F1A\u628A\u76F8\u90BB\u9879\u6324\u5F00\uFF1B\u4F46\u4E3A\u4E86\u4E0D\u88AB\u6D6E\u5C42\u7684
+   \u6EDA\u52A8\u5BB9\u5668\u88C1\u6389\u8FB9\u7F18\uFF0C\u9009\u9879\u5217\u8868\u7ED9\u4E86\u51E0\u50CF\u7D20\u5185\u8FB9\u8DDD\uFF08\u89C1 modalList \u6837\u5F0F\uFF09\u3002 */
+.${CLS}-item { position: relative; transition: background-color 120ms ease, border-color 120ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.3, 1); will-change: transform; }
+.${CLS}-item:hover { background-color: color-mix(in srgb, currentColor 7%, transparent); transform: scale(1.02); }
+.${CLS}-item:active { transform: scale(0.99); }
+.${CLS}-item:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 55%, transparent); outline-offset: -2px; }
+/* \u5F53\u524D\u9009\u4E2D\u9879\u4E0D\u653E\u5927\uFF1A\u5B83\u5DF2\u7ECF\u6709\u9AD8\u4EAE\u8FB9\u6846\uFF0C\u518D\u653E\u5927\u53CD\u800C\u548C\u60AC\u505C\u6001\u649E\u5728\u4E00\u8D77\uFF0C
+   \u5206\u4E0D\u6E05\u300C\u6211\u5DF2\u9009\u4E2D\u5B83\u300D\u548C\u300C\u6211\u6B63\u6307\u7740\u5B83\u300D\u3002 */
+.${CLS}-item[data-active="true"]:hover { transform: none; }
+
+/* \u2500\u2500 \u5C0F\u6761\u4E0A\u7684 chip / \u4EBA\u8BBE\u540D\uFF1A\u60AC\u505C\u65F6\u624D\u663E\u51FA\u8FB9\u6846\uFF0C\u5E73\u65F6\u4FDD\u6301\u8F7B\u76C8 \u2500\u2500 */
+.${CLS}-chip { transition: background-color 120ms ease, border-color 120ms ease; }
+.${CLS}-chip:hover { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+.${CLS}-chip:active { background-color: color-mix(in srgb, currentColor 16%, transparent); }
+.${CLS}-chip:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 50%, transparent); outline-offset: 1px; }
+
+/* \u2500\u2500 \u8D77\u59CB\u9875 chip \u4E0E\u300C\u9009\u62E9\u6587\u4EF6\u300D\u6807\u7B7E\uFF1A\u540C\u5C0F\u6761\uFF0C\u4F46\u66F4\u660E\u663E\u4E00\u70B9 \u2500\u2500\u2500\u2500 */
+.${CLS}-pill { transition: background-color 120ms ease, border-color 120ms ease; }
+.${CLS}-pill:hover { background-color: color-mix(in srgb, currentColor 9%, transparent); }
+.${CLS}-pill:active { background-color: color-mix(in srgb, currentColor 15%, transparent); }
+.${CLS}-pill:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 50%, transparent); outline-offset: 1px; }
+/* issue #7 \u7B2C\u4E8C\u8F6E\uFF1Achip \u5185\u90E8\u662F\u4E00\u4E32 span\uFF0C\u67D0\u4E9B\u5BBF\u4E3B\u4E3B\u9898\u4F1A\u628A\u5B83\u4EEC\u5F53\u6210\u53EF\u6362\u884C\u7684
+   \u884C\u5185\u5757\uFF0C\u7A84\u5C4F\u4E0B\u9010\u5B57\u7AD6\u6392\uFF08\u300C\u4EBA\u8BBE\u300D\u88AB\u62C6\u6210\u4E0A\u4E0B\u4E24\u884C\uFF09\u3002\u8FD9\u91CC\u7528 CSS \u515C\u5E95\uFF1A
+   \u56FA\u5B9A\u90E8\u5206\u4E0D\u6536\u7F29\u3001\u4EFB\u4F55\u5B50\u9879\u5185\u90E8\u90FD\u4E0D\u6362\u884C\uFF0C\u53EA\u6709\u5E26 ellipsis \u7684\u90A3\u6BB5\u5141\u8BB8\u7701\u7565\u3002 */
+.${CLS}-pill, .${CLS}-chip { flex-wrap: nowrap; }
+.${CLS}-pill > span, .${CLS}-chip > span { flex-shrink: 0; white-space: nowrap; }
+.${CLS}-pill > span[style*="ellipsis"], .${CLS}-chip > span[style*="ellipsis"] { flex-shrink: 1; min-width: 0; }
+
+/* \u2500\u2500 \u4EBA\u8BBE\u5E7F\u573A\u5916\u94FE\uFF1A\u60AC\u505C\u52A0\u4E0B\u5212\u7EBF\uFF0C\u7B26\u5408\u300C\u8FD9\u662F\u4E00\u6761\u94FE\u63A5\u300D\u7684\u76F4\u89C9 \u2500\u2500 */
+.${CLS}-link { transition: opacity 120ms ease; }
+.${CLS}-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.${CLS}-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 3px; }
+
+/* \u2500\u2500 \u7981\u7528\u6001\uFF1A\u522B\u7ED9\u60AC\u505C\u53CD\u9988\uFF0C\u5426\u5219\u7528\u6237\u4EE5\u4E3A\u80FD\u70B9 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.${CLS}-btn:disabled:hover,
+.${CLS}-primary:disabled:hover,
+.${CLS}-item:disabled:hover,
+.${CLS}-chip:disabled:hover,
+.${CLS}-pill:disabled:hover { background-color: transparent; }
+.${CLS}-btn:disabled,
+.${CLS}-primary:disabled,
+.${CLS}-item:disabled,
+.${CLS}-chip:disabled { cursor: default; }
+
+/* \u2500\u2500 \u7CFB\u7EDF\u8981\u6C42\u51CF\u5C11\u52A8\u6548\u65F6\u4E0D\u52A0\u8FC7\u6E21\uFF08\u4FDD\u7559\u989C\u8272\u53D8\u5316\uFF0C\u5B83\u4E0D\u5F15\u53D1\u7729\u6655\uFF09\u2500\u2500 */
+@media (prefers-reduced-motion: reduce) {
+  .${CLS}-btn, .${CLS}-primary, .${CLS}-item, .${CLS}-chip, .${CLS}-pill, .${CLS}-link { transition: none; }
+  .${CLS}-item:active { transform: none; }
+}
+
+/* \u2500\u2500 color-mix \u7684\u515C\u5E95 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* \u4E0A\u9762\u7684\u60AC\u505C\u5E95\u8272\u5168\u7528 color-mix(in srgb, currentColor N%, transparent)\uFF0C
+   \u8FD9\u6837\u4EAE\u8272 / \u6697\u8272 / \u81EA\u5B9A\u4E49\u4E3B\u9898\u90FD\u4E0D\u7528\u5404\u5199\u4E00\u904D\u3002\u5B83\u9700\u8981 Chromium 111+\uFF0C
+   \u800C DSH \u5F53\u524D\u662F Electron\uFF08Chromium 140+\uFF09\uFF0C\u672C\u6765\u4E00\u5B9A\u652F\u6301\u3002
+   \u4F46\u4E07\u4E00\u5C06\u6765\u5BBF\u4E3B\u964D\u7EA7\u3001\u6216\u6362\u4E86\u66F4\u8001\u7684\u8FD0\u884C\u65F6\uFF0C\u6574\u6761\u58F0\u660E\u4F1A\u88AB\u4E22\u5F03\uFF0C
+   \u6309\u94AE\u5C31\u53C8\u53D8\u6210\u6CA1\u53CD\u9988\u4E86\u3002\u6240\u4EE5\u7ED9\u4E00\u4E2A\u4E0D\u4F9D\u8D56 color-mix \u7684\u7B49\u4EF7\u5B9E\u73B0\uFF1A
+   \u5BBF\u4E3B\u4E3B\u9898\u7684 mask \u5C42\u8272\u677F\u80FD\u53D6\u5230\u5C31\u7528\u5B83\uFF0C\u53D6\u4E0D\u5230\u518D\u9000\u5230 outline
+   \uFF08outline \u4E0D\u5F71\u54CD\u5E03\u5C40\uFF0C\u4E5F\u4E0D\u4F1A\u50CF opacity \u90A3\u6837\u628A\u6587\u5B57\u4E00\u8D77\u53D8\u6DE1\uFF09\u3002 */
+@supports not (background-color: color-mix(in srgb, red 10%, transparent)) {
+  .${CLS}-btn:hover, .${CLS}-primary:hover, .${CLS}-item:hover,
+  .${CLS}-chip:hover, .${CLS}-pill:hover {
+    background-color: var(--dsw-alias-bg-layer-2, transparent);
+    outline: 1px solid var(--dsw-alias-border-l2);
+  }
+  .${CLS}-btn:active, .${CLS}-primary:active, .${CLS}-item:active,
+  .${CLS}-chip:active, .${CLS}-pill:active {
+    background-color: var(--dsw-alias-bg-layer-3, transparent);
+  }
+}
+`;
+    const style = document.createElement("style");
+    style.id = STYLE_ID2;
+    style.textContent = css;
+    document.head.appendChild(style);
+    return () => {
+      const node = document.getElementById(STYLE_ID2);
+      if (node !== null && node !== void 0) node.remove();
+    };
+  }
+  function separatorOf(t) {
+    const value = t("labelSeparator");
+    return typeof value === "string" && value !== "labelSeparator" ? value : "\uFF1A";
+  }
+  function localized(t, key) {
+    const value = typeof t === "function" ? t(key) : void 0;
+    return typeof value === "string" && value.length > 0 && value !== key ? value : void 0;
+  }
+  const BUILTIN_LOCALE_SUFFIX = { dafeiyu: "Dafeiyu", acha: "Acha", tinglan: "Tinglan" };
+  function displayNameOf(t, persona) {
+    if (persona && persona.builtin === true) {
+      const suffix = BUILTIN_LOCALE_SUFFIX[persona.id];
+      if (suffix !== void 0) {
+        const localizedName = localized(t, `personaName${suffix}`);
+        if (localizedName !== void 0) return localizedName;
+      }
+    }
+    return persona && typeof persona.name === "string" ? persona.name : "";
+  }
+  function displayAboutOf(t, persona) {
+    if (persona && persona.builtin === true) {
+      const suffix = BUILTIN_LOCALE_SUFFIX[persona.id];
+      if (suffix !== void 0) {
+        const about = localized(t, `personaAbout${suffix}`);
+        if (about !== void 0) return about;
+      }
+    }
+    return persona && typeof persona.description === "string" ? persona.description : void 0;
+  }
+  function fetchStatus(sessionId, cwd) {
+    if (typeof fetch !== "function") return Promise.reject(new Error("fetch unavailable"));
+    const params = [];
+    if (typeof sessionId === "string" && sessionId.length > 0) params.push(`sessionId=${encodeURIComponent(sessionId)}`);
+    if (typeof cwd === "string" && cwd.length > 0) params.push(`cwd=${encodeURIComponent(cwd)}`);
+    const query = params.length > 0 ? `?${params.join("&")}` : "";
+    return fetch(`${STATUS_PATH}${query}`, { headers: { accept: "application/json" } }).then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json().then((body) => {
+        if (!body || body.ok !== true) throw new Error(body && body.error || "malformed payload");
+        return body.value;
+      });
+    });
+  }
+  function postMutate(payload) {
+    if (typeof fetch !== "function") return Promise.reject(new Error("fetch unavailable"));
+    return fetch(MUTATE_PATH, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then((response) => response.json().then((body) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!body || body.ok !== true) throw new Error(body && body.error || "request rejected");
+      return body.value;
+    }));
+  }
+  function fetchPersonaText(id) {
+    if (typeof fetch !== "function") return Promise.reject(new Error("fetch unavailable"));
+    return fetch(`${PERSONA_PATH}?id=${encodeURIComponent(id)}`, { headers: { accept: "application/json" } }).then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json().then((body) => {
+        if (!body || body.ok !== true) throw new Error(body && body.error || "malformed payload");
+        return body.value;
+      });
+    });
+  }
+  function stripExtension(fileName) {
+    return String(fileName || "").replace(/\.(md|markdown|txt)$/i, "");
+  }
+  function downloadPersonaFile(name2, text) {
+    const canDownload = typeof document !== "undefined" && typeof Blob !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
+    if (!canDownload) throw new Error("download unavailable");
+    const safe = String(name2 === void 0 || name2 === null ? "" : name2).replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").trim().slice(0, 80) || "persona";
+    const fileName = `${safe}.md`;
+    const url = URL.createObjectURL(new Blob([String(text)], { type: "text/markdown;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    return fileName;
+  }
+  function PersonaSettingsSection(props) {
+    const t = typeof props.t === "function" ? props.t : (key) => key;
+    const [state, setState] = react.useState({ status: "loading" });
+    const [busy, setBusy] = react.useState(false);
+    const [message, setMessage] = react.useState(null);
+    const [confirmId, setConfirmId] = react.useState(null);
+    const [renameId, setRenameId] = react.useState(null);
+    const [renameValue, setRenameValue] = react.useState("");
+    const [name2, setName] = react.useState("");
+    const [text, setText] = react.useState("");
+    const [picked, setPicked] = react.useState("");
+    const [expandedId, setExpandedId] = react.useState(null);
+    const [personaTexts, setPersonaTexts] = react.useState({});
+    const [textBusyId, setTextBusyId] = react.useState(null);
+    const [textFailId, setTextFailId] = react.useState(null);
+    const load = react.useCallback(() => {
+      setState({ status: "loading" });
+      fetchStatus().then((value) => setState({ status: "ready", value })).catch((error) => setState({ status: "error", message: error && error.message ? error.message : String(error) }));
+    }, []);
+    react.useEffect(() => {
+      load();
+    }, [load]);
+    const run = react.useCallback((payload, onSuccess) => {
+      setBusy(true);
+      setMessage(null);
+      postMutate(payload).then((value) => {
+        setState({ status: "ready", value });
+        setMessage({ kind: "ok", text: t("done") });
+        if (typeof onSuccess === "function") onSuccess();
+      }).catch((error) => setMessage({ kind: "error", text: error && error.message ? error.message : String(error) })).then(() => {
+        setBusy(false);
+        setConfirmId(null);
+      });
+    }, [t]);
+    const onPickFile = react.useCallback((event) => {
+      const file = event && event.target && event.target.files ? event.target.files[0] : void 0;
+      if (!file) return;
+      const accept = (content) => {
+        setText(String(content || ""));
+        setPicked(file.name);
+        setName((previous) => previous || stripExtension(file.name));
+        setMessage(null);
+      };
+      if (typeof file.text === "function") {
+        file.text().then(accept).catch((error) => setMessage({
+          kind: "error",
+          text: error && error.message ? error.message : String(error)
+        }));
+      } else if (typeof FileReader === "function") {
+        const reader = new FileReader();
+        reader.onload = () => accept(reader.result);
+        reader.readAsText(file);
+      }
+    }, []);
+    const sourceLabel = (source) => source === "imported" ? t("sourceImported") : source === "config" ? t("sourceConfig") : t("sourceBuiltin");
+    const globalOff = (value) => value.globalOff === true || value.globalOff === void 0 && (value.current === null || value.current === void 0);
+    const toggleFullText = react.useCallback((persona) => {
+      setTextFailId(null);
+      if (expandedId === persona.id) {
+        setExpandedId(null);
+        return;
+      }
+      if (personaTexts[persona.id] !== void 0) {
+        setExpandedId(persona.id);
+        return;
+      }
+      setTextBusyId(persona.id);
+      fetchPersonaText(persona.id).then((entry) => {
+        setPersonaTexts((previous) => ({ ...previous, [entry.id]: entry.text }));
+        setExpandedId(entry.id);
+      }).catch(() => setTextFailId(persona.id)).then(() => setTextBusyId(null));
+    }, [expandedId, personaTexts]);
+    const exportPersona = react.useCallback((persona) => {
+      setMessage(null);
+      const cached = personaTexts[persona.id];
+      const ready = typeof cached === "string" ? Promise.resolve(cached) : fetchPersonaText(persona.id).then((entry) => entry.text);
+      ready.then((text2) => {
+        const fileName = downloadPersonaFile(displayNameOf(t, persona), text2);
+        setMessage({ kind: "ok", text: `${t("exportDone")}${separatorOf(t)}${fileName}` });
+      }).catch((error) => {
+        const reason = error && error.message === "download unavailable" ? t("exportUnsupported") : error && error.message ? error.message : String(error);
+        setMessage({ kind: "error", text: `${t("exportFailed")}${separatorOf(t)}${reason}` });
+      });
+    }, [personaTexts, t]);
+    const importable = (persona) => persona.builtin !== true && persona.source === "imported";
+    const body = [];
+    if (message) {
+      body.push(jsxRuntime.jsx("p", {
+        style: message.kind === "ok" ? styles.messageOk : styles.messageError,
+        children: message.text
+      }, "message"));
+    }
+    if (state.status === "loading") {
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("loading") }, "loading"));
+    } else if (state.status === "error") {
+      body.push(jsxRuntime.jsx("p", { style: styles.messageError, children: `${t("failed")}${separatorOf(t)}${state.message}` }, "error"));
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("failedHint") }, "error-hint"));
+    } else {
+      const value = state.value;
+      const suffixInfo = value && typeof value.suffix === "object" && value.suffix !== null ? value.suffix : void 0;
+      const currentEntry = value.personas.find((persona) => persona.current === true);
+      const globalOffNow = globalOff(value);
+      const currentShownName = globalOffNow ? t("currentNone") : currentEntry === void 0 ? value.currentName || "\u2014" : displayNameOf(t, currentEntry) || value.currentName || "\u2014";
+      body.push(jsxRuntime.jsx("h3", { style: styles.subHeading, children: t("currentTitle") }, "current-title"));
+      body.push(jsxRuntime.jsxs("div", {
+        style: styles.card,
+        children: [
+          jsxRuntime.jsx("div", { style: styles.key, children: t("name") }, "k-name"),
+          jsxRuntime.jsxs("div", {
+            style: styles.value,
+            children: globalOffNow ? currentShownName : [currentShownName, " ", jsxRuntime.jsx("span", { style: styles.badge, children: sourceLabel(value.source) }, "badge")]
+          }, "v-name"),
+          jsxRuntime.jsx("div", { style: styles.key, children: t("status") }, "k-status"),
+          jsxRuntime.jsx("div", {
+            style: styles.value,
+            children: !value.enabled ? t("disabledByConfig") : globalOffNow ? t("disabledByGlobalOff") : value.active ? t("enabled") : t("disabledByPersona")
+          }, "v-status"),
+          jsxRuntime.jsx("div", { style: styles.key, children: t("section") }, "k-section"),
+          jsxRuntime.jsx("div", { style: styles.value, children: `${value.section} \xB7 order ${value.order}` }, "v-section"),
+          jsxRuntime.jsx("div", { style: styles.key, children: t("chars") }, "k-chars"),
+          jsxRuntime.jsx("div", { style: styles.value, children: String(value.chars) }, "v-chars"),
+          // suffix 是独立段落（不随人设切换），单独一行说明它到底配了没有、多少字、排在哪。
+          suffixInfo === void 0 ? null : jsxRuntime.jsx("div", { style: styles.key, children: t("suffixTitle") }, "k-suffix"),
+          suffixInfo === void 0 ? null : jsxRuntime.jsx("div", {
+            style: styles.value,
+            children: suffixInfo.configured ? `${t("suffixOn")} \xB7 ${t("suffixChars")} ${suffixInfo.chars}` + (suffixInfo.order === null || suffixInfo.order === void 0 ? "" : ` \xB7 order ${suffixInfo.order}`) : t("suffixOff")
+          }, "v-suffix"),
+          suffixInfo === void 0 ? null : jsxRuntime.jsx("div", { style: styles.key, children: t("totalChars") }, "k-total"),
+          suffixInfo === void 0 ? null : jsxRuntime.jsx("div", {
+            style: styles.value,
+            children: String(value.totalChars === void 0 ? value.chars : value.totalChars)
+          }, "v-total"),
+          jsxRuntime.jsx("div", { style: styles.key, children: t("storeHint") }, "k-store"),
+          jsxRuntime.jsx("div", { style: styles.value, children: value.storePath || "\u2014" }, "v-store")
+        ]
+      }, "card"));
+      body.push(jsxRuntime.jsx("div", {
+        style: styles.actions,
+        children: globalOffNow ? jsxRuntime.jsx("button", {
+          type: "button",
+          style: styles.primaryButton,
+          className: `${CLS}-primary`,
+          disabled: busy,
+          // 恢复全局人设：交回内置默认（dafeiyu）。用户随后仍可挑别的。
+          onClick: () => run({ action: "set-current", id: DEFAULT_PERSONA_ID }),
+          children: t("enableGlobal")
+        }, "global-on") : jsxRuntime.jsx("button", {
+          type: "button",
+          style: styles.button,
+          className: `${CLS}-btn`,
+          disabled: busy,
+          onClick: () => run({ action: "set-current", id: null }),
+          children: t("disableGlobal")
+        }, "global-off")
+      }, "global-toggle"));
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("globalOffHint") }, "global-off-hint"));
+      const currentAbout = currentEntry === void 0 ? void 0 : displayAboutOf(t, currentEntry);
+      if (currentAbout) {
+        body.push(jsxRuntime.jsx("p", {
+          style: styles.hint,
+          children: `${t("description")}${separatorOf(t)}${currentAbout}`
+        }, "current-description"));
+      } else if (currentEntry) {
+        body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("fullTextInList") }, "current-fulltext-hint"));
+      }
+      body.push(jsxRuntime.jsx("h3", { style: styles.subHeading, children: t("scopeTitle") }, "scope-title"));
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("scopeHint") }, "scope-hint"));
+      body.push(jsxRuntime.jsx("div", {
+        style: styles.actions,
+        children: ["global", "workspace", "session"].map((option) => jsxRuntime.jsx("button", {
+          type: "button",
+          // 一档一个按钮：选中的走主按钮样式，其余是次要按钮，
+          // 两者都要 class——它们的悬停反馈强度不同，靠后缀区分。
+          style: value.mode === option ? styles.primaryButton : styles.button,
+          className: value.mode === option ? `${CLS}-primary` : `${CLS}-btn`,
+          disabled: busy,
+          onClick: () => run({ action: "set-mode", mode: option }),
+          children: option === "global" ? t("scopeGlobal") : option === "workspace" ? t("scopeWorkspace") : t("scopeSession")
+        }, `scope-${option}`))
+      }, "scope-actions"));
+      const clockInfo = value.clock === void 0 ? void 0 : value.clock;
+      body.push(jsxRuntime.jsx("h4", { style: styles.subHeading, children: t("clockTitle") }, "clock-title"));
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("clockHint") }, "clock-hint"));
+      body.push(jsxRuntime.jsxs("div", {
+        style: styles.actions,
+        children: [
+          jsxRuntime.jsx("button", {
+            type: "button",
+            style: clockInfo !== void 0 && clockInfo.enabled ? styles.primaryButton : styles.button,
+            className: clockInfo !== void 0 && clockInfo.enabled ? `${CLS}-primary` : `${CLS}-btn`,
+            disabled: busy,
+            onClick: () => run({ action: "set-clock", enabled: !(clockInfo !== void 0 && clockInfo.enabled) }),
+            children: clockInfo !== void 0 && clockInfo.enabled ? t("clockOn") : t("clockOff")
+          }, "clock-toggle"),
+          clockInfo === void 0 ? null : jsxRuntime.jsx("span", {
+            style: styles.hint,
+            children: `${t("clockLastSeen")}\uFF1A${clockInfo.lastSeen ? new Date(clockInfo.lastSeen).toLocaleString() : t("clockNever")}`
+          }, "clock-last")
+        ]
+      }, "clock-row"));
+      const guardInfo = value.guard === void 0 ? void 0 : value.guard;
+      body.push(jsxRuntime.jsx("h4", { style: styles.subHeading, children: t("guardTitle") }, "guard-title"));
+      body.push(jsxRuntime.jsxs("div", {
+        style: styles.actions,
+        children: [
+          jsxRuntime.jsx("span", {
+            style: guardInfo !== void 0 && guardInfo.warn ? { ...styles.value, color: "var(--dsw-alias-state-warning-primary, #b7791f)", fontWeight: 600 } : styles.value,
+            children: `${String(value.chars)} ${t("charsUnit")}`
+          }, "guard-chars"),
+          guardInfo === void 0 ? null : jsxRuntime.jsx("span", {
+            style: styles.hint,
+            children: guardInfo.warn ? t("guardWarn") : t("guardOk")
+          }, "guard-hint")
+        ]
+      }, "guard-row"));
+      const truncateInfo = guardInfo === void 0 ? void 0 : guardInfo.truncate;
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("truncateHint") }, "truncate-hint"));
+      body.push(jsxRuntime.jsx("div", {
+        style: styles.actions,
+        children: [0, 4e3, 8e3, 12e3].map((max) => {
+          const on = truncateInfo === void 0 ? max === 0 : max === 0 ? truncateInfo.enabled !== true : truncateInfo.enabled === true && truncateInfo.max === max;
+          return jsxRuntime.jsx("button", {
+            type: "button",
+            style: on ? styles.primaryButton : styles.button,
+            className: on ? `${CLS}-primary` : `${CLS}-btn`,
+            disabled: busy,
+            onClick: () => run(max === 0 ? { action: "set-truncate", enabled: false } : { action: "set-truncate", enabled: true, max }),
+            children: max === 0 ? t("truncateOff") : t("truncateTitle").replace("N", String(max))
+          }, `truncate-${max}`);
+        })
+      }, "truncate-row"));
+      body.push(jsxRuntime.jsx("h4", { style: styles.subHeading, children: t("workspaceTitle") }, "workspace-title"));
+      body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("workspaceHint") }, "workspace-hint"));
+      const workspaceRows = Array.isArray(value.workspaces) ? value.workspaces : [];
+      if (workspaceRows.length === 0) {
+        body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("workspaceEmpty") }, "workspace-empty"));
+      } else {
+        body.push(jsxRuntime.jsx("ul", {
+          style: styles.list,
+          children: workspaceRows.map((row) => jsxRuntime.jsxs("li", {
+            style: styles.row,
+            children: [
+              jsxRuntime.jsx("div", {
+                style: styles.rowMain,
+                children: jsxRuntime.jsx("span", { style: styles.workspacePath, children: row.cwd }, "cwd")
+              }, "cwd-wrap"),
+              jsxRuntime.jsx("select", {
+                style: styles.select,
+                value: row.personaId === null ? "" : row.personaId,
+                disabled: busy,
+                onChange: (event) => run({
+                  action: "set-workspace-persona",
+                  cwd: row.cwd,
+                  personaId: event.target.value === "" ? null : event.target.value
+                }),
+                children: [
+                  jsxRuntime.jsx("option", { value: "", children: t("workspaceFollow") }, "opt-follow"),
+                  ...value.personas.filter((persona) => persona.enabled === true).map((persona) => jsxRuntime.jsx("option", {
+                    value: persona.id,
+                    children: displayNameOf(t, persona) || persona.name
+                  }, `opt-${persona.id}`))
+                ]
+              }, "workspace-select")
+            ]
+          }, `ws-${row.cwd}`))
+        }, "workspace-list"));
+      }
+      body.push(jsxRuntime.jsx("h3", { style: styles.subHeading, children: t("listTitle") }, "list-title"));
+      if (value.personas.length === 0) {
+        body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("empty") }, "empty"));
+      }
+      body.push(jsxRuntime.jsx("ul", {
+        style: styles.list,
+        children: value.personas.map((persona) => {
+          const rows = [jsxRuntime.jsxs("div", {
+            style: styles.row,
+            children: [
+              jsxRuntime.jsxs("div", {
+                style: styles.rowMain,
+                children: [
+                  jsxRuntime.jsx("span", {
+                    style: styles.personaName,
+                    // 截断后靠 title 补全：长名字在列表里只看得到前半截。
+                    title: displayNameOf(t, persona) || persona.name,
+                    children: displayNameOf(t, persona) || persona.name
+                  }, "name"),
+                  jsxRuntime.jsx("span", { style: styles.badge, children: sourceLabel(persona.source) }, "source"),
+                  persona.current ? jsxRuntime.jsx("span", { style: styles.badgeActive, children: t("currentBadge") }, "current") : null,
+                  persona.enabled ? null : jsxRuntime.jsx("span", { style: styles.badgeOff, children: t("offBadge") }, "off"),
+                  jsxRuntime.jsx("span", { style: styles.hint, children: String(persona.chars) }, "chars")
+                ]
+              }, "main"),
+              jsxRuntime.jsxs("div", {
+                style: styles.actions,
+                children: [
+                  persona.current ? null : jsxRuntime.jsx("button", {
+                    type: "button",
+                    style: styles.primaryButton,
+                    className: `${CLS}-primary`,
+                    disabled: busy,
+                    onClick: () => run({ action: "set-current", id: persona.id }),
+                    children: t("setCurrent")
+                  }, "set-current"),
+                  jsxRuntime.jsx("button", {
+                    type: "button",
+                    style: styles.button,
+                    className: `${CLS}-btn`,
+                    disabled: busy,
+                    onClick: () => run({ action: "set-enabled", id: persona.id, enabled: !persona.enabled }),
+                    children: persona.enabled ? t("disable") : t("enable")
+                  }, "toggle"),
+                  importable(persona) ? jsxRuntime.jsx("button", {
+                    type: "button",
+                    style: styles.button,
+                    className: `${CLS}-btn`,
+                    disabled: busy,
+                    onClick: () => {
+                      setRenameId(persona.id);
+                      setRenameValue(persona.name);
+                    },
+                    children: t("rename")
+                  }, "rename") : null,
+                  importable(persona) ? confirmId === persona.id ? jsxRuntime.jsxs("span", {
+                    style: styles.actions,
+                    children: [
+                      jsxRuntime.jsx("button", {
+                        type: "button",
+                        style: styles.button,
+                        className: `${CLS}-btn`,
+                        disabled: busy,
+                        onClick: () => run({ action: "remove", id: persona.id }),
+                        children: t("removeConfirm")
+                      }, "confirm"),
+                      jsxRuntime.jsx("button", {
+                        type: "button",
+                        style: styles.button,
+                        className: `${CLS}-btn`,
+                        disabled: busy,
+                        onClick: () => setConfirmId(null),
+                        children: t("cancel")
+                      }, "cancel")
+                    ]
+                  }, "confirm-box") : jsxRuntime.jsx("button", {
+                    type: "button",
+                    style: styles.button,
+                    className: `${CLS}-btn`,
+                    disabled: busy,
+                    onClick: () => setConfirmId(persona.id),
+                    children: t("remove")
+                  }, "remove") : null,
+                  persona.builtin ? jsxRuntime.jsx("span", { style: styles.hint, children: t("builtinLocked") }, "locked") : null
+                ]
+              }, "actions")
+            ]
+          }, "row")];
+          if (persona.builtin === true) {
+            rows.push(jsxRuntime.jsx("p", {
+              style: styles.hint,
+              children: `${t("description")}${separatorOf(t)}${displayAboutOf(t, persona) || t("builtinNote")}`
+            }, "builtin-description"));
+          }
+          {
+            const expanded = expandedId === persona.id;
+            const text2 = personaTexts[persona.id];
+            rows.push(jsxRuntime.jsxs("div", {
+              style: styles.actions,
+              children: [
+                jsxRuntime.jsx("button", {
+                  type: "button",
+                  style: styles.button,
+                  className: `${CLS}-btn`,
+                  disabled: textBusyId === persona.id,
+                  onClick: () => toggleFullText(persona),
+                  children: expanded ? t("collapse") : t("fullText")
+                }, "toggle-full-text"),
+                // 导出仍只给自导入 / config 人设：内置正文由插件维护，
+                // 不属于用户的资产；想改就先自己导入一份。
+                persona.builtin === true ? null : jsxRuntime.jsx("button", {
+                  type: "button",
+                  style: styles.button,
+                  className: `${CLS}-btn`,
+                  onClick: () => exportPersona(persona),
+                  children: t("exportAction")
+                }, "export-persona"),
+                textBusyId === persona.id ? jsxRuntime.jsx("span", { style: styles.hint, children: t("fullTextLoading") }, "text-loading") : null,
+                textFailId === persona.id ? jsxRuntime.jsx("span", { style: styles.messageError, children: t("fullTextFailed") }, "text-failed") : null
+              ]
+            }, "full-text-actions"));
+            if (expanded && typeof text2 === "string") {
+              rows.push(jsxRuntime.jsx("pre", { style: styles.preview, children: text2 }, "full-text"));
+            }
+          }
+          if (renameId === persona.id) {
+            rows.push(jsxRuntime.jsxs("div", {
+              style: styles.actions,
+              children: [
+                jsxRuntime.jsx("input", {
+                  style: styles.input,
+                  value: renameValue,
+                  placeholder: t("renamePlaceholder"),
+                  onChange: (event) => setRenameValue(event.target.value)
+                }, "rename-input"),
+                jsxRuntime.jsx("button", {
+                  type: "button",
+                  style: styles.primaryButton,
+                  className: `${CLS}-primary`,
+                  disabled: busy || String(renameValue).trim().length === 0,
+                  onClick: () => {
+                    run({ action: "rename", id: persona.id, name: renameValue }, () => {
+                      setRenameId(null);
+                    });
+                  },
+                  children: t("save")
+                }, "rename-save"),
+                jsxRuntime.jsx("button", {
+                  type: "button",
+                  style: styles.button,
+                  className: `${CLS}-btn`,
+                  disabled: busy,
+                  onClick: () => setRenameId(null),
+                  children: t("cancel")
+                }, "rename-cancel")
+              ]
+            }, "rename-row"));
+          }
+          return jsxRuntime.jsx("li", { children: rows }, persona.id);
+        })
+      }, "list"));
+      body.push(jsxRuntime.jsxs("p", {
+        style: styles.plaza,
+        children: [
+          jsxRuntime.jsx("span", { children: t("plazaHint") }, "plaza-hint"),
+          jsxRuntime.jsx("a", {
+            href: PLAZA_URL,
+            target: "_blank",
+            rel: "noopener noreferrer",
+            style: styles.plazaLink,
+            className: `${CLS}-link`,
+            title: t("plazaTitle"),
+            children: t("plazaLinkLabel")
+          }, "plaza-link")
+        ]
+      }, "plaza"));
+      body.push(jsxRuntime.jsx("h3", { style: styles.subHeading, children: t("importTitle") }, "import-title"));
+      body.push(jsxRuntime.jsxs("div", {
+        style: styles.importBox,
+        children: [
+          jsxRuntime.jsx("input", {
+            style: styles.input,
+            value: name2,
+            placeholder: t("importNamePlaceholder"),
+            onChange: (event) => setName(event.target.value)
+          }, "import-name"),
+          jsxRuntime.jsx("textarea", {
+            style: styles.textarea,
+            value: text,
+            placeholder: t("importTextPlaceholder"),
+            onChange: (event) => setText(event.target.value)
+          }, "import-text"),
+          jsxRuntime.jsxs("div", {
+            style: styles.actions,
+            children: [
+              jsxRuntime.jsxs("label", {
+                style: styles.fileLabel,
+                className: `${CLS}-pill`,
+                children: [
+                  t("importFile"),
+                  jsxRuntime.jsx("input", {
+                    type: "file",
+                    accept: ".md,.markdown,.txt,text/plain",
+                    style: { display: "none" },
+                    onChange: onPickFile
+                  }, "file")
+                ]
+              }, "file-label"),
+              picked ? jsxRuntime.jsx("span", { style: styles.hint, children: picked }, "picked") : null,
+              jsxRuntime.jsx("button", {
+                type: "button",
+                style: styles.primaryButton,
+                className: `${CLS}-primary`,
+                disabled: busy || String(text).trim().length === 0,
+                onClick: () => {
+                  run({ action: "import", name: name2, text }, () => {
+                    setName("");
+                    setText("");
+                    setPicked("");
+                  });
+                },
+                children: t("importAction")
+              }, "import-run")
+            ]
+          }, "import-actions"),
+          jsxRuntime.jsx("p", { style: styles.hint, children: t("importHint") }, "import-hint")
+        ]
+      }, "import-box"));
+    }
+    body.push(jsxRuntime.jsx("div", {
+      style: styles.actions,
+      children: jsxRuntime.jsx("button", {
+        type: "button",
+        style: styles.button,
+        className: `${CLS}-btn`,
+        disabled: busy,
+        onClick: load,
+        children: t("refresh")
+      }, "refresh")
+    }, "footer-actions"));
+    body.push(jsxRuntime.jsx("p", { style: styles.hint, children: t("configHint") }, "config-hint"));
+    return jsxRuntime.jsxs("section", {
+      style: styles.section,
+      "aria-label": t("title"),
+      children: [
+        jsxRuntime.jsx("h2", { style: styles.heading, children: t("title") }, "title"),
+        jsxRuntime.jsx("p", { style: styles.intro, children: t("intro") }, "intro"),
+        ...body
+      ]
+    });
+  }
+  const pickerStore = {
+    state: { open: false, sessionId: "", cwd: void 0, value: null, onUpdated: null },
+    listeners: /* @__PURE__ */ new Set(),
+    get: () => pickerStore.state,
+    set: (patch) => {
+      pickerStore.state = { ...pickerStore.state, ...patch };
+      for (const listener of [...pickerStore.listeners]) listener();
+    },
+    subscribe: (listener) => {
+      pickerStore.listeners.add(listener);
+      return () => pickerStore.listeners.delete(listener);
+    }
+  };
+  function PersonaPickerOverlay(props) {
+    const t = typeof props?.t === "function" ? props.t : (key) => key;
+    const [state, setState] = react.useState(() => pickerStore.get());
+    const [busy, setBusy] = react.useState(false);
+    const [failure, setFailure] = react.useState(null);
+    react.useEffect(() => pickerStore.subscribe(() => {
+      setState(pickerStore.get());
+      setFailure(null);
+    }), []);
+    const close = () => pickerStore.set({ open: false });
+    const pick = (personaId, options2) => {
+      const none = options2 !== void 0 && options2.none === true;
+      const current = pickerStore.get();
+      setBusy(true);
+      setFailure(null);
+      const withScope = current.cwd === void 0 ? {} : { cwd: current.cwd };
+      const promote = current.origin === "hero" && current.value !== null && current.value !== void 0 && current.value.mode !== "session";
+      const scoped = promote ? postMutate({ action: "set-mode", mode: "session", sessionId: current.sessionId, ...withScope }) : Promise.resolve(null);
+      const submission = none ? { action: "set-session-persona", none: true, sessionId: current.sessionId, ...withScope } : { action: "set-session-persona", personaId, sessionId: current.sessionId, ...withScope };
+      scoped.then(() => postMutate(submission)).then((value2) => {
+        if (typeof current.onUpdated === "function") current.onUpdated(value2);
+        close();
+      }).catch((error) => setFailure(error && error.message ? error.message : String(error))).then(() => setBusy(false));
+    };
+    if (state.open !== true) return null;
+    const value = state.value;
+    if (value === null || value === void 0) return null;
+    const sessionOff = value.sessionOff === true;
+    const options = [
+      jsxRuntime.jsx("button", {
+        type: "button",
+        style: sessionOff ? styles.pickerItemActive : styles.pickerItem,
+        className: `${CLS}-item`,
+        // 供样式表区分「已选中」与「正悬停」：选中项不再放大。
+        "data-active": sessionOff ? "true" : "false",
+        disabled: busy,
+        // 这一句有 17 个字，窄屏下必然被省略号截断（issue #7），
+        // 所以 title 必须给全文，否则用户看不全这个选项到底是什么意思。
+        title: t("pickerNoPersona"),
+        onClick: () => pick(null, { none: true }),
+        children: t("pickerNoPersona")
+      }, "picker-none")
+    ];
+    for (const persona of value.personas) {
+      if (persona.enabled !== true) continue;
+      const shownName = displayNameOf(t, persona) || persona.name;
+      options.push(jsxRuntime.jsx("button", {
+        type: "button",
+        style: persona.sessionPick === true ? styles.pickerItemActive : styles.pickerItem,
+        className: `${CLS}-item`,
+        "data-active": persona.sessionPick === true ? "true" : "false",
+        disabled: busy,
+        // 长人设名同理：截断了也要能看全。
+        title: shownName,
+        onClick: () => pick(persona.id),
+        children: shownName
+      }, `picker-${persona.id}`));
+    }
+    return jsxRuntime.jsx("div", {
+      style: styles.modalBackdrop,
+      // 点背景空白处关闭；点面板内部不关（事件目标不是背景本身）。
+      onClick: (event) => {
+        if (event && event.target === event.currentTarget) close();
+      },
+      children: jsxRuntime.jsxs("div", {
+        style: styles.modalPanel,
+        role: "dialog",
+        "aria-modal": true,
+        "aria-label": t("pickerTitle"),
+        children: [
+          jsxRuntime.jsx("h3", { style: styles.modalHeading, children: t("pickerTitle") }, "picker-title"),
+          jsxRuntime.jsx("p", { style: styles.hint, children: t("pickerHint") }, "picker-hint"),
+          failure === null ? null : jsxRuntime.jsx("p", { style: styles.messageError, children: failure }, "picker-failure"),
+          jsxRuntime.jsx("div", { style: styles.modalList, children: options }, "picker-list"),
+          jsxRuntime.jsx("button", {
+            type: "button",
+            style: styles.button,
+            className: `${CLS}-btn`,
+            onClick: close,
+            children: t("cancel")
+          }, "picker-cancel")
+        ]
+      }, "picker-panel")
+    });
+  }
+  function PersonaDock(props) {
+    const t = typeof props?.t === "function" ? props.t : (key) => key;
+    const sessionId = typeof props?.sessionId === "string" ? props.sessionId : "";
+    const useSessions = props?.useSessions;
+    const cwd = typeof useSessions === "function" ? useSessions((snapshot) => {
+      const entry = sessionId.length > 0 && snapshot && snapshot.byId ? snapshot.byId[sessionId] : void 0;
+      return entry && typeof entry.cwd === "string" && entry.cwd.length > 0 ? entry.cwd : void 0;
+    }) : void 0;
+    const [state, setState] = react.useState({ status: "loading" });
+    const [busy, setBusy] = react.useState(false);
+    const [failure, setFailure] = react.useState(null);
+    const load = react.useCallback(() => {
+      fetchStatus(sessionId, cwd).then((value2) => setState({ status: "ready", value: value2 })).catch(() => setState({ status: "error" }));
+    }, [sessionId, cwd]);
+    react.useEffect(() => {
+      load();
+    }, [load]);
+    const run = react.useCallback((payload) => {
+      setBusy(true);
+      setFailure(null);
+      postMutate({ ...payload, sessionId, ...cwd === void 0 ? {} : { cwd } }).then((value2) => setState({ status: "ready", value: value2 })).catch((error) => {
+        setFailure(error && error.message ? error.message : String(error));
+      }).then(() => setBusy(false));
+    }, [sessionId, cwd]);
+    if (state.status === "error") {
+      return jsxRuntime.jsx("div", { style: styles.dock, children: t("dockFailed") });
+    }
+    if (state.status !== "ready") return null;
+    const value = state.value;
+    if (value.enabled !== true) {
+      return jsxRuntime.jsx("div", { style: styles.dock, children: t("dockOff") });
+    }
+    const mode = value.mode;
+    const entryOf = (id) => (Array.isArray(value.personas) ? value.personas : []).find((persona) => persona.id === id);
+    const shownNameOf = (id, fallback) => {
+      const entry = id === void 0 || id === null ? void 0 : entryOf(id);
+      if (entry !== void 0) return displayNameOf(t, entry) || fallback || "";
+      return fallback || "";
+    };
+    const effective = value.effective;
+    const sessionOff = mode === "session" && value.sessionOff === true;
+    let shown;
+    if (sessionOff) {
+      shown = t("pickerNoPersona");
+    } else {
+      shown = effective === null || effective === void 0 ? shownNameOf(value.current, value.currentName) : shownNameOf(effective.id, effective.name);
+    }
+    if (sessionOff) {
+    } else if (mode === "session" && effective !== null && effective !== void 0) {
+      if (effective.source === "global") shown = `${shown} \xB7 ${t("dockFollowGlobal")}`;
+      else if (effective.source === "workspace") shown = `${shown} \xB7 ${t("dockFollowWorkspace")}`;
+    } else if (mode === "workspace") {
+      shown = `${shown} \xB7 ${t("scopeWorkspace")}`;
+    }
+    const parts = [jsxRuntime.jsx("span", { children: "\u{1F41F}" }, "fish")];
+    if (mode === "session") {
+      parts.push(jsxRuntime.jsx("button", {
+        type: "button",
+        style: styles.dockNameButton,
+        className: `${CLS}-chip`,
+        disabled: busy,
+        title: `${t("dockSwitch")}${separatorOf(t)}${shown}`,
+        "aria-haspopup": "dialog",
+        onClick: () => pickerStore.set({
+          open: true,
+          sessionId,
+          cwd,
+          value,
+          // 浮层选完后把新快照回填，小条立刻显示新的人设名。
+          onUpdated: (next) => setState({ status: "ready", value: next })
+        }),
+        children: `${shown} \u25BE`
+      }, "name-toggle"));
+    } else {
+      parts.push(jsxRuntime.jsx("span", { style: styles.dockName, title: shown, children: shown }, "name"));
+    }
+    for (const option of ["global", "session"]) {
+      parts.push(jsxRuntime.jsx("button", {
+        type: "button",
+        style: mode === option ? styles.dockChipActive : styles.dockChip,
+        className: `${CLS}-chip`,
+        disabled: busy,
+        title: t("scopeHint"),
+        onClick: () => run({ action: "set-mode", mode: option }),
+        children: option === "global" ? t("scopeGlobal") : t("scopeSession")
+      }, `mode-${option}`));
+    }
+    if (failure !== null) {
+      parts.push(jsxRuntime.jsx("span", {
+        style: styles.messageError,
+        title: failure,
+        children: `${t("dockSwitchFailed")}${separatorOf(t)}${failure}`
+      }, "dock-failure"));
+    }
+    return jsxRuntime.jsx("div", {
+      style: styles.dock,
+      "data-dsh-persona-dock": value.mode,
+      children: parts
+    });
+  }
+  function PersonaHeroChip(props) {
+    const t = typeof props?.t === "function" ? props.t : (key) => key;
+    const sessionId = typeof props?.sessionId === "string" ? props.sessionId : "";
+    const useSessions = props?.useSessions;
+    const cwd = typeof useSessions === "function" ? useSessions((snapshot) => {
+      const entry = sessionId.length > 0 && snapshot && snapshot.byId ? snapshot.byId[sessionId] : void 0;
+      return entry && typeof entry.cwd === "string" && entry.cwd.length > 0 ? entry.cwd : void 0;
+    }) : void 0;
+    const [state, setState] = react.useState({ status: "loading" });
+    const load = react.useCallback(() => {
+      fetchStatus(sessionId, cwd).then((value2) => setState({ status: "ready", value: value2 })).catch(() => setState({ status: "error" }));
+    }, [sessionId, cwd]);
+    react.useEffect(() => {
+      load();
+    }, [load]);
+    if (state.status === "error") {
+      return null;
+    }
+    if (state.status !== "ready") return null;
+    const value = state.value;
+    if (value.enabled !== true) return null;
+    const entryOf = (id) => (Array.isArray(value.personas) ? value.personas : []).find((persona) => persona.id === id);
+    const nameOf = (id, fallback) => {
+      const entry = id === void 0 || id === null ? void 0 : entryOf(id);
+      if (entry !== void 0) return displayNameOf(t, entry) || fallback || "";
+      return fallback || "";
+    };
+    const effective = value.effective;
+    const picked = value.sessionPersona;
+    const shownId = picked !== null && picked !== void 0 ? picked.id : effective === null || effective === void 0 ? null : effective.id;
+    const shown = nameOf(shownId, picked === null || picked === void 0 ? value.currentName ?? "" : picked.name);
+    const nothingToFollow = shown.length === 0;
+    let suffixHint = "";
+    if (!nothingToFollow && (picked === null || picked === void 0)) {
+      if (effective !== null && effective !== void 0 && effective.source === "workspace") {
+        suffixHint = t("heroChipFollowWorkspace");
+      } else if (value.mode === "session") {
+        suffixHint = t("heroChipFollowGlobal");
+      }
+    }
+    const label = shown.length > 0 ? shown : value.globalOff === true ? t("heroChipNone") : t("heroChipDisabled");
+    const prefixText = `${t("heroChip")}${separatorOf(t)}`;
+    const suffixText = suffixHint.length > 0 ? `\xB7 ${suffixHint}` : "";
+    return jsxRuntime.jsx("button", {
+      type: "button",
+      style: styles.heroChipButton,
+      className: `${CLS}-pill`,
+      // 名字被截断时，title 要能看全——但也不能丢掉「点这里是干嘛的」，
+      // 所以把动作说明和人设名一起放进去。
+      title: `${t("heroChipTitle")}${separatorOf(t)}${label}`,
+      "aria-haspopup": "dialog",
+      "data-dsh-persona-hero": shownId === null ? "none" : shownId,
+      onClick: () => pickerStore.set({
+        open: true,
+        sessionId,
+        cwd,
+        value,
+        origin: "hero",
+        // 选完把新快照回填，chip 上的名字立刻跟着变。
+        onUpdated: (next) => setState({ status: "ready", value: next })
+      }),
+      children: [
+        jsxRuntime.jsx("span", { style: styles.heroChipFixed, children: "\u{1F41F}" }, "hero-fish"),
+        jsxRuntime.jsx("span", { style: styles.heroChipFixed, children: prefixText }, "hero-prefix"),
+        jsxRuntime.jsx("span", { style: styles.heroChipLabel, children: label }, "hero-label"),
+        suffixText.length > 0 ? jsxRuntime.jsx("span", { style: styles.heroChipFixed, children: suffixText }, "hero-suffix") : null,
+        jsxRuntime.jsx("span", { style: styles.heroChipFixed, children: "\u25BE" }, "hero-chevron")
+      ]
+    });
+  }
+  const inject2 = ["slots", "locale"];
+  function apply2(ctx) {
+    ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-persona-dafeiyu: dictionaries");
+    ctx.effect(() => injectHoverStyles(), "dsh-persona-dafeiyu: hover styles");
+    const t = ctx.locale.bind(NS);
+    ctx.slots.inject("settings.section", () => ctx.slots.register({
+      name: "settings.section",
+      id: SECTION_ID,
+      order: 18,
+      label: () => t("nav"),
+      locale: NS,
+      inject: () => ({ t })
+    }, PersonaSettingsSection));
+    ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
+      name: "conversation.composer.dock",
+      id: "persona-dock",
+      order: 60,
+      locale: NS,
+      inject: () => ({ t })
+    }, PersonaDock));
+    ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+      name: "shell.overlay",
+      id: "persona-picker",
+      order: 50,
+      locale: NS,
+      inject: () => ({ t })
+    }, PersonaPickerOverlay));
+    ctx.slots.inject("conversation.hero.options", () => ctx.slots.register({
+      name: "conversation.hero.options",
+      id: "persona-hero",
+      order: 40,
+      locale: NS,
+      inject: () => ({ t })
+    }, PersonaHeroChip));
+  }
+  exports.apply = apply2;
+  exports.inject = inject2;
+  exports.NS = NS;
+  exports.SECTION_ID = SECTION_ID;
+  exports.PersonaSettingsSection = PersonaSettingsSection;
+  exports.PersonaDock = PersonaDock;
+  exports.PersonaPickerOverlay = PersonaPickerOverlay;
+  exports.PersonaHeroChip = PersonaHeroChip;
+  return module2.exports;
+}
+
 // src/client/main.ts
 var name = "dsh-remote-dafeiyu";
-var inject = ["slots"];
+var inject = ["slots", "locale"];
 function apply(ctx) {
   const createElement = findCreateElement();
   let pillMounted = false;
@@ -1999,10 +3629,28 @@ function apply(ctx) {
   } catch (error) {
     swallow("\u8BBE\u7F6E\u5206\u533A\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
   }
+  let personaMounted = false;
+  try {
+    const loaderRequire = resolveLoaderRequire();
+    if (loaderRequire === void 0) {
+      warnPersona("\u88C5\u8F7D\u5668\u6CA1\u7ED9 require\uFF0C\u4EBA\u8BBE\u754C\u9762\u4E0D\u6302");
+    } else {
+      const personaClient = personaClientFactory(loaderRequire);
+      if (typeof personaClient?.apply === "function") {
+        personaClient.apply(ctx);
+        personaMounted = true;
+      } else {
+        warnPersona("\u4EBA\u8BBE\u5BA2\u6237\u7AEF\u6CA1\u7ED9\u51FA apply\uFF0C\u754C\u9762\u4E0D\u6302");
+      }
+    }
+  } catch (error) {
+    warnPersona("\u4EBA\u8BBE\u754C\u9762\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF0Cpill \u4E0E\u8FDC\u63A7\u8BBE\u7F6E\u9875\u4E0D\u53D7\u5F71\u54CD\uFF09", error);
+  }
   reportClient({
     createElement: createElement !== void 0,
     pillMounted,
     settingsMounted,
+    personaMounted,
     hasSlotsCtx: (() => {
       try {
         return ctx.slots !== void 0;
@@ -2026,6 +3674,21 @@ function reportClient(fields) {
       })
     }).catch(() => {
     });
+  } catch {
+  }
+}
+function resolveLoaderRequire() {
+  try {
+    if (typeof require !== "function") return void 0;
+    return require;
+  } catch {
+    return void 0;
+  }
+}
+function warnPersona(message, error) {
+  try {
+    const detail = error instanceof Error ? error.message : error === void 0 ? "" : String(error);
+    console.warn(`[dsh-remote-control persona] ${message} ${detail}`);
   } catch {
   }
 }
