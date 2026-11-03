@@ -166,6 +166,12 @@ export function createKernelEventHandler(deps: KernelEventsDeps): (event: Kernel
  */
 export function historyWireItem(event: KernelEvent): HistoryItem | undefined {
   if (event.kind === 'delta') {
+    // **空正文不进行历史**（2026-11-03 用户：手机上出现大量空气泡）。
+    //
+    // 来源：工具步一步正文都没出时，内核仍会给一条空消息，收尾帧的 delta 就是 ''。
+    // 以前它旁边还有工具行陪着，看不出问题；工具行不上手机之后，剩下就是一个空格子。
+    // 历史里更要命：手机能存的条数有限（40），空条目占的是最贵的那格。
+    if (event.text === '') return undefined
     return messageDelta({
       messageId: event.messageId,
       delta: event.text,

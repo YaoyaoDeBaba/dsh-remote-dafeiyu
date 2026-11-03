@@ -27633,7 +27633,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.6" : "dev";
+var PLUGIN_VERSION = true ? "0.7.0-dafeiyu.7" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -27973,6 +27973,7 @@ function createKernelEventHandler(deps) {
 }
 function historyWireItem(event) {
   if (event.kind === "delta") {
+    if (event.text === "") return void 0;
     return messageDelta({
       messageId: event.messageId,
       delta: event.text,

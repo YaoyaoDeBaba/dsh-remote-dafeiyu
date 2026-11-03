@@ -15,6 +15,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { turnEndKernelEvents } from '../src/platform/carrier-services.js'
+import { historyWireItem } from '../src/core/kernel-events.js'
 import type { KernelEvent } from '../src/ports/index.js'
 
 const deltas = (events: KernelEvent[]) =>
@@ -126,4 +127,33 @@ test('reason 缺字段时不许出现 undefined 字样：拿不到原因也要�
       `无论 reason 长成什么样，done 都不能丢：${JSON.stringify(data)}`,
     )
   }
+})
+
+// ── 历史里的空正文（2026-11-03 用户：手机上大量空气泡）────────────────────
+//
+// 工具步一步正文都没出时，内核仍会给一条空消息。实时流那边还留着"只收尾"的
+// done-only 帧（F9 的契约），但**历史里绝不能留空条目**：手机能存的条数有限（40），
+// 一个空格子占的是最贵的那一格，而它什么信息都不表达。
+
+test('historyWireItem：空正文的 delta 不进行历史（空气泡的来源）', () => {
+  const empty = historyWireItem({
+    kind: 'delta',
+    sessionId: 'ses_1',
+    messageId: 'msg_empty',
+    text: '',
+    done: true,
+    role: 'assistant',
+  })
+  assert.equal(empty, undefined, '空文字进了历史 = 手机上永远空着的一格')
+
+  const real = historyWireItem({
+    kind: 'delta',
+    sessionId: 'ses_1',
+    messageId: 'msg_real',
+    text: '正经回复',
+    done: true,
+    role: 'assistant',
+  })
+  assert.ok(real, '有正文的还是要进历史')
+  assert.equal((real as { delta?: string }).delta, '正经回复')
 })
