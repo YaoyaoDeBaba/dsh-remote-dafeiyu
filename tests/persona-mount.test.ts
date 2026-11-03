@@ -14,9 +14,9 @@
  */
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { PERSONA_SECTION, hasSystemPrompt, mountPersona } from '../src/index.js'
+import { PERSONA_SECTION, hasSystemPrompt, mountPersona, probeSystemPrompt } from '../src/index.js'
 
-test('hasSystemPrompt：Proxy 读属性会抛时返回 false，异常不许漏出去', () => {
+test('hasSystemPrompt：Proxy 读写都会抛时返回 false，异常不许漏出去', () => {
   const throwing = new Proxy(
     {},
     {
@@ -38,6 +38,23 @@ test('hasSystemPrompt：Proxy 读属性会抛时返回 false，异常不许漏�
 test('mountPersona：宿主没 systemPrompt 就不挂，并说得出为什么', () => {
   const result = mountPersona({}, undefined)
   assert.deepEqual(result, { mounted: false, reason: 'no-systemPrompt' })
+})
+
+test('probeSystemPrompt：真宿主那条路是 ctx.get(name, true)，不是读属性', () => {
+  // 真 cordis 上"读未声明的属性"是抛错 —— 所以正路必须是 get。这里用一个**没有**
+  // systemPrompt 属性的 ctx 证明：光有 get 也能探到（不然合包之后人设永远挂不上）。
+  const service = { section: () => () => {}, getSectionOrder: () => 0 }
+  const ctx = {
+    get: (name: string, optional?: true) => (name === 'systemPrompt' && optional === true ? service : undefined),
+    effect: (callback: () => unknown) => {
+      callback()
+      return () => {}
+    },
+    inject: () => {},
+  }
+  assert.equal(probeSystemPrompt(ctx), service)
+  const result = mountPersona(ctx, {})
+  assert.equal(result.mounted, true, '只有 get 的宿主上人设也要挂得上')
 })
 
 test('mountPersona：有 systemPrompt 时段落真的注册进去了', () => {

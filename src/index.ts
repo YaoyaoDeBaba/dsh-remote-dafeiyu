@@ -1492,7 +1492,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   }
 }
 
-export { mountPersona, hasSystemPrompt } from './persona/mount.js'
+export { mountPersona, hasSystemPrompt, probeSystemPrompt } from './persona/mount.js'
 export {
   PERSONA_SECTION,
   PERSONA_SUFFIX_SECTION,

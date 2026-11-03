@@ -35451,22 +35451,45 @@ function apply(ctx, config2) {
 }
 
 // src/persona/mount.ts
-function hasSystemPrompt(ctx) {
-  if (ctx === void 0 || ctx === null) return false;
+function probeSystemPrompt(ctx) {
+  if (ctx === void 0 || ctx === null) return void 0;
   try {
-    if (typeof ctx === "object" && "systemPrompt" in ctx) return true;
-    const value = ctx.systemPrompt;
-    return value !== void 0 && value !== null;
+    const got = ctx.get?.("systemPrompt", true);
+    if (got !== void 0 && got !== null) return got;
   } catch {
-    return false;
   }
+  try {
+    if (typeof ctx === "object" && "systemPrompt" in ctx) {
+      const value = ctx.systemPrompt;
+      if (value !== void 0 && value !== null) return value;
+    }
+  } catch {
+  }
+  return void 0;
+}
+function hasSystemPrompt(ctx) {
+  return probeSystemPrompt(ctx) !== void 0;
+}
+function withSystemPrompt(ctx, systemPrompt) {
+  if (ctx === null || typeof ctx !== "object") return ctx;
+  return new Proxy(ctx, {
+    get(target, prop) {
+      if (prop === "systemPrompt") return systemPrompt;
+      return Reflect.get(target, prop);
+    },
+    has(target, prop) {
+      if (prop === "systemPrompt") return true;
+      return Reflect.has(target, prop);
+    }
+  });
 }
 function mountPersona(ctx, injected) {
-  if (!hasSystemPrompt(ctx)) return { mounted: false, reason: "no-systemPrompt" };
+  const systemPrompt = probeSystemPrompt(ctx);
+  if (systemPrompt === void 0) return { mounted: false, reason: "no-systemPrompt" };
   const raw = injected?.persona;
   const config2 = raw && typeof raw === "object" ? { ...raw } : {};
   if (config2.enabled === void 0) config2.enabled = true;
-  apply(ctx, config2);
+  apply(withSystemPrompt(ctx, systemPrompt), config2);
   return { mounted: true, config: config2 };
 }
 
@@ -37570,6 +37593,7 @@ export {
   apply2 as apply,
   hasSystemPrompt,
   mountPersona,
+  probeSystemPrompt,
   readConfig,
   systemClock,
   validateConfig
