@@ -197,6 +197,18 @@
           "engines": {
             "dsh": ">=0.2.1"
           }
+        },
+        {
+          "version": "0.9.0-dafeiyu.1",
+          "publishTimestamp": 1793799825,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
+            "commit": "7d6b507523d95efd33a86ac1c0ff7053844fbe1f"
+          },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
         }
       ]
     }
