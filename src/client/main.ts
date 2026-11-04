@@ -25,6 +25,8 @@ import { findCreateElement, mountPill } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
 import { mountDafeiyuSettings } from './dafeiyu-page.js'
+// 识图那一半（0.9.0）：聊天页鲸鱼按钮 + 当前会话注入。
+import { mountVisionFab } from './vision-panel.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -62,7 +64,7 @@ export const name = 'dsh-remote-dafeiyu'
  */
 export const inject = ['slots', 'locale']
 
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: ClientContext): (() => void) | void {
   const createElement = findCreateElement()
 
   // ① 会话里那颗 pill（`conversation.composer.dock`，需要会话才渲染）。
@@ -89,7 +91,12 @@ export function apply(ctx: ClientContext): void {
   let personaClient:
     | { apply?: (c: unknown, options?: { skipSettings?: boolean }) => void; PersonaSettingsSection?: unknown }
     | undefined
-  let reactHooks: { useState?: <S>(initial: S) => [S, (next: S) => void] } | undefined
+  let reactHooks:
+    | {
+        useState?: <S>(initial: S) => [S, (next: S) => void]
+        useEffect?: (effect: () => void | (() => void), deps?: unknown[]) => void
+      }
+    | undefined
   let personaLoadNote: string | undefined
   try {
     const loaderRequire = resolveLoaderRequire()
@@ -108,6 +115,14 @@ export function apply(ctx: ClientContext): void {
   }
   if (personaLoadNote) {
     warnPersona(`人设客户端未就绪（${personaLoadNote}：退回两张卡，或只剩远控一卡）`)
+  }
+
+  // 识图那颗鲸鱼按钮（0.9.0）：先探当前会话注入通道，探不到也挂——只是退化成"复制结果"。
+  let visionCleanup: (() => void) | undefined
+  try {
+    visionCleanup = mountVisionFab({ injectText: resolveSessionInject(ctx) })
+  } catch (error) {
+    swallow('识图按钮挂载抛错（已吞掉）', error)
   }
 
   let settingsMounted = false
@@ -171,6 +186,59 @@ export function apply(ctx: ClientContext): void {
     })(),
     transport: (globalThis as { __DSH_TRANSPORT__?: unknown }).__DSH_TRANSPORT__ !== undefined,
   })
+
+  return () => {
+    try {
+      visionCleanup?.()
+    } catch {
+      /* 卸载动作不许拖住卸载 */
+    }
+  }
+}
+
+/**
+ * 当前会话注入通道（0.9.0）。与 `dsh-vision` 同款：`sessions.list.getSnapshot().current` +
+ * `sessions.binding(id).session.prompt([{type:'text',text}], 'queue')`。
+ *
+ * 软探测：这一代宿主可能没把 `sessions` 当服务给（客户端 apply 跑在会话服务之前），
+ * 探不到就返回 undefined，鲸鱼按钮退化成「显示识别结果 + 复制」。
+ */
+function resolveSessionInject(ctx: ClientContext): ((text: string) => Promise<boolean>) | undefined {
+  let sessions: unknown
+  try {
+    sessions = (ctx as { sessions?: unknown }).sessions
+  } catch {
+    sessions = undefined
+  }
+  if (!sessions) {
+    try {
+      sessions = ctx.get?.('sessions', true)
+    } catch {
+      sessions = undefined
+    }
+  }
+  const value = sessions as
+    | {
+        list?: { getSnapshot?: () => { current?: unknown } }
+        binding?: (id: unknown) => { session?: { prompt?: (parts: unknown[], mode?: string) => unknown } } | undefined
+      }
+    | undefined
+  if (!value || typeof value.list?.getSnapshot !== 'function' || typeof value.binding !== 'function') {
+    return undefined
+  }
+  return async (text: string): Promise<boolean> => {
+    try {
+      const current = value.list?.getSnapshot?.()?.current
+      if (current === undefined || current === null) return false
+      const binding = value.binding?.(current)
+      const prompt = binding?.session?.prompt
+      if (typeof prompt !== 'function') return false
+      await prompt.call(binding?.session, [{ type: 'text', text }], 'queue')
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
 /** 把这一半的观测结果 POST 回宿主（`/plugins/dsh-remote-control/client-report`）。绝不抛。 */

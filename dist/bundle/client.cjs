@@ -1987,6 +1987,306 @@ function mountSettingsSection(ctx, createElement, options) {
   return mounted ? "mounted" : "failed";
 }
 
+// src/client/vision-panel.ts
+var BASE = "/api/dsh-remote-dafeiyu/vision";
+async function callJson(path, body, timeoutMs = 2e4) {
+  const init = body === void 0 ? { method: "GET" } : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
+  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) init.signal = AbortSignal.timeout(timeoutMs);
+  const response = await fetch(resolveHostUrl(path), init);
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: `\u5BBF\u4E3B\u8FD4\u56DE\u4E86\u975E JSON\uFF08HTTP ${response.status}\uFF09` };
+  }
+}
+var fieldStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "6px 8px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px"
+};
+var labelStyle = {
+  display: "block",
+  fontSize: "12px",
+  color: "var(--dsw-alias-label-secondary)",
+  marginBottom: "4px"
+};
+var buttonStyle = {
+  padding: "4px 12px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px",
+  cursor: "pointer"
+};
+var PROTOCOLS = [
+  ["auto", "\u81EA\u52A8\uFF08\u6309\u5730\u5740\u731C\uFF09"],
+  ["openai-chat", "OpenAI Chat\uFF08/chat/completions\uFF09"],
+  ["openai-responses", "OpenAI Responses\uFF08/responses\uFF09"],
+  ["anthropic", "Anthropic\uFF08/v1/messages\uFF09"],
+  ["gemini", "Gemini\uFF08generateContent\uFF09"],
+  ["custom", "\u81EA\u5B9A\u4E49\u6A21\u677F"]
+];
+function buildVisionPanel(deps) {
+  const { createElement: h, hooks } = deps;
+  const useState = hooks.useState;
+  const useEffect = hooks.useEffect;
+  if (typeof useState !== "function") return void 0;
+  return function VisionPanel() {
+    const [cfg, setCfg] = useState(null);
+    const [apiKey, setApiKey] = useState("");
+    const [status, setStatus] = useState("");
+    const [models, setModels] = useState([]);
+    const [busy, setBusy] = useState(false);
+    const load = async () => {
+      setBusy(true);
+      try {
+        const result = await callJson(`${BASE}/config`, void 0);
+        if (result.ok) {
+          setCfg(result.config);
+          setStatus("\u5DF2\u8F7D\u5165");
+        } else {
+          setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    useEffect?.(() => {
+      void load();
+    }, []);
+    if (cfg === null) {
+      return h("div", {
+        style: { fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+        children: [h("span", { children: status || "\u6B63\u5728\u8BFB\u53D6\u8BC6\u56FE\u914D\u7F6E\u2026" }), " ", h("button", { type: "button", style: buttonStyle, onClick: () => void load(), children: "\u5237\u65B0" })]
+      });
+    }
+    const patch = (next) => setCfg({ ...cfg, ...next });
+    const save = async () => {
+      setBusy(true);
+      try {
+        const payload = {
+          enabled: cfg.enabled,
+          apiBase: cfg.apiBase,
+          model: cfg.model,
+          protocol: cfg.protocol,
+          prompt: cfg.prompt,
+          timeoutMs: cfg.timeoutMs,
+          requestTemplate: cfg.requestTemplate,
+          responsePath: cfg.responsePath
+        };
+        if (apiKey.trim() !== "") payload.apiKey = apiKey.trim();
+        const result = await callJson(`${BASE}/config`, { config: payload });
+        if (result.ok) {
+          setCfg(result.config);
+          setApiKey("");
+          setStatus("\u5DF2\u4FDD\u5B58\u3002\u5F00\u542F/\u5173\u95ED\u8BC6\u56FE\u63D0\u793A\u8BCD\u9700\u8981\u91CD\u542F DSH \u751F\u6548\uFF1B\u8BC6\u56FE\u8DEF\u7531\u7ACB\u5373\u751F\u6548\u3002");
+        } else {
+          setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const pullModels = async () => {
+      setBusy(true);
+      try {
+        const result = await callJson(`${BASE}/models`, {});
+        if (result.ok) {
+          const list = Array.isArray(result.models) ? result.models : [];
+          setModels(list);
+          setStatus(list.length > 0 ? `\u62C9\u5230 ${list.length} \u4E2A\u6A21\u578B\uFF0C\u70B9\u4E00\u4E2A\u586B\u5165` : "\u6A21\u578B\u5217\u8868\u662F\u7A7A\u7684");
+        } else {
+          setStatus(`\u62C9\u53D6\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u62C9\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const keyPlaceholder = cfg.apiKeySet ? `\u5DF2\u4FDD\u5B58\uFF08${cfg.apiKeyHint}\uFF09\uFF1A\u7559\u7A7A\u4E0D\u4FEE\u6539` : "\u7C98\u8D34 API Key\uFF08\u53EA\u5B58\u5728\u672C\u673A\uFF09";
+    return h("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+        padding: "12px",
+        border: "1px solid var(--dsw-alias-border-l2)",
+        borderRadius: "10px",
+        marginTop: "16px"
+      },
+      children: [
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
+          h("strong", { style: { fontSize: "14px" }, children: "\u8BC6\u56FE\uFF08\u5927\u80A5\u9C7C\u770B\u61C2\u56FE\uFF09" }),
+          h("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }, children: [
+            h("input", { type: "checkbox", checked: cfg.enabled, onChange: (event) => patch({ enabled: event.target.checked }) }),
+            "\u5F00\u542F"
+          ] })
+        ] }),
+        h("p", { style: { margin: 0, fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: "\u5927\u80A5\u9C7C\u6CA1\u6709\u89C6\u89C9\uFF0C\u9700\u8981\u5916\u6302\u4E00\u4E2A\u89C6\u89C9\u6A21\u578B\uFF08OpenAI / Anthropic / Gemini \u517C\u5BB9\u63A5\u53E3\u90FD\u884C\uFF09\u3002\u586B\u597D\u540E\u5728\u804A\u5929\u9875\u53F3\u4E0B\u89D2\u70B9\u9CB8\u9C7C\u6309\u94AE\u53D1\u56FE\u3002" }),
+        h("div", { children: [h("span", { style: labelStyle, children: "\u63A5\u53E3\u5730\u5740\uFF08\u6253\u5230 /v1 \u8FD9\u4E00\u5C42\uFF09" }), h("input", { style: fieldStyle, value: cfg.apiBase, onChange: (event) => patch({ apiBase: event.target.value }) })] }),
+        h("div", { children: [h("span", { style: labelStyle, children: "API Key" }), h("input", { style: fieldStyle, type: "password", value: apiKey, placeholder: keyPlaceholder, onChange: (event) => setApiKey(event.target.value) })] }),
+        h("div", { children: [h("span", { style: labelStyle, children: "\u6A21\u578B\u540D" }), h("input", { style: fieldStyle, value: cfg.model, placeholder: "gpt-4o-mini / qwen-vl-max / claude-\u2026", onChange: (event) => patch({ model: event.target.value }) })] }),
+        h("div", { children: [h("span", { style: labelStyle, children: "\u534F\u8BAE" }), h("select", { style: fieldStyle, value: cfg.protocol, onChange: (event) => patch({ protocol: event.target.value }), children: PROTOCOLS.map(([value, label]) => h("option", { key: value, value, children: label })) })] }),
+        h("div", { children: [h("span", { style: labelStyle, children: "\u8BC6\u56FE\u63D0\u793A\u8BCD\uFF08\u544A\u8BC9\u5916\u6302\u6A21\u578B\u600E\u4E48\u63CF\u8FF0\u56FE\u7247\uFF09" }), h("textarea", { style: { ...fieldStyle, minHeight: "72px" }, rows: 3, value: cfg.prompt, onChange: (event) => patch({ prompt: event.target.value }) })] }),
+        h("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" }, children: [
+          h("button", { type: "button", style: buttonStyle, disabled: busy, onClick: () => void save(), children: "\u4FDD\u5B58" }),
+          h("button", { type: "button", style: buttonStyle, disabled: busy, onClick: () => void pullModels(), children: "\u62C9\u6A21\u578B\u5217\u8868" }),
+          h("button", { type: "button", style: buttonStyle, disabled: busy, onClick: () => void load(), children: "\u91CD\u65B0\u8BFB\u53D6" })
+        ] }),
+        models.length > 0 ? h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap" }, children: models.slice(0, 40).map((model) => h("button", { key: model, type: "button", style: buttonStyle, onClick: () => patch({ model }), children: model })) }) : null,
+        status ? h("div", { style: { fontSize: "12px", color: "var(--dsw-alias-label-secondary)", wordBreak: "break-word" }, children: status }) : null
+      ]
+    });
+  };
+}
+function mountVisionFab(deps) {
+  const doc = globalThis.document;
+  if (!doc || !doc.body) return () => void 0;
+  const style = doc.createElement("style");
+  style.textContent = `
+    #dafeiyu-vision-fab { position: fixed; right: 20px; bottom: 88px; width: 44px; height: 44px; border-radius: 12px;
+      border: 1px solid var(--dsw-alias-border-l2, #333); background: var(--dsw-alias-bg-primary, #1e1e1e);
+      color: #4b7bec; cursor: pointer; z-index: 2147483000; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    #dafeiyu-vision-fab:hover { border-color: #4b7bec; }
+    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 140px; width: 320px; max-height: 70vh; overflow: auto;
+      padding: 12px; border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
+      background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee);
+      z-index: 2147483001; display: none; box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 13px; }
+    #dafeiyu-vision-panel.open { display: block; }
+    #dafeiyu-vision-result { width: 100%; min-height: 120px; margin-top: 8px; box-sizing: border-box;
+      background: transparent; color: inherit; border: 1px solid var(--dsw-alias-border-l2, #333); border-radius: 8px; padding: 8px; }
+    #dafeiyu-vision-note { color: var(--dsw-alias-label-tertiary, #888); font-size: 12px; margin-top: 6px; word-break: break-word; }
+  `;
+  doc.head?.appendChild(style);
+  const fab = doc.createElement("button");
+  fab.id = "dafeiyu-vision-fab";
+  fab.title = "\u5927\u80A5\u9C7C\u8BC6\u56FE\uFF1A\u70B9\u4E00\u4E0B\u9009\u56FE";
+  fab.textContent = "\u{1F433}";
+  doc.body.appendChild(fab);
+  const panel = doc.createElement("div");
+  panel.id = "dafeiyu-vision-panel";
+  const title = doc.createElement("div");
+  title.textContent = "\u53D1\u4E00\u5F20\u56FE\u7ED9\u5927\u80A5\u9C7C\u770B";
+  title.style.fontWeight = "600";
+  const input = doc.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.style.marginTop = "8px";
+  const result = doc.createElement("textarea");
+  result.id = "dafeiyu-vision-result";
+  result.placeholder = "\u8BC6\u522B\u7ED3\u679C\u4F1A\u51FA\u73B0\u5728\u8FD9\u91CC";
+  const actions = doc.createElement("div");
+  actions.style.cssText = "display:flex; gap:8px; margin-top:8px; flex-wrap:wrap";
+  const sendBtn = doc.createElement("button");
+  sendBtn.textContent = "\u53D1\u9001\u5230\u5F53\u524D\u4F1A\u8BDD";
+  sendBtn.style.cssText = "padding:4px 10px; border-radius:6px; border:1px solid var(--dsw-alias-border-l2,#444); background:transparent; color:inherit; cursor:pointer";
+  const copyBtn = doc.createElement("button");
+  copyBtn.textContent = "\u590D\u5236";
+  copyBtn.style.cssText = sendBtn.style.cssText;
+  const note = doc.createElement("div");
+  note.id = "dafeiyu-vision-note";
+  actions.append(sendBtn, copyBtn);
+  panel.append(title, input, result, actions, note);
+  doc.body.appendChild(panel);
+  let recognized = "";
+  let busy = false;
+  const setNote = (text) => {
+    note.textContent = text;
+  };
+  const recognize = async (file) => {
+    if (busy) return;
+    busy = true;
+    setNote("\u8BC6\u522B\u4E2D\u2026\uFF08\u5927\u56FE\u53EF\u80FD\u8981\u5341\u51E0\u79D2\uFF09");
+    try {
+      const base64 = await fileToBase64(file);
+      const response = await callJson(`${BASE}/recognize`, { imageBase64: base64, mime: file.type || "image/png" }, 12e4);
+      if (response.ok && typeof response.text === "string") {
+        recognized = response.text;
+        result.value = recognized;
+        setNote("\u8BC6\u522B\u5B8C\u6210\uFF1A\u70B9\u300C\u53D1\u9001\u5230\u5F53\u524D\u4F1A\u8BDD\u300D\u8BA9\u5927\u80A5\u9C7C\u57FA\u4E8E\u5B83\u56DE\u7B54");
+      } else {
+        setNote(`\u8BC6\u522B\u5931\u8D25\uFF1A${String(response.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+      }
+    } catch (error) {
+      setNote(`\u8BC6\u522B\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+    } finally {
+      busy = false;
+    }
+  };
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (file) void recognize(file);
+  });
+  sendBtn.addEventListener("click", () => {
+    if (recognized === "") {
+      setNote("\u8FD8\u6CA1\u6709\u8BC6\u522B\u7ED3\u679C");
+      return;
+    }
+    const text = `\u3010\u56FE\u7247\u8BC6\u522B\u3011
+${recognized}`;
+    try {
+      const maybe = deps.injectText?.(text);
+      if (maybe && typeof maybe.then === "function") {
+        void maybe.then((ok) => setNote(ok ? "\u5DF2\u53D1\u5230\u5F53\u524D\u4F1A\u8BDD" : "\u6CA1\u627E\u5230\u5F53\u524D\u4F1A\u8BDD\uFF1A\u8BF7\u590D\u5236\u540E\u81EA\u5DF1\u53D1"));
+      } else {
+        setNote(maybe ? "\u5DF2\u53D1\u5230\u5F53\u524D\u4F1A\u8BDD" : "\u6CA1\u627E\u5230\u5F53\u524D\u4F1A\u8BDD\uFF1A\u8BF7\u590D\u5236\u540E\u81EA\u5DF1\u53D1");
+      }
+    } catch {
+      setNote("\u53D1\u9001\u5931\u8D25\uFF1A\u8BF7\u590D\u5236\u540E\u81EA\u5DF1\u53D1");
+    }
+  });
+  copyBtn.addEventListener("click", () => {
+    if (recognized === "") return;
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(recognized);
+        setNote("\u5DF2\u590D\u5236");
+      } catch {
+        result.select();
+        setNote("\u590D\u5236\u5931\u8D25\uFF1A\u5DF2\u5168\u9009\uFF0C\u6309 Ctrl+C");
+      }
+    })();
+  });
+  fab.addEventListener("click", () => {
+    panel.classList.toggle("open");
+    if (panel.classList.contains("open")) setNote("\u9009\u4E00\u5F20\u56FE\uFF0C\u8BC6\u522B\u7ED3\u679C\u4F1A\u51FA\u73B0\u5728\u4E0B\u9762");
+  });
+  const cleanup = () => {
+    try {
+      fab.remove();
+      panel.remove();
+      style.remove();
+    } catch {
+    }
+  };
+  return cleanup;
+}
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result ?? "");
+      const comma = value.indexOf(",");
+      resolve(comma >= 0 ? value.slice(comma + 1) : value);
+    };
+    reader.onerror = () => reject(new Error("\u8BFB\u4E0D\u51FA\u6587\u4EF6"));
+    reader.readAsDataURL(file);
+  });
+}
+
 // src/client/dafeiyu-page.ts
 var DAFEIYU_TAB_REMOTE = "remote";
 var DAFEIYU_TAB_PERSONA = "persona";
@@ -2002,6 +2302,7 @@ function mountDafeiyuSettings(deps) {
   if (typeof createElement !== "function" || typeof useState !== "function") {
     return false;
   }
+  const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks });
   let cleanupRemote;
   const attach = (node) => {
     const element = node;
@@ -2039,7 +2340,9 @@ function mountDafeiyuSettings(deps) {
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement("div", { ref: attach });
     } else if (tab === DAFEIYU_TAB_PERSONA) {
-      body = createElement(personaSettings, { t: personaT });
+      body = createElement("div", {
+        children: visionPanel ? [createElement(personaSettings, { t: personaT }), createElement(visionPanel, {})] : [createElement(personaSettings, { t: personaT })]
+      });
     } else {
       body = createElement("p", {
         style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
@@ -3738,6 +4041,12 @@ function apply(ctx) {
   if (personaLoadNote) {
     warnPersona(`\u4EBA\u8BBE\u5BA2\u6237\u7AEF\u672A\u5C31\u7EEA\uFF08${personaLoadNote}\uFF1A\u9000\u56DE\u4E24\u5F20\u5361\uFF0C\u6216\u53EA\u5269\u8FDC\u63A7\u4E00\u5361\uFF09`);
   }
+  let visionCleanup;
+  try {
+    visionCleanup = mountVisionFab({ injectText: resolveSessionInject(ctx) });
+  } catch (error) {
+    swallow("\u8BC6\u56FE\u6309\u94AE\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
+  }
   let settingsMounted = false;
   let dafeiyuMerged = false;
   let personaMounted = false;
@@ -3793,6 +4102,44 @@ function apply(ctx) {
     })(),
     transport: globalThis.__DSH_TRANSPORT__ !== void 0
   });
+  return () => {
+    try {
+      visionCleanup?.();
+    } catch {
+    }
+  };
+}
+function resolveSessionInject(ctx) {
+  let sessions;
+  try {
+    sessions = ctx.sessions;
+  } catch {
+    sessions = void 0;
+  }
+  if (!sessions) {
+    try {
+      sessions = ctx.get?.("sessions", true);
+    } catch {
+      sessions = void 0;
+    }
+  }
+  const value = sessions;
+  if (!value || typeof value.list?.getSnapshot !== "function" || typeof value.binding !== "function") {
+    return void 0;
+  }
+  return async (text) => {
+    try {
+      const current = value.list?.getSnapshot?.()?.current;
+      if (current === void 0 || current === null) return false;
+      const binding = value.binding?.(current);
+      const prompt = binding?.session?.prompt;
+      if (typeof prompt !== "function") return false;
+      await prompt.call(binding?.session, [{ type: "text", text }], "queue");
+      return true;
+    } catch {
+      return false;
+    }
+  };
 }
 function reportClient(fields) {
   try {

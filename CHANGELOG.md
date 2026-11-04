@@ -1,3 +1,31 @@
+## 0.9.0-dafeiyu.1 —— 识图：大肥鱼看得懂图了
+
+DeepSeek 文本模型没有视觉。这一版把「图片交给外挂视觉模型 → 拿回文本描述 → 大肥鱼基于它回答」
+整条链路做进本包，同时把识图配置接进「大肥鱼 → 人设」那一栏。
+
+### 做了什么
+
+- **host 半**（`src/vision/*`）：配置落 `~/.dsh/storages/dsh-remote-dafeiyu/vision.json`
+  （与人设存储互不打扰），协议适配 openai-chat / openai-responses / anthropic / gemini /
+  custom（auto 按地址猜）；三条回环路由
+  `/api/dsh-remote-dafeiyu/vision/{config,recognize,models}`（Host/Origin 守卫与远控同款）。
+- **工具**：启动时若识图已开启且宿主给了 `tools` 服务，注册 `recognize_image`（手写
+  ToolDefinition，零外部依赖）。
+- **提示词段**：识图开启时注入 `dafeiyu:vision`（order 10100），告诉模型「图片描述会以
+  【图片识别】开头的文本出现，别声称看到了原图」；开/关要重启 DSH 才换段落，路由侧永远实时。
+- **client 半**（`src/client/vision-panel.ts`）：设置页「人设」分栏里加「识图」配置块；
+  聊天页右下角鲸鱼按钮 → 选图 → 宿主识图 → 识别文本注入当前会话
+  （`sessions.binding().session.prompt(..., 'queue')`，与 dsh-vision 同一套；注入不了退化复制）。
+- **纪律不变**：识图起不来/路由挂不上只是少一块界面，远控与人设一行都不许被带走；
+  配置里的 API Key 只留在本机，设置页只回显末尾几位。
+
+### 判据
+
+- `tests/vision.test.ts`：配置规整 / key 打码 / 四种协议请求与取文本 / 落盘往返 /
+  未开启与无 key 的报错 / 桩 fetch 的识图与模型列表 / 路由守卫+保存+识别+上游 502。
+- `pill-isolation`：路由总数与注销数同步改成 11 条（识图 3 + 配对 8），provide 里多一个
+  `dafeiyuVision`。
+
 # Changelog
 
 ## 0.8.0-dafeiyu.1 —— 「人设」搬进来了：一个包、一行

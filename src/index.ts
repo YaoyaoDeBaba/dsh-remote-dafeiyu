@@ -52,6 +52,9 @@ import { startPill, type PillHandle } from './pill/start.js'
 // 人设那一半（0.8.0 起与远控共用一个包、一行）。挂载点单列一个文件：
 // 它的判据是「探不到 systemPrompt 就不挂」，那一条必须能单独测，也必须留下原因。
 import { mountPersona } from './persona/mount.js'
+// 识图那一半（0.9.0）：外挂视觉模型 + 三条路由 + recognize_image 工具。
+// 与远控/人设同一条纪律——起不来只是少一块界面，绝不带走主链路。
+import { startVision, type VisionHandle } from './vision/start.js'
 // 会话备份（2026-10-28）：一个包两件事。备份**永远不许**影响远控主链路，
 // 所以它下面每一处调用都自带 try/catch，起不来也只是少一张卡片。
 import { BackupService } from './backup/service.js'
@@ -1399,6 +1402,21 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
+  /**
+   * ── 识图（0.9.0）──────────────────────────────────────────────
+   * 与备份同一条纪律：整段 try，起不来只是"识图那张设置卡没数据"。
+   * 路由/配置都落在 `storages/dsh-remote-dafeiyu/`，不碰人设存储。
+   */
+  let visionHandle: VisionHandle | undefined
+  try {
+    visionHandle = startVision(ctx as never, { dshHome, log })
+  } catch (error) {
+    visionHandle = undefined
+    log('识图服务起不来（远控/人设不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   try {
     pillRoutes = startPill(ctx, {
       enabled: config.pill.enabled,
@@ -1466,6 +1484,12 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       oneShot.cancelAll()
       // pill 那七条路由也要一起收：它是不在主链路上的旁路，所以单独一句。
       pillRoutes?.stop()
+      // 识图那三条路由同理。
+      try {
+        visionHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
       // 备份的定时器同理：停机之后它再去推仓库，推的是"半个现场"。
       try {
         backup?.stop()

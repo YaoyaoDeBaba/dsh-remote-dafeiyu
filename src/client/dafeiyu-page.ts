@@ -21,6 +21,7 @@
 import { buildSettingsSection, mountSettingsSection, type SettingsHost } from './settings.js'
 import { type CreateElement } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
+import { buildVisionPanel } from './vision-panel.js'
 
 /** 三个分栏的 id。 */
 export const DAFEIYU_TAB_REMOTE = 'remote'
@@ -38,7 +39,10 @@ export interface DafeiyuPageDeps {
   /** 装载器给的 createElement（`findCreateElement` 的结果）。 */
   createElement: CreateElement
   /** 同一个 react 模块里的 hooks（不能静态 `require('react')`，由调用方传入）。 */
-  reactHooks: { useState?: <S>(initial: S) => [S, (next: S) => void] }
+  reactHooks: {
+    useState?: <S>(initial: S) => [S, (next: S) => void]
+    useEffect?: (effect: () => void | (() => void), deps?: unknown[]) => void
+  }
   /** 人设客户端的 `PersonaSettingsSection` 组件（从 `personaClientFactory` 的导出里拿）。 */
   personaSettings: unknown
   /** 人设那套字典的翻译函数；给不出就用 key 兜底。 */
@@ -58,6 +62,8 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   if (typeof createElement !== 'function' || typeof useState !== 'function') {
     return false
   }
+  // 识图配置块（0.9.0）：人设分栏里、人设组件下面那一块。
+  const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks })
 
   let cleanupRemote: (() => void) | undefined
   const attach = (node: unknown): void => {
@@ -100,7 +106,11 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement('div', { ref: attach })
     } else if (tab === DAFEIYU_TAB_PERSONA) {
-      body = createElement(personaSettings, { t: personaT })
+      body = createElement('div', {
+        children: visionPanel
+          ? [createElement(personaSettings, { t: personaT }), createElement(visionPanel, {})]
+          : [createElement(personaSettings, { t: personaT })],
+      })
     } else {
       body = createElement('p', {
         style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },

@@ -274,7 +274,7 @@ export function rejectedBy(request: IncomingMessage): string | undefined {
  * **只对"像这台宿主自己"的 Origin 回声**（环回 http(s) 与 `dsh-app:` 白名单，与 `rejectedBy`
  * 同一套判据）：这不让任意网页借道——它们过不了那条 Origin 判据，写路由还有 `x-drc-pair`。
  */
-function applyCors(request: IncomingMessage, response: ServerResponse): void {
+export function applyCors(request: IncomingMessage, response: ServerResponse): void {
   const origin = request?.headers?.origin
   if (origin === undefined || origin.trim() === '' || !originLooksLikeTheHostItself(origin)) return
   // 夹具里的 response 可能只有 `writeHead/end`（真 ServerResponse 才一定有 `setHeader`）：
