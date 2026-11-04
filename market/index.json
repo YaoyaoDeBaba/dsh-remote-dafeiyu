@@ -222,6 +222,18 @@
             "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
             "commit": "dacfdd369bb08c089339b74806fc25a4659812f7"
           },
+        {
+          "version": "0.9.0-dafeiyu.4",
+          "publishTimestamp": 1793801995,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
+            "commit": "1d9385944bee0da13896ffbe7df3523a70b1d2c9"
+          },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
+        },
           "engines": {
             "dsh": ">=0.2.1"
           }
