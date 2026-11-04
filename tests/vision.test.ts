@@ -20,6 +20,8 @@ import {
 } from '../src/vision/config.js'
 import { buildRequest, splitPath, textFrom, VisionError } from '../src/vision/protocols.js'
 import { createVisionService, readVisionConfig, recognize, writeVisionConfig } from '../src/vision/service.js'
+import { VISION_CONFIG_ROUTE } from '../src/vision/routes.js'
+import { startVision } from '../src/vision/start.js'
 
 test('配置：脏值各自回落默认，越界超时被夹住', () => {
   const raw = normalizeVisionConfig({
@@ -277,5 +279,54 @@ test('路由：识图 POST 走桩 fetch；缺图 400；上游 502', async () => 
   } finally {
     globalThis.fetch = original
     rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('接线：startVision 挂路由；关着时不塞提示词段，打开后才注册段与工具', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'dafeiyu-vision-start-'))
+  try {
+    const makeCtx = () => {
+      const routes: Array<{ path: string }> = []
+      const tools: Array<{ name?: string }> = []
+      const sections: Array<{ name: string; order?: number }> = []
+      const ctx = {
+        get(name: string, optional: true) {
+          if (name === 'webServer' && optional) {
+            return { register(route: { path: string }) { routes.push(route); return () => {} } }
+          }
+          if (name === 'systemPrompt' && optional) {
+            return { section(definition: { name: string; order?: number }) { sections.push(definition); return () => {} } }
+          }
+          if (name === 'tools' && optional) {
+            return { register(definition: { name?: string }) { tools.push(definition) } }
+          }
+          return undefined
+        },
+        inject() { return () => undefined },
+        provide() {},
+      }
+      return { ctx, routes, tools, sections }
+    }
+
+    const off = makeCtx()
+    const disabled = startVision(off.ctx as never, { dshHome: home, log: () => {} })
+    assert.ok(off.routes.some((route) => route.path === VISION_CONFIG_ROUTE), '识图路由要挂上')
+    assert.equal(disabled.probe.section, 'disabled')
+    assert.equal(off.tools.length, 0, '没开启就别注册工具')
+    disabled.stop()
+
+    const service = createVisionService(home)
+    assert.equal(writeVisionConfig(service.configFile, { ...DEFAULT_VISION_CONFIG, enabled: true, apiKey: 'sk-test' }), true)
+
+    const on = makeCtx()
+    const enabled = startVision(on.ctx as never, { dshHome: home, log: () => {} })
+    assert.equal(enabled.probe.section, 'registered')
+    assert.ok(on.sections.some((section) => section.name === 'dafeiyu:vision' && section.order === 10_100))
+    assert.ok(on.tools.some((tool) => tool.name === 'recognize_image'))
+    enabled.stop()
+    // 二次 stop 幂等
+    enabled.stop()
+  } finally {
+    rmSync(home, { recursive: true, force: true })
   }
 })

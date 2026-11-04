@@ -20,6 +20,7 @@ import {
   memoryFile,
   resolveDshHome,
 } from '../src/memory/service.js'
+import { startMemory } from '../src/memory/start.js'
 import { mountPersona } from '../src/index.js'
 
 function tempHome(): { home: string; cleanup: () => void } {
@@ -123,6 +124,72 @@ test('记忆：DSH_HOME 优先于用户目录', () => {
   assert.equal(resolveDshHome({ DSH_HOME: 'D:\\x' } as NodeJS.ProcessEnv), 'D:\\x')
   const home = resolveDshHome({ USERPROFILE: 'C:\\Users\\t' } as NodeJS.ProcessEnv)
   assert.equal(home, path.join('C:\\Users\\t', '.dsh'))
+})
+
+test('接线：startMemory 挂路由 + 注册三个工具 + 工具真的写进人设记忆', async () => {
+  const { home, cleanup } = tempHome()
+  try {
+    const routes: Array<{ path: string; handler: unknown; off: () => void }> = []
+    const tools: Array<Record<string, unknown>> = []
+    const provided: Record<string, unknown> = {}
+    const ctx = {
+      get(name: string, optional: true) {
+        if (name === 'webServer' && optional) {
+          return {
+            register(route: { path: string; handler: unknown }) {
+              let live = true
+              const off = () => { live = false }
+              routes.push({ ...route, off })
+              return off
+            },
+          }
+        }
+        if (name === 'tools' && optional) {
+          return { register(definition: Record<string, unknown>) { tools.push(definition) } }
+        }
+        if (name === 'dafeiyuPersona' && optional) {
+          return { lastPersonaId: () => 'p1' }
+        }
+        return undefined
+      },
+      inject() { return () => undefined },
+      provide(name: string, value: unknown) { provided[name] = value },
+    }
+    const handle = startMemory(ctx as never, { dshHome: home, log: () => {} })
+    assert.equal(handle.available, true)
+    assert.ok(routes.some((route) => route.path === '/api/dsh-remote-dafeiyu/memory'), '记忆路由要挂上')
+    assert.ok(provided.dafeiyuMemory, '记忆服务要 provide 出去')
+
+    const names = tools.map((tool) => tool.name)
+    for (const name of ['record_memory', 'read_memory', 'forget_memory']) {
+      assert.ok(names.includes(name), `缺工具 ${name}`)
+    }
+
+    const record = tools.find((tool) => tool.name === 'record_memory') as { execute: (args: Record<string, unknown>) => Promise<string> }
+    const wrote = await record.execute({ content: '用户叫我小鲸鱼', importance: 3 })
+    assert.ok(wrote.includes('已记住'), wrote)
+    assert.equal(handle.service.list('p1').length, 1, '工具要写进「当前人设」那一本')
+    assert.equal(handle.service.list('default').length, 0, '不许落到 default')
+    assert.equal(handle.service.list('p1')[0]?.importance, 3)
+
+    const read = tools.find((tool) => tool.name === 'read_memory') as { execute: (args: Record<string, unknown>) => Promise<string> }
+    const seen = await read.execute({ query: '小鲸鱼' })
+    assert.ok(seen.includes('小鲸鱼'), seen)
+    assert.ok((await read.execute({ query: '不存在的事' })).includes('没有包含'), '查不到要说人话')
+
+    const forget = tools.find((tool) => tool.name === 'forget_memory') as { execute: (args: Record<string, unknown>) => Promise<string> }
+    const id = handle.service.list('p1')[0]?.id ?? ''
+    assert.ok((await forget.execute({ id })).includes('已删掉'))
+    assert.equal(handle.service.list('p1').length, 0)
+    assert.ok((await forget.execute({ id: 'nope' })).includes('没有这条'))
+
+    handle.stop()
+    assert.equal(routes.filter((route) => route.path === '/api/dsh-remote-dafeiyu/memory').length, 1)
+    // 二次 stop 幂等
+    handle.stop()
+  } finally {
+    cleanup()
+  }
 })
 
 test('注入：人设宿主接到 memory 才注册 dafeiyu:memory 段，没接就不注册', () => {
