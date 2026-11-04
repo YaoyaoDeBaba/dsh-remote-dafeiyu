@@ -146,6 +146,11 @@ test('注入：人设宿主接到 memory 才注册 dafeiyu:memory 段，没接�
     const service = createMemoryService(home)
     const withMemory: Array<{ name: string; order?: number; text?: unknown }> = []
     assert.equal(mountPersona(makeCtx(withMemory), {}, { memory: service }).mounted, true)
+    const hintSection = withMemory.find((section) => section.name === 'dafeiyu:memory-hint')
+    assert.ok(hintSection, '接入了记忆库就该常驻一条使用说明（空库时模型才知道自己有记忆）')
+    assert.equal(hintSection?.order, 10_290)
+    assert.ok(String(hintSection?.text).includes('record_memory'), '说明里要写清工具名')
+
     const memorySection = withMemory.find((section) => section.name === 'dafeiyu:memory')
     assert.ok(memorySection, '接了记忆库就应该注册 dafeiyu:memory 段')
     assert.equal(memorySection?.order, 10_300)
@@ -157,6 +162,7 @@ test('注入：人设宿主接到 memory 才注册 dafeiyu:memory 段，没接�
     const withoutMemory: Array<{ name: string }> = []
     assert.equal(mountPersona(makeCtx(withoutMemory), {}).mounted, true)
     assert.ok(!withoutMemory.some((section) => section.name === 'dafeiyu:memory'), '没接记忆库就不许冒出记忆段')
+    assert.ok(!withoutMemory.some((section) => section.name === 'dafeiyu:memory-hint'), '没接记忆库也不许冒出使用说明')
   } finally {
     cleanup()
   }

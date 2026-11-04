@@ -73,6 +73,21 @@ export const MEMORY_SECTION = 'dafeiyu:memory'
 export const MEMORY_ORDER = 10_300
 
 /**
+ * 记忆的使用说明（0.9.0-dafeiyu.3）。空库时『长期记忆』段不出现，模型就不知道自己对记忆库有读写口；
+ * 这段**永远在**（只要接入了记忆库），告诉它什么时候记、什么时候查。
+ */
+export const MEMORY_HINT_SECTION = 'dafeiyu:memory-hint'
+export const MEMORY_HINT_ORDER = 10_290
+const MEMORY_HINT_TEXT = [
+  '## 长期记忆（你有一本）',
+  '你带着一份跨会话的记忆库（按人设分开；当前人设那本会以「长期记忆」段出现在下面，空库时那段不出现）。',
+  '- 用户透露长期有效的称呼 / 偏好 / 约定 / 重要事实 → 调用 `record_memory` 记一句（一次一条、自包含、别记流水账）。',
+  '- 用户问「还记得吗 / 我之前说过…」→ 用 `read_memory` 查，别硬编答案。',
+  '- 用户明确说「忘掉这个」→ 用 `forget_memory` 删对应那条。',
+  '- 记忆和当前对话冲突时以当前对话为准，并顺手把记忆更新掉。',
+].join('\n')
+
+/**
  * 判定「这是新的一轮对话」的间隔。
  *
  * 每轮组装都会重新求值这个段落。若每次都把 `lastSeen` 刷成 now，「距上次对话」永远显示 0 分钟；
@@ -1415,6 +1430,10 @@ export function apply(ctx, config, extra) {
     ...(resolved.enabled === false
       ? []
       : [{ name: CLOCK_SECTION, order: CLOCK_ORDER, text: () => clockText(true), preview: () => clockText(false) }]),
+    // 长期记忆的使用说明（0.9.0-dafeiyu.3）：接入了记忆库就常驻，空库时也告诉模型「可以记」。
+    ...(extra && extra.memory
+      ? [{ name: MEMORY_HINT_SECTION, order: MEMORY_HINT_ORDER, text: MEMORY_HINT_TEXT }]
+      : []),
     // 长期记忆（0.9.0）：只有在接入了记忆库时才注册；空库返回 ''（等于不注入）。
     ...(extra && extra.memory
       ? [{

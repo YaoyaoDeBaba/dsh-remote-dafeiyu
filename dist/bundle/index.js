@@ -27633,7 +27633,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.2" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.3" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34321,6 +34321,16 @@ var CLOCK_SECTION = "dafeiyu:clock";
 var CLOCK_ORDER = 10350;
 var MEMORY_SECTION = "dafeiyu:memory";
 var MEMORY_ORDER = 10300;
+var MEMORY_HINT_SECTION = "dafeiyu:memory-hint";
+var MEMORY_HINT_ORDER = 10290;
+var MEMORY_HINT_TEXT = [
+  "## \u957F\u671F\u8BB0\u5FC6\uFF08\u4F60\u6709\u4E00\u672C\uFF09",
+  "\u4F60\u5E26\u7740\u4E00\u4EFD\u8DE8\u4F1A\u8BDD\u7684\u8BB0\u5FC6\u5E93\uFF08\u6309\u4EBA\u8BBE\u5206\u5F00\uFF1B\u5F53\u524D\u4EBA\u8BBE\u90A3\u672C\u4F1A\u4EE5\u300C\u957F\u671F\u8BB0\u5FC6\u300D\u6BB5\u51FA\u73B0\u5728\u4E0B\u9762\uFF0C\u7A7A\u5E93\u65F6\u90A3\u6BB5\u4E0D\u51FA\u73B0\uFF09\u3002",
+  "- \u7528\u6237\u900F\u9732\u957F\u671F\u6709\u6548\u7684\u79F0\u547C / \u504F\u597D / \u7EA6\u5B9A / \u91CD\u8981\u4E8B\u5B9E \u2192 \u8C03\u7528 `record_memory` \u8BB0\u4E00\u53E5\uFF08\u4E00\u6B21\u4E00\u6761\u3001\u81EA\u5305\u542B\u3001\u522B\u8BB0\u6D41\u6C34\u8D26\uFF09\u3002",
+  "- \u7528\u6237\u95EE\u300C\u8FD8\u8BB0\u5F97\u5417 / \u6211\u4E4B\u524D\u8BF4\u8FC7\u2026\u300D\u2192 \u7528 `read_memory` \u67E5\uFF0C\u522B\u786C\u7F16\u7B54\u6848\u3002",
+  "- \u7528\u6237\u660E\u786E\u8BF4\u300C\u5FD8\u6389\u8FD9\u4E2A\u300D\u2192 \u7528 `forget_memory` \u5220\u5BF9\u5E94\u90A3\u6761\u3002",
+  "- \u8BB0\u5FC6\u548C\u5F53\u524D\u5BF9\u8BDD\u51B2\u7A81\u65F6\u4EE5\u5F53\u524D\u5BF9\u8BDD\u4E3A\u51C6\uFF0C\u5E76\u987A\u624B\u628A\u8BB0\u5FC6\u66F4\u65B0\u6389\u3002"
+].join("\n");
 var CLOCK_TOUCH_GAP_MS = 5 * 60 * 1e3;
 var CLOCK_WRITE_THROTTLE_MS = 60 * 1e3;
 var CHARS_WARN_THRESHOLD = 8e3;
@@ -35284,6 +35294,8 @@ function apply(ctx, config2, extra) {
     // 插件总开关关掉时**不注册**（上游判据就是这么规定的）；时间差自己的开关则是动态的：
     // 段落挂着、内容返回空串，等于没注入，不需要重挂。
     ...resolved.enabled === false ? [] : [{ name: CLOCK_SECTION, order: CLOCK_ORDER, text: () => clockText(true), preview: () => clockText(false) }],
+    // 长期记忆的使用说明（0.9.0-dafeiyu.3）：接入了记忆库就常驻，空库时也告诉模型「可以记」。
+    ...extra && extra.memory ? [{ name: MEMORY_HINT_SECTION, order: MEMORY_HINT_ORDER, text: MEMORY_HINT_TEXT }] : [],
     // 长期记忆（0.9.0）：只有在接入了记忆库时才注册；空库返回 ''（等于不注入）。
     ...extra && extra.memory ? [{
       name: MEMORY_SECTION,
