@@ -307,7 +307,7 @@ test('缺 webServer：provide 照常、一个命令都没注册，路由一次�
   try {
     const state = await without.waitForCarrier()
     assert.equal(without.commandCount, 0, '/drc 整条已删，命令注册这条路不该再被碰')
-    assert.deepEqual(without.providedKeys, ['dafeiyuVision', 'dshRemoteControl'], 'provide 必须照常发生（识图服务 + 远控句柄）')
+    assert.deepEqual(without.providedKeys, ['dafeiyuVision', 'dshRemoteControl', 'dafeiyuMemory'], 'provide 必须照常发生（识图 + 远控句柄 + 记忆）')
     assert.equal(without.registerCalls.length, 0, '没有 webServer 就不该有人去挂路由')
     // 这条是"配不了对"的排查入口：probe 必须说清是没探到，而不是沉默。
     assert.equal((state.pill as Record<string, string>).webServer, 'none')
@@ -340,14 +340,14 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     const state = await late.waitForCarrier()
     assert.equal((state.pill as Record<string, string>).webServer, 'via inject')
     assert.equal((state.pill as Record<string, string>).routes, 'registered', '七条配对路由补挂上了')
-    assert.equal(late.registerCalls.length, 11, '十一条一起挂（识图 3 + 配对/配置/自报/放行/备份 8）')
+    assert.equal(late.registerCalls.length, 12, '十二条一起挂（识图 3 + 配对/配置/自报/放行/备份 8 + 记忆 1）')
     assert.equal(
       pillProblem(state),
       undefined,
       `routes 已 registered 却还报 warn:pill = 启动快照的假警报：${JSON.stringify(state.problems)}`,
     )
     late.dispose()
-    assert.equal(late.unregistered(), 11, '晚到挂上的路由（含识图），停机时同样要注销干净')
+    assert.equal(late.unregistered(), 12, '晚到挂上的路由（含识图/记忆），停机时同样要注销干净')
   } finally {
     late.dispose()
   }
@@ -393,7 +393,7 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     assert.equal((b.pill as Record<string, string>).routes, 'registered', '七条配对路由一起挂上')
     // 识图那三条是另一个订阅者（`startVision`）挂的，这里只断言配对那八条。
     assert.deepEqual(
-      withWeb.registerCalls.map((call) => call.path).filter((path) => !path.startsWith('/api/dsh-remote-dafeiyu/vision/')),
+      withWeb.registerCalls.map((call) => call.path).filter((path) => !path.startsWith('/api/dsh-remote-dafeiyu/')),
       [
         PAIR_NEW_ROUTE,
         PAIR_IMAGE_ROUTE,
@@ -422,7 +422,7 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     // 而表现是"重载一次之后那颗 pill 再也不出现"。这里在断言之后 dispose，两个 finally
     // 里的 dispose 是同一次（helper 内部有 once 守卫）。
     withWeb.dispose()
-    assert.equal(withWeb.unregistered(), 11, '八条配对路由 + 三条识图路由都要注销')
+    assert.equal(withWeb.unregistered(), 12, '八条配对路由 + 三条识图 + 一条记忆都要注销')
   } finally {
     without.dispose()
     withWeb.dispose()
@@ -460,7 +460,7 @@ test('register() 抛错（路由名被占）：只废掉界面那一半，命令
       String((state.pill as Record<string, string>).routes ?? '').startsWith('register threw'),
       '路由注册抛错必须在 probe 里留痕，不然排查时会以为是"没有码"：' + JSON.stringify(state.pill),
     )
-    assert.equal(hostile.registerCalls.length, 2, '识图与 pill 各自的第一条都抛了就停手，不该继续试')
+    assert.equal(hostile.registerCalls.length, 3, '识图 / pill / 记忆 各自的第一条都抛了就停手')
     assert.ok(pillProblem(state), '挂不上 = 没有配对入口，这条 warn 必须在')
   } finally {
     hostile.dispose()
@@ -472,7 +472,7 @@ test('挂到第三条就抛：只有前两条挂上了，available 仍是 false�
   const partial = boot({ registerThrowsFrom: 2 })
   try {
     const state = await partial.waitForCarrier()
-    assert.equal(partial.registerCalls.length, 4, '识图第 3 条抛（撤销 2 条），pill 第 1 条也抛：共 4 次尝试')
+    assert.equal(partial.registerCalls.length, 5, '识图第 3 条抛（撤销 2 条），pill 第 1 条也抛，记忆第 1 条也抛：共 5 次')
     assert.equal((state.pill as Record<string, string>).routes, 'register threw: 这条路径宿主不给挂')
     assert.ok(pillProblem(state), '只要有一条没挂上，pill 就点不开，必须报')
     partial.dispose()
@@ -486,7 +486,7 @@ test('pill.enabled=false：显式关掉唯一配对入口，路由一条都不�
   const off = boot({ webServer: true, pillEnabled: false })
   try {
     const state = await off.waitForCarrier()
-    const pillOnly = off.registerCalls.filter((call) => !call.path.startsWith('/api/dsh-remote-dafeiyu/vision/'))
+    const pillOnly = off.registerCalls.filter((call) => !call.path.startsWith('/api/dsh-remote-dafeiyu/'))
     assert.equal(pillOnly.length, 0, '关掉了就不该去挂配对路由（识图那三条是独立订阅者）')
     assert.equal((state.pill as Record<string, string>).pill, 'disabled')
     assert.equal(off.commandCount, 0, '关掉界面入口也不该冒出命令（本来就没有了）')
@@ -512,7 +512,7 @@ test('那七条配对路由挂上去的就是带守卫的那七条（接线，�
     // 六条配对路由 + 一条配置读写，顺序与 registerPillRoutes 一致。
     // 识图那三条是另一个订阅者（`startVision`）挂的，这里只断言配对那八条。
     assert.deepEqual(
-      withWeb.registerCalls.map((call) => call.path).filter((path) => !path.startsWith('/api/dsh-remote-dafeiyu/vision/')),
+      withWeb.registerCalls.map((call) => call.path).filter((path) => !path.startsWith('/api/dsh-remote-dafeiyu/')),
       [
         PAIR_NEW_ROUTE,
         PAIR_IMAGE_ROUTE,

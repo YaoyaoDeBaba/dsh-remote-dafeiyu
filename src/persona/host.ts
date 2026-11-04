@@ -66,6 +66,13 @@ export const CLOCK_SECTION = 'dafeiyu:clock'
 export const CLOCK_ORDER = 10_350
 
 /**
+ * 长期记忆段（0.9.0）。比人设本体易变（每记一条就变），所以排在 suffix 之后、
+ * 时间差之前；改它只废掉缓存里最后那一小截。
+ */
+export const MEMORY_SECTION = 'dafeiyu:memory'
+export const MEMORY_ORDER = 10_300
+
+/**
  * 判定「这是新的一轮对话」的间隔。
  *
  * 每轮组装都会重新求值这个段落。若每次都把 `lastSeen` 刷成 now，「距上次对话」永远显示 0 分钟；
@@ -1245,7 +1252,7 @@ function readJsonBody(request, limit = 512 * 1024) {
  * @param ctx - 插件上下文，必须能拿到 `systemPrompt` 服务。
  * @param config - 可选配置，缺省即用内置人设库。
  */
-export function apply(ctx, config) {
+export function apply(ctx, config, extra) {
   const resolved = { ...DEFAULTS, ...(config && typeof config === 'object' ? config : {}) }
   const configPersona = configPersonaOf(ctx, resolved)
   const store = readStore()
@@ -1327,11 +1334,35 @@ export function apply(ctx, config) {
     return Number.isFinite(max) && max > 0 && text.length > max ? text.slice(0, max) : text
   }
 
+  /**
+   * 最近一次解析到的人设 id（0.9.0）。工具（`record_memory` / `read_memory`）拿不到
+   * 段落那种 context，所以靠注入时顺手记下的这一格兜底：同一会话里它≈当前人设。
+   */
+  const lastPersonaRef = { id: null }
+  const notePersona = (persona) => {
+    lastPersonaRef.id = persona && typeof persona.id === 'string' ? persona.id : null
+    return persona
+  }
+
   const activeText = (context) => {
     recordProbe(context)
     if (resolved.enabled === false) return ''
     const { persona } = resolveFor({ sessionId: sessionIdOf(context), cwd: cwdOf(context) })
+    notePersona(persona)
     return persona && persona.enabled ? applyTruncate(persona.text) : ''
+  }
+
+  /**
+   * 记忆段文本：按当前会话解析到的人设取那本记忆。没注入器（`extra.memory`）时返回 ''。
+   * 失败也返回 ''：记忆是锦上添花，不许把整段提示词弄坏。
+   */
+  const memoryTextFor = (persona) => {
+    if (!extra || !extra.memory || !persona || persona.enabled === false) return ''
+    try {
+      return String(extra.memory.textFor(persona.id) ?? '')
+    } catch {
+      return ''
+    }
   }
 
   /** 节流写盘：`lastSeen` 变了才写，且一分钟内最多写一次。 */
@@ -1384,6 +1415,19 @@ export function apply(ctx, config) {
     ...(resolved.enabled === false
       ? []
       : [{ name: CLOCK_SECTION, order: CLOCK_ORDER, text: () => clockText(true), preview: () => clockText(false) }]),
+    // 长期记忆（0.9.0）：只有在接入了记忆库时才注册；空库返回 ''（等于不注入）。
+    ...(extra && extra.memory
+      ? [{
+          name: MEMORY_SECTION,
+          order: MEMORY_ORDER,
+          text: (context) => {
+            const { persona } = resolveFor({ sessionId: sessionIdOf(context), cwd: cwdOf(context) })
+            notePersona(persona)
+            return memoryTextFor(persona)
+          },
+          preview: (persona) => memoryTextFor(persona),
+        }]
+      : []),
   ]
 
   if (resolved.enabled === false) {
@@ -1401,6 +1445,25 @@ export function apply(ctx, config) {
       }),
       `dsh-persona-dafeiyu: ${def.name}`,
     )
+  }
+
+  /**
+   * 给记忆工具留一个「当前人设」问询口（0.9.0）。工具拿不到 context，只能靠这里。
+   * provide 失败不许影响任何东西。
+   */
+  try {
+    ctx.provide?.('dafeiyuPersona', {
+      lastPersonaId: () => lastPersonaRef.id,
+      currentFor: (context) => {
+        const { persona } = resolveFor({ sessionId: sessionIdOf(context), cwd: cwdOf(context) })
+        notePersona(persona)
+        return persona === undefined || persona === null
+          ? null
+          : { id: persona.id, name: persona.name, enabled: persona.enabled !== false }
+      },
+    })
+  } catch {
+    /* 这一代宿主没有 provide 口 */
   }
 
   const initial = currentPersonaOf(buildCatalog(configPersona, store), store)
@@ -1545,7 +1608,7 @@ export function apply(ctx, config) {
               const text = def.name === PERSONA_SECTION
                 ? (on && persona && persona.enabled ? applyTruncate(persona.text) : '')
                 : def.preview
-                  ? def.preview()
+                  ? def.preview(persona)
                   : String(def.text)
               return { name: def.name, order: def.order, chars: text.length, text }
             })

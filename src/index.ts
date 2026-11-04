@@ -55,6 +55,9 @@ import { mountPersona } from './persona/mount.js'
 // 识图那一半（0.9.0）：外挂视觉模型 + 三条路由 + recognize_image 工具。
 // 与远控/人设同一条纪律——起不来只是少一块界面，绝不带走主链路。
 import { startVision, type VisionHandle } from './vision/start.js'
+// 记忆库（0.9.0）：人设的「长期记忆」段 + 设置页记忆面板 + 三个工具。
+import { startMemory, type MemoryHandle } from './memory/start.js'
+import { resolveDshHome } from './memory/service.js'
 // 会话备份（2026-10-28）：一个包两件事。备份**永远不许**影响远控主链路，
 // 所以它下面每一处调用都自带 try/catch，起不来也只是少一张卡片。
 import { BackupService } from './backup/service.js'
@@ -129,10 +132,43 @@ export function apply(ctx: LooseContext, injected: Partial<PluginConfig> = {}, c
   } catch {
     /* 这一代宿主可能不支持 provide */
   }
+  /**
+   * ── 记忆库（0.9.0）──────────────────────────────────────────────
+   * 与远控/人设同一条纪律：起不来只是少一块界面。建在 `apply` 这一层是因为
+   * **人设宿主在 apply 后面才挂**，要把它当参数递进去拼「长期记忆」段。
+   */
+  let memoryHandle: MemoryHandle | undefined
+  try {
+    memoryHandle = startMemory(ctx as never, {
+      dshHome: resolveDshHome(process.env),
+      log: (message, fields) => {
+        try {
+          process.stderr.write(`[dsh-remote-control memory] ${message}${fields ? ` ${JSON.stringify(fields)}` : ''}\n`)
+        } catch {
+          /* stderr 也可能不可用 */
+        }
+      },
+    })
+  } catch (error) {
+    memoryHandle = undefined
+    try {
+      process.stderr.write(`[dsh-remote-control] 记忆库起不来（远控/人设不受影响）：${String((error as Error)?.message ?? error)}\n`)
+    } catch {
+      /* stderr 也可能不可用 */
+    }
+  }
+
   let disposeHooked = false
   try {
     if (typeof ctx.effect === 'function') {
-      ctx.effect(() => () => void handle?.stop())
+      ctx.effect(() => () => {
+        void handle?.stop()
+        try {
+          memoryHandle?.stop()
+        } catch {
+          /* 停机动作不许拖住停机 */
+        }
+      })
       disposeHooked = true
     }
   } catch {
@@ -145,7 +181,7 @@ export function apply(ctx: LooseContext, injected: Partial<PluginConfig> = {}, c
   // 人设的配置口是 `persona: { enabled, ... }`，而远控的 `validateConfig` 只认自己的键，
   // 走校验后的 config 会把它丢掉。
   try {
-    const persona = mountPersona(ctx, injected as { persona?: unknown })
+    const persona = mountPersona(ctx, injected as { persona?: unknown }, memoryHandle ? { memory: memoryHandle.service } : undefined)
     if (!persona.mounted) {
       // 「没挂上」必须说得出为什么——否则表现就是"设置页里人设那栏没了"，且日志全绿。
       process.stderr.write(
@@ -166,7 +202,14 @@ export function apply(ctx: LooseContext, injected: Partial<PluginConfig> = {}, c
     // `'x' in ctx` 走的是 Proxy 的 has trap，不抛错——这是在这个宿主上"探测一个属性
     // 到底有没有"的唯一安全姿势；直接点属性就等着抛。测试替身/别的代际才提供 onDispose。
     try {
-      ;(ctx as { onDispose?: (fn: () => void) => void }).onDispose?.(() => void handle?.stop())
+      ;(ctx as { onDispose?: (fn: () => void) => void }).onDispose?.(() => {
+    void handle?.stop()
+    try {
+      memoryHandle?.stop()
+    } catch {
+      /* 停机动作不许拖住停机 */
+    }
+  })
     } catch {
       /* 同上 */
     }

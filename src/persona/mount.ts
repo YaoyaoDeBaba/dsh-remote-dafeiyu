@@ -89,12 +89,18 @@ function withSystemPrompt(ctx: unknown, systemPrompt: unknown): unknown {
  * `injected.persona` 是合包后新增的配置口：`{ enabled: false }` 可以单独关掉人设那半，
  * 而不影响远控。默认 `{ enabled: true }`。
  */
-export function mountPersona(ctx: unknown, injected?: { persona?: unknown }): PersonaMountResult {
+export function mountPersona(
+  ctx: unknown,
+  injected?: { persona?: unknown },
+  extra?: { memory?: unknown },
+): PersonaMountResult {
   const systemPrompt = probeSystemPrompt(ctx)
   if (systemPrompt === undefined) return { mounted: false, reason: 'no-systemPrompt' }
   const raw = injected?.persona
   const config: Record<string, unknown> = raw && typeof raw === 'object' ? { ...(raw as Record<string, unknown>) } : {}
   if (config.enabled === undefined) config.enabled = true
-  applyPersonaHost(withSystemPrompt(ctx, systemPrompt), config)
+  // `extra.memory`（0.9.0）：记忆库句柄，人设宿主拿它拼「长期记忆」段。
+  // 不传等于不接记忆（段落不注册、功能全关）。
+  applyPersonaHost(withSystemPrompt(ctx, systemPrompt), config, extra)
   return { mounted: true, config }
 }

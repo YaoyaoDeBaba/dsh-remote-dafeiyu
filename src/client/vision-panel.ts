@@ -10,7 +10,7 @@
  *
  * 纪律：钩子全部由调用方传入（不能静态 require react）；每个 DOM 操作都包 try。
  */
-import { resolveHostUrl } from './host-url.js'
+import { VISION_BASE, callJson } from './host-api.js'
 
 type Hooks = {
   useState?: <S>(initial: S) => [S, (next: S) => void]
@@ -39,22 +39,6 @@ export interface VisionPanelDeps {
   injectText?: (text: string) => Promise<boolean> | boolean
 }
 
-const BASE = '/api/dsh-remote-dafeiyu/vision'
-
-async function callJson(path: string, body: unknown | undefined, timeoutMs = 20_000): Promise<Record<string, unknown>> {
-  const init: RequestInit =
-    body === undefined
-      ? { method: 'GET' }
-      : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
-  if (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) init.signal = AbortSignal.timeout(timeoutMs)
-  const response = await fetch(resolveHostUrl(path), init)
-  const text = await response.text()
-  try {
-    return JSON.parse(text) as Record<string, unknown>
-  } catch {
-    return { ok: false, error: `宿主返回了非 JSON（HTTP ${response.status}）` }
-  }
-}
 
 const fieldStyle: Record<string, string> = {
   width: '100%',
@@ -108,7 +92,7 @@ export function buildVisionPanel(deps: VisionPanelDeps): (() => unknown) | undef
     const load = async (): Promise<void> => {
       setBusy(true)
       try {
-        const result = await callJson(`${BASE}/config`, undefined)
+        const result = await callJson(`${VISION_BASE}/config`, undefined)
         if (result.ok) {
           setCfg(result.config as VisionConfigView)
           setStatus('已载入')
@@ -150,7 +134,7 @@ export function buildVisionPanel(deps: VisionPanelDeps): (() => unknown) | undef
         }
         // 空串 = 不改 key（密码框不显示已存的值）
         if (apiKey.trim() !== '') payload.apiKey = apiKey.trim()
-        const result = await callJson(`${BASE}/config`, { config: payload })
+        const result = await callJson(`${VISION_BASE}/config`, { config: payload })
         if (result.ok) {
           setCfg(result.config as VisionConfigView)
           setApiKey('')
@@ -168,7 +152,7 @@ export function buildVisionPanel(deps: VisionPanelDeps): (() => unknown) | undef
     const pullModels = async (): Promise<void> => {
       setBusy(true)
       try {
-        const result = await callJson(`${BASE}/models`, {})
+        const result = await callJson(`${VISION_BASE}/models`, {})
         if (result.ok) {
           const list = Array.isArray(result.models) ? (result.models as string[]) : []
           setModels(list)
@@ -295,7 +279,7 @@ export function mountVisionFab(deps: { injectText?: (text: string) => Promise<bo
     setNote('识别中…（大图可能要十几秒）')
     try {
       const base64 = await fileToBase64(file)
-      const response = await callJson(`${BASE}/recognize`, { imageBase64: base64, mime: file.type || 'image/png' }, 120_000)
+      const response = await callJson(`${VISION_BASE}/recognize`, { imageBase64: base64, mime: file.type || 'image/png' }, 120_000)
       if (response.ok && typeof response.text === 'string') {
         recognized = response.text
         result.value = recognized

@@ -22,6 +22,7 @@ import { buildSettingsSection, mountSettingsSection, type SettingsHost } from '.
 import { type CreateElement } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { buildVisionPanel } from './vision-panel.js'
+import { buildMemoryPanel } from './memory-panel.js'
 
 /** 三个分栏的 id。 */
 export const DAFEIYU_TAB_REMOTE = 'remote'
@@ -62,8 +63,9 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   if (typeof createElement !== 'function' || typeof useState !== 'function') {
     return false
   }
-  // 识图配置块（0.9.0）：人设分栏里、人设组件下面那一块。
+  // 识图配置块（0.9.0）与长期记忆块（0.9.x）：人设分栏里、人设组件下面那两块。
   const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks })
+  const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks })
 
   let cleanupRemote: (() => void) | undefined
   const attach = (node: unknown): void => {
@@ -106,10 +108,11 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement('div', { ref: attach })
     } else if (tab === DAFEIYU_TAB_PERSONA) {
+      const extras: unknown[] = []
+      if (visionPanel) extras.push(createElement(visionPanel, {}))
+      if (memoryPanel) extras.push(createElement(memoryPanel, {}))
       body = createElement('div', {
-        children: visionPanel
-          ? [createElement(personaSettings, { t: personaT }), createElement(visionPanel, {})]
-          : [createElement(personaSettings, { t: personaT })],
+        children: [createElement(personaSettings, { t: personaT }), ...extras],
       })
     } else {
       body = createElement('p', {

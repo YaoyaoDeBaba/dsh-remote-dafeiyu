@@ -1987,8 +1987,10 @@ function mountSettingsSection(ctx, createElement, options) {
   return mounted ? "mounted" : "failed";
 }
 
-// src/client/vision-panel.ts
-var BASE = "/api/dsh-remote-dafeiyu/vision";
+// src/client/host-api.ts
+var VISION_BASE = "/api/dsh-remote-dafeiyu/vision";
+var MEMORY_BASE = "/api/dsh-remote-dafeiyu/memory";
+var PERSONA_STATUS = "/api/dsh-persona-dafeiyu/status";
 async function callJson(path, body, timeoutMs = 2e4) {
   const init = body === void 0 ? { method: "GET" } : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
   if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) init.signal = AbortSignal.timeout(timeoutMs);
@@ -2000,6 +2002,8 @@ async function callJson(path, body, timeoutMs = 2e4) {
     return { ok: false, error: `\u5BBF\u4E3B\u8FD4\u56DE\u4E86\u975E JSON\uFF08HTTP ${response.status}\uFF09` };
   }
 }
+
+// src/client/vision-panel.ts
 var fieldStyle = {
   width: "100%",
   boxSizing: "border-box",
@@ -2047,7 +2051,7 @@ function buildVisionPanel(deps) {
     const load = async () => {
       setBusy(true);
       try {
-        const result = await callJson(`${BASE}/config`, void 0);
+        const result = await callJson(`${VISION_BASE}/config`, void 0);
         if (result.ok) {
           setCfg(result.config);
           setStatus("\u5DF2\u8F7D\u5165");
@@ -2084,7 +2088,7 @@ function buildVisionPanel(deps) {
           responsePath: cfg.responsePath
         };
         if (apiKey.trim() !== "") payload.apiKey = apiKey.trim();
-        const result = await callJson(`${BASE}/config`, { config: payload });
+        const result = await callJson(`${VISION_BASE}/config`, { config: payload });
         if (result.ok) {
           setCfg(result.config);
           setApiKey("");
@@ -2101,7 +2105,7 @@ function buildVisionPanel(deps) {
     const pullModels = async () => {
       setBusy(true);
       try {
-        const result = await callJson(`${BASE}/models`, {});
+        const result = await callJson(`${VISION_BASE}/models`, {});
         if (result.ok) {
           const list = Array.isArray(result.models) ? result.models : [];
           setModels(list);
@@ -2212,7 +2216,7 @@ function mountVisionFab(deps) {
     setNote("\u8BC6\u522B\u4E2D\u2026\uFF08\u5927\u56FE\u53EF\u80FD\u8981\u5341\u51E0\u79D2\uFF09");
     try {
       const base64 = await fileToBase64(file);
-      const response = await callJson(`${BASE}/recognize`, { imageBase64: base64, mime: file.type || "image/png" }, 12e4);
+      const response = await callJson(`${VISION_BASE}/recognize`, { imageBase64: base64, mime: file.type || "image/png" }, 12e4);
       if (response.ok && typeof response.text === "string") {
         recognized = response.text;
         result.value = recognized;
@@ -2287,6 +2291,233 @@ function fileToBase64(file) {
   });
 }
 
+// src/client/memory-panel.ts
+var IMPORTANCE_LABEL = { 1: "\u666E\u901A", 2: "\u91CD\u8981", 3: "\u5173\u952E" };
+var fieldStyle2 = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "6px 8px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px"
+};
+var buttonStyle2 = {
+  padding: "4px 12px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px",
+  cursor: "pointer"
+};
+var labelStyle2 = {
+  display: "block",
+  fontSize: "12px",
+  color: "var(--dsw-alias-label-secondary)",
+  marginBottom: "4px"
+};
+function buildMemoryPanel(deps) {
+  const { createElement: h, hooks } = deps;
+  const useState = hooks.useState;
+  const useEffect = hooks.useEffect;
+  if (typeof useState !== "function") return void 0;
+  return function MemoryPanel() {
+    const [personas, setPersonas] = useState([]);
+    const [persona, setPersona] = useState("");
+    const [entries, setEntries] = useState([]);
+    const [draft, setDraft] = useState("");
+    const [importance, setImportance] = useState("2");
+    const [status, setStatus] = useState("\u6B63\u5728\u8BFB\u53D6\u2026");
+    const [busy, setBusy] = useState(false);
+    const loadPersonas = async () => {
+      setBusy(true);
+      try {
+        const result = await callJson(PERSONA_STATUS, void 0);
+        const list2 = result.ok && result.value && typeof result.value === "object" ? result.value.personas ?? [] : [];
+        const refs = list2.filter((item) => typeof item?.id === "string" && item.id !== "").map((item) => ({ id: String(item.id), name: String(item.name ?? item.id), current: item.current === true }));
+        setPersonas(refs);
+        const current = refs.find((item) => item.current) ?? refs[0];
+        const nextPersona = persona !== "" ? persona : current?.id ?? "";
+        setPersona(nextPersona);
+        if (nextPersona !== "") await loadEntries(nextPersona);
+        else setStatus("\u4EBA\u8BBE\u5E93\u662F\u7A7A\u7684\uFF08\u5148\u53BB\u300C\u4EBA\u8BBE\u300D\u9875\u5EFA\u4E00\u4E2A\uFF09");
+      } catch (error) {
+        setStatus(`\u8BFB\u53D6\u4EBA\u8BBE\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const loadEntries = async (personaId) => {
+      try {
+        const result = await callJson(`${MEMORY_BASE}?persona=${encodeURIComponent(personaId)}`, void 0);
+        if (result.ok && Array.isArray(result.entries)) {
+          setEntries(result.entries);
+          setStatus(`\u5171 ${result.entries.length} \u6761\u8BB0\u5FC6`);
+        } else {
+          setEntries([]);
+          setStatus(`\u8BFB\u53D6\u8BB0\u5FC6\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setEntries([]);
+        setStatus(`\u8BFB\u53D6\u8BB0\u5FC6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      }
+    };
+    useEffect?.(() => {
+      void loadPersonas();
+    }, []);
+    if (!useState) return void 0;
+    const switchPersona = (next) => {
+      setPersona(next);
+      setEntries([]);
+      setStatus("\u8BFB\u53D6\u4E2D\u2026");
+      void loadEntries(next);
+    };
+    const add = async () => {
+      if (persona === "") return;
+      const text = draft.trim();
+      if (text === "") {
+        setStatus("\u5148\u5199\u4E00\u53E5\u8981\u8BB0\u4F4F\u7684\u8BDD");
+        return;
+      }
+      setBusy(true);
+      try {
+        const result = await callJson(MEMORY_BASE, { persona, action: "add", text, importance: Number(importance) });
+        if (result.ok && Array.isArray(result.entries)) {
+          setEntries(result.entries);
+          setDraft("");
+          setStatus(`\u5DF2\u6DFB\u52A0\uFF0C\u5171 ${result.entries.length} \u6761`);
+        } else {
+          setStatus(`\u6DFB\u52A0\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u6DFB\u52A0\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const remove = async (id) => {
+      setBusy(true);
+      try {
+        const result = await callJson(MEMORY_BASE, { persona, action: "remove", id });
+        if (result.ok && Array.isArray(result.entries)) {
+          setEntries(result.entries);
+          setStatus(`\u5DF2\u5220\u9664\uFF0C\u5269 ${result.entries.length} \u6761`);
+        } else {
+          setStatus(`\u5220\u9664\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u5220\u9664\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const clear = async () => {
+      if (persona === "") return;
+      setBusy(true);
+      try {
+        const result = await callJson(MEMORY_BASE, { persona, action: "clear" });
+        if (result.ok) {
+          setEntries([]);
+          setStatus("\u5DF2\u6E05\u7A7A\u8FD9\u4E2A\u4EBA\u7684\u5168\u90E8\u8BB0\u5FC6");
+        } else {
+          setStatus(`\u6E05\u7A7A\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u6E05\u7A7A\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const personaSelect = personas.length > 0 ? h("div", {
+      children: [
+        h("span", { style: labelStyle2, children: "\u4EBA\u8BBE" }),
+        h("select", {
+          style: fieldStyle2,
+          value: persona,
+          onChange: (event) => switchPersona(event.target.value),
+          children: personas.map((item) => h("option", { key: item.id, value: item.id, children: `${item.name}${item.current ? "\uFF08\u5F53\u524D\uFF09" : ""}` }))
+        })
+      ]
+    }) : null;
+    const list = entries.length === 0 ? h("p", { style: { margin: 0, fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: "\u8FD8\u6CA1\u6709\u8BB0\u5FC6\u3002\u5927\u80A5\u9C7C\u89C9\u5F97\u503C\u5F97\u8BB0\u7684\u4F1A\u81EA\u5DF1\u8BB0\uFF1B\u4F60\u4E5F\u53EF\u4EE5\u5728\u8FD9\u91CC\u624B\u52A8\u52A0\u3002" }) : h("div", {
+      style: { display: "flex", flexDirection: "column", gap: "6px", maxHeight: "220px", overflow: "auto" },
+      children: entries.map(
+        (entry) => h("div", {
+          key: entry.id,
+          style: {
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "8px",
+            padding: "6px 8px",
+            borderRadius: "6px",
+            background: "var(--dsw-alias-bg-secondary, rgba(127,127,127,0.06))",
+            fontSize: "13px"
+          },
+          children: [
+            h("span", {
+              style: { flex: "1", wordBreak: "break-word" },
+              children: `[${IMPORTANCE_LABEL[entry.importance] ?? "\u666E\u901A"}] ${entry.text}`
+            }),
+            h("button", {
+              type: "button",
+              style: { ...buttonStyle2, padding: "2px 8px", fontSize: "12px" },
+              disabled: busy,
+              onClick: () => void remove(entry.id),
+              children: "\u5220"
+            })
+          ]
+        })
+      )
+    });
+    return h("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+        padding: "12px",
+        border: "1px solid var(--dsw-alias-border-l2)",
+        borderRadius: "10px",
+        marginTop: "16px"
+      },
+      children: [
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
+          h("strong", { style: { fontSize: "14px" }, children: "\u957F\u671F\u8BB0\u5FC6" }),
+          h("button", { type: "button", style: { ...buttonStyle2, padding: "2px 8px", fontSize: "12px" }, disabled: busy || persona === "", onClick: () => void clear(), children: "\u6E05\u7A7A\u8FD9\u4E2A\u4EBA\u7684\u8BB0\u5FC6" })
+        ] }),
+        h("p", { style: { margin: 0, fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: "\u6309\u4EBA\u8BBE\u5206\u5F00\u5B58\u3002\u5927\u80A5\u9C7C\u5728\u5BF9\u8BDD\u91CC\u89C9\u5F97\u503C\u5F97\u8BB0\u7684\u4F1A\u81EA\u5DF1\u5199\u8FDB\u6765\uFF1B\u8FD9\u91CC\u4E5F\u80FD\u624B\u52A8\u52A0\u3001\u5220\u3002\u4E0A\u9650 100 \u6761 / \u4EBA\u3002" }),
+        personaSelect,
+        list,
+        h("div", { style: { display: "flex", gap: "8px", alignItems: "flex-start" }, children: [
+          h("input", {
+            style: { ...fieldStyle2, flex: "1" },
+            placeholder: "\u624B\u52A8\u8BB0\u4E00\u6761\uFF08\u4F8B\u5982\uFF1A\u7528\u6237\u53EB\u6211\u5C0F\u9CB8\u9C7C\uFF09",
+            value: draft,
+            onChange: (event) => setDraft(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === "Enter") void add();
+            }
+          }),
+          h("select", {
+            style: { ...fieldStyle2, width: "88px" },
+            value: importance,
+            onChange: (event) => setImportance(event.target.value),
+            children: [
+              h("option", { value: "1", children: "\u666E\u901A" }),
+              h("option", { value: "2", children: "\u91CD\u8981" }),
+              h("option", { value: "3", children: "\u5173\u952E" })
+            ]
+          }),
+          h("button", { type: "button", style: buttonStyle2, disabled: busy || persona === "", onClick: () => void add(), children: "\u6DFB\u52A0" })
+        ] }),
+        status ? h("div", { style: { fontSize: "12px", color: "var(--dsw-alias-label-secondary)", wordBreak: "break-word" }, children: status }) : null
+      ]
+    });
+  };
+}
+
 // src/client/dafeiyu-page.ts
 var DAFEIYU_TAB_REMOTE = "remote";
 var DAFEIYU_TAB_PERSONA = "persona";
@@ -2303,6 +2534,7 @@ function mountDafeiyuSettings(deps) {
     return false;
   }
   const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks });
+  const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks });
   let cleanupRemote;
   const attach = (node) => {
     const element = node;
@@ -2340,8 +2572,11 @@ function mountDafeiyuSettings(deps) {
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement("div", { ref: attach });
     } else if (tab === DAFEIYU_TAB_PERSONA) {
+      const extras = [];
+      if (visionPanel) extras.push(createElement(visionPanel, {}));
+      if (memoryPanel) extras.push(createElement(memoryPanel, {}));
       body = createElement("div", {
-        children: visionPanel ? [createElement(personaSettings, { t: personaT }), createElement(visionPanel, {})] : [createElement(personaSettings, { t: personaT })]
+        children: [createElement(personaSettings, { t: personaT }), ...extras]
       });
     } else {
       body = createElement("p", {
