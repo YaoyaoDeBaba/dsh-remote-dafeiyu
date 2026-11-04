@@ -242,3 +242,53 @@ test('注入：人设宿主接到 memory 才注册 dafeiyu:memory 段，没接�
     cleanup()
   }
 })
+
+test('注入：按人设解析取记忆 —— 内置人设那本写进去的，下一轮真的出现在段落里', () => {
+  const { home, cleanup } = tempHome()
+  const previousHome = process.env.DSH_HOME
+  process.env.DSH_HOME = home
+  try {
+    const provided: Record<string, { lastPersonaId?: () => string }> = {}
+    const sections: Array<{ name: string; text?: unknown }> = []
+    const service = createMemoryService(home)
+    const ctx = {
+      get(name: string, optional?: true) {
+        if (name === 'systemPrompt' && optional) {
+          return {
+            section(definition: { name: string; text?: unknown }) {
+              sections.push(definition)
+              return () => undefined
+            },
+            getSectionOrder: () => 0,
+          }
+        }
+        return undefined
+      },
+      effect(callback: () => unknown) { callback(); return () => undefined },
+      inject() { return () => undefined },
+      provide(name: string, value: unknown) { provided[name] = value as { lastPersonaId?: () => string } },
+    }
+    assert.equal(mountPersona(ctx as never, {}, { memory: service }).mounted, true)
+    const memory = sections.find((section) => section.name === 'dafeiyu:memory')
+    assert.ok(memory && typeof memory.text === 'function')
+    const textOf = memory.text as (context: unknown) => string
+
+    assert.equal(textOf({}), '', '空库时记忆段求值成空串')
+
+    const personaId = provided.dafeiyuPersona?.lastPersonaId?.() ?? ''
+    assert.ok(personaId !== '', '解析过后要能问出当前人设 id')
+    assert.equal(service.add(personaId, '用户周日不上班，别排活', { importance: 2 }).ok, true)
+
+    const text = textOf({})
+    assert.ok(text.includes('用户周日不上班'), `下一轮该带上记忆，实际：${text}`)
+    assert.ok(text.startsWith('## 长期记忆'))
+
+    // 另一个人设的记忆不会串进来
+    service.add('someone-else', '别人的秘密', { importance: 3 })
+    assert.ok(!textOf({}).includes('别人的秘密'))
+  } finally {
+    if (previousHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previousHome
+    cleanup()
+  }
+})
