@@ -8,6 +8,8 @@ DSH 远程控制插件的**大肥鱼定制版**（基于上游 [`dsh-remote/plug
 2. **设置页多一张卡**：`手机 App（安卓）` —— 二维码直接指向 APK 的最新构建，扫码即装。
 3. **设置页再多一张卡（0.7 起）：`会话备份（git）`** —— 把本机的会话记录定时推到你自己的**私有**仓库，换电脑一键拉回来。
 4. 包名/版本独立：`dsh-remote-dafeiyu@0.7.0-dafeiyu.0`，与官方插件互斥（装了这个就不用再装官方那个）。
+5. **识图（0.9.0 起）**：可接任意 OpenAI 兼容 / Responses / Anthropic / Gemini 端点，手机拍的照片发过来它能看懂。
+6. **长期记忆（0.9.0 起）**：人设带一份按人设隔离的记忆库，模型自己记/读/忘，设置页里也能手动管。
 
 ## 会话备份（0.7 起）
 
@@ -142,6 +144,29 @@ DSH 在主机上干活时会产出静态效果图（Unity VFX 预览、截图之
   路径必须是不带空格的绝对路径或写在反引号/引号里（带空格也能认）。
 - 手机端要 **App 也升到最新版**（旧 App 不认识这条命令，点了只会超时）。
 
+### 手机上常驻一只大肥鱼（占位形象，0.9.x 起）
+
+手机 App 界面上多了一只可拖动的小鲸鱼：电脑端在跑活时它会上下晃，点一下冒个小气泡
+（当前会话名 + 在回话/空闲），位置记在本机、重启还在。素材到了之前是内联 SVG 占位画；
+换成真同人图/帧动画时只改 `index.html` 里 `#fishBody` 的内容，状态与拖拽逻辑不动。
+
+## 识图（0.9.0 起）
+
+`大肥鱼 → 人设` 分栏底部有「识图」配置块：填 API 地址、Key、模型名，选协议
+（OpenAI 兼容 / Responses / Anthropic / Gemini / 自定义模板），保存后可以用右下角的
+悬浮按钮拍/选一张图试。开启后会多一个 `dafeiyu:vision` 提示段和一个 `recognize_image` 工具；
+识别结果以 `【图片识别】` 文本进会话，**不是**把原图交给模型。改配置后要重启 DSH 才会重挂提示段。
+
+## 长期记忆（0.9.0 起）
+
+每个人设一本记忆库，落 `~/.dsh/storages/dsh-remote-dafeiyu/memory/<personaId>.json`：
+
+- **模型自己记**：`record_memory` / `read_memory` / `forget_memory` 三个工具；
+- **注入有预算**：每轮把人设的那本记忆拼成 `dafeiyu:memory` 段（800 字封顶，按重要度 → 新近度），
+  超预算的条目只是这轮不注入，不删；
+- **能管**：设置页「人设」分栏里可以按人设切换、手动加（普通/重要/关键）、删单条、清空；
+- 同一个人设最多 100 条，超了淘汰「最不重要 + 最旧」。
+
 ## 与官方插件的差异（维护者看）
 
 - `src/ports/index.ts`：内核端口新增 `renameSession` / `modelCatalog` / `selectModel`（都是可选方法，缺了会明确回失败）。
@@ -149,6 +174,8 @@ DSH 在主机上干活时会产出静态效果图（Unity VFX 预览、截图之
 - `src/core/runtime.ts`：`handleCommand` 里四条 `case`（含 `cmd.file_image`）。
 - `src/core/file-image.ts`：看图的实现体（只读分块 + 扩展名/大小闸）。
 - `src/client/settings.ts` + `src/copy/app-qr.ts`：设置页那张「手机 App」卡。
+- `src/vision/*`：识图（配置/协议/服务/路由/提示段与工具）。
+- `src/memory/*`：长期记忆（服务/路由/工具）；人设宿主的 `dafeiyu:memory` 段在 `src/persona/host.ts`。
 - 协议侧在 [`dsh-remote-protocol`](https://github.com/YaoyaoDeBaba/dsh-remote-protocol)（同一份命令的 payload/schema 登记）。
 
 ## 构建
