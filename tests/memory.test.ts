@@ -230,6 +230,14 @@ test('注入：人设宿主接到 memory 才注册 dafeiyu:memory 段，没接�
     assert.equal(mountPersona(makeCtx(withoutMemory), {}).mounted, true)
     assert.ok(!withoutMemory.some((section) => section.name === 'dafeiyu:memory'), '没接记忆库就不许冒出记忆段')
     assert.ok(!withoutMemory.some((section) => section.name === 'dafeiyu:memory-hint'), '没接记忆库也不许冒出使用说明')
+
+    // 人设总开关关掉时，哪怕记忆库接上了，也不许往提示词里塞记忆/说明
+    const disabledSections: Array<{ name: string }> = []
+    assert.equal(mountPersona(makeCtx(disabledSections), { persona: { enabled: false } }, { memory: service }).mounted, true)
+    assert.ok(
+      !disabledSections.some((section) => section.name.startsWith('dafeiyu:memory')),
+      '人设关掉时记忆段与使用说明都不许出现',
+    )
   } finally {
     cleanup()
   }

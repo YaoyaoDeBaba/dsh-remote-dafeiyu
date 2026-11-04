@@ -1431,15 +1431,17 @@ export function apply(ctx, config, extra) {
       ? []
       : [{ name: CLOCK_SECTION, order: CLOCK_ORDER, text: () => clockText(true), preview: () => clockText(false) }]),
     // 长期记忆的使用说明（0.9.0-dafeiyu.3）：接入了记忆库就常驻，空库时也告诉模型「可以记」。
-    ...(extra && extra.memory
+    // 人设**总开关**关掉时一个字都不注入（不然「关掉人设」还留着记忆段，就是漏）。
+    ...(resolved.enabled !== false && extra && extra.memory
       ? [{ name: MEMORY_HINT_SECTION, order: MEMORY_HINT_ORDER, text: MEMORY_HINT_TEXT }]
       : []),
     // 长期记忆（0.9.0）：只有在接入了记忆库时才注册；空库返回 ''（等于不注入）。
-    ...(extra && extra.memory
+    ...(resolved.enabled !== false && extra && extra.memory
       ? [{
           name: MEMORY_SECTION,
           order: MEMORY_ORDER,
           text: (context) => {
+            if (resolved.enabled === false) return ''
             const { persona } = resolveFor({ sessionId: sessionIdOf(context), cwd: cwdOf(context) })
             notePersona(persona)
             return memoryTextFor(persona)
