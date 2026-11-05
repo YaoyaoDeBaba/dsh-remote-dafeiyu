@@ -2007,7 +2007,11 @@ export default function personaClientFactory(require) {
 			// 悬停 / 按下 / 键盘聚焦的样式表。内联样式命中不到伪类，必须走样式表
 			// （issue #6 评论：暗色下按钮没有 hover 反馈）。卸载时一起撤掉。
 			ctx.effect(() => injectHoverStyles(), "dsh-persona-dafeiyu: hover styles");
-			const t = ctx.locale.bind(NS);
+			// 0.9.0-dafeiyu.5：界面按中文优先查词条。
+			// 宿主语言若被设成 en，`ctx.locale.bind(NS)` 会一路英文；而大肥鱼这边是给中文用户用的，
+			// 所以先查我们自己的 `zh` 词典，查不到再交给宿主（宿主语言是 zh 时结果一样）。
+			const boundT = ctx.locale.bind(NS);
+			const t = (key) => (Object.prototype.hasOwnProperty.call(zh, key) ? zh[key] : boundT(key));
 			if (!options?.skipSettings) {
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",
@@ -2051,6 +2055,8 @@ export default function personaClientFactory(require) {
 		}
 
 		exports.apply = apply;
+		// 合页那边要拿同一份中文词典给 `PersonaSettingsSection` 的 `t`，保证面板一定是中文。
+		exports.zh = zh;
 		exports.inject = inject;
 		exports.NS = NS;
 		exports.SECTION_ID = SECTION_ID;

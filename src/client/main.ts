@@ -136,7 +136,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
         createElement: createElement as never,
         reactHooks,
         personaSettings: personaClient.PersonaSettingsSection,
-        personaT: resolvePersonaT(ctx),
+        personaT: resolvePersonaT(ctx, (personaClient as { zh?: Record<string, string> }).zh),
       })
     }
   } catch (error) {
@@ -259,18 +259,39 @@ function reportClient(fields: Record<string, unknown>): void {
   }
 }
 
-/** 人设那套字典的翻译函数（`personaDafeiyu` 命名空间）；拿不到就用 key 兜底。 */
-function resolvePersonaT(ctx: ClientContext): (key: string) => string {
-  try {
-    const bind = (ctx as { locale?: { bind?: (ns: string) => (key: string) => string } }).locale?.bind
-    if (typeof bind === 'function') {
-      const bound = bind('personaDafeiyu')
-      if (typeof bound === 'function') return bound
+/**
+ * 人设那套字典的翻译函数（`personaDafeiyu` 命名空间）。
+ *
+ * 顺序：**先查随包带的中文词典**（`zh`，人设客户端导出），查不到再问宿主 locale，
+ * 都拿不到就用 key 兜底。宿主语言是 en 时，光靠 `ctx.locale.bind` 会整页英文——
+ * 「大肥鱼」是给中文用户用的面板，所以中文优先。
+ *
+ * `bind` 也改成**第一次调用时才解析**：合页是先挂组件、后 `persona.apply()` 注册词典，
+ * 提前 bind 有拿到空命名空间的风险（渲染发生在挂载之后，所以这里一定来得及）。
+ */
+function resolvePersonaT(ctx: ClientContext, zh?: Record<string, string>): (key: string) => string {
+  let bound: ((key: string) => string) | undefined
+  let resolved = false
+  const fromZh = (key: string): string | undefined =>
+    zh && Object.prototype.hasOwnProperty.call(zh, key) ? zh[key] : undefined
+  return (key: string): string => {
+    const own = fromZh(key)
+    if (own !== undefined) return own
+    if (!resolved) {
+      resolved = true
+      try {
+        const bind = (ctx as { locale?: { bind?: (ns: string) => (key: string) => string } }).locale?.bind
+        if (typeof bind === 'function') {
+          const candidate = bind('personaDafeiyu')
+          if (typeof candidate === 'function') bound = candidate
+        }
+      } catch {
+        /* 这一代宿主没把 locale 当服务给，key 兜底照样能渲染 */
+      }
     }
-  } catch {
-    /* 这一代宿主没把 locale 当服务给，key 兜底照样能渲染 */
+    const external = bound?.(key)
+    return typeof external === 'string' && external !== '' ? external : key
   }
-  return (key: string) => key
 }
 
 /**

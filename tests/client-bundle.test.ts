@@ -3168,3 +3168,46 @@ test('反向判据：产物里那三态与占位真的在（不是恒绿的字�
   assert.notEqual(broken, raw, '夹具没改到任何东西（替换没命中）—— 那这条反证什么也没证')
   assert.ok(!broken.includes('addEventListener("error"'), '改完之后不该还能找到原写法')
 })
+
+test('大肥鱼合页：人设分栏拿到的 t 是「中文优先」（宿主语言 en 也拦不住面板汉化）', () => {
+  // 把 useState 钉在 persona 分栏：合页一渲染就直接走人设那一条路。
+  const personaReact = {
+    createElement: FAKE_REACT.createElement,
+    useState: <S>(_initial: S): [S, (next: S) => void] => ['persona' as unknown as S, () => undefined],
+    useEffect: () => undefined,
+    useRef: () => ({ current: null }),
+  }
+  const harness = load({ react: personaReact as never, slots: true })
+
+  const section = harness
+    .slotRegisters()
+    .find((row) => row.definition?.name === 'settings.section' && row.definition?.id === 'dafeiyu')
+  assert.ok(section, '必须先注册「大肥鱼」这一格')
+  assert.equal(typeof section.component, 'function')
+
+  const root = section.component!() as { type?: unknown; props?: Record<string, unknown> }
+  const tree = (root.type as () => unknown)() as { type?: unknown; props?: Record<string, unknown> }
+
+  /** 在 createElement 造出来的树里找第一个带 `t` 函数的节点（就是给 PersonaSettingsSection 的那个）。 */
+  function findT(node: unknown): ((key: string) => string) | undefined {
+    if (!node || typeof node !== 'object') return undefined
+    const item = node as { props?: Record<string, unknown>; children?: unknown }
+    if (item.props && typeof item.props.t === 'function') return item.props.t as (key: string) => string
+    const children = item.props?.children
+    if (Array.isArray(children)) {
+      for (const child of children) {
+        const found = findT(child)
+        if (found) return found
+      }
+    } else if (children !== undefined) {
+      return findT(children)
+    }
+    return undefined
+  }
+
+  const t = findT(tree)
+  assert.equal(typeof t, 'function', '人设分栏没把人设组件挂在带 t 的节点上')
+  assert.equal(t!('scopeGlobal'), '全局', `宿主语言 en 时面板也必须中文，实际：${t!('scopeGlobal')}`)
+  assert.equal(t!('listTitle'), '人设列表')
+  assert.equal(t!('zzzUnknownKey'), 'zzzUnknownKey', '词典里没有的 key 要原样兜底（不吞错）')
+})

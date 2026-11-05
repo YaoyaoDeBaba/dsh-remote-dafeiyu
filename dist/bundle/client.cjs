@@ -4200,7 +4200,8 @@ function personaClientFactory(require2) {
   function apply2(ctx, options) {
     ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-persona-dafeiyu: dictionaries");
     ctx.effect(() => injectHoverStyles(), "dsh-persona-dafeiyu: hover styles");
-    const t = ctx.locale.bind(NS);
+    const boundT = ctx.locale.bind(NS);
+    const t = (key) => Object.prototype.hasOwnProperty.call(zh, key) ? zh[key] : boundT(key);
     if (!options?.skipSettings) {
       ctx.slots.inject("settings.section", () => ctx.slots.register({
         name: "settings.section",
@@ -4234,6 +4235,7 @@ function personaClientFactory(require2) {
     }, PersonaHeroChip));
   }
   exports.apply = apply2;
+  exports.zh = zh;
   exports.inject = inject2;
   exports.NS = NS;
   exports.SECTION_ID = SECTION_ID;
@@ -4292,7 +4294,7 @@ function apply(ctx) {
         createElement,
         reactHooks,
         personaSettings: personaClient.PersonaSettingsSection,
-        personaT: resolvePersonaT(ctx)
+        personaT: resolvePersonaT(ctx, personaClient.zh)
       });
     }
   } catch (error) {
@@ -4392,16 +4394,27 @@ function reportClient(fields) {
   } catch {
   }
 }
-function resolvePersonaT(ctx) {
-  try {
-    const bind = ctx.locale?.bind;
-    if (typeof bind === "function") {
-      const bound = bind("personaDafeiyu");
-      if (typeof bound === "function") return bound;
+function resolvePersonaT(ctx, zh) {
+  let bound;
+  let resolved = false;
+  const fromZh = (key) => zh && Object.prototype.hasOwnProperty.call(zh, key) ? zh[key] : void 0;
+  return (key) => {
+    const own = fromZh(key);
+    if (own !== void 0) return own;
+    if (!resolved) {
+      resolved = true;
+      try {
+        const bind = ctx.locale?.bind;
+        if (typeof bind === "function") {
+          const candidate = bind("personaDafeiyu");
+          if (typeof candidate === "function") bound = candidate;
+        }
+      } catch {
+      }
     }
-  } catch {
-  }
-  return (key) => key;
+    const external = bound?.(key);
+    return typeof external === "string" && external !== "" ? external : key;
+  };
 }
 function resolveLoaderRequire() {
   try {
