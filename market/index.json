@@ -206,6 +206,10 @@
             "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
             "commit": "7d6b507523d95efd33a86ac1c0ff7053844fbe1f"
           },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
+        },
         {
           "version": "0.9.0-dafeiyu.2",
           "publishTimestamp": 1793800387,
@@ -214,6 +218,10 @@
             "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
             "commit": "856688c2711a914e5d261636c889185d44540d8f"
           },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
+        },
         {
           "version": "0.9.0-dafeiyu.3",
           "publishTimestamp": 1793800876,
@@ -222,6 +230,10 @@
             "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
             "commit": "dacfdd369bb08c089339b74806fc25a4659812f7"
           },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
+        },
         {
           "version": "0.9.0-dafeiyu.4",
           "publishTimestamp": 1793801995,
@@ -230,18 +242,6 @@
             "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
             "commit": "1d9385944bee0da13896ffbe7df3523a70b1d2c9"
           },
-          "engines": {
-            "dsh": ">=0.2.1"
-          }
-        },
-          "engines": {
-            "dsh": ">=0.2.1"
-          }
-        },
-          "engines": {
-            "dsh": ">=0.2.1"
-          }
-        },
           "engines": {
             "dsh": ">=0.2.1"
           }
