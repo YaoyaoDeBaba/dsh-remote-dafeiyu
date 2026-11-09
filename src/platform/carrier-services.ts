@@ -26,6 +26,9 @@
  *    但这里不假装是逐 token 流。
  */
 import type { QuestionItem, SessionSummary } from '@dsh-remote/protocol'
+import fs from 'node:fs'
+import path from 'node:path'
+import { loadAvatarManifest } from '../avatar/routes.js'
 import { messageOf } from '../shell/log-line.js'
 import { canParticipate, guardedSubscribe } from './guard.js'
 import { tailOfPath as tailOfPathByPlatform, workspaceProblem } from './paths.js'
@@ -188,6 +191,8 @@ export interface ServicesOptions {
    * 用户项目，GUI 的列表按项目分组就看不见它（用户 2026-10-04 实测）。
    */
   newSessionCwd?: string
+  /** 虚拟形象素材目录（`manifest.json` + `<id>.webp`）。 */
+  avatarDir?: string
   /**
    * 这条会话此刻**有没有人在等它**（2026-10-06 接上）。
    *
@@ -685,6 +690,35 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
     const text = known[type]
     if (text) subagentActivity.set(sessionId, { text, at: now })
+  }
+
+  /**
+   * 虚拟形象素材：manifest 直接读盘；sheet 以 base64 给协议层（手机端没有回环 HTTP）。
+   * 只在协议命令里被动调用；没有素材目录时返回 null，由协议层明确回“素材未安装”。
+   */
+  async function avatarManifest(): Promise<{ version: number; states: Array<Record<string, unknown>> } | null> {
+    const dir = options.avatarDir
+    if (dir === undefined || dir === '') return null
+    const manifest = loadAvatarManifest(dir)
+    if (manifest === undefined) return null
+    return { version: manifest.version, states: manifest.states as unknown as Array<Record<string, unknown>> }
+  }
+
+  async function avatarSheet(id: string): Promise<{ id: string; mime: string; base64: string; bytes: number } | null> {
+    const dir = options.avatarDir
+    if (dir === undefined || dir === '') return null
+    const manifest = loadAvatarManifest(dir)
+    const state = manifest?.states.find((row) => row.id === id)
+    if (state === undefined) return null
+    const file = path.resolve(dir, state.file)
+    if (!file.startsWith(path.resolve(dir) + path.sep)) return null
+    try {
+      const data = fs.readFileSync(file)
+      if (data.byteLength > 8 * 1024 * 1024) return null
+      return { id: state.id, mime: 'image/webp', base64: data.toString('base64'), bytes: data.byteLength }
+    } catch {
+      return null
+    }
   }
 
   /**
@@ -2275,6 +2309,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     sendPrompt,
     interrupt,
     readHistory,
+    avatarManifest,
+    avatarSheet,
     listSubagents,
     newSession,
     subscribe,

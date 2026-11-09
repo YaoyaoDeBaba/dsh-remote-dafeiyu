@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path21 from "node:path";
+import path22 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -6252,7 +6252,7 @@ function buildLogRecord(message, fields, now) {
   return record2;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/crypto/bytes.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/bytes.js
 import { Buffer as Buffer2 } from "node:buffer";
 var encoder = new TextEncoder();
 var decoder = new TextDecoder("utf-8", { fatal: false });
@@ -6279,7 +6279,7 @@ function concat(parts) {
   return out;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/crypto/keys.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/keys.js
 import { createHash, randomBytes } from "node:crypto";
 var KDF_NAMESPACE = "dsh-rc/v1";
 var UNIT_SEPARATOR = 31;
@@ -6316,7 +6316,7 @@ function randomNonce() {
   return new Uint8Array(randomBytes(NONCE_BYTES));
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/crypto/record.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/record.js
 var import_tweetnacl = __toESM(require_nacl_fast(), 1);
 var MAC_BYTES = 16;
 var MIN_RECORD_BYTES = NONCE_BYTES + MAC_BYTES;
@@ -6349,7 +6349,7 @@ function open(key, record2) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/crypto/sas.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/sas.js
 var import_tweetnacl2 = __toESM(require_nacl_fast(), 1);
 var SAS_LABEL = "dsh-rc/sas";
 var WRAP_LABEL = "dsh-rc/psk-wrap";
@@ -6385,7 +6385,7 @@ function wrapPsk(shared, psk) {
   };
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/identity/pairing.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/identity/pairing.js
 import { randomBytes as randomBytes2 } from "node:crypto";
 function randomPairingToken() {
   let n = 0;
@@ -6400,7 +6400,7 @@ function formatPairingToken(n) {
   return String(Math.abs(Math.trunc(n)) % 1e6).padStart(6, "0");
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/limits.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/limits.js
 var MAX_RELAY_MESSAGE_BYTES = 1024 * 1024;
 var MAX_CIPHERTEXT_BYTES = MAX_RELAY_MESSAGE_BYTES - 8 * 1024;
 var MAX_IMAGE_ATTACHMENTS = 4;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path22) {
-  if (!path22)
+function getElementAtPath(obj, path23) {
+  if (!path23)
     return obj;
-  return path22.reduce((acc, key) => acc?.[key], obj);
+  return path23.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path22, issues) {
+function prefixIssues(path23, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path22);
+    iss.path.unshift(path23);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path22 = []) => {
+  const processError = (error63, path23 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path22, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path23, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path22, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path22, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
       } else {
-        const fullpath = [...path22, ...issue2.path];
+        const fullpath = [...path23, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path22 = []) => {
+  const processError = (error63, path23 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path22, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path23, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path22, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path22, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
       } else {
-        const fullpath = [...path22, ...issue2.path];
+        const fullpath = [...path23, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path22 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path22) {
+  const path23 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path23) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path22 = ref.slice(1).split("/").filter(Boolean);
-  if (path22.length === 0) {
+  const path23 = ref.slice(1).split("/").filter(Boolean);
+  if (path23.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path22[0] === defsKey) {
-    const key = path22[1] === void 0 ? void 0 : decodeJSONPointerSegment(path22[1]);
+  if (path23[0] === defsKey) {
+    const key = path23[1] === void 0 ? void 0 : decodeJSONPointerSegment(path23[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -26128,7 +26128,7 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/frames.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/frames.js
 var PROTOCOL_VERSION = 1;
 var PAIRING_TOKEN_RE = /^\d{6}$/;
 var nonEmpty = external_exports.string().min(1);
@@ -26533,7 +26533,7 @@ function parseRelayFrameText(raw) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/platform/sleep.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/platform/sleep.js
 var SLEEP_BACKENDS = ["caffeinate", "systemd-inhibit", "unsupported"];
 function detectBackend(platform) {
   if (platform === "darwin")
@@ -26572,7 +26572,7 @@ function buildSleepCommand(platform, ownerPid, keepDisplay = false) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/payloads.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/payloads.js
 var SESSION_STATES = [
   "idle",
   "running",
@@ -27005,6 +27005,16 @@ var cmdListSubagents = external_exports.object({
   /** true = 连后代一起列（默认只列直接子级）。 */
   descendants: external_exports.boolean().optional()
 });
+var cmdAvatarManifest = external_exports.object({
+  t: external_exports.literal("cmd.avatar_manifest"),
+  cmdId: nonEmpty2
+});
+var cmdAvatarSheet = external_exports.object({
+  t: external_exports.literal("cmd.avatar_sheet"),
+  cmdId: nonEmpty2,
+  /** 动作 id（manifest.states[].id）。 */
+  id: nonEmpty2
+});
 var cmdPayload = external_exports.discriminatedUnion("t", [
   cmdSendPrompt,
   cmdAnswer,
@@ -27020,7 +27030,9 @@ var cmdPayload = external_exports.discriminatedUnion("t", [
   cmdGetModels,
   cmdSetModel,
   cmdFileImage,
-  cmdListSubagents
+  cmdListSubagents,
+  cmdAvatarManifest,
+  cmdAvatarSheet
 ]);
 function parseCmdPayload(value) {
   const parsed = cmdPayload.safeParse(value);
@@ -27042,6 +27054,8 @@ var PAYLOAD_TYPES = {
   cmdSetModel: "cmd.set_model",
   cmdFileImage: "cmd.file_image",
   cmdListSubagents: "cmd.list_subagents",
+  cmdAvatarManifest: "cmd.avatar_manifest",
+  cmdAvatarSheet: "cmd.avatar_sheet",
   evSessionChanged: "ev.session_changed",
   evMessageDelta: "ev.message_delta",
   evToolEvent: "ev.tool_event",
@@ -27072,7 +27086,7 @@ function isoOrUndefined(value) {
   return void 0;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/registry.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/registry.js
 var ENDPOINT_FRAME_NAMES = [
   "hello",
   "pair-begin",
@@ -27125,7 +27139,9 @@ var CMD_TYPES = [
   PAYLOAD_TYPES.cmdGetModels,
   PAYLOAD_TYPES.cmdSetModel,
   PAYLOAD_TYPES.cmdFileImage,
-  PAYLOAD_TYPES.cmdListSubagents
+  PAYLOAD_TYPES.cmdListSubagents,
+  PAYLOAD_TYPES.cmdAvatarManifest,
+  PAYLOAD_TYPES.cmdAvatarSheet
 ];
 var EV_TYPES = [
   PAYLOAD_TYPES.evSessionChanged,
@@ -27150,7 +27166,7 @@ function isKnownPayloadType(name2) {
   return typeof name2 === "string" && PAYLOAD_TYPE_SET.has(name2);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
 function pairGrant(sessionId, hostPub, nonce, wrappedPsk) {
   if (sessionId === "")
     throw new Error("pair-grant \u7684 sessionId \u4E0D\u80FD\u4E3A\u7A7A");
@@ -27280,7 +27296,7 @@ function sessionHistory(args) {
   };
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/errors.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/errors.js
 var RETRYABLE = /* @__PURE__ */ new Set([
   "rate_limited",
   "pair_table_full",
@@ -27291,7 +27307,7 @@ function isRetryableError(code) {
   return typeof code === "string" && RETRYABLE.has(code);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_ea6402fed7050536ed23de7382ccd7c3/node_modules/@dsh-remote/protocol/dist/src/wire/idempotency.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/idempotency.js
 var IdempotencyLedger = class {
   entries = /* @__PURE__ */ new Map();
   windowMs;
@@ -27644,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.13" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.14" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -28914,6 +28930,34 @@ var HostRuntime = class {
               ...page.latestSeq === void 0 ? {} : { latestSeq: page.latestSeq }
             })
           );
+          return;
+        }
+        case "cmd.avatar_manifest": {
+          const manifest = this.kernel.avatarManifest;
+          if (!manifest) {
+            reply(false, { message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u6CA1\u6709\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u80FD\u529B" });
+            return;
+          }
+          reply(true, { data: { manifest: await manifest.call(this.kernel) } });
+          return;
+        }
+        case "cmd.avatar_sheet": {
+          const sheet = this.kernel.avatarSheet;
+          if (!sheet) {
+            reply(false, { message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u6CA1\u6709\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u80FD\u529B" });
+            return;
+          }
+          const id = typeof cmd.id === "string" ? cmd.id : "";
+          if (id === "") {
+            reply(false, { message: "\u7F3A\u5C11\u52A8\u4F5C id" });
+            return;
+          }
+          const result2 = await sheet.call(this.kernel, id);
+          if (result2 === null) {
+            reply(false, { message: `\u6CA1\u6709\u8FD9\u4E2A\u5F62\u8C61\u52A8\u4F5C\uFF1A${id}` });
+            return;
+          }
+          reply(true, { data: result2 });
           return;
         }
         case "cmd.list_subagents": {
@@ -30442,6 +30486,7 @@ function createCarrierProbe(deps) {
           log: deps.log,
           clock: deps.clock,
           newSessionCwd: deps.config.newSessionCwd,
+          avatarDir: deps.config.avatarDir,
           // `awaiting-permission` / `awaiting-answer` 这两个会话状态只有 runtime 知道
           //（内核只答得出"在不在跑"），而小程序列表与「等你处理」区只认这两个字符串——
           // 不接上它们，真机上那个区永远是空的（判据见 carrier 的 pendingKindForSession
@@ -31493,6 +31538,729 @@ var SystemSleepBackend = class {
 };
 
 // src/platform/carrier-services.ts
+import fs3 from "node:fs";
+import path7 from "node:path";
+
+// src/avatar/routes.ts
+import fs2 from "node:fs";
+import path6 from "node:path";
+
+// src/pill/routes.ts
+import { createHash as createHash3 } from "node:crypto";
+
+// src/shell/user-config.ts
+import { mkdirSync as mkdirSync2, readFileSync } from "node:fs";
+import path5 from "node:path";
+var USER_CONFIG_FILE = "user-config.json";
+var MAX_TOKEN_INPUT = 256;
+function resolveUserConfigFile(statusFile2) {
+  const base = statusFile2 ? path5.dirname(statusFile2) : dataDir();
+  return path5.join(base, USER_CONFIG_FILE);
+}
+function normalizeUserOverrides(input2) {
+  const value = {};
+  if ("serverUrl" in input2) {
+    if (typeof input2.serverUrl !== "string") return { ok: false, field: "serverUrl", error: "must be a string" };
+    const trimmed = input2.serverUrl.trim();
+    if (trimmed === "") {
+      value.serverUrl = void 0;
+    } else {
+      if (!/^wss?:\/\/.+/.test(trimmed)) {
+        return { ok: false, field: "serverUrl", error: "must start with ws:// or wss://" };
+      }
+      value.serverUrl = trimmed;
+    }
+  }
+  if ("hostToken" in input2) {
+    if (typeof input2.hostToken !== "string") return { ok: false, field: "hostToken", error: "must be a string" };
+    const trimmed = input2.hostToken.trim();
+    if (trimmed === "") {
+      value.hostToken = void 0;
+    } else {
+      if (trimmed.length > MAX_TOKEN_INPUT) {
+        return { ok: false, field: "hostToken", error: `must be at most ${MAX_TOKEN_INPUT} characters` };
+      }
+      value.hostToken = trimmed;
+    }
+  }
+  return { ok: true, value };
+}
+function readUserConfig(file2, log) {
+  if (!file2) return {};
+  let raw;
+  try {
+    raw = readFileSync(file2, "utf8");
+  } catch {
+    return {};
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    log?.("user-config is not JSON, ignoring it", { file: path5.basename(file2) });
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object") {
+    log?.("user-config has an unknown shape, ignoring it", { file: path5.basename(file2) });
+    return {};
+  }
+  const record2 = parsed;
+  const value = {};
+  for (const field of ["serverUrl", "hostToken"]) {
+    if (!(field in record2)) continue;
+    const one = normalizeUserOverrides({ [field]: record2[field] });
+    if (!one.ok) {
+      log?.("user-config item ignored", { field, reason: one.error });
+      continue;
+    }
+    const kept = one.value[field];
+    if (typeof kept === "string") value[field] = kept;
+  }
+  return value;
+}
+function writeUserConfig(file2, overrides, now, log) {
+  if (!file2) return false;
+  const body = { version: 1, ...overrides, savedAt: now };
+  try {
+    mkdirSync2(path5.dirname(file2), { recursive: true });
+    writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
+    return true;
+  } catch (error62) {
+    log?.("user-config save failed", { message: String(error62?.message ?? error62).slice(0, 120) });
+    return false;
+  }
+}
+
+// src/pill/config-routes.ts
+var PLUGIN_CONFIG_ROUTE = "/plugins/dsh-remote-control/config";
+var MAX_CONFIG_BODY_BYTES = 8 * 1024;
+function json2(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+async function readJsonBody(request) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_CONFIG_BODY_BYTES) {
+        finish(void 0);
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8").trim();
+        finish(text === "" ? {} : JSON.parse(text));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function configReadHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json2(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json2(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    try {
+      json2(response, 200, deps.config());
+    } catch (error62) {
+      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function configWriteHandler(deps) {
+  return async (request, response) => {
+    if (request.method !== "POST") {
+      json2(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u914D\u7F6E\u5199\u5165\u88AB\u5B88\u536B\u62D2", { guard });
+      json2(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    const body = await readJsonBody(request);
+    if (body === void 0 || typeof body !== "object" || body === null || Array.isArray(body)) {
+      json2(response, 400, { error: "invalid", field: "body", detail: "body must be a JSON object" });
+      return;
+    }
+    const normalized = normalizeUserOverrides(body);
+    if (!normalized.ok) {
+      json2(response, 400, { error: "invalid", field: normalized.field, detail: normalized.error });
+      return;
+    }
+    try {
+      const saved = deps.saveConfig(normalized.value);
+      if (!saved.ok) {
+        json2(response, 400, { error: "invalid", field: saved.field, detail: saved.error });
+        return;
+      }
+      deps.log("\u8BBE\u7F6E\u9875\u5199\u5165\u81EA\u5B9A\u4E49\u914D\u7F6E", {
+        serverUrlSet: normalized.value.serverUrl !== void 0,
+        hostTokenSet: normalized.value.hostToken !== void 0
+      });
+      json2(response, 200, { state: "ok", saved: normalized.value, restartRequired: true, config: deps.config() });
+    } catch (error62) {
+      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function configRouteHandler(deps) {
+  const read = configReadHandler(deps);
+  const write = configWriteHandler(deps);
+  return (request, response) => request.method === "POST" ? write(request, response) : read(request, response);
+}
+
+// src/backup/routes.ts
+var BACKUP_ROUTE = "/plugins/dsh-remote-control/backup";
+var MAX_BODY_BYTES = 16 * 1024;
+function json3(response, code, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function readJson(request) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        finish(void 0);
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8").trim();
+        finish(text === "" ? {} : JSON.parse(text));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function publicConfig(config2) {
+  return { ...config2 };
+}
+function backupRouteHandler(deps) {
+  return async (request, response) => {
+    if (request.method === "GET" || request.method === "HEAD") {
+      if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+        json3(response, 403, { state: "failed", error: "request-not-trusted" });
+        return;
+      }
+      try {
+        const status = deps.status();
+        json3(response, 200, { state: "ok", status, config: publicConfig(deps.config()) });
+      } catch (error62) {
+        json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
+      }
+      return;
+    }
+    if (request.method !== "POST") {
+      json3(response, 405, { state: "failed", error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u5907\u4EFD\u8DEF\u7531\u88AB\u5B88\u536B\u62D2", { guard });
+      json3(response, 403, { state: "failed", error: "request-not-trusted", detail: guard });
+      return;
+    }
+    const body = await readJson(request);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      json3(response, 400, { state: "failed", error: "invalid", detail: "body \u8981\u662F\u4E00\u4E2A JSON \u5BF9\u8C61" });
+      return;
+    }
+    const payload = body;
+    const action = typeof payload.action === "string" ? payload.action : "";
+    try {
+      if (action === "save") {
+        const patch = payload.config && typeof payload.config === "object" && !Array.isArray(payload.config) ? payload.config : {};
+        const saved = deps.saveConfig(patch);
+        if (!saved.ok) {
+          json3(response, 400, { state: "failed", error: "invalid", field: saved.field, detail: saved.error });
+          return;
+        }
+        if ("token" in payload) {
+          const token = typeof payload.token === "string" ? payload.token.trim() : "";
+          const set2 = deps.setToken(token);
+          if (!set2.ok) {
+            json3(response, 400, { state: "failed", error: "invalid", field: "token", detail: set2.error ?? "" });
+            return;
+          }
+        }
+        json3(response, 200, { state: "ok", config: publicConfig(saved.config), status: deps.status() });
+        return;
+      }
+      if (action === "run") {
+        void deps.runNow("\u624B\u52A8").catch(() => {
+        });
+        json3(response, 202, { state: "ok", started: "run" });
+        return;
+      }
+      if (action === "restore") {
+        void deps.restore().catch(() => {
+        });
+        json3(response, 202, { state: "ok", started: "restore" });
+        return;
+      }
+      json3(response, 400, { state: "failed", error: "invalid", field: "action", detail: "\u53EA\u8BA4 save / run / restore" });
+    } catch (error62) {
+      json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+
+// src/pill/routes.ts
+var PAIR_NEW_ROUTE = "/plugins/dsh-remote-control/pairing/new";
+var PAIR_IMAGE_ROUTE = "/plugins/dsh-remote-control/pairing.png";
+var PAIR_STATUS_ROUTE = "/plugins/dsh-remote-control/status";
+var PAIR_APPROVE_ROUTE = "/plugins/dsh-remote-control/pair/approve";
+var PAIR_UNPAIR_ROUTE = "/plugins/dsh-remote-control/unpair";
+var PAIR_MARKER_HEADER = "x-drc-pair";
+var CLIENT_REPORT_ROUTE = "/plugins/dsh-remote-control/client-report";
+var PAIR_MARKER_VALUE = "1";
+function pairingEpoch(token) {
+  return createHash3("sha256").update(`dsh-rc/mp-code:${token}`).digest("hex").slice(0, 16);
+}
+var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+var HOST_ORIGIN_SCHEMES = /* @__PURE__ */ new Set(["dsh-app:"]);
+function hostnameOf(host) {
+  const trimmed = host.trim().toLowerCase();
+  if (trimmed.startsWith("[")) {
+    const end = trimmed.indexOf("]");
+    if (end === -1) return trimmed;
+    const rest = trimmed.slice(end + 1);
+    if (rest !== "" && !/^:\d+$/.test(rest)) return trimmed;
+    return trimmed.slice(0, end + 1);
+  }
+  const colon = trimmed.lastIndexOf(":");
+  if (colon !== -1 && !trimmed.slice(0, colon).includes(":") && /^\d+$/.test(trimmed.slice(colon + 1))) {
+    return trimmed.slice(0, colon);
+  }
+  return trimmed;
+}
+function hostIsLoopback(host) {
+  if (host === void 0 || host.trim() === "") return false;
+  return LOOPBACK_HOSTS.has(hostnameOf(host));
+}
+function originIsLoopbackOrAbsent(origin) {
+  if (origin === void 0 || origin.trim() === "") return true;
+  return originLooksLikeTheHostItself(origin);
+}
+function originLooksLikeTheHostItself(origin) {
+  try {
+    const url2 = new URL(origin);
+    if (HOST_ORIGIN_SCHEMES.has(url2.protocol)) return true;
+    if (url2.protocol !== "http:" && url2.protocol !== "https:") return false;
+    return LOOPBACK_HOSTS.has(url2.hostname);
+  } catch {
+    return false;
+  }
+}
+function rejectedBy(request) {
+  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
+  if (request.headers[PAIR_MARKER_HEADER] !== PAIR_MARKER_VALUE) return "pair-marker-missing";
+  const origin = request.headers.origin;
+  if (origin !== void 0 && origin.trim() !== "" && !originLooksLikeTheHostItself(origin)) return "origin-not-trusted";
+  return void 0;
+}
+function applyCors(request, response) {
+  const origin = request?.headers?.origin;
+  if (origin === void 0 || origin.trim() === "" || !originLooksLikeTheHostItself(origin)) return;
+  if (typeof response.setHeader !== "function") return;
+  try {
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "content-type, x-drc-pair");
+    response.setHeader("Access-Control-Max-Age", "600");
+  } catch {
+  }
+}
+function json4(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function pairNewHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u53D1\u7801\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    try {
+      const pairing = deps.ensureFresh();
+      if (!pairing) {
+        json4(response, 200, { state: "unavailable", reason: "relay-offline" });
+        return;
+      }
+      const epoch = pairingEpoch(pairing.token);
+      deps.log("\u914D\u5BF9\u7801\u7ECF\u72B6\u6001\u680F\u53D1\u51FA", { epoch: epoch.slice(0, 8), tokenLength: pairing.token.length });
+      json4(response, 200, {
+        state: "ready",
+        epoch,
+        token: pairing.token,
+        expiresInMs: Math.max(0, pairing.expiresAt - Date.now())
+      });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function pairImageHandler(deps) {
+  return async (request, response) => {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    try {
+      const pairing = deps.current();
+      if (!pairing) {
+        response.writeHead(204);
+        response.end();
+        return;
+      }
+      const bytes = await deps.mpCodeFor(pairing.token);
+      if (!bytes || bytes.length === 0) {
+        json4(response, 503, { error: "mp_code_unavailable" });
+        return;
+      }
+      response.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": bytes.length,
+        // 一张码会被就地换掉（半程刷新、被手机用掉），所以绝不许缓存。
+        "Cache-Control": "no-store",
+        ETag: `"${pairingEpoch(pairing.token)}"`
+      });
+      if (request.method === "HEAD") response.end();
+      else response.end(bytes);
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function pillStatusHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    try {
+      const status = deps.status();
+      json4(response, 200, {
+        relay: status.relay,
+        paired: status.paired,
+        pairings: status.pairings,
+        serverUrl: status.serverUrl,
+        version: status.version,
+        waiting: status.waiting,
+        waitingOldestSec: status.waitingOldestSec,
+        // 白名单**逐字**列字段：漏一条就是功能不通，多一条就是凭据外泄。
+        pairApproval: status.pairApproval,
+        // 2026-10-21 晚：主机自动放行之后，最近放行的那 6 位数字改由这一格带着
+        // （放行是"取走即焚"，`pairApproval` 立刻变 null ⇒ 主机界面再也显示不出那串数字，
+        // 而它是用户唯一能对照的东西）。它**不是凭据**（真凭据在密文里）。
+        //
+        // ⚠️ 白名单是**逐字**列的 ⇒ 少列这一条，UI 就读不到它（而 status.json 里有，
+        // 于是 e2e 全绿、真机是坏的 —— 这条判据就是为它准备的）。
+        // 2026-10-26：码龄 / 剩余寿命（只有两个数字，不含 token/psk）——
+        // UI 据此显示"这张码 45 秒前生成，还有 135 秒"，而不是让用户扫了才知道失效。
+        pairing: status.pairing,
+        lastPairApproval: status.lastPairApproval
+      });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function pairApproveHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u914D\u5BF9\u653E\u884C\u88AB\u5B88\u536B\u62D2", { guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    try {
+      const approved = deps.approvePair();
+      deps.log("\u7ECF\u72B6\u6001\u680F\u653E\u884C\u914D\u5BF9", { approved });
+      if (!approved) {
+        json4(response, 409, { state: "stale" });
+        return;
+      }
+      json4(response, 200, { state: "ok" });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function unpairHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u89E3\u914D\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    try {
+      const unpaired = deps.unpair();
+      deps.log("\u7ECF\u72B6\u6001\u680F\u9000\u51FA\u914D\u5BF9", { unpaired });
+      json4(response, 200, { state: "ok", unpaired });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function clientReportHandler() {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    if (request.headers[PAIR_MARKER_HEADER] === void 0) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size <= 4096) chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        const path23 = __require("node:path");
+        const fs10 = __require("node:fs");
+        const dir = path23.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs10.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs10.writeFileSync(
+          path23.join(dir, "client-report.json"),
+          `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
+`,
+          { mode: 384 }
+        );
+        json4(response, 200, { ok: true });
+      } catch (error62) {
+        json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      }
+    });
+  };
+}
+function registerPillRoutes(webServer, deps) {
+  const off = [];
+  const definitions = [
+    { kind: "exact", path: PAIR_NEW_ROUTE, handler: pairNewHandler(deps) },
+    { kind: "exact", path: PAIR_IMAGE_ROUTE, handler: pairImageHandler(deps) },
+    { kind: "exact", path: PAIR_STATUS_ROUTE, handler: pillStatusHandler(deps) },
+    { kind: "exact", path: PAIR_UNPAIR_ROUTE, handler: unpairHandler(deps) },
+    { kind: "exact", path: PLUGIN_CONFIG_ROUTE, handler: configRouteHandler(deps) },
+    { kind: "exact", path: CLIENT_REPORT_ROUTE, handler: clientReportHandler() },
+    // 2026-10-21 加：用户确认「数字一致」后的放行口。**排在最后**，前面各条的编号语义不变。
+    { kind: "exact", path: PAIR_APPROVE_ROUTE, handler: pairApproveHandler(deps) }
+  ];
+  if (deps.backup) {
+    definitions.push({ kind: "exact", path: BACKUP_ROUTE, handler: backupRouteHandler(deps.backup) });
+  }
+  const wrapped = definitions.map((definition) => ({
+    ...definition,
+    handler: (request, response) => {
+      applyCors(request, response);
+      if (request?.method === "OPTIONS") {
+        response.writeHead(204);
+        response.end();
+        return;
+      }
+      return definition.handler(request, response);
+    }
+  }));
+  try {
+    for (const definition of wrapped) off.push(webServer.register(definition));
+  } catch (error62) {
+    for (const unregister of off.splice(0)) {
+      try {
+        unregister();
+      } catch {
+      }
+    }
+    throw error62;
+  }
+  return () => {
+    for (const unregister of off) {
+      try {
+        unregister();
+      } catch {
+      }
+    }
+  };
+}
+
+// src/avatar/routes.ts
+var AVATAR_BASE = "/api/dsh-remote-dafeiyu/avatar";
+var AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`;
+var AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`;
+var AVATAR_STATE_ROUTE = `${AVATAR_BASE}/state`;
+function avatarDir(dshHome) {
+  return path6.join(dshHome, "storages", "dsh-remote-dafeiyu", "avatar");
+}
+function sanitizeState(row) {
+  if (!row || typeof row !== "object") return void 0;
+  const value = row;
+  const num = (v) => typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0;
+  const cols = num(value.cols);
+  const rows = num(value.rows);
+  const frames = num(value.frames);
+  const file2 = typeof value.file === "string" ? value.file : "";
+  if (typeof value.id !== "string" || cols <= 0 || rows <= 0 || frames <= 0 || file2 === "") return void 0;
+  if (path6.basename(file2) !== file2) return void 0;
+  return {
+    id: value.id,
+    label: typeof value.label === "string" && value.label !== "" ? value.label : value.id,
+    cols,
+    rows,
+    frames,
+    cellWidth: num(value.cellWidth) || 1,
+    cellHeight: num(value.cellHeight) || 1,
+    file: file2
+  };
+}
+function loadAvatarManifest(dir) {
+  try {
+    const parsed = JSON.parse(fs2.readFileSync(path6.join(dir, "manifest.json"), "utf8"));
+    const states = Array.isArray(parsed.states) ? parsed.states.map(sanitizeState).filter((s) => s !== void 0) : [];
+    if (states.length === 0) return void 0;
+    return { version: typeof parsed.version === "number" ? parsed.version : 1, states };
+  } catch {
+    return void 0;
+  }
+}
+function json5(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function rejected(request) {
+  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
+  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
+  return void 0;
+}
+function readonly2(request) {
+  return request.method === "GET" || request.method === "HEAD";
+}
+function avatarManifestHandler(dir) {
+  return (request, response) => {
+    applyCors(request, response);
+    const denied = rejected(request);
+    if (denied) return json5(response, 403, { ok: false, error: denied });
+    if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const manifest = loadAvatarManifest(dir);
+    if (manifest === void 0) return json5(response, 200, { ok: true, manifest: null, message: "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5" });
+    json5(response, 200, { ok: true, manifest });
+  };
+}
+function avatarSheetHandler(dir) {
+  return (request, response) => {
+    applyCors(request, response);
+    const denied = rejected(request);
+    if (denied) return json5(response, 403, { ok: false, error: denied });
+    if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const id = (url2.searchParams.get("id") ?? "").trim();
+    if (id === "") return json5(response, 400, { ok: false, error: "\u7F3A\u5C11 id" });
+    const manifest = loadAvatarManifest(dir);
+    const state = manifest?.states.find((row) => row.id === id);
+    if (state === void 0) return json5(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u52A8\u4F5C" });
+    const file2 = path6.resolve(dir, state.file);
+    if (!file2.startsWith(path6.resolve(dir) + path6.sep)) return json5(response, 403, { ok: false, error: "path-escape" });
+    let data;
+    try {
+      data = fs2.readFileSync(file2);
+    } catch {
+      return json5(response, 404, { ok: false, error: "\u7D20\u6750\u6587\u4EF6\u4E0D\u5B58\u5728" });
+    }
+    response.writeHead(200, {
+      "Content-Type": "image/webp",
+      "Content-Length": data.byteLength,
+      "Cache-Control": "public, max-age=86400, immutable"
+    });
+    if (request.method === "HEAD") response.end();
+    else response.end(data);
+  };
+}
+function avatarStateHandler(getStatus) {
+  return (request, response) => {
+    applyCors(request, response);
+    const denied = rejected(request);
+    if (denied) return json5(response, 403, { ok: false, error: denied });
+    if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
+    if (sessionId === "") return json5(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+    let status;
+    try {
+      status = getStatus(sessionId);
+    } catch {
+      status = void 0;
+    }
+    json5(response, 200, { ok: true, status: status === "running" ? "running" : "idle" });
+  };
+}
+
+// src/platform/carrier-services.ts
 init_ports();
 var PARTICIPATE_OPTIONS = { global: true, prepend: true };
 var PARTICIPATED_EVENTS = ["approval/request", "user-questions/request"];
@@ -31759,6 +32527,29 @@ function createServicesKernel(services, options) {
     };
     const text = known[type];
     if (text) subagentActivity.set(sessionId, { text, at: now });
+  }
+  async function avatarManifest() {
+    const dir = options.avatarDir;
+    if (dir === void 0 || dir === "") return null;
+    const manifest = loadAvatarManifest(dir);
+    if (manifest === void 0) return null;
+    return { version: manifest.version, states: manifest.states };
+  }
+  async function avatarSheet(id) {
+    const dir = options.avatarDir;
+    if (dir === void 0 || dir === "") return null;
+    const manifest = loadAvatarManifest(dir);
+    const state = manifest?.states.find((row) => row.id === id);
+    if (state === void 0) return null;
+    const file2 = path7.resolve(dir, state.file);
+    if (!file2.startsWith(path7.resolve(dir) + path7.sep)) return null;
+    try {
+      const data = fs3.readFileSync(file2);
+      if (data.byteLength > 8 * 1024 * 1024) return null;
+      return { id: state.id, mime: "image/webp", base64: data.toString("base64"), bytes: data.byteLength };
+    } catch {
+      return null;
+    }
   }
   async function probeSubagent(id, running) {
     const now = options.clock.now();
@@ -32718,6 +33509,8 @@ function createServicesKernel(services, options) {
     sendPrompt,
     interrupt,
     readHistory,
+    avatarManifest,
+    avatarSheet,
     listSubagents,
     newSession,
     subscribe,
@@ -33382,8 +34175,8 @@ function createOneShotTimers(clock) {
 }
 
 // src/shell/status.ts
-import { mkdirSync as mkdirSync2 } from "node:fs";
-import path5 from "node:path";
+import { mkdirSync as mkdirSync3 } from "node:fs";
+import path8 from "node:path";
 var STATUS_REFRESH_MS = 3e3;
 var StatusFile = class {
   constructor(file2, clock, refreshMs = STATUS_REFRESH_MS) {
@@ -33398,7 +34191,7 @@ var StatusFile = class {
   write(snapshot) {
     if (!this.file) return;
     try {
-      mkdirSync2(path5.dirname(this.file), { recursive: true });
+      mkdirSync3(path8.dirname(this.file), { recursive: true });
       writeSecure(
         this.file,
         JSON.stringify({ ...snapshot, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), pid: process.pid }, null, 2) + "\n"
@@ -33435,8 +34228,8 @@ var StatusFile = class {
 
 // src/shell/host-id.ts
 import { randomBytes as randomBytes4 } from "node:crypto";
-import { mkdirSync as mkdirSync3, readFileSync } from "node:fs";
-import path6 from "node:path";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync2 } from "node:fs";
+import path9 from "node:path";
 var HOST_ID = /^drc-[0-9a-f]{12}$/;
 function newHostId() {
   return `drc-${randomBytes4(6).toString("hex")}`;
@@ -33444,23 +34237,23 @@ function newHostId() {
 function resolveHostId(dir, configured) {
   if (configured) return configured;
   if (!dir) return newHostId();
-  const file2 = path6.join(dir, "host-id");
+  const file2 = path9.join(dir, "host-id");
   let existing;
   try {
-    existing = readFileSync(file2, "utf8").trim();
+    existing = readFileSync2(file2, "utf8").trim();
   } catch {
     existing = void 0;
   }
   if (existing !== void 0 && HOST_ID.test(existing)) return existing;
   const fresh = newHostId();
   try {
-    mkdirSync3(dir, { recursive: true });
+    mkdirSync4(dir, { recursive: true });
     writeSecure(file2, `${fresh}
 `, { flag: existing === void 0 ? "wx" : "w" });
     return fresh;
   } catch {
     try {
-      const raced = readFileSync(file2, "utf8").trim();
+      const raced = readFileSync2(file2, "utf8").trim();
       if (HOST_ID.test(raced)) return raced;
     } catch {
     }
@@ -33469,9 +34262,9 @@ function resolveHostId(dir, configured) {
 }
 
 // src/shell/pair-store.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { createHash as createHash3 } from "node:crypto";
-import path7 from "node:path";
+import { readFileSync as readFileSync3 } from "node:fs";
+import { createHash as createHash4 } from "node:crypto";
+import path10 from "node:path";
 var storedConversationSchema = external_exports.object({
   id: external_exports.string().min(1),
   /** 配对 PSK（base64）。两把方向密钥在恢复时由它现派生，不落盘。 */
@@ -33491,12 +34284,12 @@ var storeSchema = external_exports.object({
 });
 function safeSegment2(hostId) {
   const cleaned = hostId.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 48);
-  const tag = createHash3("sha256").update(hostId).digest("hex").slice(0, 8);
+  const tag = createHash4("sha256").update(hostId).digest("hex").slice(0, 8);
   return `${cleaned || "host"}-${tag}`;
 }
 function defaultPairStoreFile(statusFile2, hostId) {
   if (!statusFile2) return "";
-  return path7.join(path7.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
+  return path10.join(path10.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
 }
 var PairStore = class {
   constructor(options) {
@@ -33533,7 +34326,7 @@ var PairStore = class {
     if (!file2) return [];
     let raw;
     try {
-      raw = readFileSync2(file2, "utf8");
+      raw = readFileSync3(file2, "utf8");
     } catch {
       return [];
     }
@@ -33565,7 +34358,7 @@ var PairStore = class {
     if (!file2) return false;
     const body = JSON.stringify({ version: 1, hostId, savedAt: now, conversations }) + "\n";
     try {
-      ensureSecureDir(path7.dirname(file2));
+      ensureSecureDir(path10.dirname(file2));
       writeSecure(file2, body);
       this.savedAt = now;
       this.dirty = false;
@@ -33608,7 +34401,7 @@ function describeSelfHosting(serverUrl) {
 
 // src/shell/config.ts
 import { homedir } from "node:os";
-import path8 from "node:path";
+import path11 from "node:path";
 var DEFAULT_CONFIG = {
   enabled: true,
   /**
@@ -33633,7 +34426,7 @@ var DEFAULT_CONFIG = {
   hostLabel: "dsh-host",
   keepAwake: { enabled: true, idleReleaseSec: 300, keepDisplay: false },
   mockBridge: false,
-  statusFile: path8.join(homedir(), ".dsh", "dsh-remote-control", "status.json"),
+  statusFile: path11.join(homedir(), ".dsh", "dsh-remote-control", "status.json"),
   unarchiveOnPrompt: true,
   pairOnStartSec: 0,
   pairTtlMs: 12e4,
@@ -33661,8 +34454,8 @@ function resolvePairStoreFile(config2, hostId) {
 function resolveUploadDir(config2) {
   const configured = config2.uploadDir.trim();
   if (!configured) {
-    const base = config2.statusFile ? path8.dirname(config2.statusFile) : dataDir();
-    return path8.join(base, "uploads");
+    const base = config2.statusFile ? path11.dirname(config2.statusFile) : dataDir();
+    return path11.join(base, "uploads");
   }
   return resolveAgainstBase(configured, config2.statusFile);
 }
@@ -33826,610 +34619,6 @@ function redact(value) {
   return `${value.slice(0, 4)}\u2026${value.slice(-2)}(${value.length})`;
 }
 
-// src/pill/routes.ts
-import { createHash as createHash4 } from "node:crypto";
-
-// src/shell/user-config.ts
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync3 } from "node:fs";
-import path9 from "node:path";
-var USER_CONFIG_FILE = "user-config.json";
-var MAX_TOKEN_INPUT = 256;
-function resolveUserConfigFile(statusFile2) {
-  const base = statusFile2 ? path9.dirname(statusFile2) : dataDir();
-  return path9.join(base, USER_CONFIG_FILE);
-}
-function normalizeUserOverrides(input2) {
-  const value = {};
-  if ("serverUrl" in input2) {
-    if (typeof input2.serverUrl !== "string") return { ok: false, field: "serverUrl", error: "must be a string" };
-    const trimmed = input2.serverUrl.trim();
-    if (trimmed === "") {
-      value.serverUrl = void 0;
-    } else {
-      if (!/^wss?:\/\/.+/.test(trimmed)) {
-        return { ok: false, field: "serverUrl", error: "must start with ws:// or wss://" };
-      }
-      value.serverUrl = trimmed;
-    }
-  }
-  if ("hostToken" in input2) {
-    if (typeof input2.hostToken !== "string") return { ok: false, field: "hostToken", error: "must be a string" };
-    const trimmed = input2.hostToken.trim();
-    if (trimmed === "") {
-      value.hostToken = void 0;
-    } else {
-      if (trimmed.length > MAX_TOKEN_INPUT) {
-        return { ok: false, field: "hostToken", error: `must be at most ${MAX_TOKEN_INPUT} characters` };
-      }
-      value.hostToken = trimmed;
-    }
-  }
-  return { ok: true, value };
-}
-function readUserConfig(file2, log) {
-  if (!file2) return {};
-  let raw;
-  try {
-    raw = readFileSync3(file2, "utf8");
-  } catch {
-    return {};
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    log?.("user-config is not JSON, ignoring it", { file: path9.basename(file2) });
-    return {};
-  }
-  if (!parsed || typeof parsed !== "object") {
-    log?.("user-config has an unknown shape, ignoring it", { file: path9.basename(file2) });
-    return {};
-  }
-  const record2 = parsed;
-  const value = {};
-  for (const field of ["serverUrl", "hostToken"]) {
-    if (!(field in record2)) continue;
-    const one = normalizeUserOverrides({ [field]: record2[field] });
-    if (!one.ok) {
-      log?.("user-config item ignored", { field, reason: one.error });
-      continue;
-    }
-    const kept = one.value[field];
-    if (typeof kept === "string") value[field] = kept;
-  }
-  return value;
-}
-function writeUserConfig(file2, overrides, now, log) {
-  if (!file2) return false;
-  const body = { version: 1, ...overrides, savedAt: now };
-  try {
-    mkdirSync4(path9.dirname(file2), { recursive: true });
-    writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
-    return true;
-  } catch (error62) {
-    log?.("user-config save failed", { message: String(error62?.message ?? error62).slice(0, 120) });
-    return false;
-  }
-}
-
-// src/pill/config-routes.ts
-var PLUGIN_CONFIG_ROUTE = "/plugins/dsh-remote-control/config";
-var MAX_CONFIG_BODY_BYTES = 8 * 1024;
-function json2(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-async function readJsonBody(request) {
-  return new Promise((resolve) => {
-    const chunks = [];
-    let size = 0;
-    let done = false;
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      resolve(value);
-    };
-    request.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > MAX_CONFIG_BODY_BYTES) {
-        finish(void 0);
-        return;
-      }
-      chunks.push(chunk);
-    });
-    request.on("end", () => {
-      try {
-        const text = Buffer.concat(chunks).toString("utf8").trim();
-        finish(text === "" ? {} : JSON.parse(text));
-      } catch {
-        finish(void 0);
-      }
-    });
-    request.on("error", () => finish(void 0));
-  });
-}
-function configReadHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json2(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json2(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    try {
-      json2(response, 200, deps.config());
-    } catch (error62) {
-      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function configWriteHandler(deps) {
-  return async (request, response) => {
-    if (request.method !== "POST") {
-      json2(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u914D\u7F6E\u5199\u5165\u88AB\u5B88\u536B\u62D2", { guard });
-      json2(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    const body = await readJsonBody(request);
-    if (body === void 0 || typeof body !== "object" || body === null || Array.isArray(body)) {
-      json2(response, 400, { error: "invalid", field: "body", detail: "body must be a JSON object" });
-      return;
-    }
-    const normalized = normalizeUserOverrides(body);
-    if (!normalized.ok) {
-      json2(response, 400, { error: "invalid", field: normalized.field, detail: normalized.error });
-      return;
-    }
-    try {
-      const saved = deps.saveConfig(normalized.value);
-      if (!saved.ok) {
-        json2(response, 400, { error: "invalid", field: saved.field, detail: saved.error });
-        return;
-      }
-      deps.log("\u8BBE\u7F6E\u9875\u5199\u5165\u81EA\u5B9A\u4E49\u914D\u7F6E", {
-        serverUrlSet: normalized.value.serverUrl !== void 0,
-        hostTokenSet: normalized.value.hostToken !== void 0
-      });
-      json2(response, 200, { state: "ok", saved: normalized.value, restartRequired: true, config: deps.config() });
-    } catch (error62) {
-      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function configRouteHandler(deps) {
-  const read = configReadHandler(deps);
-  const write = configWriteHandler(deps);
-  return (request, response) => request.method === "POST" ? write(request, response) : read(request, response);
-}
-
-// src/backup/routes.ts
-var BACKUP_ROUTE = "/plugins/dsh-remote-control/backup";
-var MAX_BODY_BYTES = 16 * 1024;
-function json3(response, code, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function readJson(request) {
-  return new Promise((resolve) => {
-    const chunks = [];
-    let size = 0;
-    let done = false;
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      resolve(value);
-    };
-    request.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
-        finish(void 0);
-        return;
-      }
-      chunks.push(chunk);
-    });
-    request.on("end", () => {
-      try {
-        const text = Buffer.concat(chunks).toString("utf8").trim();
-        finish(text === "" ? {} : JSON.parse(text));
-      } catch {
-        finish(void 0);
-      }
-    });
-    request.on("error", () => finish(void 0));
-  });
-}
-function publicConfig(config2) {
-  return { ...config2 };
-}
-function backupRouteHandler(deps) {
-  return async (request, response) => {
-    if (request.method === "GET" || request.method === "HEAD") {
-      if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-        json3(response, 403, { state: "failed", error: "request-not-trusted" });
-        return;
-      }
-      try {
-        const status = deps.status();
-        json3(response, 200, { state: "ok", status, config: publicConfig(deps.config()) });
-      } catch (error62) {
-        json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
-      }
-      return;
-    }
-    if (request.method !== "POST") {
-      json3(response, 405, { state: "failed", error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u5907\u4EFD\u8DEF\u7531\u88AB\u5B88\u536B\u62D2", { guard });
-      json3(response, 403, { state: "failed", error: "request-not-trusted", detail: guard });
-      return;
-    }
-    const body = await readJson(request);
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      json3(response, 400, { state: "failed", error: "invalid", detail: "body \u8981\u662F\u4E00\u4E2A JSON \u5BF9\u8C61" });
-      return;
-    }
-    const payload = body;
-    const action = typeof payload.action === "string" ? payload.action : "";
-    try {
-      if (action === "save") {
-        const patch = payload.config && typeof payload.config === "object" && !Array.isArray(payload.config) ? payload.config : {};
-        const saved = deps.saveConfig(patch);
-        if (!saved.ok) {
-          json3(response, 400, { state: "failed", error: "invalid", field: saved.field, detail: saved.error });
-          return;
-        }
-        if ("token" in payload) {
-          const token = typeof payload.token === "string" ? payload.token.trim() : "";
-          const set2 = deps.setToken(token);
-          if (!set2.ok) {
-            json3(response, 400, { state: "failed", error: "invalid", field: "token", detail: set2.error ?? "" });
-            return;
-          }
-        }
-        json3(response, 200, { state: "ok", config: publicConfig(saved.config), status: deps.status() });
-        return;
-      }
-      if (action === "run") {
-        void deps.runNow("\u624B\u52A8").catch(() => {
-        });
-        json3(response, 202, { state: "ok", started: "run" });
-        return;
-      }
-      if (action === "restore") {
-        void deps.restore().catch(() => {
-        });
-        json3(response, 202, { state: "ok", started: "restore" });
-        return;
-      }
-      json3(response, 400, { state: "failed", error: "invalid", field: "action", detail: "\u53EA\u8BA4 save / run / restore" });
-    } catch (error62) {
-      json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-
-// src/pill/routes.ts
-var PAIR_NEW_ROUTE = "/plugins/dsh-remote-control/pairing/new";
-var PAIR_IMAGE_ROUTE = "/plugins/dsh-remote-control/pairing.png";
-var PAIR_STATUS_ROUTE = "/plugins/dsh-remote-control/status";
-var PAIR_APPROVE_ROUTE = "/plugins/dsh-remote-control/pair/approve";
-var PAIR_UNPAIR_ROUTE = "/plugins/dsh-remote-control/unpair";
-var PAIR_MARKER_HEADER = "x-drc-pair";
-var CLIENT_REPORT_ROUTE = "/plugins/dsh-remote-control/client-report";
-var PAIR_MARKER_VALUE = "1";
-function pairingEpoch(token) {
-  return createHash4("sha256").update(`dsh-rc/mp-code:${token}`).digest("hex").slice(0, 16);
-}
-var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-var HOST_ORIGIN_SCHEMES = /* @__PURE__ */ new Set(["dsh-app:"]);
-function hostnameOf(host) {
-  const trimmed = host.trim().toLowerCase();
-  if (trimmed.startsWith("[")) {
-    const end = trimmed.indexOf("]");
-    if (end === -1) return trimmed;
-    const rest = trimmed.slice(end + 1);
-    if (rest !== "" && !/^:\d+$/.test(rest)) return trimmed;
-    return trimmed.slice(0, end + 1);
-  }
-  const colon = trimmed.lastIndexOf(":");
-  if (colon !== -1 && !trimmed.slice(0, colon).includes(":") && /^\d+$/.test(trimmed.slice(colon + 1))) {
-    return trimmed.slice(0, colon);
-  }
-  return trimmed;
-}
-function hostIsLoopback(host) {
-  if (host === void 0 || host.trim() === "") return false;
-  return LOOPBACK_HOSTS.has(hostnameOf(host));
-}
-function originIsLoopbackOrAbsent(origin) {
-  if (origin === void 0 || origin.trim() === "") return true;
-  return originLooksLikeTheHostItself(origin);
-}
-function originLooksLikeTheHostItself(origin) {
-  try {
-    const url2 = new URL(origin);
-    if (HOST_ORIGIN_SCHEMES.has(url2.protocol)) return true;
-    if (url2.protocol !== "http:" && url2.protocol !== "https:") return false;
-    return LOOPBACK_HOSTS.has(url2.hostname);
-  } catch {
-    return false;
-  }
-}
-function rejectedBy(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (request.headers[PAIR_MARKER_HEADER] !== PAIR_MARKER_VALUE) return "pair-marker-missing";
-  const origin = request.headers.origin;
-  if (origin !== void 0 && origin.trim() !== "" && !originLooksLikeTheHostItself(origin)) return "origin-not-trusted";
-  return void 0;
-}
-function applyCors(request, response) {
-  const origin = request?.headers?.origin;
-  if (origin === void 0 || origin.trim() === "" || !originLooksLikeTheHostItself(origin)) return;
-  if (typeof response.setHeader !== "function") return;
-  try {
-    response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Vary", "Origin");
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS");
-    response.setHeader("Access-Control-Allow-Headers", "content-type, x-drc-pair");
-    response.setHeader("Access-Control-Max-Age", "600");
-  } catch {
-  }
-}
-function json4(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function pairNewHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u53D1\u7801\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
-      json4(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    try {
-      const pairing = deps.ensureFresh();
-      if (!pairing) {
-        json4(response, 200, { state: "unavailable", reason: "relay-offline" });
-        return;
-      }
-      const epoch = pairingEpoch(pairing.token);
-      deps.log("\u914D\u5BF9\u7801\u7ECF\u72B6\u6001\u680F\u53D1\u51FA", { epoch: epoch.slice(0, 8), tokenLength: pairing.token.length });
-      json4(response, 200, {
-        state: "ready",
-        epoch,
-        token: pairing.token,
-        expiresInMs: Math.max(0, pairing.expiresAt - Date.now())
-      });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function pairImageHandler(deps) {
-  return async (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    try {
-      const pairing = deps.current();
-      if (!pairing) {
-        response.writeHead(204);
-        response.end();
-        return;
-      }
-      const bytes = await deps.mpCodeFor(pairing.token);
-      if (!bytes || bytes.length === 0) {
-        json4(response, 503, { error: "mp_code_unavailable" });
-        return;
-      }
-      response.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": bytes.length,
-        // 一张码会被就地换掉（半程刷新、被手机用掉），所以绝不许缓存。
-        "Cache-Control": "no-store",
-        ETag: `"${pairingEpoch(pairing.token)}"`
-      });
-      if (request.method === "HEAD") response.end();
-      else response.end(bytes);
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function pillStatusHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    try {
-      const status = deps.status();
-      json4(response, 200, {
-        relay: status.relay,
-        paired: status.paired,
-        pairings: status.pairings,
-        serverUrl: status.serverUrl,
-        version: status.version,
-        waiting: status.waiting,
-        waitingOldestSec: status.waitingOldestSec,
-        // 白名单**逐字**列字段：漏一条就是功能不通，多一条就是凭据外泄。
-        pairApproval: status.pairApproval,
-        // 2026-10-21 晚：主机自动放行之后，最近放行的那 6 位数字改由这一格带着
-        // （放行是"取走即焚"，`pairApproval` 立刻变 null ⇒ 主机界面再也显示不出那串数字，
-        // 而它是用户唯一能对照的东西）。它**不是凭据**（真凭据在密文里）。
-        //
-        // ⚠️ 白名单是**逐字**列的 ⇒ 少列这一条，UI 就读不到它（而 status.json 里有，
-        // 于是 e2e 全绿、真机是坏的 —— 这条判据就是为它准备的）。
-        // 2026-10-26：码龄 / 剩余寿命（只有两个数字，不含 token/psk）——
-        // UI 据此显示"这张码 45 秒前生成，还有 135 秒"，而不是让用户扫了才知道失效。
-        pairing: status.pairing,
-        lastPairApproval: status.lastPairApproval
-      });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function pairApproveHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u914D\u5BF9\u653E\u884C\u88AB\u5B88\u536B\u62D2", { guard });
-      json4(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    try {
-      const approved = deps.approvePair();
-      deps.log("\u7ECF\u72B6\u6001\u680F\u653E\u884C\u914D\u5BF9", { approved });
-      if (!approved) {
-        json4(response, 409, { state: "stale" });
-        return;
-      }
-      json4(response, 200, { state: "ok" });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function unpairHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u89E3\u914D\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
-      json4(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    try {
-      const unpaired = deps.unpair();
-      deps.log("\u7ECF\u72B6\u6001\u680F\u9000\u51FA\u914D\u5BF9", { unpaired });
-      json4(response, 200, { state: "ok", unpaired });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function clientReportHandler() {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    if (request.headers[PAIR_MARKER_HEADER] === void 0) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    const chunks = [];
-    let size = 0;
-    request.on("data", (chunk) => {
-      size += chunk.length;
-      if (size <= 4096) chunks.push(chunk);
-    });
-    request.on("end", () => {
-      try {
-        const path22 = __require("node:path");
-        const fs9 = __require("node:fs");
-        const dir = path22.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs9.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs9.writeFileSync(
-          path22.join(dir, "client-report.json"),
-          `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
-`,
-          { mode: 384 }
-        );
-        json4(response, 200, { ok: true });
-      } catch (error62) {
-        json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-      }
-    });
-  };
-}
-function registerPillRoutes(webServer, deps) {
-  const off = [];
-  const definitions = [
-    { kind: "exact", path: PAIR_NEW_ROUTE, handler: pairNewHandler(deps) },
-    { kind: "exact", path: PAIR_IMAGE_ROUTE, handler: pairImageHandler(deps) },
-    { kind: "exact", path: PAIR_STATUS_ROUTE, handler: pillStatusHandler(deps) },
-    { kind: "exact", path: PAIR_UNPAIR_ROUTE, handler: unpairHandler(deps) },
-    { kind: "exact", path: PLUGIN_CONFIG_ROUTE, handler: configRouteHandler(deps) },
-    { kind: "exact", path: CLIENT_REPORT_ROUTE, handler: clientReportHandler() },
-    // 2026-10-21 加：用户确认「数字一致」后的放行口。**排在最后**，前面各条的编号语义不变。
-    { kind: "exact", path: PAIR_APPROVE_ROUTE, handler: pairApproveHandler(deps) }
-  ];
-  if (deps.backup) {
-    definitions.push({ kind: "exact", path: BACKUP_ROUTE, handler: backupRouteHandler(deps.backup) });
-  }
-  const wrapped = definitions.map((definition) => ({
-    ...definition,
-    handler: (request, response) => {
-      applyCors(request, response);
-      if (request?.method === "OPTIONS") {
-        response.writeHead(204);
-        response.end();
-        return;
-      }
-      return definition.handler(request, response);
-    }
-  }));
-  try {
-    for (const definition of wrapped) off.push(webServer.register(definition));
-  } catch (error62) {
-    for (const unregister of off.splice(0)) {
-      try {
-        unregister();
-      } catch {
-      }
-    }
-    throw error62;
-  }
-  return () => {
-    for (const unregister of off) {
-      try {
-        unregister();
-      } catch {
-      }
-    }
-  };
-}
-
 // src/pill/start.ts
 function startPill(ctx, deps) {
   const { log } = deps;
@@ -34551,9 +34740,9 @@ function startPill(ctx, deps) {
 }
 
 // src/persona/host.ts
-import fs2 from "node:fs";
+import fs4 from "node:fs";
 import os2 from "node:os";
-import path10 from "node:path";
+import path12 from "node:path";
 var name = "dsh-persona-dafeiyu";
 var PERSONA_SECTION = "dafeiyu:persona";
 var PERSONA_SUFFIX_SECTION = "dafeiyu:persona-suffix";
@@ -34826,7 +35015,7 @@ function readSessionPicks(resolveValidId) {
   const picks = /* @__PURE__ */ new Map();
   let raw;
   try {
-    raw = JSON.parse(fs2.readFileSync(sessionPicksPath(), "utf8"));
+    raw = JSON.parse(fs4.readFileSync(sessionPicksPath(), "utf8"));
   } catch {
     return picks;
   }
@@ -34849,7 +35038,7 @@ function writeSessionPicks(picks, tombstones) {
   try {
     const merged = /* @__PURE__ */ new Map();
     try {
-      const onDisk = JSON.parse(fs2.readFileSync(file2, "utf8"));
+      const onDisk = JSON.parse(fs4.readFileSync(file2, "utf8"));
       const table = onDisk && typeof onDisk.picks === "object" && onDisk.picks !== null ? onDisk.picks : {};
       for (const [sessionId, personaId] of Object.entries(table)) {
         if (typeof sessionId === "string" && sessionId.length > 0 && typeof personaId === "string" && personaId.length > 0) {
@@ -34870,12 +35059,12 @@ function writeSessionPicks(picks, tombstones) {
     }
     picks.clear();
     for (const [sessionId, personaId] of merged) picks.set(sessionId, personaId);
-    fs2.mkdirSync(path10.dirname(file2), { recursive: true });
+    fs4.mkdirSync(path12.dirname(file2), { recursive: true });
     const payload = { version: SESSION_PICKS_VERSION, picks: Object.fromEntries(picks) };
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs2.writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}
+    fs4.writeFileSync(tmp, `${JSON.stringify(payload, null, 2)}
 `, "utf8");
-    fs2.renameSync(tmp, file2);
+    fs4.renameSync(tmp, file2);
   } catch {
   }
 }
@@ -34947,12 +35136,12 @@ function loggerOf(ctx) {
   }
 }
 function personaStorePath() {
-  const home = process.env.DSH_HOME || path10.join(os2.homedir(), ".dsh");
-  return path10.join(home, "storages", "dsh-persona-dafeiyu", "personas.json");
+  const home = process.env.DSH_HOME || path12.join(os2.homedir(), ".dsh");
+  return path12.join(home, "storages", "dsh-persona-dafeiyu", "personas.json");
 }
 function sessionPicksPath() {
-  const home = process.env.DSH_HOME || path10.join(os2.homedir(), ".dsh");
-  return path10.join(home, "storages", "dsh-persona-dafeiyu", "session-picks.json");
+  const home = process.env.DSH_HOME || path12.join(os2.homedir(), ".dsh");
+  return path12.join(home, "storages", "dsh-persona-dafeiyu", "session-picks.json");
 }
 var SESSION_PICKS_VERSION = 1;
 function emptyStore() {
@@ -35023,24 +35212,24 @@ function normalizeStore(raw) {
 }
 function readStore() {
   try {
-    return normalizeStore(JSON.parse(fs2.readFileSync(personaStorePath(), "utf8")));
+    return normalizeStore(JSON.parse(fs4.readFileSync(personaStorePath(), "utf8")));
   } catch {
     return emptyStore();
   }
 }
 function writeStore(store) {
   const file2 = personaStorePath();
-  fs2.mkdirSync(path10.dirname(file2), { recursive: true });
+  fs4.mkdirSync(path12.dirname(file2), { recursive: true });
   const tmp = `${file2}.${process.pid}.tmp`;
-  fs2.writeFileSync(tmp, `${JSON.stringify(store, null, 2)}
+  fs4.writeFileSync(tmp, `${JSON.stringify(store, null, 2)}
 `, "utf8");
-  fs2.renameSync(tmp, file2);
+  fs4.renameSync(tmp, file2);
   return file2;
 }
 function readPersonaFile(ctx, file2) {
-  const target = path10.resolve(file2);
+  const target = path12.resolve(file2);
   try {
-    const text = fs2.readFileSync(target, "utf8").trim();
+    const text = fs4.readFileSync(target, "utf8").trim();
     return text.length > 0 ? text : void 0;
   } catch (error62) {
     loggerOf(ctx)?.warn?.(`\u4EBA\u8BBE\u6587\u4EF6\u8BFB\u53D6\u5931\u8D25\uFF1A${target}\uFF08${error62?.message ?? error62}\uFF09`);
@@ -35056,8 +35245,8 @@ function configPersonaOf(ctx, config2) {
   if (file2.length > 0) {
     const text = readPersonaFile(ctx, file2);
     if (text !== void 0) {
-      const base = path10.basename(path10.resolve(file2));
-      return { id: "config", name: base.replace(/\.(md|markdown|txt)$/i, ""), source: "config", text, file: path10.resolve(file2) };
+      const base = path12.basename(path12.resolve(file2));
+      return { id: "config", name: base.replace(/\.(md|markdown|txt)$/i, ""), source: "config", text, file: path12.resolve(file2) };
     }
   }
   return void 0;
@@ -35872,16 +36061,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path22) {
+function deepGet(value, path23) {
   let cursor = value;
-  for (const key of path22) {
+  for (const key of path23) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path22) {
-  return String(path22 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path23) {
+  return String(path23 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -36038,12 +36227,12 @@ var VISION_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/vision/config";
 var VISION_RECOGNIZE_ROUTE = "/api/dsh-remote-dafeiyu/vision/recognize";
 var VISION_MODELS_ROUTE = "/api/dsh-remote-dafeiyu/vision/models";
 var MAX_BODY_BYTES2 = 25 * 1024 * 1024;
-function json5(response, status, body) {
+function json6(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected(request) {
+function rejected2(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -36073,67 +36262,67 @@ function readBody(request) {
 }
 function visionConfigHandler(deps) {
   return async (request, response) => {
-    const denied = rejected(request);
+    const denied = rejected2(request);
     if (denied) {
-      json5(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json5(response, 200, { ok: true, config: deps.service.view(), storageFile: deps.service.configFile });
+      json6(response, 200, { ok: true, config: deps.service.view(), storageFile: deps.service.configFile });
       return;
     }
     if (request.method !== "POST") {
-      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET\uFF08\u8BFB\uFF09/ POST\uFF08\u5199\uFF09" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET\uFF08\u8BFB\uFF09/ POST\uFF08\u5199\uFF09" });
       return;
     }
     const body = await readBody(request);
     if (!body.ok) {
-      json5(response, body.status, { ok: false, error: body.error });
+      json6(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const payload = parsed && typeof parsed === "object" ? parsed : {};
     const result2 = deps.service.save(payload.config !== void 0 ? payload.config : parsed);
     if (!result2.ok) {
-      json5(response, 500, { ok: false, error: result2.error ?? "\u4FDD\u5B58\u5931\u8D25" });
+      json6(response, 500, { ok: false, error: result2.error ?? "\u4FDD\u5B58\u5931\u8D25" });
       return;
     }
     deps.log("\u8BC6\u56FE\u914D\u7F6E\u5DF2\u4FDD\u5B58", { enabled: result2.config?.enabled, model: result2.config?.model });
-    json5(response, 200, { ok: true, config: result2.config });
+    json6(response, 200, { ok: true, config: result2.config });
   };
 }
 function visionRecognizeHandler(deps) {
   return async (request, response) => {
-    const denied = rejected(request);
+    const denied = rejected2(request);
     if (denied) {
-      json5(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     const body = await readBody(request);
     if (!body.ok) {
-      json5(response, body.status, { ok: false, error: body.error });
+      json6(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const imageBase64 = typeof parsed.imageBase64 === "string" ? parsed.imageBase64 : "";
     if (imageBase64 === "") {
-      json5(response, 400, { ok: false, error: "\u7F3A\u5C11 imageBase64" });
+      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 imageBase64" });
       return;
     }
     try {
@@ -36143,32 +36332,32 @@ function visionRecognizeHandler(deps) {
         prompt: typeof parsed.prompt === "string" ? parsed.prompt : void 0
       });
       deps.log("\u8BC6\u56FE\u5B8C\u6210", { chars: text.length });
-      json5(response, 200, { ok: true, text });
+      json6(response, 200, { ok: true, text });
     } catch (error62) {
       const status = error62 instanceof VisionError && error62.status >= 400 ? 502 : 400;
       const message = String(error62?.message ?? error62);
       deps.log("\u8BC6\u56FE\u5931\u8D25", { message: message.slice(0, 200) });
-      json5(response, status, { ok: false, error: message });
+      json6(response, status, { ok: false, error: message });
     }
   };
 }
 function visionModelsHandler(deps) {
   return async (request, response) => {
-    const denied = rejected(request);
+    const denied = rejected2(request);
     if (denied) {
-      json5(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST" && request.method !== "GET") {
-      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     try {
       const models = await deps.service.listModels();
-      json5(response, 200, { ok: true, models });
+      json6(response, 200, { ok: true, models });
     } catch (error62) {
       const status = error62 instanceof VisionError && error62.status >= 400 ? 502 : 400;
-      json5(response, status, { ok: false, error: String(error62?.message ?? error62) });
+      json6(response, status, { ok: false, error: String(error62?.message ?? error62) });
     }
   };
 }
@@ -36213,18 +36402,18 @@ function registerVisionRoutes(webServer, deps) {
 }
 
 // src/vision/service.ts
-import fs3 from "node:fs";
-import path11 from "node:path";
+import fs5 from "node:fs";
+import path13 from "node:path";
 var MAX_IMAGE_BYTES2 = 20 * 1024 * 1024;
 function visionDir(dshHome) {
-  return path11.join(dshHome, "storages", "dsh-remote-dafeiyu");
+  return path13.join(dshHome, "storages", "dsh-remote-dafeiyu");
 }
 function visionConfigFile(dshHome) {
-  return path11.join(visionDir(dshHome), "vision.json");
+  return path13.join(visionDir(dshHome), "vision.json");
 }
 function readVisionConfig(file2) {
   try {
-    const raw = fs3.readFileSync(file2, "utf8");
+    const raw = fs5.readFileSync(file2, "utf8");
     return normalizeVisionConfig(JSON.parse(raw));
   } catch {
     return { ...DEFAULT_VISION_CONFIG };
@@ -36232,11 +36421,11 @@ function readVisionConfig(file2) {
 }
 function writeVisionConfig(file2, config2) {
   try {
-    fs3.mkdirSync(path11.dirname(file2), { recursive: true });
+    fs5.mkdirSync(path13.dirname(file2), { recursive: true });
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs3.writeFileSync(tmp, `${JSON.stringify(config2, null, 2)}
+    fs5.writeFileSync(tmp, `${JSON.stringify(config2, null, 2)}
 `, "utf8");
-    fs3.renameSync(tmp, file2);
+    fs5.renameSync(tmp, file2);
     return true;
   } catch {
     return false;
@@ -36534,12 +36723,12 @@ var SUBAGENTS_ROUTE = "/api/dsh-remote-dafeiyu/subagents";
 var SUBAGENTS_ARCHIVE_ROUTE = "/api/dsh-remote-dafeiyu/subagents/archive";
 var SUBAGENTS_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/subagents/config";
 var GUIDANCE_PUSH_ROUTE = "/api/dsh-remote-dafeiyu/guidance/push";
-function json6(response, status, body) {
+function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected2(request) {
+function rejected3(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -36547,29 +36736,29 @@ function rejected2(request) {
 function subagentsHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
-    const denied = rejected2(request);
+    const denied = rejected3(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
     if (sessionId === "") {
-      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     const descendants = url2.searchParams.get("descendants") === "1";
     try {
       const items = await deps.list(sessionId, { descendants });
-      json6(response, 200, { ok: true, items, config: deps.config.read() });
+      json7(response, 200, { ok: true, items, config: deps.config.read() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u5B50\u4EE3\u7406\u5217\u8868\u8BFB\u53D6\u5931\u8D25", { message });
-      json6(response, 500, { ok: false, error: message });
+      json7(response, 500, { ok: false, error: message });
     }
   };
 }
@@ -36593,37 +36782,37 @@ function readBody2(request) {
 function subagentsArchiveHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
-    const denied = rejected2(request);
+    const denied = rejected3(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     if (!deps.archive) {
-      json6(response, 501, { ok: false, error: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5F52\u6863" });
+      json7(response, 501, { ok: false, error: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5F52\u6863" });
       return;
     }
     let body;
     try {
       body = JSON.parse(await readBody2(request));
     } catch {
-      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json7(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === "string" && id.trim() !== "").map((id) => id.trim()) : typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? [body.sessionId.trim()] : [];
     if (ids.length === 0) {
-      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
+      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
       return;
     }
     if (ids.length > 50) {
-      json6(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
+      json7(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
       return;
     }
     const archived = body.archived !== false;
@@ -36638,77 +36827,77 @@ function subagentsArchiveHandler(deps) {
         }
       }
       const failed = results.filter((row) => !row.ok).length;
-      json6(response, failed === 0 ? 200 : 207, { ok: failed === 0, results });
+      json7(response, failed === 0 ? 200 : 207, { ok: failed === 0, results });
     } catch (error62) {
-      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function subagentsConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
-    const denied = rejected2(request);
+    const denied = rejected3(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json6(response, 200, { ok: true, config: deps.config.read(), guidanceText: SUBAGENT_GUIDANCE });
+      json7(response, 200, { ok: true, config: deps.config.read(), guidanceText: SUBAGENT_GUIDANCE });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     try {
       const body = JSON.parse(await readBody2(request));
-      json6(response, 200, { ok: true, config: deps.config.write(body) });
+      json7(response, 200, { ok: true, config: deps.config.write(body) });
     } catch (error62) {
-      json6(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json7(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function guidancePushHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
-    const denied = rejected2(request);
+    const denied = rejected3(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     if (deps.pushGuidance === void 0) {
-      json6(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
+      json7(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
       return;
     }
     try {
       const body = JSON.parse(await readBody2(request));
       const which = body.which === "xyq" ? "xyq" : body.which === "both" ? "both" : "subagent";
-      json6(response, 200, { ok: true, which, result: await deps.pushGuidance(which) });
+      json7(response, 200, { ok: true, which, result: await deps.pushGuidance(which) });
     } catch (error62) {
-      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 
 // src/subagents/config.ts
-import fs5 from "node:fs";
-import path13 from "node:path";
+import fs7 from "node:fs";
+import path15 from "node:path";
 
 // src/memory/service.ts
-import fs4 from "node:fs";
-import path12 from "node:path";
+import fs6 from "node:fs";
+import path14 from "node:path";
 var DEFAULT_MEMORY_BUDGET = 800;
 var MAX_ENTRIES2 = 100;
 var MAX_ENTRY_CHARS = 500;
@@ -36716,14 +36905,14 @@ function resolveDshHome(env = process.env) {
   const explicit = (env.DSH_HOME ?? "").trim();
   if (explicit !== "") return explicit;
   const home = (env.USERPROFILE ?? env.HOME ?? "").trim();
-  return home === "" ? "" : path12.join(home, ".dsh");
+  return home === "" ? "" : path14.join(home, ".dsh");
 }
 function memoryDir(dshHome) {
-  return path12.join(dshHome, "storages", "dsh-remote-dafeiyu", "memory");
+  return path14.join(dshHome, "storages", "dsh-remote-dafeiyu", "memory");
 }
 function memoryFile(dir, personaId) {
   const safe = String(personaId ?? "").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "default";
-  return path12.join(dir, `${safe}.json`);
+  return path14.join(dir, `${safe}.json`);
 }
 function makeId() {
   return `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -36734,7 +36923,7 @@ function normalizeImportance(value) {
 }
 function readFileOf(file2) {
   try {
-    const parsed = JSON.parse(fs4.readFileSync(file2, "utf8"));
+    const parsed = JSON.parse(fs6.readFileSync(file2, "utf8"));
     const entries = Array.isArray(parsed.entries) ? parsed.entries.filter((entry) => Boolean(entry) && typeof entry.text === "string").map((entry) => ({
       id: typeof entry.id === "string" ? entry.id : makeId(),
       text: String(entry.text).slice(0, MAX_ENTRY_CHARS),
@@ -36749,11 +36938,11 @@ function readFileOf(file2) {
 }
 function writeFileOf(file2, entries) {
   try {
-    fs4.mkdirSync(path12.dirname(file2), { recursive: true });
+    fs6.mkdirSync(path14.dirname(file2), { recursive: true });
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs4.writeFileSync(tmp, `${JSON.stringify({ version: 1, entries }, null, 2)}
+    fs6.writeFileSync(tmp, `${JSON.stringify({ version: 1, entries }, null, 2)}
 `, "utf8");
-    fs4.renameSync(tmp, file2);
+    fs6.renameSync(tmp, file2);
     return true;
   } catch {
     return false;
@@ -36840,9 +37029,9 @@ function createMemoryService(dshHome, budget = DEFAULT_MEMORY_BUDGET) {
     counts() {
       const result2 = {};
       try {
-        for (const name2 of fs4.readdirSync(dir)) {
+        for (const name2 of fs6.readdirSync(dir)) {
           if (!name2.endsWith(".json")) continue;
-          result2[name2.slice(0, -5)] = readFileOf(path12.join(dir, name2)).entries.length;
+          result2[name2.slice(0, -5)] = readFileOf(path14.join(dir, name2)).entries.length;
         }
       } catch {
       }
@@ -36856,7 +37045,7 @@ var DEFAULT_CONFIG2 = { version: 1, enabled: true, guidance: true, idleWarnMs: 2
 var MIN_IDLE = 5 * 60 * 1e3;
 var MAX_IDLE = 7 * 24 * 60 * 60 * 1e3;
 function resolveSubagentsConfigFile(dshHome = resolveDshHome(process.env)) {
-  return path13.join(dshHome, "storages", "dsh-remote-dafeiyu", "subagents.json");
+  return path15.join(dshHome, "storages", "dsh-remote-dafeiyu", "subagents.json");
 }
 function normalizeSubagentsConfig(raw) {
   const value = raw && typeof raw === "object" ? raw : {};
@@ -36870,7 +37059,7 @@ function normalizeSubagentsConfig(raw) {
 }
 function readSubagentsConfig(file2) {
   try {
-    const text = fs5.readFileSync(file2, "utf8");
+    const text = fs7.readFileSync(file2, "utf8");
     return normalizeSubagentsConfig(JSON.parse(text));
   } catch {
     return { ...DEFAULT_CONFIG2 };
@@ -36879,11 +37068,11 @@ function readSubagentsConfig(file2) {
 function writeSubagentsConfig(file2, patch) {
   const next = normalizeSubagentsConfig({ ...readSubagentsConfig(file2), ...patch });
   try {
-    fs5.mkdirSync(path13.dirname(file2), { recursive: true });
+    fs7.mkdirSync(path15.dirname(file2), { recursive: true });
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs5.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
+    fs7.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
 `, "utf8");
-    fs5.renameSync(tmp, file2);
+    fs7.renameSync(tmp, file2);
   } catch {
   }
   return next;
@@ -37013,8 +37202,8 @@ function startSubagents(ctx, input2) {
 }
 
 // src/xyq/config.ts
-import fs6 from "node:fs";
-import path14 from "node:path";
+import fs8 from "node:fs";
+import path16 from "node:path";
 var DEFAULTS4 = {
   version: 1,
   enabled: true,
@@ -37026,7 +37215,7 @@ var DEFAULTS4 = {
   freedom: "explicit"
 };
 function resolveXyqConfigFile(dshHome = resolveDshHome(process.env)) {
-  return path14.join(dshHome, "storages", "dsh-remote-dafeiyu", "xyq.json");
+  return path16.join(dshHome, "storages", "dsh-remote-dafeiyu", "xyq.json");
 }
 function clampInt(value, min, max, fallback) {
   const num = typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
@@ -37054,7 +37243,7 @@ function normalizeXyqConfig(raw) {
 }
 function readXyqConfig(file2) {
   try {
-    return normalizeXyqConfig(JSON.parse(fs6.readFileSync(file2, "utf8")));
+    return normalizeXyqConfig(JSON.parse(fs8.readFileSync(file2, "utf8")));
   } catch {
     return { ...DEFAULTS4, budget: { ...DEFAULTS4.budget } };
   }
@@ -37062,11 +37251,11 @@ function readXyqConfig(file2) {
 function writeXyqConfig(file2, patch) {
   const next = normalizeXyqConfig({ ...readXyqConfig(file2), ...patch });
   try {
-    fs6.mkdirSync(path14.dirname(file2), { recursive: true });
+    fs8.mkdirSync(path16.dirname(file2), { recursive: true });
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs6.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
+    fs8.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
 `, "utf8");
-    fs6.renameSync(tmp, file2);
+    fs8.renameSync(tmp, file2);
   } catch {
   }
   return next;
@@ -37291,12 +37480,12 @@ var XYQ_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/xyq/config";
 var XYQ_STATUS_ROUTE = "/api/dsh-remote-dafeiyu/xyq/status";
 var XYQ_BALANCE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/balance";
 var XYQ_MODELS_ROUTE = "/api/dsh-remote-dafeiyu/xyq/models";
-function json7(response, status, body) {
+function json8(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected3(request) {
+function rejected4(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -37321,58 +37510,58 @@ function readBody3(request) {
 function xyqConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
-    const denied = rejected3(request);
+    const denied = rejected4(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json8(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json7(response, 200, { ok: true, config: deps.service.view() });
+      json8(response, 200, { ok: true, config: deps.service.view() });
       return;
     }
     if (request.method !== "POST") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json8(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     try {
       const body = JSON.parse(await readBody3(request));
-      json7(response, 200, { ok: true, config: deps.service.update(body) });
+      json8(response, 200, { ok: true, config: deps.service.update(body) });
     } catch (error62) {
-      json7(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json8(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function xyqQueryHandler(kind, deps) {
   return async (request, response) => {
     applyCors(request, response);
-    const denied = rejected3(request);
+    const denied = rejected4(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json8(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
       if (kind === "status") {
-        json7(response, 200, await deps.service.status());
+        json8(response, 200, await deps.service.status());
         return;
       }
       if (kind === "balance") {
-        json7(response, 200, await deps.service.balance());
+        json8(response, 200, await deps.service.balance());
         return;
       }
       const url2 = new URL(request.url ?? "/", "http://localhost");
       const type = url2.searchParams.get("type") === "image" ? "image" : "video";
-      json7(response, 200, await deps.service.models(type));
+      json8(response, 200, await deps.service.models(type));
     } catch (error62) {
       deps.log("\u5C0F\u4E91\u96C0\u67E5\u8BE2\u8DEF\u7531\u5931\u8D25", { kind, message: String(error62?.message ?? error62).slice(0, 160) });
-      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json8(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37498,9 +37687,9 @@ function xyqTools(service) {
 
 // src/xyq/cli.ts
 import { spawn as spawn2 } from "node:child_process";
-import fs7 from "node:fs";
+import fs9 from "node:fs";
 import os3 from "node:os";
-import path15 from "node:path";
+import path17 from "node:path";
 function platformDir() {
   const arch = process.arch === "arm64" ? "arm64" : "x64";
   if (process.platform === "win32") return `win32-${arch}`;
@@ -37511,14 +37700,14 @@ function binaryName() {
   return process.platform === "win32" ? "pippit-tool-cli.exe" : "pippit-tool-cli";
 }
 function cachedCliCandidates(home = os3.homedir()) {
-  const base = path15.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
+  const base = path17.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
   return [
-    path15.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
-    path15.join(base, "node_modules", ".bin", binaryName())
+    path17.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
+    path17.join(base, "node_modules", ".bin", binaryName())
   ];
 }
 function ensureCliScript(home = os3.homedir()) {
-  return path15.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
+  return path17.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
 }
 var defaultCliRunner = (args, options) => new Promise((resolve) => {
   const child = spawn2(cliPathForRun(args), args.slice(1), {
@@ -37556,7 +37745,7 @@ function cliPathForRun(args) {
 async function installCli(run, options = {}) {
   const home = options.home ?? os3.homedir();
   const script = ensureCliScript(home);
-  if (!fs7.existsSync(script)) return void 0;
+  if (!fs9.existsSync(script)) return void 0;
   const result2 = await run([process.execPath, script], { env: {}, timeoutMs: options.timeoutMs ?? 3e5 });
   const lines = result2.stdout.split(/\r?\n/).filter((line) => line.trim() !== "");
   for (let i = lines.length - 1; i >= 0; i -= 1) {
@@ -37571,11 +37760,11 @@ async function installCli(run, options = {}) {
 async function resolveCliPath(run, options = {}) {
   const home = options.home ?? os3.homedir();
   for (const candidate of cachedCliCandidates(home)) {
-    if (fs7.existsSync(candidate)) return candidate;
+    if (fs9.existsSync(candidate)) return candidate;
   }
   const installed = await installCli(run, { home });
-  if (installed !== void 0 && fs7.existsSync(installed)) {
-    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path15.basename(installed) });
+  if (installed !== void 0 && fs9.existsSync(installed)) {
+    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path17.basename(installed) });
     return installed;
   }
   return void 0;
@@ -37618,7 +37807,7 @@ function startXyq(ctx, deps) {
         [XYQ_BALANCE_ROUTE, xyqQueryHandler("balance", routeDeps)],
         [XYQ_MODELS_ROUTE, xyqQueryHandler("models", routeDeps)]
       ];
-      for (const [path22, handler] of registers) disposers.push(web.register({ kind: "exact", path: path22, handler }));
+      for (const [path23, handler] of registers) disposers.push(web.register({ kind: "exact", path: path23, handler }));
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -37723,100 +37912,6 @@ function startXyq(ctx, deps) {
   };
 }
 
-// src/avatar/routes.ts
-import fs8 from "node:fs";
-import path16 from "node:path";
-var AVATAR_BASE = "/api/dsh-remote-dafeiyu/avatar";
-var AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`;
-var AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`;
-function avatarDir(dshHome) {
-  return path16.join(dshHome, "storages", "dsh-remote-dafeiyu", "avatar");
-}
-function sanitizeState(row) {
-  if (!row || typeof row !== "object") return void 0;
-  const value = row;
-  const num = (v) => typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0;
-  const cols = num(value.cols);
-  const rows = num(value.rows);
-  const frames = num(value.frames);
-  const file2 = typeof value.file === "string" ? value.file : "";
-  if (typeof value.id !== "string" || cols <= 0 || rows <= 0 || frames <= 0 || file2 === "") return void 0;
-  if (path16.basename(file2) !== file2) return void 0;
-  return {
-    id: value.id,
-    label: typeof value.label === "string" && value.label !== "" ? value.label : value.id,
-    cols,
-    rows,
-    frames,
-    cellWidth: num(value.cellWidth) || 1,
-    cellHeight: num(value.cellHeight) || 1,
-    file: file2
-  };
-}
-function loadAvatarManifest(dir) {
-  try {
-    const parsed = JSON.parse(fs8.readFileSync(path16.join(dir, "manifest.json"), "utf8"));
-    const states = Array.isArray(parsed.states) ? parsed.states.map(sanitizeState).filter((s) => s !== void 0) : [];
-    if (states.length === 0) return void 0;
-    return { version: typeof parsed.version === "number" ? parsed.version : 1, states };
-  } catch {
-    return void 0;
-  }
-}
-function json8(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function rejected4(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
-  return void 0;
-}
-function readonly2(request) {
-  return request.method === "GET" || request.method === "HEAD";
-}
-function avatarManifestHandler(dir) {
-  return (request, response) => {
-    applyCors(request, response);
-    const denied = rejected4(request);
-    if (denied) return json8(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const manifest = loadAvatarManifest(dir);
-    if (manifest === void 0) return json8(response, 200, { ok: true, manifest: null, message: "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5" });
-    json8(response, 200, { ok: true, manifest });
-  };
-}
-function avatarSheetHandler(dir) {
-  return (request, response) => {
-    applyCors(request, response);
-    const denied = rejected4(request);
-    if (denied) return json8(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const id = (url2.searchParams.get("id") ?? "").trim();
-    if (id === "") return json8(response, 400, { ok: false, error: "\u7F3A\u5C11 id" });
-    const manifest = loadAvatarManifest(dir);
-    const state = manifest?.states.find((row) => row.id === id);
-    if (state === void 0) return json8(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u52A8\u4F5C" });
-    const file2 = path16.resolve(dir, state.file);
-    if (!file2.startsWith(path16.resolve(dir) + path16.sep)) return json8(response, 403, { ok: false, error: "path-escape" });
-    let data;
-    try {
-      data = fs8.readFileSync(file2);
-    } catch {
-      return json8(response, 404, { ok: false, error: "\u7D20\u6750\u6587\u4EF6\u4E0D\u5B58\u5728" });
-    }
-    response.writeHead(200, {
-      "Content-Type": "image/webp",
-      "Content-Length": data.byteLength,
-      "Cache-Control": "public, max-age=86400, immutable"
-    });
-    if (request.method === "HEAD") response.end();
-    else response.end(data);
-  };
-}
-
 // src/avatar/start.ts
 function startAvatar(ctx, deps) {
   const probe = {};
@@ -37832,6 +37927,21 @@ function startAvatar(ctx, deps) {
     try {
       disposers.push(web.register({ kind: "exact", path: AVATAR_MANIFEST_ROUTE, handler: avatarManifestHandler(dir) }));
       disposers.push(web.register({ kind: "exact", path: AVATAR_SHEET_ROUTE, handler: avatarSheetHandler(dir) }));
+      disposers.push(
+        web.register({
+          kind: "exact",
+          path: AVATAR_STATE_ROUTE,
+          handler: avatarStateHandler((sessionId) => {
+            try {
+              const agents = ctx.get?.("agents", true);
+              const agent = agents?.get?.(sessionId);
+              return typeof agent?.status === "string" ? agent.status : void 0;
+            } catch {
+              return void 0;
+            }
+          })
+        })
+      );
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -38232,11 +38342,11 @@ function startMemory(ctx, deps) {
 
 // src/backup/service.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import path19 from "node:path";
+import path20 from "node:path";
 
 // src/backup/config.ts
 import { existsSync, readFileSync as readFileSync4 } from "node:fs";
-import path17 from "node:path";
+import path18 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -38248,19 +38358,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path17.join(dshHome, "dsh-backup-git");
+  return path18.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path17.join(backupDir(dshHome), "config.json");
+  return path18.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path17.join(backupDir(dshHome), "credential.json");
+  return path18.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path17.join(backupDir(dshHome), "status.json");
+  return path18.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path17.join(backupDir(dshHome), "work");
+  return path18.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -38497,16 +38607,16 @@ import { createHash as createHash5 } from "node:crypto";
 import { existsSync as existsSync2, readdirSync, readFileSync as readFileSync5, statSync as statSync2 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path18 from "node:path";
+import path19 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path18.join(sessionsRoot, slug);
+    const slugDir = path19.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path18.join(slugDir, dirName);
+      const sessionDir = path19.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path18.join(sessionDir, fileName);
+        const file2 = path19.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync2(file2);
@@ -38518,7 +38628,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path18.posix.join(slug, dirName, fileName),
+          relPath: path19.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -38567,11 +38677,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path18.join(input2.stagingDir, "latest");
+  const staging = path19.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path18.join(staging, "sessions", entry.relPath);
+    const target = path19.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -38580,20 +38690,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path18.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path19.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path18.join(staging, "profiles", path18.basename(input2.profileDir));
+    const target = path19.join(staging, "profiles", path19.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path18.join(input2.profileDir, name2);
+      const source = path19.join(input2.profileDir, name2);
       if (!existsSync2(source)) continue;
-      await copyFileFresh(source, path18.join(target, name2));
+      await copyFileFresh(source, path19.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path18.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path19.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -38609,17 +38719,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path18.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path19.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path18.join(stagingDir, "archive");
+  const root = path19.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path18.join(root, entry.relPath);
+    const target = path19.join(root, entry.relPath);
     if (existsSync2(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -38665,7 +38775,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path18.join(dir, entry.name);
+    const full = path19.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -38676,7 +38786,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path18.dirname(target), { recursive: true });
+  await mkdir(path19.dirname(target), { recursive: true });
   if (existsSync2(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -38689,7 +38799,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path18.join(sourceDir, name2), path18.join(targetDir, name2));
+    await copyFileFresh(path19.join(sourceDir, name2), path19.join(targetDir, name2));
     names.push(name2);
   }
   return names;
@@ -38702,8 +38812,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path18.join(sourceDir, entry.name);
-    const target = path18.join(targetDir, entry.name);
+    const source = path19.join(sourceDir, entry.name);
+    const target = path19.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -38738,8 +38848,8 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync2(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path18.join(profilesRoot, name2);
-    const manifest = path18.join(dir, "package.json");
+    const dir = path19.join(profilesRoot, name2);
+    const manifest = path19.join(dir, "package.json");
     if (!existsSync2(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
@@ -38991,13 +39101,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path19.join(base, "staging"),
-      hotRepo: path19.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path19.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path19.join(this.deps.dshHome, "sessions"),
-      storagesDir: path19.join(this.deps.dshHome, "storages"),
-      profilesRoot: path19.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path19.join(this.deps.dshHome, "attachments")
+      staging: path20.join(base, "staging"),
+      hotRepo: path20.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path20.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path20.join(this.deps.dshHome, "sessions"),
+      storagesDir: path20.join(this.deps.dshHome, "storages"),
+      profilesRoot: path20.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path20.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -39020,7 +39130,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync6(repo, { recursive: true });
-    if (!existsSync3(path19.join(repo, ".git"))) {
+    if (!existsSync3(path20.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -39040,7 +39150,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path19.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path20.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -39086,11 +39196,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync6(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path19.join(base, "askpass.cmd");
+      const file3 = path20.join(base, "askpass.cmd");
       if (!existsSync3(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path19.join(base, "askpass.sh");
+    const file2 = path20.join(base, "askpass.sh");
     if (!existsSync3(file2)) {
       writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -39114,31 +39224,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path19.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path20.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path19.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path19.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path20.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path20.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path19.join(staging, "latest");
-      const restoredHot = existsSync3(path19.join(restoreLatest, "sessions")) ? countSessionFiles(path19.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path20.join(staging, "latest");
+      const restoredHot = existsSync3(path20.join(restoreLatest, "sessions")) ? countSessionFiles(path20.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path19.join(this.deps.dshHome, name2);
+        const target = path20.join(this.deps.dshHome, name2);
         if (existsSync3(target)) {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path19.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path19.join(restoreLatest, "storages"), path19.join(this.deps.dshHome, "storages"));
-      if (existsSync3(path19.join(restoreLatest, "attachments"))) {
-        await mergeTree(path19.join(restoreLatest, "attachments"), path19.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path20.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path20.join(restoreLatest, "storages"), path20.join(this.deps.dshHome, "storages"));
+      if (existsSync3(path20.join(restoreLatest, "attachments"))) {
+        await mergeTree(path20.join(restoreLatest, "attachments"), path20.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path19.join(staging, "archive"), sessionsRoot);
-      const profiles = path19.join(restoreLatest, "profiles");
+      await mergeTree(path20.join(staging, "archive"), sessionsRoot);
+      const profiles = path20.join(restoreLatest, "profiles");
       if (existsSync3(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -39175,15 +39285,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync2(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path19.join(repo, entry.name);
+    const target = path20.join(repo, entry.name);
     rmSync2(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync3(source)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
-    const from = path19.join(source, entry.name);
-    const to = path19.join(target, entry.name);
+    const from = path20.join(source, entry.name);
+    const to = path20.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync6(to, { recursive: true });
       await mergeTree(from, to);
@@ -39199,12 +39309,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync3(profilesRoot)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path19.join(source, entry.name);
-    const to = path19.join(profilesRoot, entry.name);
+    const from = path20.join(source, entry.name);
+    const to = path20.join(profilesRoot, entry.name);
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path19.join(from, file2.name), path19.join(to, file2.name));
+      await copyFileFresh(path20.join(from, file2.name), path20.join(to, file2.name));
     }
   }
 }
@@ -39218,7 +39328,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path19.join(dir, entry.name);
+      const full = path20.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -39234,7 +39344,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync7 } from "node:fs";
-import path20 from "node:path";
+import path21 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -39264,8 +39374,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path20.dirname(statusFile2) : dataDir();
-  return path20.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path21.dirname(statusFile2) : dataDir();
+  return path21.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -39279,12 +39389,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path20.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path21.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path20.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path21.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -39323,7 +39433,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path20.dirname(file2));
+    ensureSecureDir(path21.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -39506,7 +39616,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path21.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path22.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -39529,7 +39639,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path21.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path22.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -40078,7 +40188,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path21.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path22.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -40260,7 +40370,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path21.dirname(path21.dirname(config2.statusFile)) : path21.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path22.dirname(path22.dirname(config2.statusFile)) : path22.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });

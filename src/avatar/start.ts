@@ -2,7 +2,7 @@
  * avatar/start — 把两条只读路由挂到宿主的 webServer（软探测，挂不上不影响主链路）。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { AVATAR_MANIFEST_ROUTE, AVATAR_SHEET_ROUTE, avatarDir, avatarManifestHandler, avatarSheetHandler } from './routes.js'
+import { AVATAR_MANIFEST_ROUTE, AVATAR_SHEET_ROUTE, AVATAR_STATE_ROUTE, avatarDir, avatarManifestHandler, avatarSheetHandler, avatarStateHandler } from './routes.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -40,6 +40,21 @@ export function startAvatar(
     try {
       disposers.push(web.register({ kind: 'exact', path: AVATAR_MANIFEST_ROUTE, handler: avatarManifestHandler(dir) }))
       disposers.push(web.register({ kind: 'exact', path: AVATAR_SHEET_ROUTE, handler: avatarSheetHandler(dir) }))
+      disposers.push(
+        web.register({
+          kind: 'exact',
+          path: AVATAR_STATE_ROUTE,
+          handler: avatarStateHandler((sessionId) => {
+            try {
+              const agents = ctx.get?.('agents', true) as { get?: (id: string) => { status?: unknown } | undefined } | undefined
+              const agent = agents?.get?.(sessionId)
+              return typeof agent?.status === 'string' ? agent.status : undefined
+            } catch {
+              return undefined
+            }
+          }),
+        }),
+      )
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose()
       }

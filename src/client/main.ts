@@ -28,6 +28,7 @@ import { mountDafeiyuSettings } from './dafeiyu-page.js'
 // 识图那一半（0.9.0）：聊天页鲸鱼按钮 + 当前会话注入。
 import { mountVisionFab } from './vision-panel.js'
 import { mountSubagentMonitor } from './subagent-panel.js'
+import { mountAvatarWidget } from './avatar-widget.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -128,8 +129,16 @@ export function apply(ctx: ClientContext): (() => void) | void {
 
   // ②b 子代理监视器（2026-11-09）：当前对话有子代理时，右侧出现一颗小图标。
   let subagentsCleanup: (() => void) | undefined
+  let avatarCleanup: (() => void) | undefined
   try {
     subagentsCleanup = mountSubagentMonitor({ getCurrentSession: resolveCurrentSession(ctx) })
+
+  // avatar widget (0.14): chat page bottom-left, auto-switches by agent status.
+  try {
+    avatarCleanup = mountAvatarWidget({ getCurrentSession: resolveCurrentSession(ctx) })
+  } catch (error) {
+    swallow('avatar widget mount failed (swallowed)', error)
+  }
   } catch (error) {
     swallow('子代理监视器挂载抛错（已吞掉）', error)
   }
@@ -201,6 +210,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
       subagentsCleanup?.()
     } catch {
       /* 卸载动作不许拖住卸载 */
+    }
+    try {
+      avatarCleanup?.()
+    } catch {
+      /* avatar cleanup must not throw */
     }
     try {
       visionCleanup?.()

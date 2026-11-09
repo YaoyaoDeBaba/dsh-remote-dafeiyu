@@ -372,6 +372,10 @@ export interface KernelPort {
    * 默认只列直接子级。
    */
   listSubagents?(sessionId: string, options?: { descendants?: boolean }): Promise<KernelSubagent[]>
+  /** 虚拟形象素材清单（sprite sheet 元数据）；未安装素材时返回 null。 */
+  avatarManifest?(): Promise<{ version: number; states: Array<Record<string, unknown>> } | null>
+  /** 取一张 sprite sheet（webp）的 base64；id 非法/文件缺失返回 null。 */
+  avatarSheet?(id: string): Promise<{ id: string; mime: string; base64: string; bytes: number } | null>
 
   /**
    * 新建一条会话（手机上那个「新建会话」）。

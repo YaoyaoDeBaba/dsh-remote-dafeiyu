@@ -19,6 +19,7 @@ import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/rou
 export const AVATAR_BASE = '/api/dsh-remote-dafeiyu/avatar'
 export const AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`
 export const AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`
+export const AVATAR_STATE_ROUTE = `${AVATAR_BASE}/state`
 
 export interface AvatarState {
   id: string
@@ -129,5 +130,26 @@ export function avatarSheetHandler(dir: string) {
     })
     if (request.method === 'HEAD') response.end()
     else response.end(data)
+  }
+}
+
+
+/** `GET /avatar/state?sessionId=`：当前会话的 agent 状态（running/idle），给聊天页形象自动切动作。 */
+export function avatarStateHandler(getStatus: (sessionId: string) => string | undefined) {
+  return (request: IncomingMessage, response: ServerResponse): void => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) return json(response, 403, { ok: false, error: denied })
+    if (!readonly(request)) return json(response, 405, { ok: false, error: '只支持 GET' })
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    const sessionId = (url.searchParams.get('sessionId') ?? '').trim()
+    if (sessionId === '') return json(response, 400, { ok: false, error: '缺少 sessionId' })
+    let status: string | undefined
+    try {
+      status = getStatus(sessionId)
+    } catch {
+      status = undefined
+    }
+    json(response, 200, { ok: true, status: status === 'running' ? 'running' : 'idle' })
   }
 }

@@ -15,7 +15,7 @@ import { SERVICE_NAMES, type HostContext } from './host-context.js'
 export interface CarrierProbeDeps {
   clock: Clock
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
-  config: { newSessionCwd?: string; mockBridge: boolean }
+  config: { newSessionCwd?: string; mockBridge: boolean; avatarDir?: string }
   startKernel(kernel: unknown): void
   createServicesKernel(collected: never, options: Record<string, unknown>): unknown
   getRuntime(): { pendingKindForSession(sessionId: string): string | undefined } | undefined
@@ -60,6 +60,7 @@ export function createCarrierProbe(deps: CarrierProbeDeps) {
           log: deps.log,
           clock: deps.clock,
           newSessionCwd: deps.config.newSessionCwd,
+          avatarDir: deps.config.avatarDir,
           // `awaiting-permission` / `awaiting-answer` 这两个会话状态只有 runtime 知道
           //（内核只答得出"在不在跑"），而小程序列表与「等你处理」区只认这两个字符串——
           // 不接上它们，真机上那个区永远是空的（判据见 carrier 的 pendingKindForSession

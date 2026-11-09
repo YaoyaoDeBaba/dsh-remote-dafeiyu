@@ -676,6 +676,34 @@ export class HostRuntime {
           )
           return
         }
+        case 'cmd.avatar_manifest': {
+          const manifest = this.kernel.avatarManifest
+          if (!manifest) {
+            reply(false, { message: '主机这一代没有虚拟形象素材能力' })
+            return
+          }
+          reply(true, { data: { manifest: await manifest.call(this.kernel) } })
+          return
+        }
+        case 'cmd.avatar_sheet': {
+          const sheet = this.kernel.avatarSheet
+          if (!sheet) {
+            reply(false, { message: '主机这一代没有虚拟形象素材能力' })
+            return
+          }
+          const id = typeof cmd.id === 'string' ? cmd.id : ''
+          if (id === '') {
+            reply(false, { message: '缺少动作 id' })
+            return
+          }
+          const result = await sheet.call(this.kernel, id)
+          if (result === null) {
+            reply(false, { message: `没有这个形象动作：${id}` })
+            return
+          }
+          reply(true, { data: result })
+          return
+        }
         case 'cmd.list_subagents': {
           // 子代理监视器：只读枚举，不改任何状态（清理走 cmd.archive_session）。
           // 能力缺失时明确拒绝：空数组在两端都意味着"这个对话没有子代理"，

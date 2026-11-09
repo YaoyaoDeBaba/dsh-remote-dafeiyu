@@ -1,3 +1,14 @@
+## 0.9.0-dafeiyu.14 —— 形象接入聊天页 + 自动切动作 + 手机端
+
+- **聊天页形象小窗**：左下角 132px 的鲸鱼娘 sprite，点一下暂停/继续；
+- **按 agent 状态自动切动作**：干活 → 动脑（think）；回复到达 → 讲话（talk，2.5 秒）；空闲 → 待机（idle）；
+  状态来自新路由 `GET /api/dsh-remote-dafeiyu/avatar/state?sessionId=`（`agents.get(id).status`）；
+- **协议**：`@dsh-remote/protocol` 升到 `67149a6`，新增 `cmd.avatar_manifest` / `cmd.avatar_sheet`
+  （手机端可按需拉 webp；PC 走回环 HTTP）；
+- **手机端**：悬浮鲸鱼升级为 8 动作素材里的 idle/think/talk 三态（新 webp 替换旧的占位图），
+  消息到达自动切讲话、跑任务切动脑、其余待机；ui-test 增加 talk 窗口判据；
+- 判据：avatar 单测 4 条（含协议能力 manifest/sheet/非法 id/缺目录）+ 全量 813 项（796 通过 / 17 跳过）。
+
 ## 0.9.0-dafeiyu.13 —— 虚拟形象（8 动作 sprite）
 
 - 「大肥鱼 → 形象」不再占位：播放 8 个动作的 sprite 动画（待机/讲话/动脑/蹭得累/吃饭/打盹/跳舞/偷吃），

@@ -3436,6 +3436,131 @@ function mountSubagentMonitor(deps) {
   };
 }
 
+// src/client/avatar-widget.ts
+var BASE4 = "/api/dsh-remote-dafeiyu/avatar";
+var FPS2 = 24;
+function mountAvatarWidget(deps) {
+  const doc = globalThis.document;
+  if (!doc || !doc.body) return () => {
+  };
+  const style = doc.createElement("style");
+  style.textContent = `
+#dafeiyu-avatar-widget { position: fixed; left: 20px; bottom: 88px; width: 132px; z-index: 2147482999;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
+#dafeiyu-avatar-widget[hidden] { display: none !important; }
+#dafeiyu-avatar-widget .sprite { width: 132px; aspect-ratio: var(--dafeiyu-avatar-ratio, 1 / 1);
+  border-radius: 12px; background-repeat: no-repeat; pointer-events: auto; cursor: pointer;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
+#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; }
+`;
+  const styleId = "dafeiyu-avatar-widget-style";
+  const existing = doc.getElementById(styleId);
+  if (existing) existing.remove();
+  style.id = styleId;
+  doc.head.appendChild(style);
+  const wrap = doc.createElement("div");
+  wrap.id = "dafeiyu-avatar-widget";
+  wrap.hidden = true;
+  const sprite = doc.createElement("div");
+  sprite.className = "sprite";
+  const hint = doc.createElement("div");
+  hint.className = "hint";
+  hint.textContent = "\u70B9\u51FB\u6682\u505C/\u7EE7\u7EED";
+  wrap.append(sprite, hint);
+  doc.body.appendChild(wrap);
+  let states = [];
+  let current;
+  let frame = 0;
+  let playing = true;
+  let timer;
+  let pollTimer;
+  let lastStatus;
+  let talkUntil = 0;
+  let disposed = false;
+  const paint = () => {
+    if (!current) return;
+    const col = frame % current.cols;
+    const row = Math.floor(frame / current.cols) % current.rows;
+    sprite.style.backgroundPosition = `${col / Math.max(1, current.cols - 1) * 100}% ${row / Math.max(1, current.rows - 1) * 100}%`;
+    frame = (frame + 1) % current.frames;
+  };
+  const apply2 = (state) => {
+    if (!state) {
+      wrap.hidden = true;
+      return;
+    }
+    if (current?.id !== state.id) {
+      current = state;
+      frame = 0;
+      wrap.style.setProperty("--dafeiyu-avatar-ratio", `${state.cellWidth} / ${state.cellHeight}`);
+      sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
+      sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
+      paint();
+    }
+    wrap.hidden = false;
+    hint.textContent = state.label + (playing ? "" : " \xB7 \u5DF2\u6682\u505C");
+  };
+  const targetId = () => {
+    const status = globalThis.__dafeiyuAvatarStatus;
+    if (status === "running") return "think";
+    if (Date.now() < talkUntil) return "talk";
+    return "idle";
+  };
+  const refresh = () => {
+    if (disposed) return;
+    const session = deps.getCurrentSession?.();
+    if (!session) {
+      wrap.hidden = true;
+      return;
+    }
+    void (async () => {
+      try {
+        const response = await fetch(resolveHostUrl(`${BASE4}/state?sessionId=${encodeURIComponent(session)}`), { signal: AbortSignal.timeout(4e3) });
+        const answer = await response.json();
+        const status = answer.status === "running" ? "running" : "idle";
+        if (lastStatus === "running" && status === "idle") talkUntil = Date.now() + 2e3;
+        lastStatus = status;
+        globalThis.__dafeiyuAvatarStatus = status;
+        const wanted = targetId();
+        const fallback = states.find((state) => state.id === "idle");
+        apply2(states.find((state) => state.id === wanted) ?? fallback);
+      } catch {
+        apply2(states.find((state) => state.id === "idle"));
+      }
+    })();
+  };
+  void (async () => {
+    try {
+      const response = await fetch(resolveHostUrl(`${BASE4}/manifest`), { signal: AbortSignal.timeout(8e3) });
+      const answer = await response.json();
+      if (answer.ok === true && answer.manifest && Array.isArray(answer.manifest.states) && answer.manifest.states.length > 0) {
+        states = answer.manifest.states;
+        apply2(states.find((state) => state.id === "idle") ?? states[0]);
+      }
+    } catch {
+    }
+  })();
+  timer = setInterval(() => {
+    if (playing) paint();
+  }, Math.round(1e3 / FPS2));
+  pollTimer = setInterval(refresh, 2500);
+  refresh();
+  sprite.addEventListener("click", () => {
+    playing = !playing;
+    hint.textContent = (current?.label ?? "") + (playing ? "" : " \xB7 \u5DF2\u6682\u505C");
+  });
+  return () => {
+    disposed = true;
+    if (timer) clearInterval(timer);
+    if (pollTimer) clearInterval(pollTimer);
+    try {
+      wrap.remove();
+      style.remove();
+    } catch {
+    }
+  };
+}
+
 // src/persona/client-factory.js
 function personaClientFactory(require2) {
   var module2 = { exports: {} };
@@ -5109,8 +5234,14 @@ function apply(ctx) {
     swallow("\u8BC6\u56FE\u6309\u94AE\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
   }
   let subagentsCleanup;
+  let avatarCleanup;
   try {
     subagentsCleanup = mountSubagentMonitor({ getCurrentSession: resolveCurrentSession(ctx) });
+    try {
+      avatarCleanup = mountAvatarWidget({ getCurrentSession: resolveCurrentSession(ctx) });
+    } catch (error) {
+      swallow("avatar widget mount failed (swallowed)", error);
+    }
   } catch (error) {
     swallow("\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
   }
@@ -5172,6 +5303,10 @@ function apply(ctx) {
   return () => {
     try {
       subagentsCleanup?.();
+    } catch {
+    }
+    try {
+      avatarCleanup?.();
     } catch {
     }
     try {
