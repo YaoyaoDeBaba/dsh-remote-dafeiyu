@@ -3169,6 +3169,28 @@ test('反向判据：产物里那三态与占位真的在（不是恒绿的字�
   assert.ok(!broken.includes('addEventListener("error"'), '改完之后不该还能找到原写法')
 })
 
+test('大肥鱼合页：有「小云雀」分栏（CLI 生图/生视频的设置入口）', () => {
+  const harness = load({ react: FAKE_REACT as never, slots: true })
+  const section = harness
+    .slotRegisters()
+    .find((row) => row.definition?.name === 'settings.section' && row.definition?.id === 'dafeiyu')
+  assert.ok(section, '必须先注册「大肥鱼」这一格')
+  const root = section.component!() as { type?: unknown; props?: Record<string, unknown> }
+  const tree = (root.type as () => unknown)() as { props?: Record<string, unknown> }
+  function flatten(node: unknown, out: string[]): string[] {
+    if (node === null || node === undefined) return out
+    if (typeof node === 'string') { out.push(node); return out }
+    if (Array.isArray(node)) { for (const child of node) flatten(child, out); return out }
+    if (typeof node === 'object') {
+      const item = node as { props?: Record<string, unknown> }
+      if (item.props?.children !== undefined) flatten(item.props.children, out)
+    }
+    return out
+  }
+  const labels = flatten(tree, [])
+  assert.ok(labels.includes('小云雀'), `分栏必须有「小云雀」，实际：${labels.join(' / ')}`)
+})
+
 test('大肥鱼合页：有「派活助手」分栏（子代理监视器的设置入口）', () => {
   const harness = load({ react: FAKE_REACT as never, slots: true })
   const section = harness

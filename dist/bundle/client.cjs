@@ -2692,16 +2692,195 @@ function buildSubagentsPanel(deps) {
   };
 }
 
+// src/client/xyq-panel.ts
+var BASE2 = "/api/dsh-remote-dafeiyu/xyq";
+var fieldStyle3 = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "6px 8px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px"
+};
+var labelStyle4 = { fontSize: "12px", color: "var(--dsw-alias-label-secondary)", marginBottom: "4px", display: "block" };
+var buttonStyle4 = {
+  padding: "4px 12px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px",
+  cursor: "pointer"
+};
+var cardStyle2 = {
+  border: "1px solid var(--dsw-alias-border-l2)",
+  borderRadius: "10px",
+  padding: "12px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px"
+};
+var gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" };
+async function postJson(path, body) {
+  const response = await fetch(resolveHostUrl(path), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-drc-pair": "1" },
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: `\u5BBF\u4E3B\u8FD4\u56DE\u4E86\u975E JSON\uFF08HTTP ${response.status}\uFF09` };
+  }
+}
+function buildXyqPanel(deps) {
+  const { createElement: h, hooks } = deps;
+  const useState = hooks.useState;
+  const useEffect = hooks.useEffect;
+  if (typeof useState !== "function") return void 0;
+  return function XyqPanel() {
+    const [cfg, setCfg] = useState(null);
+    const [key, setKey] = useState("");
+    const [status, setStatus] = useState("");
+    const [balance, setBalance] = useState("");
+    const [busy, setBusy] = useState(false);
+    const load = async () => {
+      setBusy(true);
+      try {
+        const result = await callJson(`${BASE2}/config`, void 0);
+        if (result.ok && result.config && typeof result.config === "object") {
+          setCfg(result.config);
+          setStatus("\u5DF2\u8F7D\u5165");
+        } else setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+      } catch (error) {
+        setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const checkStatus = async () => {
+      setBusy(true);
+      try {
+        const s = await callJson(`${BASE2}/status`, void 0);
+        if (s.ok === true) setStatus(s.loggedIn === true ? `Access Key \u6709\u6548\uFF08${String(s.source ?? "")}\uFF09` : String(s.message ?? "Access Key \u672A\u751F\u6548"));
+        else setStatus(`\u68C0\u67E5\u5931\u8D25\uFF1A${String(s.message ?? s.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        const b = await callJson(`${BASE2}/balance`, void 0);
+        if (b.ok === true) setBalance(`\u5269\u4F59\u79EF\u5206\uFF1A${String(b.totalRemain ?? "\u672A\u77E5")}`);
+        else setBalance(String(b.message ?? ""));
+      } catch (error) {
+        setStatus(`\u68C0\u67E5\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const save = async (patch) => {
+      setBusy(true);
+      try {
+        const result = await postJson(`${BASE2}/config`, patch);
+        if (result.ok && result.config && typeof result.config === "object") {
+          setCfg(result.config);
+          setStatus("\u5DF2\u4FDD\u5B58");
+          setKey("");
+        } else setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+      } catch (error) {
+        setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    useEffect?.(() => {
+      void load();
+    }, []);
+    if (cfg === null) {
+      return h("div", { style: { fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" }, children: status || "\u6B63\u5728\u8BFB\u53D6\u5C0F\u4E91\u96C0\u914D\u7F6E\u2026" });
+    }
+    const number = (value, fallback) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    return h("div", {
+      style: { display: "flex", flexDirection: "column", gap: "12px" },
+      children: [
+        h("p", {
+          style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-secondary)", lineHeight: "1.6" },
+          children: "\u901A\u8FC7\u5C0F\u4E91\u96C0\u5B98\u65B9 CLI \u63D0\u4F9B generate_image / generate_video / xyq_balance / xyq_models \u56DB\u4E2A\u5DE5\u5177\u3002Access Key \u5728 \u5C0F\u4E91\u96C0\u5B98\u7F51 \u2192 \u26A1CLI/API \u2192 API \u2192 \u7BA1\u7406 Access Key \u65B0\u5EFA\uFF1B\u5B83\u6709\u65F6\u6548\uFF0C\u8FC7\u671F\u540E\u5DE5\u5177\u4F1A\u62A5\u9519\u5E76\u5728\u4E0B\u9762\u63D0\u793A\u3002"
+        }),
+        h("div", {
+          style: cardStyle2,
+          children: [
+            h("span", { style: labelStyle4, children: `Access Key\uFF08${cfg.accessKeySet ? "\u5DF2\u8BBE\u7F6E " + cfg.accessKeyHint : "\u672A\u8BBE\u7F6E"}\uFF09` }),
+            h("div", { style: { display: "flex", gap: "8px" }, children: [
+              h("input", { type: "password", value: key, placeholder: cfg.accessKeySet ? "\u7559\u7A7A\u5219\u4E0D\u6539" : "\u7C98\u8D34 Access Key", style: fieldStyle3, onChange: (event) => setKey(String(event?.target?.value ?? "")) }),
+              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void save(key.trim() === "" ? {} : { accessKey: key.trim() }), children: "\u4FDD\u5B58 Key" }),
+              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void checkStatus(), children: "\u68C0\u67E5\u72B6\u6001/\u4F59\u989D" })
+            ] }),
+            h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: status }),
+            h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: balance })
+          ]
+        }),
+        h("div", {
+          style: cardStyle2,
+          children: [
+            h("span", { style: labelStyle4, children: "\u751F\u6210\u53C2\u6570\u4E0E\u9884\u7B97" }),
+            h("div", { style: gridStyle, children: [
+              h("div", { children: [
+                h("span", { style: labelStyle4, children: "\u9ED8\u8BA4\u89C6\u9891\u6A21\u578B\uFF08key\uFF09" }),
+                h("input", { value: cfg.defaultVideoModel, style: fieldStyle3, onChange: (event) => setCfg({ ...cfg, defaultVideoModel: String(event?.target?.value ?? "") }), onBlur: () => void save({ defaultVideoModel: cfg.defaultVideoModel }) })
+              ] }),
+              h("div", { children: [
+                h("span", { style: labelStyle4, children: "\u9ED8\u8BA4\u89C6\u9891\u65F6\u957F\uFF08\u79D2\uFF09" }),
+                h("input", { type: "number", min: 4, max: 30, value: String(cfg.defaultVideoDurationSec), style: fieldStyle3, onChange: (event) => setCfg({ ...cfg, defaultVideoDurationSec: number(String(event?.target?.value ?? ""), cfg.defaultVideoDurationSec) }), onBlur: () => void save({ defaultVideoDurationSec: cfg.defaultVideoDurationSec }) })
+              ] }),
+              h("div", { children: [
+                h("span", { style: labelStyle4, children: "\u9ED8\u8BA4\u56FE\u7247\u6A21\u578B\uFF08\u5B8C\u6574\u540D\u79F0\uFF09" }),
+                h("input", { value: cfg.defaultImageModel, style: fieldStyle3, placeholder: "\u5982 \u667A\u80FD\u56FE\u7247V2.5 Fast", onChange: (event) => setCfg({ ...cfg, defaultImageModel: String(event?.target?.value ?? "") }), onBlur: () => void save({ defaultImageModel: cfg.defaultImageModel }) })
+              ] })
+            ] }),
+            h("div", { style: gridStyle, children: [
+              h("div", { children: [
+                h("span", { style: labelStyle4, children: "\u5355\u4F1A\u8BDD\u56FE\u7247\u4E0A\u9650\uFF080 = \u4E0D\u9650\uFF09" }),
+                h("input", { type: "number", min: 0, max: 200, value: String(cfg.budget.images), style: fieldStyle3, onChange: (event) => setCfg({ ...cfg, budget: { ...cfg.budget, images: number(String(event?.target?.value ?? ""), cfg.budget.images) } }), onBlur: () => void save({ budget: cfg.budget }) })
+              ] }),
+              h("div", { children: [
+                h("span", { style: labelStyle4, children: "\u5355\u4F1A\u8BDD\u89C6\u9891\u4E0A\u9650\uFF080 = \u4E0D\u9650\uFF09" }),
+                h("input", { type: "number", min: 0, max: 50, value: String(cfg.budget.videos), style: fieldStyle3, onChange: (event) => setCfg({ ...cfg, budget: { ...cfg.budget, videos: number(String(event?.target?.value ?? ""), cfg.budget.videos) } }), onBlur: () => void save({ budget: cfg.budget }) })
+              ] }),
+              h("div", { children: [
+                h("span", { style: labelStyle4, children: "\u5355\u6761\u89C6\u9891\u6700\u957F\u79D2\u6570" }),
+                h("input", { type: "number", min: 4, max: 30, value: String(cfg.budget.maxVideoSeconds), style: fieldStyle3, onChange: (event) => setCfg({ ...cfg, budget: { ...cfg.budget, maxVideoSeconds: number(String(event?.target?.value ?? ""), cfg.budget.maxVideoSeconds) } }), onBlur: () => void save({ budget: cfg.budget }) })
+              ] })
+            ] }),
+            h("div", { style: { display: "flex", gap: "8px", alignItems: "center" }, children: [
+              h("span", { style: labelStyle4, children: "\u8C03\u7528\u81EA\u7531\u5EA6" }),
+              h("select", { value: cfg.freedom, style: { ...fieldStyle3, width: "auto" }, onChange: (event) => void save({ freedom: String(event?.target?.value ?? "explicit") }), children: [
+                h("option", { value: "explicit", children: "\u4EC5\u7528\u6237\u660E\u786E\u8981\u6C42\uFF08\u9ED8\u8BA4\uFF09" }),
+                h("option", { value: "budgeted", children: "\u9884\u7B97\u5185\u53EF\u81EA\u884C\u8C03\u7528" }),
+                h("option", { value: "open", children: "\u653E\u5F00\uFF08\u53EA\u8BB0\u8D26\uFF09" })
+              ] })
+            ] }),
+            h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: "\u6539\u52A8\u4F1A\u7ACB\u5373\u5199\u76D8\uFF1B\u81EA\u7531\u5EA6\u4E0E\u63D0\u793A\u8BED\u5728\u91CD\u542F DSH \u540E\u5BF9\u6A21\u578B\u751F\u6548\u3002" })
+          ]
+        })
+      ]
+    });
+  };
+}
+
 // src/client/dafeiyu-page.ts
 var DAFEIYU_TAB_REMOTE = "remote";
 var DAFEIYU_TAB_PERSONA = "persona";
 var DAFEIYU_TAB_AVATAR = "avatar";
 var DAFEIYU_TAB_SUBAGENTS = "subagents";
+var DAFEIYU_TAB_XYQ = "xyq";
 var TAB_LABELS = {
   [DAFEIYU_TAB_REMOTE]: "\u8FDC\u7A0B\u63A7\u5236",
   [DAFEIYU_TAB_PERSONA]: "\u4EBA\u8BBE",
   [DAFEIYU_TAB_AVATAR]: "\u5F62\u8C61",
-  [DAFEIYU_TAB_SUBAGENTS]: "\u6D3E\u6D3B\u52A9\u624B"
+  [DAFEIYU_TAB_SUBAGENTS]: "\u6D3E\u6D3B\u52A9\u624B",
+  [DAFEIYU_TAB_XYQ]: "\u5C0F\u4E91\u96C0"
 };
 function mountDafeiyuSettings(deps) {
   const { ctx, createElement, reactHooks, personaSettings, personaT } = deps;
@@ -2712,6 +2891,7 @@ function mountDafeiyuSettings(deps) {
   const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks });
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks });
   const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks });
+  const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks });
   let cleanupRemote;
   const attach = (node) => {
     const element = node;
@@ -2748,6 +2928,11 @@ function mountDafeiyuSettings(deps) {
     let body = null;
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement("div", { ref: attach });
+    } else if (tab === DAFEIYU_TAB_XYQ) {
+      body = xyqPanel ? createElement(xyqPanel, {}) : createElement("p", {
+        style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+        children: "\u5C0F\u4E91\u96C0\u9762\u677F\u8D77\u4E0D\u6765\uFF08\u5BBF\u4E3B\u6CA1\u7ED9 react hooks\uFF09\u3002"
+      });
     } else if (tab === DAFEIYU_TAB_SUBAGENTS) {
       body = subagentsPanel ? createElement(subagentsPanel, {}) : createElement("p", {
         style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },

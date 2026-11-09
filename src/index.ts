@@ -57,6 +57,8 @@ import { mountPersona } from './persona/mount.js'
 import { startVision, type VisionHandle } from './vision/start.js'
 // 子代理监视器（2026-11-09）：一条只读路由给桌面端页面，手机走协议命令。
 import { startSubagents, type SubagentsHandle } from './subagents/start.js'
+// 小云雀（CLI 工具）：生图/生视频/余额，设置页一栏。
+import { startXyq, type XyqHandle } from './xyq/start.js'
 // 记忆库（0.9.0）：人设的「长期记忆」段 + 设置页记忆面板 + 三个工具。
 import { startMemory, type MemoryHandle } from './memory/start.js'
 import { resolveDshHome } from './memory/service.js'
@@ -1481,6 +1483,16 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
+  let xyqHandle: XyqHandle | undefined
+  try {
+    xyqHandle = startXyq(ctx as never, { dshHome: resolveDshHome(process.env), log })
+  } catch (error) {
+    xyqHandle = undefined
+    log('小云雀能力起不来（远控/识图/记忆不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   let visionHandle: VisionHandle | undefined
   try {
     visionHandle = startVision(ctx as never, { dshHome, log })
@@ -1566,6 +1578,11 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         subagentsHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      try {
+        xyqHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }

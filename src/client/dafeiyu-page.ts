@@ -24,18 +24,21 @@ import { resolveHostUrl } from './host-url.js'
 import { buildVisionPanel } from './vision-panel.js'
 import { buildMemoryPanel } from './memory-panel.js'
 import { buildSubagentsPanel } from './subagents-settings.js'
+import { buildXyqPanel } from './xyq-panel.js'
 
 /** 三个分栏的 id。 */
 export const DAFEIYU_TAB_REMOTE = 'remote'
 export const DAFEIYU_TAB_PERSONA = 'persona'
 export const DAFEIYU_TAB_AVATAR = 'avatar'
 export const DAFEIYU_TAB_SUBAGENTS = 'subagents'
+export const DAFEIYU_TAB_XYQ = 'xyq'
 
 const TAB_LABELS: Record<string, string> = {
   [DAFEIYU_TAB_REMOTE]: '远程控制',
   [DAFEIYU_TAB_PERSONA]: '人设',
   [DAFEIYU_TAB_AVATAR]: '形象',
   [DAFEIYU_TAB_SUBAGENTS]: '派活助手',
+  [DAFEIYU_TAB_XYQ]: '小云雀',
 }
 
 export interface DafeiyuPageDeps {
@@ -71,6 +74,8 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks })
   // 派活助手（子代理监视器）的设置块：规范提示开关 / 闲置阈值 / 提示词预览。
   const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks })
+  // 小云雀（CLI 生图/生视频）：Key、预算、自由度。
+  const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks })
 
   let cleanupRemote: (() => void) | undefined
   const attach = (node: unknown): void => {
@@ -112,6 +117,13 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     let body: unknown = null
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement('div', { ref: attach })
+    } else if (tab === DAFEIYU_TAB_XYQ) {
+      body = xyqPanel
+        ? createElement(xyqPanel, {})
+        : createElement('p', {
+            style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
+            children: '小云雀面板起不来（宿主没给 react hooks）。',
+          })
     } else if (tab === DAFEIYU_TAB_SUBAGENTS) {
       body = subagentsPanel
         ? createElement(subagentsPanel, {})

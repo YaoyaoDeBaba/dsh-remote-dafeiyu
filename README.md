@@ -152,6 +152,18 @@ DSH 在主机上干活时会产出静态效果图（Unity VFX 预览、截图之
 换真皮：把 `idle.png` / `think.png`（各 ≤256px）放进手机仓库的 `app/src/main/assets/fish/`，
 重新出包即可 —— 图片在就用图片，缺了或加载失败自动退回占位画，交互逻辑一行都不用改。
 
+## 小云雀工具（0.9.0-dafeiyu.11 起）
+
+「大肥鱼 → 小云雀」分栏里填 **Access Key**，模型就多了四个工具：
+
+- `generate_image`：文生图 / 参考图编辑，返回本地文件路径；
+- `generate_video`：文生视频 / 参考图生视频（默认 `Seedance_2.0_mini_lite`，约 4 积分/秒），返回本地 mp4；
+- `xyq_balance`：查剩余积分；
+- `xyq_models`：查可用模型（先查再用，不猜模型名）。
+
+实现走官方 CLI（`pippit-tool-cli`），插件只负责：定位/安装 CLI、把 Key 经环境变量交给它、轮询下载、额度与时长上限。
+Access Key 在 小云雀官网 → ⚡CLI/API → API → 管理 Access Key 新建；**它有时效**，过期后工具会明确提示去更新。
+
 ## 子代理监视器（0.9.0-dafeiyu.6 起）
 
 DSH 里派出去的 subagent 现在有地方看了：
