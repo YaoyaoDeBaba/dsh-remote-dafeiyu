@@ -1,3 +1,13 @@
+## 0.9.0-dafeiyu.10 —— 派活助手（监视器收口）
+
+- 设置页「大肥鱼」新增**「派活助手」分栏**：
+  - 派活规范提示开关（`guidance`，改完重启 DSH 才对模型生效）；
+  - 闲置阈值可配（10 分钟 / 30 分钟 / 1 小时 / 2 小时默认 / 8 小时 / 24 小时），PC 与手机面板的标黄、一键归档都读它；
+  - 提示词预览 + 一键复制（文本与注入给模型的是同一份，单一来源 `src/subagents/guidance.ts`）。
+- 配置落 `storages/dsh-remote-dafeiyu/subagents.json`，宿主新路由 `GET/POST /api/dsh-remote-dafeiyu/subagents/config`（写要 `x-drc-pair`）；
+- `GET /subagents` 的响应里带上 `config`，手机端阈值自动跟随，不再写死 2h；
+- 悬浮 🐝 图标与手机面板保持原样。
+
 ## 0.9.0-dafeiyu.9 —— 子代理监视器 v3（规范呈现 + 派活约定 + 一键归档）
 
 - **规范呈现**：名称取官方 `subagent` 工具的 `description`（catalog label），按 `名称｜简述` 拆分；

@@ -5,25 +5,26 @@
  * `stop()` 幂等；失败写 `probe` + 一行日志，不静默。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { SUBAGENTS_ARCHIVE_ROUTE, SUBAGENTS_ROUTE, subagentsArchiveHandler, subagentsHandler, type SubagentRouteDeps } from './routes.js'
+import {
+  SUBAGENTS_ARCHIVE_ROUTE,
+  SUBAGENTS_CONFIG_ROUTE,
+  SUBAGENTS_ROUTE,
+  subagentsArchiveHandler,
+  subagentsConfigHandler,
+  subagentsHandler,
+  type SubagentRouteDeps,
+} from './routes.js'
+import { readSubagentsConfig, resolveSubagentsConfigFile, writeSubagentsConfig, type SubagentsConfig } from './config.js'
 import type { KernelSubagent } from '../ports/index.js'
+import { SUBAGENT_GUIDANCE } from './guidance.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
   inject?(names: string[], callback: (scoped: unknown) => void): unknown
 }
 
-/** 派活规范（提示词段）：名称｜简述 的约定 + 优先用内置 subagent 工具。 */
-const GUIDANCE = [
-  '## 子代理监视器（本机已启用）',
-  '这台 DSH 装了「子代理监视器」，用户会在电脑右侧 / 手机对话页里看到你派出去的每个子代理。',
-  '派活时**必须使用内置 `subagent` 工具**，并且 `description` 参数按 `名称｜一句话简述` 填写：',
-  '- 名称 ≤ 12 字，能让人一眼认出这件事（例如 `渲染合批`、`词条校对`）；',
-  '- 简述 ≤ 40 字，说清目标与验收（例如 `升级 VFX 批次合并并跑通验收`）；',
-  '- 示例：`description: "渲染合批｜升级 VFX 批次合并并跑通验收"`；正文 prompt 第一行再写完整目标。',
-  '不按这个格式写也能派出去，但监视器只能自动取名并把这一行标黄——用户会看不懂你在干什么。',
-  '不要为了“少写一行”而绕过这个入口；用户就是靠它判断要不要等你。',
-].join('\n')
+// 派活规范（提示词段）的唯一一份：设置页预览与模型注入同源，避免两处分叉。
+const GUIDANCE = SUBAGENT_GUIDANCE
 
 interface Registerable {
   register(route: {
@@ -40,13 +41,26 @@ export interface SubagentsHandle {
 
 export function startSubagents(
   ctx: LooseContext,
-  deps: Omit<SubagentRouteDeps, 'log'> & {
+  input: Omit<SubagentRouteDeps, 'log' | 'config'> & {
+    dshHome: string
     log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
   },
 ): SubagentsHandle {
   const probe: Record<string, string> = {}
+  const configFile = resolveSubagentsConfigFile(input.dshHome)
+  let config: SubagentsConfig = readSubagentsConfig(configFile)
+  const configFace = {
+    read: (): SubagentsConfig => config,
+    write: (patch: unknown): SubagentsConfig => {
+      config = writeSubagentsConfig(configFile, patch)
+      return config
+    },
+  }
+  const deps: SubagentRouteDeps = { ...input, config: configFace }
   // 提示词段：插件激活就告诉模型「按 名称｜简述 派活」。拿不到 systemPrompt 只是少一段提示。
-  try {
+  // 配置里 guidance=false 就不注入（改开关要重启宿主才生效，与识图同一条纪律）。
+  if (!config.guidance) probe.section = 'disabled-by-config'
+  else try {
     const systemPrompt = ctx.get?.('systemPrompt', true) as
       | { section?: (definition: { name: string; order: number; text: string }) => unknown }
       | undefined
@@ -67,11 +81,14 @@ export function startSubagents(
   const tryStart = (): void => {
     if (started || stopped || !web) return
     started = true
+    const disposers: Array<() => void> = []
     try {
-      const disposers: Array<() => void> = []
       disposers.push(web.register({ kind: 'exact', path: SUBAGENTS_ROUTE, handler: subagentsHandler(deps) }))
       disposers.push(
         web.register({ kind: 'exact', path: SUBAGENTS_ARCHIVE_ROUTE, handler: subagentsArchiveHandler(deps) }),
+      )
+      disposers.push(
+        web.register({ kind: 'exact', path: SUBAGENTS_CONFIG_ROUTE, handler: subagentsConfigHandler(deps) }),
       )
       unregister = () => {
         for (const dispose of disposers) dispose()
@@ -81,6 +98,13 @@ export function startSubagents(
     } catch (error) {
       probe.routes = `register threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
       started = false
+      // 挂上一半就抛：已经挂上的那几条必须还能收回（停机/卸载时统一走 unregister）
+      if (disposers.length > 0) {
+        const registered = disposers.splice(0)
+        unregister = () => {
+          for (const dispose of registered) dispose()
+        }
+      }
       deps.log('子代理监视器路由注册失败（远控不受影响）', {
         message: String((error as Error)?.message ?? error).slice(0, 200),
       })

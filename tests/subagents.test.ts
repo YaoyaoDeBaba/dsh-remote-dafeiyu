@@ -8,7 +8,11 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { createServicesKernel, type ServicesBundle } from '../src/platform/carrier-services.js'
+import { readSubagentsConfig, writeSubagentsConfig } from '../src/subagents/config.js'
 
 const NOW = 1_800_000_000_000
 
@@ -137,4 +141,28 @@ test('listSubagents：没有 sessionQuery 能力时明确抛错，不回空数�
 test('listSubagents：没有子代理就是空数组（不抛）', async () => {
   const port = kernel(services())
   assert.deepEqual(await port.listSubagents!('other'), [])
+})
+
+
+test('subagents config：阈值夹取、读写回环、坏 JSON 回落默认', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-subagents-cfg-'))
+  const file = path.join(dir, 'subagents.json')
+  try {
+    const fallback = readSubagentsConfig(file)
+    assert.equal(fallback.idleWarnMs, 2 * 60 * 60 * 1000, '缺文件时默认 2 小时')
+    assert.equal(fallback.guidance, true)
+
+    const written = writeSubagentsConfig(file, { idleWarnMs: 1000, guidance: false })
+    assert.equal(written.idleWarnMs, 5 * 60 * 1000, '阈值低于 5 分钟要夹到下限')
+    assert.equal(written.guidance, false)
+    assert.equal(readSubagentsConfig(file).guidance, false, '写进去的要读得回来')
+
+    writeSubagentsConfig(file, { idleWarnMs: 999 * 60 * 60 * 1000 })
+    assert.equal(readSubagentsConfig(file).idleWarnMs, 7 * 24 * 60 * 60 * 1000, '超过 7 天夹到上限')
+
+    writeFileSync(file, '{oops', 'utf8')
+    assert.equal(readSubagentsConfig(file).idleWarnMs, 2 * 60 * 60 * 1000, '坏 JSON 绝不能抛，回落默认')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

@@ -2518,14 +2518,190 @@ function buildMemoryPanel(deps) {
   };
 }
 
+// src/client/subagents-settings.ts
+var BASE = "/api/dsh-remote-dafeiyu/subagents";
+var IDLE_OPTIONS = [
+  [10 * 60 * 1e3, "10 \u5206\u949F"],
+  [30 * 60 * 1e3, "30 \u5206\u949F"],
+  [60 * 60 * 1e3, "1 \u5C0F\u65F6"],
+  [2 * 60 * 60 * 1e3, "2 \u5C0F\u65F6\uFF08\u9ED8\u8BA4\uFF09"],
+  [8 * 60 * 60 * 1e3, "8 \u5C0F\u65F6"],
+  [24 * 60 * 60 * 1e3, "24 \u5C0F\u65F6"]
+];
+var cardStyle = {
+  border: "1px solid var(--dsw-alias-border-l2)",
+  borderRadius: "10px",
+  padding: "12px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px"
+};
+var rowStyle = { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" };
+var labelStyle3 = { fontSize: "12.5px", color: "var(--dsw-alias-label-secondary)" };
+var buttonStyle3 = {
+  padding: "4px 12px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px",
+  cursor: "pointer"
+};
+var previewStyle = {
+  whiteSpace: "pre-wrap",
+  fontSize: "12px",
+  lineHeight: "1.6",
+  color: "var(--dsw-alias-label-secondary)",
+  background: "var(--dsw-alias-bg-tertiary, rgba(127,127,127,.08))",
+  borderRadius: "8px",
+  padding: "10px",
+  maxHeight: "220px",
+  overflow: "auto",
+  margin: "0"
+};
+async function postConfig(patch) {
+  const response = await fetch(resolveHostUrl(`${BASE}/config`), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-drc-pair": "1" },
+    body: JSON.stringify(patch)
+  });
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: `\u5BBF\u4E3B\u8FD4\u56DE\u4E86\u975E JSON\uFF08HTTP ${response.status}\uFF09` };
+  }
+}
+function buildSubagentsPanel(deps) {
+  const { createElement: h, hooks } = deps;
+  const useState = hooks.useState;
+  const useEffect = hooks.useEffect;
+  if (typeof useState !== "function") return void 0;
+  return function SubagentsPanel() {
+    const [cfg, setCfg] = useState(null);
+    const [preview, setPreview] = useState("");
+    const [status, setStatus] = useState("");
+    const [busy, setBusy] = useState(false);
+    const load = async () => {
+      setBusy(true);
+      try {
+        const result = await callJson(`${BASE}/config`, void 0);
+        if (result.ok && result.config && typeof result.config === "object") {
+          setCfg(result.config);
+          if (typeof result.guidanceText === "string") setPreview(result.guidanceText);
+          setStatus("\u5DF2\u8F7D\u5165");
+        } else {
+          setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    const save = async (patch) => {
+      setBusy(true);
+      try {
+        const result = await postConfig(patch);
+        if (result.ok && result.config && typeof result.config === "object") {
+          setCfg(result.config);
+          setStatus("\u5DF2\u4FDD\u5B58");
+        } else {
+          setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    useEffect?.(() => {
+      void load();
+    }, []);
+    if (cfg === null) {
+      return h("div", {
+        style: { fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+        children: [
+          h("span", { children: status || "\u6B63\u5728\u8BFB\u53D6\u6D3E\u6D3B\u52A9\u624B\u914D\u7F6E\u2026" }),
+          " ",
+          h("button", { type: "button", style: buttonStyle3, onClick: () => void load(), children: "\u5237\u65B0" })
+        ]
+      });
+    }
+    const copy = async () => {
+      try {
+        await navigator.clipboard.writeText(preview);
+        setStatus("\u63D0\u793A\u8BCD\u5DF2\u590D\u5236");
+      } catch {
+        setStatus("\u590D\u5236\u5931\u8D25\uFF1A\u8BF7\u624B\u52A8\u5168\u9009\u590D\u5236");
+      }
+    };
+    return h("div", {
+      style: { display: "flex", flexDirection: "column", gap: "12px" },
+      children: [
+        h("p", {
+          style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-secondary)", lineHeight: "1.6" },
+          children: "\u6D3E\u6D3B\u52A9\u624B = \u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF1A\u6D3E\u51FA\u53BB\u7684\u5B50\u4EE3\u7406\u4F1A\u51FA\u73B0\u5728\u7535\u8111\u53F3\u4FA7 / \u624B\u673A\u5BF9\u8BDD\u9875\u7684 \u{1F41D} \u9762\u677F\u91CC\u3002\u60F3\u8BA9\u7528\u6237\u7684\u673A\u5668\u4EBA\u90FD\u6309\u300C\u540D\u79F0\uFF5C\u7B80\u8FF0\u300D\u6D3E\u6D3B\uFF0C\u5C31\u4FDD\u6301\u4E0B\u9762\u7684\u89C4\u8303\u63D0\u793A\u5F00\u542F\u3002"
+        }),
+        h("div", {
+          style: cardStyle,
+          children: [
+            h("div", {
+              style: rowStyle,
+              children: [
+                h("span", { style: labelStyle3, children: "\u6D3E\u6D3B\u89C4\u8303\u63D0\u793A\uFF08\u91CD\u542F DSH \u540E\u751F\u6548\uFF09" }),
+                h("input", {
+                  type: "checkbox",
+                  checked: cfg.guidance,
+                  disabled: busy,
+                  onChange: (event) => void save({ guidance: event?.target?.checked === true })
+                }),
+                h("span", { style: { ...labelStyle3, fontSize: "11.5px" }, children: cfg.guidance ? "\u5F00" : "\u5173" })
+              ]
+            }),
+            h("div", {
+              style: rowStyle,
+              children: [
+                h("span", { style: labelStyle3, children: "\u95F2\u7F6E\u9608\u503C\uFF08\u8D85\u8FC7\u5B83\u7B97\u201C\u592A\u4E45\u201D\uFF0C\u53EF\u4E00\u952E\u5F52\u6863\uFF09" }),
+                h(
+                  "select",
+                  {
+                    value: String(cfg.idleWarnMs),
+                    disabled: busy,
+                    style: { ...buttonStyle3, padding: "4px 8px" },
+                    onChange: (event) => void save({ idleWarnMs: Number(event?.target?.value ?? 0) }),
+                    children: IDLE_OPTIONS.map(([ms, label]) => h("option", { key: String(ms), value: String(ms), children: label }))
+                  }
+                ),
+                h("span", { style: { ...labelStyle3, fontSize: "11.5px" }, children: status })
+              ]
+            }),
+            h("div", {
+              style: { display: "flex", gap: "8px", alignItems: "center" },
+              children: [
+                h("span", { style: labelStyle3, children: "\u63D0\u793A\u8BCD\u9884\u89C8\uFF08\u4E0E\u6CE8\u5165\u7ED9\u6A21\u578B\u7684\u662F\u540C\u4E00\u4EFD\uFF09" }),
+                h("button", { type: "button", style: buttonStyle3, onClick: () => void copy(), children: "\u590D\u5236" }),
+                h("button", { type: "button", style: buttonStyle3, onClick: () => void load(), children: "\u5237\u65B0" })
+              ]
+            }),
+            h("pre", { style: previewStyle, children: preview || "\uFF08\u5BBF\u4E3B\u6CA1\u6709\u8FD4\u56DE\u63D0\u793A\u8BCD\u6587\u672C\uFF09" })
+          ]
+        })
+      ]
+    });
+  };
+}
+
 // src/client/dafeiyu-page.ts
 var DAFEIYU_TAB_REMOTE = "remote";
 var DAFEIYU_TAB_PERSONA = "persona";
 var DAFEIYU_TAB_AVATAR = "avatar";
+var DAFEIYU_TAB_SUBAGENTS = "subagents";
 var TAB_LABELS = {
   [DAFEIYU_TAB_REMOTE]: "\u8FDC\u7A0B\u63A7\u5236",
   [DAFEIYU_TAB_PERSONA]: "\u4EBA\u8BBE",
-  [DAFEIYU_TAB_AVATAR]: "\u5F62\u8C61"
+  [DAFEIYU_TAB_AVATAR]: "\u5F62\u8C61",
+  [DAFEIYU_TAB_SUBAGENTS]: "\u6D3E\u6D3B\u52A9\u624B"
 };
 function mountDafeiyuSettings(deps) {
   const { ctx, createElement, reactHooks, personaSettings, personaT } = deps;
@@ -2535,6 +2711,7 @@ function mountDafeiyuSettings(deps) {
   }
   const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks });
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks });
+  const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks });
   let cleanupRemote;
   const attach = (node) => {
     const element = node;
@@ -2571,6 +2748,11 @@ function mountDafeiyuSettings(deps) {
     let body = null;
     if (tab === DAFEIYU_TAB_REMOTE) {
       body = createElement("div", { ref: attach });
+    } else if (tab === DAFEIYU_TAB_SUBAGENTS) {
+      body = subagentsPanel ? createElement(subagentsPanel, {}) : createElement("p", {
+        style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+        children: "\u6D3E\u6D3B\u52A9\u624B\u9762\u677F\u8D77\u4E0D\u6765\uFF08\u5BBF\u4E3B\u6CA1\u7ED9 react hooks\uFF09\u3002"
+      });
     } else if (tab === DAFEIYU_TAB_PERSONA) {
       const extras = [];
       if (visionPanel) extras.push(createElement(visionPanel, {}));
@@ -2715,6 +2897,7 @@ function mountSubagentMonitor(deps) {
   panel.append(head, body, foot);
   doc.body.appendChild(panel);
   let items = [];
+  let idleWarnMs = IDLE_WARN_MS;
   let session = "";
   let timer = 0;
   let busy = false;
@@ -2755,7 +2938,7 @@ function mountSubagentMonitor(deps) {
       }
       const meta = doc.createElement("div");
       meta.className = "meta";
-      const idleWarn = row.status === "idle" && (row.idleMs ?? 0) >= IDLE_WARN_MS;
+      const idleWarn = row.status === "idle" && (row.idleMs ?? 0) >= idleWarnMs;
       meta.classList.toggle("stale", idleWarn);
       const time = row.status === "running" ? "\u8FD0\u884C " + fmtDuration(row.runningMs ?? row.workMs) : "\u95F2\u7F6E " + fmtDuration(row.idleMs);
       meta.textContent = (row.status === "running" ? "\u8FD0\u884C\u4E2D" : "\u7A7A\u95F2") + " \xB7 " + time + (idleWarn ? " \xB7 \u5EFA\u8BAE\u5F52\u6863" : "");
@@ -2787,7 +2970,7 @@ function mountSubagentMonitor(deps) {
       }
       body.appendChild(line);
     }
-    const idleCount = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= IDLE_WARN_MS).length;
+    const idleCount = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= idleWarnMs).length;
     archiveIdle.disabled = idleCount === 0;
     archiveIdle.textContent = idleCount > 0 ? `\u4E00\u952E\u5F52\u6863\u95F2\u7F6E (${idleCount})` : "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
   };
@@ -2861,6 +3044,9 @@ function mountSubagentMonitor(deps) {
         resolveHostUrl("/api/dsh-remote-dafeiyu/subagents?sessionId=" + encodeURIComponent(current))
       );
       const answer = await response.json();
+      if (answer.config && typeof answer.config.idleWarnMs === "number" && Number.isFinite(answer.config.idleWarnMs)) {
+        idleWarnMs = answer.config.idleWarnMs;
+      }
       if (answer.ok === true && Array.isArray(answer.items)) apply2(answer.items);
       else apply2([]);
     } catch {

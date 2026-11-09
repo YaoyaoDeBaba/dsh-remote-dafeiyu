@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path17 from "node:path";
+import path18 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path18) {
-  if (!path18)
+function getElementAtPath(obj, path19) {
+  if (!path19)
     return obj;
-  return path18.reduce((acc, key) => acc?.[key], obj);
+  return path19.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path18, issues) {
+function prefixIssues(path19, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path18);
+    iss.path.unshift(path19);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path18 = []) => {
+  const processError = (error63, path19 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path18, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path19, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path19, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path19, ...issue2.path]);
       } else {
-        const fullpath = [...path18, ...issue2.path];
+        const fullpath = [...path19, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path18 = []) => {
+  const processError = (error63, path19 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path18, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path19, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path19, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path19, ...issue2.path]);
       } else {
-        const fullpath = [...path18, ...issue2.path];
+        const fullpath = [...path19, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path18 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path18) {
+  const path19 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path19) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path18 = ref.slice(1).split("/").filter(Boolean);
-  if (path18.length === 0) {
+  const path19 = ref.slice(1).split("/").filter(Boolean);
+  if (path19.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path18[0] === defsKey) {
-    const key = path18[1] === void 0 ? void 0 : decodeJSONPointerSegment(path18[1]);
+  if (path19[0] === defsKey) {
+    const key = path19[1] === void 0 ? void 0 : decodeJSONPointerSegment(path19[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27644,7 +27644,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.9" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.10" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34365,12 +34365,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path18 = __require("node:path");
-        const fs5 = __require("node:fs");
-        const dir = path18.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs5.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs5.writeFileSync(
-          path18.join(dir, "client-report.json"),
+        const path19 = __require("node:path");
+        const fs6 = __require("node:fs");
+        const dir = path19.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs6.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs6.writeFileSync(
+          path19.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -35872,16 +35872,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path18) {
+function deepGet(value, path19) {
   let cursor = value;
-  for (const key of path18) {
+  for (const key of path19) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path18) {
-  return String(path18 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path19) {
+  return String(path19 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -36517,9 +36517,22 @@ function recognizeImageTool(service) {
   };
 }
 
+// src/subagents/guidance.ts
+var SUBAGENT_GUIDANCE = [
+  "## \u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF08\u672C\u673A\u5DF2\u542F\u7528\uFF09",
+  "\u8FD9\u53F0 DSH \u88C5\u4E86\u300C\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\u300D\uFF0C\u7528\u6237\u4F1A\u5728\u7535\u8111\u53F3\u4FA7 / \u624B\u673A\u5BF9\u8BDD\u9875\u91CC\u770B\u5230\u4F60\u6D3E\u51FA\u53BB\u7684\u6BCF\u4E2A\u5B50\u4EE3\u7406\u3002",
+  "\u6D3E\u6D3B\u65F6**\u5FC5\u987B\u4F7F\u7528\u5185\u7F6E `subagent` \u5DE5\u5177**\uFF0C\u5E76\u4E14 `description` \u53C2\u6570\u6309 `\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0` \u586B\u5199\uFF1A",
+  "- \u540D\u79F0 \u2264 12 \u5B57\uFF0C\u80FD\u8BA9\u4EBA\u4E00\u773C\u8BA4\u51FA\u8FD9\u4EF6\u4E8B\uFF08\u4F8B\u5982 `\u6E32\u67D3\u5408\u6279`\u3001`\u8BCD\u6761\u6821\u5BF9`\uFF09\uFF1B",
+  "- \u7B80\u8FF0 \u2264 40 \u5B57\uFF0C\u8BF4\u6E05\u76EE\u6807\u4E0E\u9A8C\u6536\uFF08\u4F8B\u5982 `\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536`\uFF09\uFF1B",
+  '- \u793A\u4F8B\uFF1A`description: "\u6E32\u67D3\u5408\u6279\uFF5C\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536"`\uFF1B\u6B63\u6587 prompt \u7B2C\u4E00\u884C\u518D\u5199\u5B8C\u6574\u76EE\u6807\u3002',
+  "\u4E0D\u6309\u8FD9\u4E2A\u683C\u5F0F\u5199\u4E5F\u80FD\u6D3E\u51FA\u53BB\uFF0C\u4F46\u76D1\u89C6\u5668\u53EA\u80FD\u81EA\u52A8\u53D6\u540D\u5E76\u628A\u8FD9\u4E00\u884C\u6807\u9EC4\u2014\u2014\u7528\u6237\u4F1A\u770B\u4E0D\u61C2\u4F60\u5728\u5E72\u4EC0\u4E48\u3002",
+  "\u4E0D\u8981\u4E3A\u4E86\u201C\u5C11\u5199\u4E00\u884C\u201D\u800C\u7ED5\u8FC7\u8FD9\u4E2A\u5165\u53E3\uFF1B\u7528\u6237\u5C31\u662F\u9760\u5B83\u5224\u65AD\u8981\u4E0D\u8981\u7B49\u4F60\u3002"
+].join("\n");
+
 // src/subagents/routes.ts
 var SUBAGENTS_ROUTE = "/api/dsh-remote-dafeiyu/subagents";
 var SUBAGENTS_ARCHIVE_ROUTE = "/api/dsh-remote-dafeiyu/subagents/archive";
+var SUBAGENTS_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/subagents/config";
 function json6(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -36551,7 +36564,7 @@ function subagentsHandler(deps) {
     const descendants = url2.searchParams.get("descendants") === "1";
     try {
       const items = await deps.list(sessionId, { descendants });
-      json6(response, 200, { ok: true, items });
+      json6(response, 200, { ok: true, items, config: deps.config.read() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u5B50\u4EE3\u7406\u5217\u8868\u8BFB\u53D6\u5931\u8D25", { message });
@@ -36630,21 +36643,238 @@ function subagentsArchiveHandler(deps) {
     }
   };
 }
+function subagentsConfigHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    const denied = rejected2(request);
+    if (denied) {
+      json6(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method === "GET" || request.method === "HEAD") {
+      json6(response, 200, { ok: true, config: deps.config.read(), guidanceText: SUBAGENT_GUIDANCE });
+      return;
+    }
+    if (request.method !== "POST") {
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      return;
+    }
+    if (String(request.headers["x-drc-pair"] ?? "") === "") {
+      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      return;
+    }
+    try {
+      const body = JSON.parse(await readBody2(request));
+      json6(response, 200, { ok: true, config: deps.config.write(body) });
+    } catch (error62) {
+      json6(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+
+// src/subagents/config.ts
+import fs5 from "node:fs";
+import path13 from "node:path";
+
+// src/memory/service.ts
+import fs4 from "node:fs";
+import path12 from "node:path";
+var DEFAULT_MEMORY_BUDGET = 800;
+var MAX_ENTRIES2 = 100;
+var MAX_ENTRY_CHARS = 500;
+function resolveDshHome(env = process.env) {
+  const explicit = (env.DSH_HOME ?? "").trim();
+  if (explicit !== "") return explicit;
+  const home = (env.USERPROFILE ?? env.HOME ?? "").trim();
+  return home === "" ? "" : path12.join(home, ".dsh");
+}
+function memoryDir(dshHome) {
+  return path12.join(dshHome, "storages", "dsh-remote-dafeiyu", "memory");
+}
+function memoryFile(dir, personaId) {
+  const safe = String(personaId ?? "").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "default";
+  return path12.join(dir, `${safe}.json`);
+}
+function makeId() {
+  return `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+function normalizeImportance(value) {
+  const num = Number(value);
+  return num === 3 ? 3 : num === 2 ? 2 : 1;
+}
+function readFileOf(file2) {
+  try {
+    const parsed = JSON.parse(fs4.readFileSync(file2, "utf8"));
+    const entries = Array.isArray(parsed.entries) ? parsed.entries.filter((entry) => Boolean(entry) && typeof entry.text === "string").map((entry) => ({
+      id: typeof entry.id === "string" ? entry.id : makeId(),
+      text: String(entry.text).slice(0, MAX_ENTRY_CHARS),
+      createdAt: typeof entry.createdAt === "string" ? entry.createdAt : (/* @__PURE__ */ new Date()).toISOString(),
+      importance: normalizeImportance(entry.importance),
+      source: entry.source === "tool" ? "tool" : "manual"
+    })) : [];
+    return { version: 1, entries };
+  } catch {
+    return { version: 1, entries: [] };
+  }
+}
+function writeFileOf(file2, entries) {
+  try {
+    fs4.mkdirSync(path12.dirname(file2), { recursive: true });
+    const tmp = `${file2}.${process.pid}.tmp`;
+    fs4.writeFileSync(tmp, `${JSON.stringify({ version: 1, entries }, null, 2)}
+`, "utf8");
+    fs4.renameSync(tmp, file2);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function escapeLine(text) {
+  return String(text).replace(/\s+/g, " ").trim();
+}
+function formatEntryLine(entry, withDate) {
+  const level = entry.importance === 3 ? "[\u5173\u952E]" : entry.importance === 2 ? "[\u91CD\u8981]" : "[\u666E\u901A]";
+  const date5 = withDate ? `[${entry.createdAt.slice(0, 10)}]` : "";
+  return `- ${level}${date5} ${escapeLine(entry.text)}`;
+}
+function sortEntries(entries) {
+  return [...entries].sort((a, b) => {
+    if (b.importance !== a.importance) return b.importance - a.importance;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+}
+function composeMemoryText(entries, budget = DEFAULT_MEMORY_BUDGET) {
+  if (entries.length === 0) return "";
+  const header = "## \u957F\u671F\u8BB0\u5FC6\uFF08\u4F60\u81EA\u5DF1\u6512\u7684\uFF1B\u8DE8\u4F1A\u8BDD\u6709\u6548\uFF0C\u53EF\u636E\u5B83\u4E3B\u52A8\u63A5\u8BDD\uFF09";
+  const sorted = sortEntries(entries);
+  const lines = [];
+  let used = header.length + 1;
+  for (const entry of sorted) {
+    const line = formatEntryLine(entry, true);
+    if (used + line.length + 1 > budget && lines.length > 0) continue;
+    lines.push(line);
+    used += line.length + 1;
+  }
+  return `${header}
+${lines.join("\n")}`;
+}
+function createMemoryService(dshHome, budget = DEFAULT_MEMORY_BUDGET) {
+  const dir = memoryDir(dshHome);
+  return {
+    dir,
+    list(personaId) {
+      return sortEntries(readFileOf(memoryFile(dir, personaId)).entries);
+    },
+    add(personaId, text, options) {
+      const value = escapeLine(text).slice(0, MAX_ENTRY_CHARS);
+      if (value === "") return { ok: false, error: "\u8BB0\u5FC6\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A" };
+      const file2 = memoryFile(dir, personaId);
+      const entries = readFileOf(file2).entries;
+      const entry = {
+        id: makeId(),
+        text: value,
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        importance: normalizeImportance(options?.importance),
+        source: options?.source === "tool" ? "tool" : "manual"
+      };
+      entries.push(entry);
+      if (entries.length > MAX_ENTRIES2) {
+        const victim = [...entries].sort((a, b) => a.importance - b.importance || a.createdAt.localeCompare(b.createdAt))[0];
+        if (victim) entries.splice(entries.indexOf(victim), 1);
+      }
+      if (!writeFileOf(file2, entries)) return { ok: false, error: "\u8BB0\u5FC6\u5199\u4E0D\u8FDB\u53BB\uFF08\u78C1\u76D8/\u6743\u9650\uFF09" };
+      return { ok: true, entry };
+    },
+    update(personaId, id, patch) {
+      const file2 = memoryFile(dir, personaId);
+      const entries = readFileOf(file2).entries;
+      const hit = entries.find((entry) => entry.id === id);
+      if (!hit) return false;
+      if (typeof patch.text === "string") hit.text = escapeLine(patch.text).slice(0, MAX_ENTRY_CHARS);
+      if (patch.importance !== void 0) hit.importance = normalizeImportance(patch.importance);
+      return writeFileOf(file2, entries);
+    },
+    remove(personaId, id) {
+      const file2 = memoryFile(dir, personaId);
+      const entries = readFileOf(file2).entries;
+      const next = entries.filter((entry) => entry.id !== id);
+      if (next.length === entries.length) return false;
+      return writeFileOf(file2, next);
+    },
+    clear(personaId) {
+      return writeFileOf(memoryFile(dir, personaId), []);
+    },
+    textFor(personaId, limit = budget) {
+      return composeMemoryText(readFileOf(memoryFile(dir, personaId)).entries, limit);
+    },
+    counts() {
+      const result2 = {};
+      try {
+        for (const name2 of fs4.readdirSync(dir)) {
+          if (!name2.endsWith(".json")) continue;
+          result2[name2.slice(0, -5)] = readFileOf(path12.join(dir, name2)).entries.length;
+        }
+      } catch {
+      }
+      return result2;
+    }
+  };
+}
+
+// src/subagents/config.ts
+var DEFAULT_CONFIG2 = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1e3 };
+var MIN_IDLE = 5 * 60 * 1e3;
+var MAX_IDLE = 7 * 24 * 60 * 60 * 1e3;
+function resolveSubagentsConfigFile(dshHome = resolveDshHome(process.env)) {
+  return path13.join(dshHome, "storages", "dsh-remote-dafeiyu", "subagents.json");
+}
+function normalizeSubagentsConfig(raw) {
+  const value = raw && typeof raw === "object" ? raw : {};
+  const idle = typeof value.idleWarnMs === "number" && Number.isFinite(value.idleWarnMs) ? value.idleWarnMs : DEFAULT_CONFIG2.idleWarnMs;
+  return {
+    version: 1,
+    enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_CONFIG2.enabled,
+    guidance: typeof value.guidance === "boolean" ? value.guidance : DEFAULT_CONFIG2.guidance,
+    idleWarnMs: Math.min(MAX_IDLE, Math.max(MIN_IDLE, Math.round(idle)))
+  };
+}
+function readSubagentsConfig(file2) {
+  try {
+    const text = fs5.readFileSync(file2, "utf8");
+    return normalizeSubagentsConfig(JSON.parse(text));
+  } catch {
+    return { ...DEFAULT_CONFIG2 };
+  }
+}
+function writeSubagentsConfig(file2, patch) {
+  const next = normalizeSubagentsConfig({ ...readSubagentsConfig(file2), ...patch });
+  try {
+    fs5.mkdirSync(path13.dirname(file2), { recursive: true });
+    const tmp = `${file2}.${process.pid}.tmp`;
+    fs5.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
+`, "utf8");
+    fs5.renameSync(tmp, file2);
+  } catch {
+  }
+  return next;
+}
 
 // src/subagents/start.ts
-var GUIDANCE2 = [
-  "## \u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF08\u672C\u673A\u5DF2\u542F\u7528\uFF09",
-  "\u8FD9\u53F0 DSH \u88C5\u4E86\u300C\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\u300D\uFF0C\u7528\u6237\u4F1A\u5728\u7535\u8111\u53F3\u4FA7 / \u624B\u673A\u5BF9\u8BDD\u9875\u91CC\u770B\u5230\u4F60\u6D3E\u51FA\u53BB\u7684\u6BCF\u4E2A\u5B50\u4EE3\u7406\u3002",
-  "\u6D3E\u6D3B\u65F6**\u5FC5\u987B\u4F7F\u7528\u5185\u7F6E `subagent` \u5DE5\u5177**\uFF0C\u5E76\u4E14 `description` \u53C2\u6570\u6309 `\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0` \u586B\u5199\uFF1A",
-  "- \u540D\u79F0 \u2264 12 \u5B57\uFF0C\u80FD\u8BA9\u4EBA\u4E00\u773C\u8BA4\u51FA\u8FD9\u4EF6\u4E8B\uFF08\u4F8B\u5982 `\u6E32\u67D3\u5408\u6279`\u3001`\u8BCD\u6761\u6821\u5BF9`\uFF09\uFF1B",
-  "- \u7B80\u8FF0 \u2264 40 \u5B57\uFF0C\u8BF4\u6E05\u76EE\u6807\u4E0E\u9A8C\u6536\uFF08\u4F8B\u5982 `\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536`\uFF09\uFF1B",
-  '- \u793A\u4F8B\uFF1A`description: "\u6E32\u67D3\u5408\u6279\uFF5C\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536"`\uFF1B\u6B63\u6587 prompt \u7B2C\u4E00\u884C\u518D\u5199\u5B8C\u6574\u76EE\u6807\u3002',
-  "\u4E0D\u6309\u8FD9\u4E2A\u683C\u5F0F\u5199\u4E5F\u80FD\u6D3E\u51FA\u53BB\uFF0C\u4F46\u76D1\u89C6\u5668\u53EA\u80FD\u81EA\u52A8\u53D6\u540D\u5E76\u628A\u8FD9\u4E00\u884C\u6807\u9EC4\u2014\u2014\u7528\u6237\u4F1A\u770B\u4E0D\u61C2\u4F60\u5728\u5E72\u4EC0\u4E48\u3002",
-  "\u4E0D\u8981\u4E3A\u4E86\u201C\u5C11\u5199\u4E00\u884C\u201D\u800C\u7ED5\u8FC7\u8FD9\u4E2A\u5165\u53E3\uFF1B\u7528\u6237\u5C31\u662F\u9760\u5B83\u5224\u65AD\u8981\u4E0D\u8981\u7B49\u4F60\u3002"
-].join("\n");
-function startSubagents(ctx, deps) {
+var GUIDANCE2 = SUBAGENT_GUIDANCE;
+function startSubagents(ctx, input2) {
   const probe = {};
-  try {
+  const configFile2 = resolveSubagentsConfigFile(input2.dshHome);
+  let config2 = readSubagentsConfig(configFile2);
+  const configFace = {
+    read: () => config2,
+    write: (patch) => {
+      config2 = writeSubagentsConfig(configFile2, patch);
+      return config2;
+    }
+  };
+  const deps = { ...input2, config: configFace };
+  if (!config2.guidance) probe.section = "disabled-by-config";
+  else try {
     const systemPrompt = ctx.get?.("systemPrompt", true);
     if (systemPrompt && typeof systemPrompt.section === "function") {
       systemPrompt.section({ name: "dafeiyu:subagents", order: 10090, text: GUIDANCE2 });
@@ -36662,11 +36892,14 @@ function startSubagents(ctx, deps) {
   const tryStart = () => {
     if (started || stopped || !web) return;
     started = true;
+    const disposers = [];
     try {
-      const disposers = [];
       disposers.push(web.register({ kind: "exact", path: SUBAGENTS_ROUTE, handler: subagentsHandler(deps) }));
       disposers.push(
         web.register({ kind: "exact", path: SUBAGENTS_ARCHIVE_ROUTE, handler: subagentsArchiveHandler(deps) })
+      );
+      disposers.push(
+        web.register({ kind: "exact", path: SUBAGENTS_CONFIG_ROUTE, handler: subagentsConfigHandler(deps) })
       );
       unregister = () => {
         for (const dispose of disposers) dispose();
@@ -36676,6 +36909,12 @@ function startSubagents(ctx, deps) {
     } catch (error62) {
       probe.routes = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
       started = false;
+      if (disposers.length > 0) {
+        const registered = disposers.splice(0);
+        unregister = () => {
+          for (const dispose of registered) dispose();
+        };
+      }
       deps.log("\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\u8DEF\u7531\u6CE8\u518C\u5931\u8D25\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09", {
         message: String(error62?.message ?? error62).slice(0, 200)
       });
@@ -36900,151 +37139,6 @@ function registerMemoryRoutes(webServer, deps) {
   };
 }
 
-// src/memory/service.ts
-import fs4 from "node:fs";
-import path12 from "node:path";
-var DEFAULT_MEMORY_BUDGET = 800;
-var MAX_ENTRIES2 = 100;
-var MAX_ENTRY_CHARS = 500;
-function resolveDshHome(env = process.env) {
-  const explicit = (env.DSH_HOME ?? "").trim();
-  if (explicit !== "") return explicit;
-  const home = (env.USERPROFILE ?? env.HOME ?? "").trim();
-  return home === "" ? "" : path12.join(home, ".dsh");
-}
-function memoryDir(dshHome) {
-  return path12.join(dshHome, "storages", "dsh-remote-dafeiyu", "memory");
-}
-function memoryFile(dir, personaId) {
-  const safe = String(personaId ?? "").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "default";
-  return path12.join(dir, `${safe}.json`);
-}
-function makeId() {
-  return `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-function normalizeImportance(value) {
-  const num = Number(value);
-  return num === 3 ? 3 : num === 2 ? 2 : 1;
-}
-function readFileOf(file2) {
-  try {
-    const parsed = JSON.parse(fs4.readFileSync(file2, "utf8"));
-    const entries = Array.isArray(parsed.entries) ? parsed.entries.filter((entry) => Boolean(entry) && typeof entry.text === "string").map((entry) => ({
-      id: typeof entry.id === "string" ? entry.id : makeId(),
-      text: String(entry.text).slice(0, MAX_ENTRY_CHARS),
-      createdAt: typeof entry.createdAt === "string" ? entry.createdAt : (/* @__PURE__ */ new Date()).toISOString(),
-      importance: normalizeImportance(entry.importance),
-      source: entry.source === "tool" ? "tool" : "manual"
-    })) : [];
-    return { version: 1, entries };
-  } catch {
-    return { version: 1, entries: [] };
-  }
-}
-function writeFileOf(file2, entries) {
-  try {
-    fs4.mkdirSync(path12.dirname(file2), { recursive: true });
-    const tmp = `${file2}.${process.pid}.tmp`;
-    fs4.writeFileSync(tmp, `${JSON.stringify({ version: 1, entries }, null, 2)}
-`, "utf8");
-    fs4.renameSync(tmp, file2);
-    return true;
-  } catch {
-    return false;
-  }
-}
-function escapeLine(text) {
-  return String(text).replace(/\s+/g, " ").trim();
-}
-function formatEntryLine(entry, withDate) {
-  const level = entry.importance === 3 ? "[\u5173\u952E]" : entry.importance === 2 ? "[\u91CD\u8981]" : "[\u666E\u901A]";
-  const date5 = withDate ? `[${entry.createdAt.slice(0, 10)}]` : "";
-  return `- ${level}${date5} ${escapeLine(entry.text)}`;
-}
-function sortEntries(entries) {
-  return [...entries].sort((a, b) => {
-    if (b.importance !== a.importance) return b.importance - a.importance;
-    return b.createdAt.localeCompare(a.createdAt);
-  });
-}
-function composeMemoryText(entries, budget = DEFAULT_MEMORY_BUDGET) {
-  if (entries.length === 0) return "";
-  const header = "## \u957F\u671F\u8BB0\u5FC6\uFF08\u4F60\u81EA\u5DF1\u6512\u7684\uFF1B\u8DE8\u4F1A\u8BDD\u6709\u6548\uFF0C\u53EF\u636E\u5B83\u4E3B\u52A8\u63A5\u8BDD\uFF09";
-  const sorted = sortEntries(entries);
-  const lines = [];
-  let used = header.length + 1;
-  for (const entry of sorted) {
-    const line = formatEntryLine(entry, true);
-    if (used + line.length + 1 > budget && lines.length > 0) continue;
-    lines.push(line);
-    used += line.length + 1;
-  }
-  return `${header}
-${lines.join("\n")}`;
-}
-function createMemoryService(dshHome, budget = DEFAULT_MEMORY_BUDGET) {
-  const dir = memoryDir(dshHome);
-  return {
-    dir,
-    list(personaId) {
-      return sortEntries(readFileOf(memoryFile(dir, personaId)).entries);
-    },
-    add(personaId, text, options) {
-      const value = escapeLine(text).slice(0, MAX_ENTRY_CHARS);
-      if (value === "") return { ok: false, error: "\u8BB0\u5FC6\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A" };
-      const file2 = memoryFile(dir, personaId);
-      const entries = readFileOf(file2).entries;
-      const entry = {
-        id: makeId(),
-        text: value,
-        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-        importance: normalizeImportance(options?.importance),
-        source: options?.source === "tool" ? "tool" : "manual"
-      };
-      entries.push(entry);
-      if (entries.length > MAX_ENTRIES2) {
-        const victim = [...entries].sort((a, b) => a.importance - b.importance || a.createdAt.localeCompare(b.createdAt))[0];
-        if (victim) entries.splice(entries.indexOf(victim), 1);
-      }
-      if (!writeFileOf(file2, entries)) return { ok: false, error: "\u8BB0\u5FC6\u5199\u4E0D\u8FDB\u53BB\uFF08\u78C1\u76D8/\u6743\u9650\uFF09" };
-      return { ok: true, entry };
-    },
-    update(personaId, id, patch) {
-      const file2 = memoryFile(dir, personaId);
-      const entries = readFileOf(file2).entries;
-      const hit = entries.find((entry) => entry.id === id);
-      if (!hit) return false;
-      if (typeof patch.text === "string") hit.text = escapeLine(patch.text).slice(0, MAX_ENTRY_CHARS);
-      if (patch.importance !== void 0) hit.importance = normalizeImportance(patch.importance);
-      return writeFileOf(file2, entries);
-    },
-    remove(personaId, id) {
-      const file2 = memoryFile(dir, personaId);
-      const entries = readFileOf(file2).entries;
-      const next = entries.filter((entry) => entry.id !== id);
-      if (next.length === entries.length) return false;
-      return writeFileOf(file2, next);
-    },
-    clear(personaId) {
-      return writeFileOf(memoryFile(dir, personaId), []);
-    },
-    textFor(personaId, limit = budget) {
-      return composeMemoryText(readFileOf(memoryFile(dir, personaId)).entries, limit);
-    },
-    counts() {
-      const result2 = {};
-      try {
-        for (const name2 of fs4.readdirSync(dir)) {
-          if (!name2.endsWith(".json")) continue;
-          result2[name2.slice(0, -5)] = readFileOf(path12.join(dir, name2)).entries.length;
-        }
-      } catch {
-      }
-      return result2;
-    }
-  };
-}
-
 // src/memory/start.ts
 var MEMORY_SERVICE_NAME = "dafeiyuMemory";
 function resolvePersonaId(ctx) {
@@ -37231,11 +37325,11 @@ function startMemory(ctx, deps) {
 
 // src/backup/service.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import path15 from "node:path";
+import path16 from "node:path";
 
 // src/backup/config.ts
 import { existsSync, readFileSync as readFileSync4 } from "node:fs";
-import path13 from "node:path";
+import path14 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -37247,19 +37341,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path13.join(dshHome, "dsh-backup-git");
+  return path14.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path13.join(backupDir(dshHome), "config.json");
+  return path14.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path13.join(backupDir(dshHome), "credential.json");
+  return path14.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path13.join(backupDir(dshHome), "status.json");
+  return path14.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path13.join(backupDir(dshHome), "work");
+  return path14.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -37496,16 +37590,16 @@ import { createHash as createHash5 } from "node:crypto";
 import { existsSync as existsSync2, readdirSync, readFileSync as readFileSync5, statSync as statSync2 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path14 from "node:path";
+import path15 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path14.join(sessionsRoot, slug);
+    const slugDir = path15.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path14.join(slugDir, dirName);
+      const sessionDir = path15.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path14.join(sessionDir, fileName);
+        const file2 = path15.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync2(file2);
@@ -37517,7 +37611,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path14.posix.join(slug, dirName, fileName),
+          relPath: path15.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -37566,11 +37660,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path14.join(input2.stagingDir, "latest");
+  const staging = path15.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path14.join(staging, "sessions", entry.relPath);
+    const target = path15.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -37579,20 +37673,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path14.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path15.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path14.join(staging, "profiles", path14.basename(input2.profileDir));
+    const target = path15.join(staging, "profiles", path15.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path14.join(input2.profileDir, name2);
+      const source = path15.join(input2.profileDir, name2);
       if (!existsSync2(source)) continue;
-      await copyFileFresh(source, path14.join(target, name2));
+      await copyFileFresh(source, path15.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path14.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path15.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -37608,17 +37702,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path14.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path15.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path14.join(stagingDir, "archive");
+  const root = path15.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path14.join(root, entry.relPath);
+    const target = path15.join(root, entry.relPath);
     if (existsSync2(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -37664,7 +37758,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path14.join(dir, entry.name);
+    const full = path15.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -37675,7 +37769,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path14.dirname(target), { recursive: true });
+  await mkdir(path15.dirname(target), { recursive: true });
   if (existsSync2(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -37688,7 +37782,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path14.join(sourceDir, name2), path14.join(targetDir, name2));
+    await copyFileFresh(path15.join(sourceDir, name2), path15.join(targetDir, name2));
     names.push(name2);
   }
   return names;
@@ -37701,8 +37795,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path14.join(sourceDir, entry.name);
-    const target = path14.join(targetDir, entry.name);
+    const source = path15.join(sourceDir, entry.name);
+    const target = path15.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -37737,8 +37831,8 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync2(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path14.join(profilesRoot, name2);
-    const manifest = path14.join(dir, "package.json");
+    const dir = path15.join(profilesRoot, name2);
+    const manifest = path15.join(dir, "package.json");
     if (!existsSync2(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
@@ -37990,13 +38084,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path15.join(base, "staging"),
-      hotRepo: path15.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path15.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path15.join(this.deps.dshHome, "sessions"),
-      storagesDir: path15.join(this.deps.dshHome, "storages"),
-      profilesRoot: path15.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path15.join(this.deps.dshHome, "attachments")
+      staging: path16.join(base, "staging"),
+      hotRepo: path16.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path16.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path16.join(this.deps.dshHome, "sessions"),
+      storagesDir: path16.join(this.deps.dshHome, "storages"),
+      profilesRoot: path16.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path16.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -38019,7 +38113,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync6(repo, { recursive: true });
-    if (!existsSync3(path15.join(repo, ".git"))) {
+    if (!existsSync3(path16.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -38039,7 +38133,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path15.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path16.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -38085,11 +38179,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync6(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path15.join(base, "askpass.cmd");
+      const file3 = path16.join(base, "askpass.cmd");
       if (!existsSync3(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path15.join(base, "askpass.sh");
+    const file2 = path16.join(base, "askpass.sh");
     if (!existsSync3(file2)) {
       writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -38113,31 +38207,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path15.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path16.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path15.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path15.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path16.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path16.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path15.join(staging, "latest");
-      const restoredHot = existsSync3(path15.join(restoreLatest, "sessions")) ? countSessionFiles(path15.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path16.join(staging, "latest");
+      const restoredHot = existsSync3(path16.join(restoreLatest, "sessions")) ? countSessionFiles(path16.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path15.join(this.deps.dshHome, name2);
+        const target = path16.join(this.deps.dshHome, name2);
         if (existsSync3(target)) {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path15.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path15.join(restoreLatest, "storages"), path15.join(this.deps.dshHome, "storages"));
-      if (existsSync3(path15.join(restoreLatest, "attachments"))) {
-        await mergeTree(path15.join(restoreLatest, "attachments"), path15.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path16.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path16.join(restoreLatest, "storages"), path16.join(this.deps.dshHome, "storages"));
+      if (existsSync3(path16.join(restoreLatest, "attachments"))) {
+        await mergeTree(path16.join(restoreLatest, "attachments"), path16.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path15.join(staging, "archive"), sessionsRoot);
-      const profiles = path15.join(restoreLatest, "profiles");
+      await mergeTree(path16.join(staging, "archive"), sessionsRoot);
+      const profiles = path16.join(restoreLatest, "profiles");
       if (existsSync3(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -38174,15 +38268,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync2(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path15.join(repo, entry.name);
+    const target = path16.join(repo, entry.name);
     rmSync2(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync3(source)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
-    const from = path15.join(source, entry.name);
-    const to = path15.join(target, entry.name);
+    const from = path16.join(source, entry.name);
+    const to = path16.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync6(to, { recursive: true });
       await mergeTree(from, to);
@@ -38198,12 +38292,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync3(profilesRoot)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path15.join(source, entry.name);
-    const to = path15.join(profilesRoot, entry.name);
+    const from = path16.join(source, entry.name);
+    const to = path16.join(profilesRoot, entry.name);
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path15.join(from, file2.name), path15.join(to, file2.name));
+      await copyFileFresh(path16.join(from, file2.name), path16.join(to, file2.name));
     }
   }
 }
@@ -38217,7 +38311,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path15.join(dir, entry.name);
+      const full = path16.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -38233,7 +38327,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync7 } from "node:fs";
-import path16 from "node:path";
+import path17 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -38263,8 +38357,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path16.dirname(statusFile2) : dataDir();
-  return path16.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path17.dirname(statusFile2) : dataDir();
+  return path17.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -38278,12 +38372,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path16.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path17.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path16.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path17.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -38322,7 +38416,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path16.dirname(file2));
+    ensureSecureDir(path17.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -38505,7 +38599,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path17.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path18.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -38528,7 +38622,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path17.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path18.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -39077,7 +39171,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path17.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path18.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -39259,7 +39353,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path17.dirname(path17.dirname(config2.statusFile)) : path17.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path18.dirname(path18.dirname(config2.statusFile)) : path18.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -39274,6 +39368,7 @@ function applyInner(ctx, injected, clock) {
   try {
     subagentsHandle = startSubagents(ctx, {
       log,
+      dshHome: resolveDshHome(process.env),
       /**
        * 延后取 kernel：这条路由可能在 `start(port)` 之前就挂上（webServer 早到），
        * 而 kernel 是服务到位那一刻才有的。回调在**请求时**才读，所以不存在拿到旧值的问题。

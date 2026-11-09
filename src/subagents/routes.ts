@@ -7,14 +7,19 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
 import type { KernelSubagent } from '../ports/index.js'
+import type { SubagentsConfig } from './config.js'
+import { SUBAGENT_GUIDANCE } from './guidance.js'
 
 export const SUBAGENTS_ROUTE = '/api/dsh-remote-dafeiyu/subagents'
 export const SUBAGENTS_ARCHIVE_ROUTE = '/api/dsh-remote-dafeiyu/subagents/archive'
+export const SUBAGENTS_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/subagents/config'
 
 export interface SubagentRouteDeps {
   list: (sessionId: string, options?: { descendants?: boolean }) => Promise<KernelSubagent[]>
   /** 归档 / 取消归档（清理闲置子代理）：写路由，要带 `x-drc-pair` 头。 */
   archive?: (sessionId: string, archived: boolean) => Promise<{ ok: boolean; message?: string }>
+  /** 派活助手配置的读/写（闲置阈值、提示段开关）。 */
+  config: { read(): SubagentsConfig; write(patch: unknown): SubagentsConfig }
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }
 
@@ -51,7 +56,7 @@ export function subagentsHandler(deps: SubagentRouteDeps) {
     const descendants = url.searchParams.get('descendants') === '1'
     try {
       const items = await deps.list(sessionId, { descendants })
-      json(response, 200, { ok: true, items })
+      json(response, 200, { ok: true, items, config: deps.config.read() })
     } catch (error) {
       const message = String((error as Error)?.message ?? error).slice(0, 200)
       deps.log('子代理列表读取失败', { message })
@@ -140,6 +145,37 @@ export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
       json(response, failed === 0 ? 200 : 207, { ok: failed === 0, results })
     } catch (error) {
       json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
+    }
+  }
+}
+
+
+/** `GET/POST /subagents/config`：派活助手的配置（写要 `x-drc-pair`，与其它写路由同一条）。 */
+export function subagentsConfigHandler(deps: SubagentRouteDeps) {
+  return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) {
+      json(response, 403, { ok: false, error: denied })
+      return
+    }
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      json(response, 200, { ok: true, config: deps.config.read(), guidanceText: SUBAGENT_GUIDANCE })
+      return
+    }
+    if (request.method !== 'POST') {
+      json(response, 405, { ok: false, error: '只支持 GET / POST' })
+      return
+    }
+    if (String(request.headers['x-drc-pair'] ?? '') === '') {
+      json(response, 403, { ok: false, error: 'missing x-drc-pair' })
+      return
+    }
+    try {
+      const body = JSON.parse(await readBody(request)) as unknown
+      json(response, 200, { ok: true, config: deps.config.write(body) })
+    } catch (error) {
+      json(response, 400, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
     }
   }
 }

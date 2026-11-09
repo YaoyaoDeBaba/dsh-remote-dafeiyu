@@ -156,6 +156,8 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   doc.body.appendChild(panel)
 
   let items: SubagentRow[] = []
+  // 闲置阈值来自宿主配置（设置页「派活助手」可改），缺省 2h。
+  let idleWarnMs = IDLE_WARN_MS
   let session = ''
   let timer = 0
   let busy = false
@@ -199,7 +201,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       const meta = doc.createElement('div')
       meta.className = 'meta'
-      const idleWarn = row.status === 'idle' && (row.idleMs ?? 0) >= IDLE_WARN_MS
+      const idleWarn = row.status === 'idle' && (row.idleMs ?? 0) >= idleWarnMs
       meta.classList.toggle('stale', idleWarn)
       // 两个时间**互斥**：跑着看「运行」，停了看「闲置」
       const time = row.status === 'running'
@@ -236,7 +238,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       body.appendChild(line)
     }
-    const idleCount = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= IDLE_WARN_MS).length
+    const idleCount = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs).length
     archiveIdle.disabled = idleCount === 0
     archiveIdle.textContent = idleCount > 0 ? `一键归档闲置 (${idleCount})` : '一键归档闲置'
   }
@@ -314,7 +316,14 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       const response = await fetch(
         resolveHostUrl('/api/dsh-remote-dafeiyu/subagents?sessionId=' + encodeURIComponent(current)),
       )
-      const answer = (await response.json()) as { ok?: boolean; items?: SubagentRow[] }
+      const answer = (await response.json()) as {
+        ok?: boolean
+        items?: SubagentRow[]
+        config?: { idleWarnMs?: number }
+      }
+      if (answer.config && typeof answer.config.idleWarnMs === 'number' && Number.isFinite(answer.config.idleWarnMs)) {
+        idleWarnMs = answer.config.idleWarnMs
+      }
       if (answer.ok === true && Array.isArray(answer.items)) apply(answer.items)
       else apply([])
     } catch {

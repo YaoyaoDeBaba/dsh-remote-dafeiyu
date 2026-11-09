@@ -1456,6 +1456,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   try {
     subagentsHandle = startSubagents(ctx as never, {
       log,
+      dshHome: resolveDshHome(process.env),
       /**
        * 延后取 kernel：这条路由可能在 `start(port)` 之前就挂上（webServer 早到），
        * 而 kernel 是服务到位那一刻才有的。回调在**请求时**才读，所以不存在拿到旧值的问题。
