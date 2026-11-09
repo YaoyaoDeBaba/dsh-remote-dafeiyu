@@ -25,6 +25,7 @@ import { buildVisionPanel } from './vision-panel.js'
 import { buildMemoryPanel } from './memory-panel.js'
 import { buildSubagentsPanel } from './subagents-settings.js'
 import { buildXyqPanel } from './xyq-panel.js'
+import { buildAvatarPanel } from './avatar-panel.js'
 
 /** 三个分栏的 id。 */
 export const DAFEIYU_TAB_REMOTE = 'remote'
@@ -76,6 +77,8 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks })
   // 小云雀（CLI 生图/生视频）：Key、预算、自由度。
   const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks })
+  // 形象：sprite 动画面板（素材在动态形象存储里）。
+  const avatarPanel = buildAvatarPanel({ createElement, hooks: reactHooks })
 
   let cleanupRemote: (() => void) | undefined
   const attach = (node: unknown): void => {
@@ -138,10 +141,17 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
       body = createElement('div', {
         children: [createElement(personaSettings, { t: personaT }), ...extras],
       })
+    } else if (tab === DAFEIYU_TAB_AVATAR) {
+      body = avatarPanel
+        ? createElement(avatarPanel, {})
+        : createElement('p', {
+            style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
+            children: '形象面板起不来（宿主没给 react hooks）。',
+          })
     } else {
       body = createElement('p', {
         style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
-        children: '形象页待素材落地（管道已通，纯时间活）。',
+        children: '未实现的分栏。',
       })
     }
     return createElement('div', {

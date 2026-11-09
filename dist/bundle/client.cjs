@@ -2916,6 +2916,118 @@ function buildXyqPanel(deps) {
   };
 }
 
+// src/client/avatar-panel.ts
+var BASE3 = "/api/dsh-remote-dafeiyu/avatar";
+var FPS = 24;
+var buttonStyle5 = {
+  padding: "4px 12px",
+  borderRadius: "6px",
+  border: "1px solid var(--dsw-alias-border-l2)",
+  background: "transparent",
+  color: "var(--dsw-alias-label-primary)",
+  fontSize: "13px",
+  cursor: "pointer"
+};
+function buildAvatarPanel(deps) {
+  const { createElement: h, hooks } = deps;
+  const useState = hooks.useState;
+  const useEffect = hooks.useEffect;
+  if (typeof useState !== "function") return void 0;
+  return function AvatarPanel() {
+    const [states, setStates] = useState([]);
+    const [active, setActive] = useState("idle");
+    const [playing, setPlaying] = useState(true);
+    const [status, setStatus] = useState("\u6B63\u5728\u8BFB\u53D6\u7D20\u6750\u2026");
+    useEffect?.(() => {
+      let cancelled = false;
+      void (async () => {
+        try {
+          const result = await callJson(`${BASE3}/manifest`, void 0);
+          const manifest = result.manifest;
+          if (cancelled) return;
+          if (result.ok === true && manifest && Array.isArray(manifest.states) && manifest.states.length > 0) {
+            setStates(manifest.states);
+            setStatus(`\u5171 ${manifest.states.length} \u4E2A\u52A8\u4F5C`);
+            if (!manifest.states.some((state) => state.id === "idle")) setActive(manifest.states[0].id);
+          } else {
+            setStatus(String(result.message ?? "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5"));
+          }
+        } catch (error) {
+          if (!cancelled) setStatus(`\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+    const current = states.find((state) => state.id === active) ?? states[0];
+    useEffect?.(() => {
+      if (!current || !playing) return;
+      const element = document.getElementById("dafeiyu-avatar-sprite");
+      if (!element) return;
+      let frame = 0;
+      const total = current.frames;
+      const cols = current.cols;
+      const rows = current.rows;
+      const paint = () => {
+        const col = frame % cols;
+        const row = Math.floor(frame / cols) % rows;
+        element.style.backgroundPosition = `${col / Math.max(1, cols - 1) * 100}% ${row / Math.max(1, rows - 1) * 100}%`;
+        frame = (frame + 1) % total;
+      };
+      paint();
+      const timer = setInterval(paint, Math.round(1e3 / FPS));
+      return () => clearInterval(timer);
+    }, [current?.id, playing]);
+    if (states.length === 0) {
+      return h("p", { style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" }, children: status });
+    }
+    const sprite = current ? h("div", {
+      style: {
+        width: "100%",
+        maxWidth: "520px",
+        aspectRatio: `${current.cellWidth} / ${current.cellHeight}`,
+        backgroundImage: `url(${BASE3}/sheet?id=${encodeURIComponent(current.id)})`,
+        backgroundSize: `${current.cols * 100}% ${current.rows * 100}%`,
+        backgroundRepeat: "no-repeat",
+        borderRadius: "12px",
+        border: "1px solid var(--dsw-alias-border-l2)",
+        backgroundPosition: "0% 0%"
+      },
+      id: "dafeiyu-avatar-sprite"
+    }) : null;
+    return h("div", {
+      style: { display: "flex", flexDirection: "column", gap: "12px" },
+      children: [
+        h("p", {
+          style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-secondary)", lineHeight: "1.6" },
+          children: `\u865A\u62DF\u5F62\u8C61\u7D20\u6750\uFF08${status}\uFF09\uFF1A8\xD76 sprite\uFF0C24fps \u5FAA\u73AF\uFF1B\u6362\u52A8\u4F5C\u76F4\u63A5\u70B9\u4E0B\u9762\u7684\u6309\u94AE\u3002`
+        }),
+        h("div", {
+          style: { display: "flex", gap: "8px", flexWrap: "wrap" },
+          children: states.map(
+            (state) => h("button", {
+              type: "button",
+              key: state.id,
+              style: state.id === active ? { ...buttonStyle5, background: "var(--dsw-alias-bg-secondary)", fontWeight: 600 } : buttonStyle5,
+              onClick: () => setActive(state.id),
+              children: state.label
+            })
+          )
+        }),
+        sprite,
+        h("div", {
+          style: { display: "flex", gap: "8px", alignItems: "center" },
+          children: [
+            h("button", { type: "button", style: buttonStyle5, onClick: () => setPlaying(!playing), children: playing ? "\u6682\u505C" : "\u64AD\u653E" }),
+            h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: current ? `${current.frames} \u5E27 \xB7 ${FPS}fps \xB7 ${playing ? "\u5FAA\u73AF\u4E2D" : "\u5DF2\u6682\u505C"}` : "" })
+          ]
+        })
+      ]
+    });
+  };
+}
+
 // src/client/dafeiyu-page.ts
 var DAFEIYU_TAB_REMOTE = "remote";
 var DAFEIYU_TAB_PERSONA = "persona";
@@ -2939,6 +3051,7 @@ function mountDafeiyuSettings(deps) {
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks });
   const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks });
   const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks });
+  const avatarPanel = buildAvatarPanel({ createElement, hooks: reactHooks });
   let cleanupRemote;
   const attach = (node) => {
     const element = node;
@@ -2992,10 +3105,15 @@ function mountDafeiyuSettings(deps) {
       body = createElement("div", {
         children: [createElement(personaSettings, { t: personaT }), ...extras]
       });
+    } else if (tab === DAFEIYU_TAB_AVATAR) {
+      body = avatarPanel ? createElement(avatarPanel, {}) : createElement("p", {
+        style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
+        children: "\u5F62\u8C61\u9762\u677F\u8D77\u4E0D\u6765\uFF08\u5BBF\u4E3B\u6CA1\u7ED9 react hooks\uFF09\u3002"
+      });
     } else {
       body = createElement("p", {
         style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" },
-        children: "\u5F62\u8C61\u9875\u5F85\u7D20\u6750\u843D\u5730\uFF08\u7BA1\u9053\u5DF2\u901A\uFF0C\u7EAF\u65F6\u95F4\u6D3B\uFF09\u3002"
+        children: "\u672A\u5B9E\u73B0\u7684\u5206\u680F\u3002"
       });
     }
     return createElement("div", {

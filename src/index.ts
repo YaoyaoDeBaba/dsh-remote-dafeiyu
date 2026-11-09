@@ -59,6 +59,7 @@ import { startVision, type VisionHandle } from './vision/start.js'
 import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 小云雀（CLI 工具）：生图/生视频/余额，设置页一栏。
 import { startXyq, type XyqHandle } from './xyq/start.js'
+import { startAvatar, type AvatarHandle } from './avatar/start.js'
 // 记忆库（0.9.0）：人设的「长期记忆」段 + 设置页记忆面板 + 三个工具。
 import { startMemory, type MemoryHandle } from './memory/start.js'
 import { resolveDshHome } from './memory/service.js'
@@ -1483,6 +1484,16 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
+  let avatarHandle: AvatarHandle | undefined
+  try {
+    avatarHandle = startAvatar(ctx as never, { dshHome: resolveDshHome(process.env), log })
+  } catch (error) {
+    avatarHandle = undefined
+    log('虚拟形象素材路由起不来（不影响其它功能）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   let xyqHandle: XyqHandle | undefined
   try {
     xyqHandle = startXyq(ctx as never, { dshHome: resolveDshHome(process.env), log })
@@ -1583,6 +1594,11 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         xyqHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      try {
+        avatarHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }

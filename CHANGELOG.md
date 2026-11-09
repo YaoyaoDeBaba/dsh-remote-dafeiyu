@@ -1,3 +1,14 @@
+## 0.9.0-dafeiyu.13 —— 虚拟形象（8 动作 sprite）
+
+- 「大肥鱼 → 形象」不再占位：播放 8 个动作的 sprite 动画（待机/讲话/动脑/蹭得累/吃饭/打盹/跳舞/偷吃），
+  动作按钮切换、24fps 循环、可暂停；
+- 素材管线：原始 8×6 序列帧 PNG（每张 ~40MB）转成 `manifest.json` + 8 张 webp（~1.5–2.6MB），
+  落在 `storages/dsh-remote-dafeiyu/avatar/`；
+- 宿主新路由：`GET /api/dsh-remote-dafeiyu/avatar/manifest` 与 `/avatar/sheet?id=<动作>`（只读、回环、
+  id 白名单 + 路径穿越防护、长缓存）；
+- 客户端只改 `background-position`（800%×600% 背景网格），不重建 DOM；
+- 判据：avatar 单测 3 条（正常解析/非法动作与路径过滤/缺文件降级），全量 812 项（795 通过 / 17 跳过）。
+
 ## 0.9.0-dafeiyu.12 —— 提示词推送按钮
 
 - 设置页「派活助手」「小云雀」两个分栏各加一颗 **「推送到所有在线会话」**：把对应提示段用
