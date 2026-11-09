@@ -104,22 +104,40 @@ export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
       json(response, 501, { ok: false, error: '主机这一代不支持归档' })
       return
     }
-    let body: { sessionId?: unknown; archived?: unknown }
+    let body: { sessionId?: unknown; ids?: unknown; archived?: unknown }
     try {
-      body = JSON.parse(await readBody(request)) as { sessionId?: unknown; archived?: unknown }
+      body = JSON.parse(await readBody(request)) as { sessionId?: unknown; ids?: unknown; archived?: unknown }
     } catch {
       json(response, 400, { ok: false, error: '请求体不是合法 JSON' })
       return
     }
-    const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : ''
-    if (sessionId === '') {
-      json(response, 400, { ok: false, error: '缺少 sessionId' })
+    // 单条（sessionId）与批量（ids）都收：批量是「一键归档闲置」用的，逐条走同一个归档端口。
+    const ids = Array.isArray(body.ids)
+      ? body.ids.filter((id): id is string => typeof id === 'string' && id.trim() !== '').map((id) => id.trim())
+      : typeof body.sessionId === 'string' && body.sessionId.trim() !== ''
+        ? [body.sessionId.trim()]
+        : []
+    if (ids.length === 0) {
+      json(response, 400, { ok: false, error: '缺少 sessionId 或 ids' })
+      return
+    }
+    if (ids.length > 50) {
+      json(response, 400, { ok: false, error: '一次最多归档 50 个' })
       return
     }
     const archived = body.archived !== false
     try {
-      const result = await deps.archive(sessionId, archived)
-      json(response, result.ok ? 200 : 409, result)
+      const results: Array<{ sessionId: string; ok: boolean; message?: string }> = []
+      for (const id of ids) {
+        try {
+          const result = await deps.archive(id, archived)
+          results.push({ sessionId: id, ...result })
+        } catch (error) {
+          results.push({ sessionId: id, ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) })
+        }
+      }
+      const failed = results.filter((row) => !row.ok).length
+      json(response, failed === 0 ? 200 : 207, { ok: failed === 0, results })
     } catch (error) {
       json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
     }

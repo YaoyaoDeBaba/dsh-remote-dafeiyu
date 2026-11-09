@@ -13,6 +13,18 @@ interface LooseContext {
   inject?(names: string[], callback: (scoped: unknown) => void): unknown
 }
 
+/** 派活规范（提示词段）：名称｜简述 的约定 + 优先用内置 subagent 工具。 */
+const GUIDANCE = [
+  '## 子代理监视器（本机已启用）',
+  '这台 DSH 装了「子代理监视器」，用户会在电脑右侧 / 手机对话页里看到你派出去的每个子代理。',
+  '派活时**必须使用内置 `subagent` 工具**，并且 `description` 参数按 `名称｜一句话简述` 填写：',
+  '- 名称 ≤ 12 字，能让人一眼认出这件事（例如 `渲染合批`、`词条校对`）；',
+  '- 简述 ≤ 40 字，说清目标与验收（例如 `升级 VFX 批次合并并跑通验收`）；',
+  '- 示例：`description: "渲染合批｜升级 VFX 批次合并并跑通验收"`；正文 prompt 第一行再写完整目标。',
+  '不按这个格式写也能派出去，但监视器只能自动取名并把这一行标黄——用户会看不懂你在干什么。',
+  '不要为了“少写一行”而绕过这个入口；用户就是靠它判断要不要等你。',
+].join('\n')
+
 interface Registerable {
   register(route: {
     kind: 'exact'
@@ -33,6 +45,20 @@ export function startSubagents(
   },
 ): SubagentsHandle {
   const probe: Record<string, string> = {}
+  // 提示词段：插件激活就告诉模型「按 名称｜简述 派活」。拿不到 systemPrompt 只是少一段提示。
+  try {
+    const systemPrompt = ctx.get?.('systemPrompt', true) as
+      | { section?: (definition: { name: string; order: number; text: string }) => unknown }
+      | undefined
+    if (systemPrompt && typeof systemPrompt.section === 'function') {
+      systemPrompt.section({ name: 'dafeiyu:subagents', order: 10090, text: GUIDANCE })
+      probe.section = 'registered'
+    } else {
+      probe.section = 'no-systemPrompt'
+    }
+  } catch (error) {
+    probe.section = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+  }
   let web: Registerable | undefined
   let unregister: (() => void) | undefined
   let started = false

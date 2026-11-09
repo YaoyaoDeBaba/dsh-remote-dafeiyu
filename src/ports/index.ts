@@ -37,8 +37,19 @@ export interface KernelSubagent {
   depth: number
   /** 会话标题（宿主自动生成，可能没有）。 */
   title?: string
-  /** 这次委派要干的活（子会话日志里的第一条用户消息，截断过）。 */
+  /** 这次委派要干的活（子会话日志里第一条**人写的**用户消息，截断过）。 */
   task?: string
+  /**
+   * 显示用名称：优先取官方 `subagent` 工具的 `description`（按 `名称｜简述` 拆分），
+   * 没按约定写时退回标题/任务首行。
+   */
+  name?: string
+  /** 一句话简述（`description` 里 `｜` 右边那段；没有就用任务首句兜底）。 */
+  summary?: string
+  /** `ok` = 用了约定格式；`fallback` = 自动取名（端上标黄提醒）。 */
+  naming?: 'ok' | 'fallback'
+  /** 「此刻正在干什么」：最后一条有意义的内核事件（运行 <工具> / 正在写回复 / 等待审批…）。 */
+  activity?: string
   /** 此刻在不在跑（`agent.status === 'running'`）。 */
   status: 'running' | 'idle'
   /** 会话创建时间（ISO）。 */
@@ -49,6 +60,8 @@ export interface KernelSubagent {
   workMs: number
   /** 距最后一次活动的闲置时间（毫秒）。 */
   idleMs: number
+  /** 本轮已运行时长（毫秒，running 时有效）：端上只显示它，不显示累计 workMs。 */
+  runningMs?: number
 }
 
 /** 内核报告的一条会话在插件内部的形状（还没变成线格式）。 */

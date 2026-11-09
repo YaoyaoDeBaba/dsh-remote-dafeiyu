@@ -67,6 +67,8 @@ export interface ServicesBundle {
    * 不该把整条载体判定拖垮，所以它是可选服务。
    */
   sessionController?: LooseObject
+  /** 子代理目录（`ctx.subagents`）：label 是官方 `subagent` 工具 description 的原样记录。 */
+  subagents?: LooseObject
   /**
    * 持久附件存储（`ctx.attachments`，`@deepseek-ai/dsh-attachment` 的 `AttachmentStore`）。
    *
@@ -303,6 +305,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   const subagentWorkMs = new Map<string, number>()
   /** 子代理日志探针缓存：任务文本、回合耗时合计、最后事件时间（`readSession` 很贵）。 */
   const subagentProbe = new Map<string, { at: number; task?: string; logWorkMs?: number; lastTime?: number }>()
+  /** 子代理「此刻正在干什么」：最后一条有意义的会话事件（工具名/写回复/待办…）。 */
+  const subagentActivity = new Map<string, { text: string; at: number }>()
 
   /**
    * 「最后操作的那个会话」与它的目录（2026-10-06 用户："新建要落在最后操作的分组里"）。
@@ -647,6 +651,43 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     return 0
   }
   /**
+   * 从内核事件里给“当前正在干什么”记一句话。
+   *
+   * 只认几类对用户有意义的：工具调用（带工具名）、写回复、待办、等审批/回答。
+   * `turn/end` 清空（一轮结束了就没有“正在干什么”）。
+   */
+  function recordActivity(sessionId: string, type: string, data: LooseObject): void {
+    if (!sessionId) return
+    const now = options.clock.now()
+    if (type === 'turn/end') {
+      subagentActivity.delete(sessionId)
+      return
+    }
+    if (type === 'tool/call') {
+      const raw =
+        (typeof data.name === 'string' && data.name) ||
+        (typeof data.tool === 'string' && data.tool) ||
+        (typeof data.toolName === 'string' && data.toolName) ||
+        (typeof (data.call as LooseObject | undefined)?.name === 'string' && String((data.call as LooseObject).name)) ||
+        ''
+      const tool = raw.replace(/^mcp__/, '').slice(0, 24)
+      subagentActivity.set(sessionId, { text: tool ? `运行 ${tool}` : '调用工具', at: now })
+      return
+    }
+    const known: Record<string, string> = {
+      'turn/start': '开始新一轮',
+      'step/start': '执行步骤',
+      'assistant/message': '正在写回复',
+      'todo/write': '更新待办',
+      'approval/request': '等待审批',
+      'user.question/request': '等待回答',
+      'user-questions/request': '等待回答',
+    }
+    const text = known[type]
+    if (text) subagentActivity.set(sessionId, { text, at: now })
+  }
+
+  /**
    * 一条子代理会话的日志探针：任务文本 / 回合耗时 / 最后事件时间。
    *
    * 为什么不只靠内存里的 run-state 计时：插件重启后计时表是空的，而子代理可能是
@@ -673,7 +714,6 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       let lastTime: number | undefined
       let logWorkMs = 0
       let openStart: number | undefined
-      let task: string | undefined
       for (const event of events) {
         const time = typeof event?.time === 'number' && Number.isFinite(event.time) ? event.time : undefined
         if (time !== undefined && (lastTime === undefined || time > lastTime)) lastTime = time
@@ -682,21 +722,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
           logWorkMs += Math.max(0, time - openStart)
           openStart = undefined
         }
-        if (task === undefined && event?.type === 'user/message') {
-          const data = (event?.data ?? {}) as LooseObject
-          const content = Array.isArray(data.content) ? data.content : []
-          for (const block of content) {
-            const text =
-              block && typeof block === 'object' && typeof (block as LooseObject).text === 'string'
-                ? String((block as LooseObject).text)
-                : ''
-            if (text.trim() !== '') {
-              task = text.trim().replace(/\s+/g, ' ').slice(0, 160)
-              break
-            }
-          }
-        }
       }
+      const task = taskFromEvents(events as Array<{ type?: unknown; data?: unknown }>)
       if (running && openStart !== undefined) logWorkMs += Math.max(0, options.clock.now() - openStart)
       const fresh: { at: number; task?: string; logWorkMs?: number; lastTime?: number } = { at: now }
       if (task !== undefined) fresh.task = task
@@ -708,6 +735,96 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       log('subagent probe failed', { sessionId: id.slice(0, 40), message: messageOf(error).slice(0, 120) })
       return cached ?? {}
     }
+  }
+
+  /**
+   * 把官方 label（内置 `subagent` 工具的 `description`）拆成「名称｜简述」。
+   *
+   * 约定在提示词段里（`dafeiyu:subagents`）：`名称｜一句话简述`。没按约定写也**不丢**——
+   * 整段当名称、标记 `naming: 'fallback'`，由端上标黄提醒。
+   */
+  function splitSubagentLabel(label: string | undefined): { name?: string; summary?: string; naming: 'ok' | 'fallback' } {
+    const raw = typeof label === 'string' ? label.trim().replace(/\s+/g, ' ') : ''
+    if (raw === '') return { naming: 'fallback' }
+    const parts = raw.split(/[｜|]/)
+    if (parts.length >= 2) {
+      const name = parts[0]!.trim().slice(0, 20)
+      const summary = parts.slice(1).join('｜').trim().slice(0, 80)
+      if (name !== '') return { name, ...(summary !== '' ? { summary } : {}), naming: 'ok' }
+    }
+    return { name: raw.slice(0, 20), ...(raw.length > 20 ? { summary: raw.slice(20).trim().slice(0, 80) } : {}), naming: 'fallback' }
+  }
+
+  /** 子代理日志开头的系统注入（不是用户写的任务）：取任务时跳过。 */
+  const TASK_NOISE = [
+    /^The working directory changed/i,
+    /^Current runtime context/i,
+    /^Current working directory/i,
+    /^Time sampled while preparing/i,
+    /^<system-reminder>/i,
+    /^A skill is a reusable/i,
+    /^The available skills/i,
+  ]
+
+  /** 从日志里取“人写的任务”：跳过系统注入，取第一段非空文本的首行。 */
+  function taskFromEvents(events: Array<{ type?: unknown; data?: unknown }>): string | undefined {
+    for (const event of events) {
+      if (event?.type !== 'user/message') continue
+      const data = (event?.data ?? {}) as LooseObject
+      const content = Array.isArray(data.content) ? data.content : []
+      for (const block of content) {
+        const text =
+          block && typeof block === 'object' && typeof (block as LooseObject).text === 'string'
+            ? String((block as LooseObject).text).trim()
+            : ''
+        if (text === '') continue
+        if (TASK_NOISE.some((pattern) => pattern.test(text))) continue
+        return text.replace(/\s+/g, ' ').slice(0, 160)
+      }
+    }
+    return undefined
+  }
+
+  /** 读官方子代理目录的 label（拿不到就空表，退回标题/任务）。 */
+  async function subagentLabels(
+    parentSessionId: string,
+    descendants: boolean,
+  ): Promise<Map<string, string>> {
+    const labels = new Map<string, string>()
+    const service = services.subagents
+    if (!service) return labels
+    const call = (name: 'listDescendants' | 'listChildren'): ((...args: unknown[]) => unknown) | undefined =>
+      fn(service, name)
+    try {
+      if (descendants) {
+        const list = call('listDescendants')
+        if (list) {
+          const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 8_000)) as Array<
+            { id?: unknown; label?: unknown } | undefined
+          >
+          for (const row of rows ?? []) {
+            if (typeof row?.id === 'string' && typeof row.label === 'string' && row.label.trim() !== '') {
+              labels.set(row.id, row.label.trim())
+            }
+          }
+          if (labels.size > 0) return labels
+        }
+      }
+      const list = call('listChildren')
+      if (list) {
+        const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 8_000)) as Array<
+          { id?: unknown; label?: unknown } | undefined
+        >
+        for (const row of rows ?? []) {
+          if (typeof row?.id === 'string' && typeof row.label === 'string' && row.label.trim() !== '') {
+            labels.set(row.id, row.label.trim())
+          }
+        }
+      }
+    } catch (error) {
+      log('subagent catalog unavailable', { message: messageOf(error).slice(0, 120) })
+    }
+    return labels
   }
 
   /**
@@ -746,6 +863,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     collect(parentSessionId)
     if (targets.length === 0) return []
     await loadTitles(targets.map((row) => String(row.header?.id)))
+    // 官方 label（内置 subagent 工具的 description）：拿不到就退回标题/任务
+    const labels = await subagentLabels(parentSessionId, listOptions?.descendants === true)
     const now = options.clock.now()
     const out: KernelSubagent[] = []
     for (const row of targets) {
@@ -761,6 +880,11 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt })
       const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt
       const title = titleCache.get(id)?.title
+      const labeled = splitSubagentLabel(labels.get(id))
+      const fallbackName = (title ?? probe.task ?? '').trim().slice(0, 20)
+      const name = labeled.name ?? (fallbackName !== '' ? fallbackName : undefined)
+      const naming = labeled.naming
+      const activity = subagentActivity.get(id)
       const depth =
         typeof row.header?.delegationDepth === 'number' && row.header.delegationDepth > 0
           ? row.header.delegationDepth
@@ -771,12 +895,17 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         depth,
         ...(title ? { title } : {}),
         ...(probe.task ? { task: probe.task } : {}),
+        ...(name ? { name } : {}),
+        ...(labeled.summary ? { summary: labeled.summary } : (probe.task ? { summary: probe.task.slice(0, 80) } : {})),
+        naming,
+        ...(running && activity ? { activity: activity.text } : {}),
         status: running ? 'running' : 'idle',
         ...(iso(createdAt) ? { createdAt: iso(createdAt) } : {}),
         ...(iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {}),
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
         workMs: Math.max(subagentWorkMs.get(id) ?? 0, probe.logWorkMs ?? 0),
         idleMs: Math.max(0, now - (lastActive ?? now)),
+        ...(running ? { runningMs: Math.max(0, now - (subagentRunningSince.get(id) ?? now)) } : {}),
       })
     }
     // running 在前，同状态按最近活动倒序（监视器第一眼该看到"正在干活的那几个"）
@@ -1768,6 +1897,12 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     // 同理，"最后活动时刻"记的是**用户动过**，不是"这条会话有多新"。
     lastActivityAt.set(sessionId, options.clock.now())
     const data = (event?.data ?? {}) as LooseObject
+    // 子代理监视器的「当前正在干什么」：用的是同一条事件流，不额外订阅。
+    try {
+      recordActivity(sessionId, typeof event?.type === 'string' ? event.type : '', data)
+    } catch {
+      /* 活动文案是增强项，绝不许影响事件分发 */
+    }
     // 审批的审计面对象：`asked` 带 toolName，`decided` 带 outcome。这里只记账不翻译——
     // 卡片本身走 `approval/request` 那条 waterfall，见 attachInteractionSink。
     if (type === 'approval/asked') approvalAsked += 1

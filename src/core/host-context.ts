@@ -39,4 +39,7 @@ export const SERVICE_NAMES = [
   // 否则内核序列化时读 `block.attachment.attachmentId` 会把整个回合打成
   // `Cannot read properties of undefined (reading 'attachmentId')`。
   'attachments',
+  // 子代理目录（`ctx.subagents.listChildren/listDescendants`）：监视器要读官方 label
+  // （内置 subagent 工具的 description 参数），而不是我们猜的会话标题。
+  'subagents',
 ]

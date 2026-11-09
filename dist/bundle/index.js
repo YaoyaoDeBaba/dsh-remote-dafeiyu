@@ -27644,7 +27644,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.8" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.9" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -30413,7 +30413,10 @@ var SERVICE_NAMES = [
   // 带图发提示必须经 `attachments.admitPromptContent()` 或 `sessionController.commands.prompt`，
   // 否则内核序列化时读 `block.attachment.attachmentId` 会把整个回合打成
   // `Cannot read properties of undefined (reading 'attachmentId')`。
-  "attachments"
+  "attachments",
+  // 子代理目录（`ctx.subagents.listChildren/listDescendants`）：监视器要读官方 label
+  // （内置 subagent 工具的 description 参数），而不是我们猜的会话标题。
+  "subagents"
 ];
 
 // src/core/carrier-probe.ts
@@ -31541,6 +31544,7 @@ function createServicesKernel(services, options) {
   const subagentRunningSince = /* @__PURE__ */ new Map();
   const subagentWorkMs = /* @__PURE__ */ new Map();
   const subagentProbe = /* @__PURE__ */ new Map();
+  const subagentActivity = /* @__PURE__ */ new Map();
   let lastTouchedSessionId = "";
   const cwdBySession = /* @__PURE__ */ new Map();
   const seenEventTypes = /* @__PURE__ */ new Set();
@@ -31731,6 +31735,31 @@ function createServicesKernel(services, options) {
     }
     return 0;
   }
+  function recordActivity(sessionId, type, data) {
+    if (!sessionId) return;
+    const now = options.clock.now();
+    if (type === "turn/end") {
+      subagentActivity.delete(sessionId);
+      return;
+    }
+    if (type === "tool/call") {
+      const raw = typeof data.name === "string" && data.name || typeof data.tool === "string" && data.tool || typeof data.toolName === "string" && data.toolName || typeof data.call?.name === "string" && String(data.call.name) || "";
+      const tool = raw.replace(/^mcp__/, "").slice(0, 24);
+      subagentActivity.set(sessionId, { text: tool ? `\u8FD0\u884C ${tool}` : "\u8C03\u7528\u5DE5\u5177", at: now });
+      return;
+    }
+    const known = {
+      "turn/start": "\u5F00\u59CB\u65B0\u4E00\u8F6E",
+      "step/start": "\u6267\u884C\u6B65\u9AA4",
+      "assistant/message": "\u6B63\u5728\u5199\u56DE\u590D",
+      "todo/write": "\u66F4\u65B0\u5F85\u529E",
+      "approval/request": "\u7B49\u5F85\u5BA1\u6279",
+      "user.question/request": "\u7B49\u5F85\u56DE\u7B54",
+      "user-questions/request": "\u7B49\u5F85\u56DE\u7B54"
+    };
+    const text = known[type];
+    if (text) subagentActivity.set(sessionId, { text, at: now });
+  }
   async function probeSubagent(id, running) {
     const now = options.clock.now();
     const cached2 = subagentProbe.get(id);
@@ -31746,7 +31775,6 @@ function createServicesKernel(services, options) {
       let lastTime;
       let logWorkMs = 0;
       let openStart;
-      let task;
       for (const event of events) {
         const time3 = typeof event?.time === "number" && Number.isFinite(event.time) ? event.time : void 0;
         if (time3 !== void 0 && (lastTime === void 0 || time3 > lastTime)) lastTime = time3;
@@ -31755,18 +31783,8 @@ function createServicesKernel(services, options) {
           logWorkMs += Math.max(0, time3 - openStart);
           openStart = void 0;
         }
-        if (task === void 0 && event?.type === "user/message") {
-          const data = event?.data ?? {};
-          const content = Array.isArray(data.content) ? data.content : [];
-          for (const block of content) {
-            const text = block && typeof block === "object" && typeof block.text === "string" ? String(block.text) : "";
-            if (text.trim() !== "") {
-              task = text.trim().replace(/\s+/g, " ").slice(0, 160);
-              break;
-            }
-          }
-        }
       }
+      const task = taskFromEvents(events);
       if (running && openStart !== void 0) logWorkMs += Math.max(0, options.clock.now() - openStart);
       const fresh = { at: now };
       if (task !== void 0) fresh.task = task;
@@ -31778,6 +31796,72 @@ function createServicesKernel(services, options) {
       log("subagent probe failed", { sessionId: id.slice(0, 40), message: messageOf(error62).slice(0, 120) });
       return cached2 ?? {};
     }
+  }
+  function splitSubagentLabel(label) {
+    const raw = typeof label === "string" ? label.trim().replace(/\s+/g, " ") : "";
+    if (raw === "") return { naming: "fallback" };
+    const parts = raw.split(/[｜|]/);
+    if (parts.length >= 2) {
+      const name2 = parts[0].trim().slice(0, 20);
+      const summary2 = parts.slice(1).join("\uFF5C").trim().slice(0, 80);
+      if (name2 !== "") return { name: name2, ...summary2 !== "" ? { summary: summary2 } : {}, naming: "ok" };
+    }
+    return { name: raw.slice(0, 20), ...raw.length > 20 ? { summary: raw.slice(20).trim().slice(0, 80) } : {}, naming: "fallback" };
+  }
+  const TASK_NOISE = [
+    /^The working directory changed/i,
+    /^Current runtime context/i,
+    /^Current working directory/i,
+    /^Time sampled while preparing/i,
+    /^<system-reminder>/i,
+    /^A skill is a reusable/i,
+    /^The available skills/i
+  ];
+  function taskFromEvents(events) {
+    for (const event of events) {
+      if (event?.type !== "user/message") continue;
+      const data = event?.data ?? {};
+      const content = Array.isArray(data.content) ? data.content : [];
+      for (const block of content) {
+        const text = block && typeof block === "object" && typeof block.text === "string" ? String(block.text).trim() : "";
+        if (text === "") continue;
+        if (TASK_NOISE.some((pattern) => pattern.test(text))) continue;
+        return text.replace(/\s+/g, " ").slice(0, 160);
+      }
+    }
+    return void 0;
+  }
+  async function subagentLabels(parentSessionId, descendants) {
+    const labels = /* @__PURE__ */ new Map();
+    const service = services.subagents;
+    if (!service) return labels;
+    const call = (name2) => fn(service, name2);
+    try {
+      if (descendants) {
+        const list2 = call("listDescendants");
+        if (list2) {
+          const rows = await withTimeout(Promise.resolve(list2.call(service, parentSessionId)), 8e3);
+          for (const row of rows ?? []) {
+            if (typeof row?.id === "string" && typeof row.label === "string" && row.label.trim() !== "") {
+              labels.set(row.id, row.label.trim());
+            }
+          }
+          if (labels.size > 0) return labels;
+        }
+      }
+      const list = call("listChildren");
+      if (list) {
+        const rows = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 8e3);
+        for (const row of rows ?? []) {
+          if (typeof row?.id === "string" && typeof row.label === "string" && row.label.trim() !== "") {
+            labels.set(row.id, row.label.trim());
+          }
+        }
+      }
+    } catch (error62) {
+      log("subagent catalog unavailable", { message: messageOf(error62).slice(0, 120) });
+    }
+    return labels;
   }
   async function listSubagents(parentSessionId, listOptions) {
     const read = fn(services.sessionQuery, "listSessions");
@@ -31805,6 +31889,7 @@ function createServicesKernel(services, options) {
     collect(parentSessionId);
     if (targets.length === 0) return [];
     await loadTitles(targets.map((row) => String(row.header?.id)));
+    const labels = await subagentLabels(parentSessionId, listOptions?.descendants === true);
     const now = options.clock.now();
     const out = [];
     for (const row of targets) {
@@ -31820,6 +31905,11 @@ function createServicesKernel(services, options) {
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt });
       const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt;
       const title = titleCache.get(id)?.title;
+      const labeled = splitSubagentLabel(labels.get(id));
+      const fallbackName = (title ?? probe.task ?? "").trim().slice(0, 20);
+      const name2 = labeled.name ?? (fallbackName !== "" ? fallbackName : void 0);
+      const naming = labeled.naming;
+      const activity = subagentActivity.get(id);
       const depth = typeof row.header?.delegationDepth === "number" && row.header.delegationDepth > 0 ? row.header.delegationDepth : 1;
       out.push({
         id,
@@ -31827,12 +31917,17 @@ function createServicesKernel(services, options) {
         depth,
         ...title ? { title } : {},
         ...probe.task ? { task: probe.task } : {},
+        ...name2 ? { name: name2 } : {},
+        ...labeled.summary ? { summary: labeled.summary } : probe.task ? { summary: probe.task.slice(0, 80) } : {},
+        naming,
+        ...running && activity ? { activity: activity.text } : {},
         status: running ? "running" : "idle",
         ...iso(createdAt) ? { createdAt: iso(createdAt) } : {},
         ...iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {},
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
         workMs: Math.max(subagentWorkMs.get(id) ?? 0, probe.logWorkMs ?? 0),
-        idleMs: Math.max(0, now - (lastActive ?? now))
+        idleMs: Math.max(0, now - (lastActive ?? now)),
+        ...running ? { runningMs: Math.max(0, now - (subagentRunningSince.get(id) ?? now)) } : {}
       });
     }
     out.sort((a, b) => {
@@ -32385,6 +32480,10 @@ function createServicesKernel(services, options) {
     lastTouchedSessionId = sessionId;
     lastActivityAt.set(sessionId, options.clock.now());
     const data = event?.data ?? {};
+    try {
+      recordActivity(sessionId, typeof event?.type === "string" ? event.type : "", data);
+    } catch {
+    }
     if (type === "approval/asked") approvalAsked += 1;
     if (type === "approval/decided") approvalDecided = String(data.outcome ?? "?");
     for (const mapped of sessionEventKernelEvents({ sessionId, type, seq: event?.seq, data })) {
@@ -36504,15 +36603,28 @@ function subagentsArchiveHandler(deps) {
       json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
-    const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
-    if (sessionId === "") {
-      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+    const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === "string" && id.trim() !== "").map((id) => id.trim()) : typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? [body.sessionId.trim()] : [];
+    if (ids.length === 0) {
+      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
+      return;
+    }
+    if (ids.length > 50) {
+      json6(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
       return;
     }
     const archived = body.archived !== false;
     try {
-      const result2 = await deps.archive(sessionId, archived);
-      json6(response, result2.ok ? 200 : 409, result2);
+      const results = [];
+      for (const id of ids) {
+        try {
+          const result2 = await deps.archive(id, archived);
+          results.push({ sessionId: id, ...result2 });
+        } catch (error62) {
+          results.push({ sessionId: id, ok: false, message: String(error62?.message ?? error62).slice(0, 160) });
+        }
+      }
+      const failed = results.filter((row) => !row.ok).length;
+      json6(response, failed === 0 ? 200 : 207, { ok: failed === 0, results });
     } catch (error62) {
       json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
@@ -36520,8 +36632,29 @@ function subagentsArchiveHandler(deps) {
 }
 
 // src/subagents/start.ts
+var GUIDANCE2 = [
+  "## \u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF08\u672C\u673A\u5DF2\u542F\u7528\uFF09",
+  "\u8FD9\u53F0 DSH \u88C5\u4E86\u300C\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\u300D\uFF0C\u7528\u6237\u4F1A\u5728\u7535\u8111\u53F3\u4FA7 / \u624B\u673A\u5BF9\u8BDD\u9875\u91CC\u770B\u5230\u4F60\u6D3E\u51FA\u53BB\u7684\u6BCF\u4E2A\u5B50\u4EE3\u7406\u3002",
+  "\u6D3E\u6D3B\u65F6**\u5FC5\u987B\u4F7F\u7528\u5185\u7F6E `subagent` \u5DE5\u5177**\uFF0C\u5E76\u4E14 `description` \u53C2\u6570\u6309 `\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0` \u586B\u5199\uFF1A",
+  "- \u540D\u79F0 \u2264 12 \u5B57\uFF0C\u80FD\u8BA9\u4EBA\u4E00\u773C\u8BA4\u51FA\u8FD9\u4EF6\u4E8B\uFF08\u4F8B\u5982 `\u6E32\u67D3\u5408\u6279`\u3001`\u8BCD\u6761\u6821\u5BF9`\uFF09\uFF1B",
+  "- \u7B80\u8FF0 \u2264 40 \u5B57\uFF0C\u8BF4\u6E05\u76EE\u6807\u4E0E\u9A8C\u6536\uFF08\u4F8B\u5982 `\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536`\uFF09\uFF1B",
+  '- \u793A\u4F8B\uFF1A`description: "\u6E32\u67D3\u5408\u6279\uFF5C\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536"`\uFF1B\u6B63\u6587 prompt \u7B2C\u4E00\u884C\u518D\u5199\u5B8C\u6574\u76EE\u6807\u3002',
+  "\u4E0D\u6309\u8FD9\u4E2A\u683C\u5F0F\u5199\u4E5F\u80FD\u6D3E\u51FA\u53BB\uFF0C\u4F46\u76D1\u89C6\u5668\u53EA\u80FD\u81EA\u52A8\u53D6\u540D\u5E76\u628A\u8FD9\u4E00\u884C\u6807\u9EC4\u2014\u2014\u7528\u6237\u4F1A\u770B\u4E0D\u61C2\u4F60\u5728\u5E72\u4EC0\u4E48\u3002",
+  "\u4E0D\u8981\u4E3A\u4E86\u201C\u5C11\u5199\u4E00\u884C\u201D\u800C\u7ED5\u8FC7\u8FD9\u4E2A\u5165\u53E3\uFF1B\u7528\u6237\u5C31\u662F\u9760\u5B83\u5224\u65AD\u8981\u4E0D\u8981\u7B49\u4F60\u3002"
+].join("\n");
 function startSubagents(ctx, deps) {
   const probe = {};
+  try {
+    const systemPrompt = ctx.get?.("systemPrompt", true);
+    if (systemPrompt && typeof systemPrompt.section === "function") {
+      systemPrompt.section({ name: "dafeiyu:subagents", order: 10090, text: GUIDANCE2 });
+      probe.section = "registered";
+    } else {
+      probe.section = "no-systemPrompt";
+    }
+  } catch (error62) {
+    probe.section = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+  }
   let web;
   let unregister;
   let started = false;

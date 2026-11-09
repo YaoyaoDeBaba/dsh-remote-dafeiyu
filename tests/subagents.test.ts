@@ -2,9 +2,9 @@
  * subagents.test — 子代理监视器的数据层（`KernelPort.listSubagents`）。
  *
  * 这一层钉的是"监视器上那些数从哪来、缺数据时怎么降级"：
- * 成员关系 = 子会话头里的 `parentSession`；运行态 = `agents.get()`；
- * 任务 = 子会话日志第一条用户消息；工作时间 = `turn/start..turn/end` 时间差之和；
- * 闲置 = 现在 − 最后一条事件时间。
+ * 名称/简述 = 官方 `subagent` 工具的 description（`名称｜简述`，catalog label）；
+ * 任务 = 子会话日志里第一条**人写的**用户消息（跳过系统注入）；
+ * 运行态 = `agents.get()`；工作时间 = `turn` 时间差；闲置 = 现在 − 最后一条事件。
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -17,6 +17,19 @@ function services(options: { withQuery?: boolean; running?: string[] } = {}): Se
   const bundle: Record<string, unknown> = {
     agents: {
       get: (id: string) => (running.has(id) ? { status: 'running' } : { status: 'idle' }),
+    },
+    subagents: {
+      listChildren: () =>
+        Promise.resolve([
+          { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收' },
+          { id: 'child-idle', label: '没按格式写的名字' },
+        ]),
+      listDescendants: () =>
+        Promise.resolve([
+          { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收' },
+          { id: 'child-idle', label: '没按格式写的名字' },
+          { id: 'grandchild-1', label: '孙子｜第三层' },
+        ]),
     },
   }
   if (options.withQuery !== false) {
@@ -35,6 +48,11 @@ function services(options: { withQuery?: boolean; running?: string[] } = {}): Se
           events:
             id === 'child-run'
               ? [
+                  {
+                    type: 'user/message',
+                    time: NOW - 600_000,
+                    data: { content: [{ type: 'text', text: 'The working directory changed from "C:\\x" to "E:\\y".' }] },
+                  },
                   { type: 'user/message', time: NOW - 600_000, data: { content: [{ type: 'text', text: '把 E:\\a.cs 的循环改成 for' }] } },
                   { type: 'turn/start', time: NOW - 590_000, data: { turn: 1 } },
                   { type: 'tool/call', time: NOW - 500_000, data: {} },
@@ -70,18 +88,29 @@ test('listSubagents：按 parentSession 找直接子级，running 排前面', as
   assert.equal(rows[1]!.status, 'idle')
 })
 
-test('listSubagents：任务/标题/工作时长/闲置时长都从真数据来', async () => {
+test('listSubagents：名称/简述来自官方 label，任务跳过系统注入', async () => {
   const port = kernel(services())
   const rows = await port.listSubagents!('session-p')
   const run = rows.find((row) => row.id === 'child-run')!
   const idle = rows.find((row) => row.id === 'child-idle')!
-  assert.equal(run.task, '把 E:\\a.cs 的循环改成 for', '任务取子会话日志第一条用户消息')
+  assert.equal(run.name, '渲染合批', '名称取 label 里 ｜ 左边')
+  assert.equal(run.summary, '升级 VFX 批次合并并跑通验收', '简述取 ｜ 右边')
+  assert.equal(run.naming, 'ok')
+  assert.equal(idle.naming, 'fallback', '没按格式写的 label 要标记出来（端上标黄）')
+  assert.equal(idle.name, '没按格式写的名字')
+  assert.equal(run.task, '把 E:\\a.cs 的循环改成 for', '任务必须跳过 working directory changed 这类系统注入')
+  assert.equal(typeof run.runningMs, 'number', 'running 时必须给本轮运行时长')
+})
+
+test('listSubagents：工作时长/闲置时长/标题仍然照旧', async () => {
+  const port = kernel(services())
+  const rows = await port.listSubagents!('session-p')
+  const run = rows.find((row) => row.id === 'child-run')!
+  const idle = rows.find((row) => row.id === 'child-idle')!
   assert.equal(run.title, '标题 child-run')
-  // 两个已完成回合（470s）+ 当前未结束回合（60s）
   assert.equal(Math.round(run.workMs / 1000), 470 + 60, '工作时间 = turn 时间差，含当前未结束回合')
   assert.equal(Math.round(run.idleMs / 1000), 60, '闲置 = 现在 − 最后一条事件')
-  assert.equal(Math.round(idle.workMs / 1000), 590, '空闲子代理用日志里的回合差（插件重启后也有数）')
-  assert.equal(Math.round(idle.idleMs / 1000), 3_000_000 / 1000, '闲置 = 现在 − 最后一条事件')
+  assert.equal(Math.round(idle.workMs / 1000), 590, '空闲子代理用日志里的回合差')
 })
 
 test('listSubagents：descendants=true 才递归，默认只一层', async () => {

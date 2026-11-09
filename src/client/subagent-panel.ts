@@ -22,11 +22,21 @@ export interface SubagentRow {
   depth?: number
   title?: string
   task?: string
+  /** 显示名（来自官方 label 的 `名称`；没按约定写时是自动取的） */
+  name?: string
+  /** 一句话简述（label 里 `｜` 右边那段，或任务首句） */
+  summary?: string
+  /** ok = 按 `名称｜简述` 约定填的；fallback = 自动取名（端上标黄） */
+  naming?: 'ok' | 'fallback'
+  /** running 时「正在干什么」 */
+  activity?: string
   status: 'running' | 'idle'
   createdAt?: string
   lastActiveAt?: string
   workMs?: number
   idleMs?: number
+  /** 本轮已运行（running 时才有） */
+  runningMs?: number
 }
 
 export interface SubagentMonitorDeps {
@@ -90,6 +100,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       z-index: 2147483001; display: none; box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 12.5px; }
     #dafeiyu-subagent-panel.open { display: block; }
     #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
+    #dafeiyu-subagent-panel .head .tools { display: flex; gap: 6px; align-items: center; }
+    #dafeiyu-subagent-panel .head .ghost { background: #2a2a40; color: #cfcfe0; border: 0; border-radius: 7px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 400; }
+    #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
+    #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
     #dafeiyu-subagent-panel .head button { background: transparent; color: #9a9ab0; border: 0; cursor: pointer; font-size: 13px; }
     #dafeiyu-subagent-panel .row { border-top: 1px solid var(--dsw-alias-border-l2, #2a2a3a); padding: 8px 0; }
     #dafeiyu-subagent-panel .row .top { display: flex; gap: 6px; align-items: center; }
@@ -124,9 +138,16 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   head.className = 'head'
   const title = doc.createElement('span')
   title.textContent = '子代理监视器'
+  const tools = doc.createElement('span')
+  tools.className = 'tools'
+  const archiveIdle = doc.createElement('button')
+  archiveIdle.className = 'ghost'
+  archiveIdle.textContent = '一键归档闲置'
+  archiveIdle.title = '把闲置超过 2 小时的子代理一次归档（可恢复）'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  head.append(title, close)
+  tools.append(archiveIdle, close)
+  head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
   foot.className = 'foot'
@@ -165,25 +186,43 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       dot.className = 'dot ' + (row.status === 'running' ? 'run' : 'idle')
       const name = doc.createElement('span')
       name.className = 'name'
-      name.textContent = row.title || row.task || row.id.slice(0, 12)
+      // 名称优先级：官方 label 的「名称」→ 会话标题 → 任务首行 → id
+      name.textContent = row.name || row.title || row.task || row.id.slice(0, 12)
       name.title = row.id
       top.append(dot, name)
+      if (row.naming === 'fallback') {
+        const warn = doc.createElement('span')
+        warn.className = 'warn'
+        warn.textContent = '⚠ 命名不合规'
+        warn.title = '派活时 description 应按「名称｜一句话简述」填写'
+        top.appendChild(warn)
+      }
       const meta = doc.createElement('div')
       meta.className = 'meta'
       const idleWarn = row.status === 'idle' && (row.idleMs ?? 0) >= IDLE_WARN_MS
       meta.classList.toggle('stale', idleWarn)
+      // 两个时间**互斥**：跑着看「运行」，停了看「闲置」
+      const time = row.status === 'running'
+        ? '运行 ' + fmtDuration(row.runningMs ?? row.workMs)
+        : '闲置 ' + fmtDuration(row.idleMs)
       meta.textContent =
-        (row.status === 'running' ? '运行中' : '空闲') +
-        ` · 工作 ${fmtDuration(row.workMs)} · 闲置 ${fmtDuration(row.idleMs)}` +
-        (idleWarn ? ' · 建议清理' : '')
+        (row.status === 'running' ? '运行中' : '空闲') + ' · ' + time + (idleWarn ? ' · 建议归档' : '')
       line.append(top, meta)
-      if (row.task && row.task !== name.textContent) {
-        const task = doc.createElement('div')
-        task.className = 'task'
-        task.textContent = row.task
-        line.appendChild(task)
+      const summary = row.summary || (row.task && row.task !== name.textContent ? row.task : '')
+      if (summary) {
+        const text = doc.createElement('div')
+        text.className = 'task'
+        text.textContent = summary
+        line.appendChild(text)
       }
-      if (idleWarn) {
+      if (row.status === 'running' && row.activity) {
+        const act = doc.createElement('div')
+        act.className = 'act'
+        act.textContent = '正在：' + row.activity
+        line.appendChild(act)
+      }
+      // 归档：非运行中的行都给按钮（宿主本来就拒归档运行中的会话）
+      if (row.status !== 'running') {
         const acts = doc.createElement('div')
         acts.className = 'acts'
         const archive = doc.createElement('button')
@@ -197,7 +236,36 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       body.appendChild(line)
     }
+    const idleCount = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= IDLE_WARN_MS).length
+    archiveIdle.disabled = idleCount === 0
+    archiveIdle.textContent = idleCount > 0 ? `一键归档闲置 (${idleCount})` : '一键归档闲置'
   }
+
+  /** 顶栏的批量归档：一口气归档所有闲置 ≥ 2h 的子代理（逐条走同一归档端口）。 */
+  const archiveIdleNow = async (): Promise<void> => {
+    const ids = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= IDLE_WARN_MS).map((row) => row.id)
+    if (ids.length === 0) return
+    archiveIdle.disabled = true
+    archiveIdle.textContent = '归档中…'
+    try {
+      const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/archive'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+        body: JSON.stringify({ ids, archived: true }),
+      })
+      const answer = (await response.json()) as { ok?: boolean }
+      if (answer.ok !== true) archiveIdle.title = '部分归档失败，见宿主日志'
+      await refresh()
+    } catch (error) {
+      archiveIdle.title = String((error as Error)?.message ?? error)
+    } finally {
+      archiveIdle.disabled = false
+    }
+  }
+  archiveIdle.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void archiveIdleNow()
+  })
 
   const archiveRow = async (id: string, button: HTMLButtonElement): Promise<void> => {
     button.disabled = true

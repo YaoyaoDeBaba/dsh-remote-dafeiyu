@@ -2662,6 +2662,10 @@ function mountSubagentMonitor(deps) {
       z-index: 2147483001; display: none; box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 12.5px; }
     #dafeiyu-subagent-panel.open { display: block; }
     #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
+    #dafeiyu-subagent-panel .head .tools { display: flex; gap: 6px; align-items: center; }
+    #dafeiyu-subagent-panel .head .ghost { background: #2a2a40; color: #cfcfe0; border: 0; border-radius: 7px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 400; }
+    #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
+    #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
     #dafeiyu-subagent-panel .head button { background: transparent; color: #9a9ab0; border: 0; cursor: pointer; font-size: 13px; }
     #dafeiyu-subagent-panel .row { border-top: 1px solid var(--dsw-alias-border-l2, #2a2a3a); padding: 8px 0; }
     #dafeiyu-subagent-panel .row .top { display: flex; gap: 6px; align-items: center; }
@@ -2694,9 +2698,16 @@ function mountSubagentMonitor(deps) {
   head.className = "head";
   const title = doc.createElement("span");
   title.textContent = "\u5B50\u4EE3\u7406\u76D1\u89C6\u5668";
+  const tools = doc.createElement("span");
+  tools.className = "tools";
+  const archiveIdle = doc.createElement("button");
+  archiveIdle.className = "ghost";
+  archiveIdle.textContent = "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
+  archiveIdle.title = "\u628A\u95F2\u7F6E\u8D85\u8FC7 2 \u5C0F\u65F6\u7684\u5B50\u4EE3\u7406\u4E00\u6B21\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09";
   const close = doc.createElement("button");
   close.textContent = "\u5173\u95ED \u2715";
-  head.append(title, close);
+  tools.append(archiveIdle, close);
+  head.append(title, tools);
   const body = doc.createElement("div");
   const foot = doc.createElement("div");
   foot.className = "foot";
@@ -2732,22 +2743,37 @@ function mountSubagentMonitor(deps) {
       dot.className = "dot " + (row.status === "running" ? "run" : "idle");
       const name2 = doc.createElement("span");
       name2.className = "name";
-      name2.textContent = row.title || row.task || row.id.slice(0, 12);
+      name2.textContent = row.name || row.title || row.task || row.id.slice(0, 12);
       name2.title = row.id;
       top.append(dot, name2);
+      if (row.naming === "fallback") {
+        const warn2 = doc.createElement("span");
+        warn2.className = "warn";
+        warn2.textContent = "\u26A0 \u547D\u540D\u4E0D\u5408\u89C4";
+        warn2.title = "\u6D3E\u6D3B\u65F6 description \u5E94\u6309\u300C\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0\u300D\u586B\u5199";
+        top.appendChild(warn2);
+      }
       const meta = doc.createElement("div");
       meta.className = "meta";
       const idleWarn = row.status === "idle" && (row.idleMs ?? 0) >= IDLE_WARN_MS;
       meta.classList.toggle("stale", idleWarn);
-      meta.textContent = (row.status === "running" ? "\u8FD0\u884C\u4E2D" : "\u7A7A\u95F2") + ` \xB7 \u5DE5\u4F5C ${fmtDuration(row.workMs)} \xB7 \u95F2\u7F6E ${fmtDuration(row.idleMs)}` + (idleWarn ? " \xB7 \u5EFA\u8BAE\u6E05\u7406" : "");
+      const time = row.status === "running" ? "\u8FD0\u884C " + fmtDuration(row.runningMs ?? row.workMs) : "\u95F2\u7F6E " + fmtDuration(row.idleMs);
+      meta.textContent = (row.status === "running" ? "\u8FD0\u884C\u4E2D" : "\u7A7A\u95F2") + " \xB7 " + time + (idleWarn ? " \xB7 \u5EFA\u8BAE\u5F52\u6863" : "");
       line.append(top, meta);
-      if (row.task && row.task !== name2.textContent) {
-        const task = doc.createElement("div");
-        task.className = "task";
-        task.textContent = row.task;
-        line.appendChild(task);
+      const summary = row.summary || (row.task && row.task !== name2.textContent ? row.task : "");
+      if (summary) {
+        const text = doc.createElement("div");
+        text.className = "task";
+        text.textContent = summary;
+        line.appendChild(text);
       }
-      if (idleWarn) {
+      if (row.status === "running" && row.activity) {
+        const act = doc.createElement("div");
+        act.className = "act";
+        act.textContent = "\u6B63\u5728\uFF1A" + row.activity;
+        line.appendChild(act);
+      }
+      if (row.status !== "running") {
         const acts = doc.createElement("div");
         acts.className = "acts";
         const archive = doc.createElement("button");
@@ -2761,7 +2787,34 @@ function mountSubagentMonitor(deps) {
       }
       body.appendChild(line);
     }
+    const idleCount = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= IDLE_WARN_MS).length;
+    archiveIdle.disabled = idleCount === 0;
+    archiveIdle.textContent = idleCount > 0 ? `\u4E00\u952E\u5F52\u6863\u95F2\u7F6E (${idleCount})` : "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
   };
+  const archiveIdleNow = async () => {
+    const ids = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= IDLE_WARN_MS).map((row) => row.id);
+    if (ids.length === 0) return;
+    archiveIdle.disabled = true;
+    archiveIdle.textContent = "\u5F52\u6863\u4E2D\u2026";
+    try {
+      const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/subagents/archive"), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-drc-pair": "1" },
+        body: JSON.stringify({ ids, archived: true })
+      });
+      const answer = await response.json();
+      if (answer.ok !== true) archiveIdle.title = "\u90E8\u5206\u5F52\u6863\u5931\u8D25\uFF0C\u89C1\u5BBF\u4E3B\u65E5\u5FD7";
+      await refresh();
+    } catch (error) {
+      archiveIdle.title = String(error?.message ?? error);
+    } finally {
+      archiveIdle.disabled = false;
+    }
+  };
+  archiveIdle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    void archiveIdleNow();
+  });
   const archiveRow = async (id, button) => {
     button.disabled = true;
     button.textContent = "\u5F52\u6863\u4E2D\u2026";
