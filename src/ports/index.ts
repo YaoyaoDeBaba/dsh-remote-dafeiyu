@@ -20,6 +20,37 @@
  */
 import type { ModelOption, QuestionItem, SessionSummary } from '@dsh-remote/protocol'
 
+/**
+ * 一条 subagent（子代理）会话在插件内部的形状——`cmd.list_subagents` 回给手机、
+ * PC 端监视器回给页面的都是它。
+ *
+ * 全部字段都是**观测值**，不是断言：宿主没给的就留空（`title`/`task`），
+ * 调用方自己决定怎么降级。`workMs` / `idleMs` 是毫秒，由适配器算好——两个端
+ * 都不该各自再算一遍（公式一旦分叉，两台设备上的"工作了 3 分钟"就会不一样）。
+ */
+export interface KernelSubagent {
+  /** 子会话 id（与 `SessionSummary.id` 同一命名空间）。 */
+  id: string
+  /** 直接父会话 id（`header.parentSession`）。 */
+  parentId: string
+  /** 委派深度：直接子级是 1。 */
+  depth: number
+  /** 会话标题（宿主自动生成，可能没有）。 */
+  title?: string
+  /** 这次委派要干的活（子会话日志里的第一条用户消息，截断过）。 */
+  task?: string
+  /** 此刻在不在跑（`agent.status === 'running'`）。 */
+  status: 'running' | 'idle'
+  /** 会话创建时间（ISO）。 */
+  createdAt?: string
+  /** 最后一次活动时间（ISO）。 */
+  lastActiveAt?: string
+  /** 累计工作时间（毫秒）。 */
+  workMs: number
+  /** 距最后一次活动的闲置时间（毫秒）。 */
+  idleMs: number
+}
+
 /** 内核报告的一条会话在插件内部的形状（还没变成线格式）。 */
 export interface KernelSession {
   summary: SessionSummary
@@ -315,6 +346,19 @@ export interface KernelPort {
     sessionId: string,
     options: { beforeSeq?: number; since?: number; limit: number },
   ): Promise<KernelHistoryPage>
+
+  /**
+   * 列某个会话下的 subagent（`cmd.list_subagents` 的落点，2026-11-09 加）。
+   *
+   * **可选**：依赖宿主暴露 `sessionQuery.listSessions` 与子会话头里的
+   * `parentSession`。缺这一层时调用方必须明确报"这一代列不出来"，
+   * 而不是回一个空数组——空数组在两端都表示"这个对话没有子代理"，
+   * 而用户看到的会是"我明明派了活，监视器是空的"。
+   *
+   * `options.descendants` 为 true 时按 `parentSession` 链递归（子孙一起列）；
+   * 默认只列直接子级。
+   */
+  listSubagents?(sessionId: string, options?: { descendants?: boolean }): Promise<KernelSubagent[]>
 
   /**
    * 新建一条会话（手机上那个「新建会话」）。

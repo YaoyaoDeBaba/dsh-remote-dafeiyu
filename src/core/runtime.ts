@@ -676,6 +676,19 @@ export class HostRuntime {
           )
           return
         }
+        case 'cmd.list_subagents': {
+          // 子代理监视器：只读枚举，不改任何状态（清理走 cmd.archive_session）。
+          // 能力缺失时明确拒绝：空数组在两端都意味着"这个对话没有子代理"，
+          // 那会让用户以为派的活丢了。
+          const list = this.kernel.listSubagents
+          if (!list) {
+            reply(false, { message: '主机这一代不支持子代理列表（内核端口没有 listSubagents 能力）' })
+            return
+          }
+          const items = await list.call(this.kernel, cmd.sessionId, { descendants: cmd.descendants === true })
+          reply(true, { data: { items } })
+          return
+        }
         case 'cmd.get_pending': {
           /**
            * 手机问了一次「你那边还有挂着的东西吗」。这两个计数是**这一类症状唯一的分诊入口**

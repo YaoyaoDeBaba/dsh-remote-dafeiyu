@@ -55,6 +55,8 @@ import { mountPersona } from './persona/mount.js'
 // 识图那一半（0.9.0）：外挂视觉模型 + 三条路由 + recognize_image 工具。
 // 与远控/人设同一条纪律——起不来只是少一块界面，绝不带走主链路。
 import { startVision, type VisionHandle } from './vision/start.js'
+// 子代理监视器（2026-11-09）：一条只读路由给桌面端页面，手机走协议命令。
+import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 记忆库（0.9.0）：人设的「长期记忆」段 + 设置页记忆面板 + 三个工具。
 import { startMemory, type MemoryHandle } from './memory/start.js'
 import { resolveDshHome } from './memory/service.js'
@@ -1450,6 +1452,34 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
    * 与备份同一条纪律：整段 try，起不来只是"识图那张设置卡没数据"。
    * 路由/配置都落在 `storages/dsh-remote-dafeiyu/`，不碰人设存储。
    */
+  let subagentsHandle: SubagentsHandle | undefined
+  try {
+    subagentsHandle = startSubagents(ctx as never, {
+      log,
+      /**
+       * 延后取 kernel：这条路由可能在 `start(port)` 之前就挂上（webServer 早到），
+       * 而 kernel 是服务到位那一刻才有的。回调在**请求时**才读，所以不存在拿到旧值的问题。
+       */
+      list: async (sessionId, options) => {
+        const port = kernel
+        const list = port?.listSubagents
+        if (!port || !list) throw new Error('主机这一代不支持子代理列表（没有 listSubagents）')
+        return list.call(port, sessionId, options)
+      },
+      archive: async (sessionId, archived) => {
+        const port = kernel
+        const archive = port?.archiveSession
+        if (!port || !archive) return { ok: false, message: '主机这一代不支持归档' }
+        return archive.call(port, sessionId, archived)
+      },
+    })
+  } catch (error) {
+    subagentsHandle = undefined
+    log('子代理监视器起不来（远控/识图不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   let visionHandle: VisionHandle | undefined
   try {
     visionHandle = startVision(ctx as never, { dshHome, log })
@@ -1530,6 +1560,11 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       // 识图那三条路由同理。
       try {
         visionHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      try {
+        subagentsHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }

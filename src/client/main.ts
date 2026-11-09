@@ -27,6 +27,7 @@ import { mountSettingsSection } from './settings.js'
 import { mountDafeiyuSettings } from './dafeiyu-page.js'
 // 识图那一半（0.9.0）：聊天页鲸鱼按钮 + 当前会话注入。
 import { mountVisionFab } from './vision-panel.js'
+import { mountSubagentMonitor } from './subagent-panel.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -125,6 +126,14 @@ export function apply(ctx: ClientContext): (() => void) | void {
     swallow('识图按钮挂载抛错（已吞掉）', error)
   }
 
+  // ②b 子代理监视器（2026-11-09）：当前对话有子代理时，右侧出现一颗小图标。
+  let subagentsCleanup: (() => void) | undefined
+  try {
+    subagentsCleanup = mountSubagentMonitor({ getCurrentSession: resolveCurrentSession(ctx) })
+  } catch (error) {
+    swallow('子代理监视器挂载抛错（已吞掉）', error)
+  }
+
   let settingsMounted = false
   let dafeiyuMerged = false
   let personaMounted = false
@@ -189,6 +198,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
 
   return () => {
     try {
+      subagentsCleanup?.()
+    } catch {
+      /* 卸载动作不许拖住卸载 */
+    }
+    try {
       visionCleanup?.()
     } catch {
       /* 卸载动作不许拖住卸载 */
@@ -237,6 +251,35 @@ function resolveSessionInject(ctx: ClientContext): ((text: string) => Promise<bo
       return true
     } catch {
       return false
+    }
+  }
+}
+
+/**
+ * 当前选中的会话 id（子代理监视器用）。与 `resolveSessionInject` 同一条软探测：
+ * 服务晚到时返回 undefined，监视器就保持隐藏——不会因为拿不到会话把页面搞坏。
+ */
+function resolveCurrentSession(ctx: ClientContext): () => string | undefined {
+  let sessions: unknown
+  try {
+    sessions = (ctx as { sessions?: unknown }).sessions
+  } catch {
+    sessions = undefined
+  }
+  if (!sessions) {
+    try {
+      sessions = ctx.get?.('sessions', true)
+    } catch {
+      sessions = undefined
+    }
+  }
+  const list = (sessions as { list?: { getSnapshot?: () => { current?: unknown } } } | undefined)?.list
+  return () => {
+    try {
+      const current = list?.getSnapshot?.()?.current
+      return typeof current === 'string' && current !== '' ? current : undefined
+    } catch {
+      return undefined
     }
   }
 }

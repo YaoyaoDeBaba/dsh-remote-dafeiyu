@@ -36,6 +36,7 @@ import type {
   KernelHistoryPage,
   KernelPort,
   KernelSession,
+  KernelSubagent,
 } from '../ports/index.js'
 import { HISTORY_WINDOW_EXCEEDED } from '../ports/index.js'
 
@@ -265,7 +266,7 @@ interface ListedSession {
 
 /** 平台会话记录（`sessionQuery.listSessions()` 的形状，取证 dsh-session-query/lib/types/index.d.ts:55）。 */
 interface SessionRecordLike {
-  header?: { id?: string; createdAt?: number | string; cwd?: string; origin?: string; parentSession?: string }
+  header?: { id?: string; createdAt?: number | string; cwd?: string; origin?: string; parentSession?: string; delegationDepth?: number }
   live?: unknown
   persisted?: unknown
 }
@@ -297,6 +298,11 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * 那时仍按旧口径给 `headerTime`，所以重启前后不会出现"整页时间消失"。
    */
   const lastActivityAt = new Map<string, number>()
+  /** 子代理运行计时：running 的起点 + 已结算的累计工作毫秒。只在插件进程内有效。 */
+  const subagentRunningSince = new Map<string, number>()
+  const subagentWorkMs = new Map<string, number>()
+  /** 子代理日志探针缓存：任务文本、回合耗时合计、最后事件时间（`readSession` 很贵）。 */
+  const subagentProbe = new Map<string, { at: number; task?: string; logWorkMs?: number; lastTime?: number }>()
 
   /**
    * 「最后操作的那个会话」与它的目录（2026-10-06 用户："新建要落在最后操作的分组里"）。
@@ -640,7 +646,146 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
     return 0
   }
+  /**
+   * 一条子代理会话的日志探针：任务文本 / 回合耗时 / 最后事件时间。
+   *
+   * 为什么不只靠内存里的 run-state 计时：插件重启后计时表是空的，而子代理可能是
+   * 昨天跑的——那时手机上会显示"工作了 0 秒"。子会话日志里 `turn/start` / `turn/end`
+   * 都带毫秒时间戳，读一次就能算出**准确**的累计耗时；日志本身通常只有几百 KB。
+   *
+   * 缓存：running 的 5 秒一刷（日志还在长），idle 的 60 秒（基本不变）。
+   */
+  async function probeSubagent(
+    id: string,
+    running: boolean,
+  ): Promise<{ task?: string; logWorkMs?: number; lastTime?: number }> {
+    const now = options.clock.now()
+    const cached = subagentProbe.get(id)
+    if (cached && now - cached.at < (running ? 5_000 : 60_000)) return cached
+    const read = fn(services.sessionQuery, 'readSession')
+    if (!read) return cached ?? {}
+    try {
+      const loaded = (await withTimeout(
+        Promise.resolve(read.call(services.sessionQuery, id)),
+        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
+      )) as { events?: Array<{ type?: unknown; time?: unknown; data?: unknown }> } | undefined
+      const events = Array.isArray(loaded?.events) ? loaded.events : []
+      let lastTime: number | undefined
+      let logWorkMs = 0
+      let openStart: number | undefined
+      let task: string | undefined
+      for (const event of events) {
+        const time = typeof event?.time === 'number' && Number.isFinite(event.time) ? event.time : undefined
+        if (time !== undefined && (lastTime === undefined || time > lastTime)) lastTime = time
+        if (event?.type === 'turn/start' && time !== undefined) openStart = time
+        else if (event?.type === 'turn/end' && time !== undefined && openStart !== undefined) {
+          logWorkMs += Math.max(0, time - openStart)
+          openStart = undefined
+        }
+        if (task === undefined && event?.type === 'user/message') {
+          const data = (event?.data ?? {}) as LooseObject
+          const content = Array.isArray(data.content) ? data.content : []
+          for (const block of content) {
+            const text =
+              block && typeof block === 'object' && typeof (block as LooseObject).text === 'string'
+                ? String((block as LooseObject).text)
+                : ''
+            if (text.trim() !== '') {
+              task = text.trim().replace(/\s+/g, ' ').slice(0, 160)
+              break
+            }
+          }
+        }
+      }
+      if (running && openStart !== undefined) logWorkMs += Math.max(0, options.clock.now() - openStart)
+      const fresh: { at: number; task?: string; logWorkMs?: number; lastTime?: number } = { at: now }
+      if (task !== undefined) fresh.task = task
+      if (events.length > 0) fresh.logWorkMs = logWorkMs
+      if (lastTime !== undefined) fresh.lastTime = lastTime
+      subagentProbe.set(id, fresh)
+      return fresh
+    } catch (error) {
+      log('subagent probe failed', { sessionId: id.slice(0, 40), message: messageOf(error).slice(0, 120) })
+      return cached ?? {}
+    }
+  }
 
+  /**
+   * 列某个会话下的 subagent（`cmd.list_subagents` 的落点）。
+   *
+   * 成员关系取自**子会话头**的 `parentSession`（内核自己写的，比 catalog 投影更直接，
+   * 而且冷会话也在）；运行态取自 `agents.get()`；任务/耗时取自子会话日志。
+   * 读不到日志时退回内存计时与 `lastActivityAt`，每个字段都单独降级，不会整表失败。
+   */
+  async function listSubagents(
+    parentSessionId: string,
+    listOptions?: { descendants?: boolean },
+  ): Promise<KernelSubagent[]> {
+    const read = fn(services.sessionQuery, 'listSessions')
+    if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
+    const rows = (await withTimeout(
+      Promise.resolve(read.call(services.sessionQuery)),
+      options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
+    )) as SessionRecordLike[] | undefined
+    const records = (rows ?? []).filter((row) => typeof row?.header?.id === 'string')
+    const childrenOf = new Map<string, SessionRecordLike[]>()
+    for (const row of records) {
+      const parent = typeof row.header?.parentSession === 'string' ? row.header.parentSession : undefined
+      if (!parent) continue
+      const list = childrenOf.get(parent) ?? []
+      list.push(row)
+      childrenOf.set(parent, list)
+    }
+    const targets: SessionRecordLike[] = []
+    const collect = (id: string): void => {
+      for (const child of childrenOf.get(id) ?? []) {
+        targets.push(child)
+        if (listOptions?.descendants === true) collect(String(child.header?.id))
+      }
+    }
+    collect(parentSessionId)
+    if (targets.length === 0) return []
+    await loadTitles(targets.map((row) => String(row.header?.id)))
+    const now = options.clock.now()
+    const out: KernelSubagent[] = []
+    for (const row of targets) {
+      const id = String(row.header?.id)
+      const running = agentStatus(id) === 'running'
+      if (running) {
+        if (!subagentRunningSince.has(id)) subagentRunningSince.set(id, now)
+      } else if (subagentRunningSince.has(id)) {
+        subagentWorkMs.set(id, (subagentWorkMs.get(id) ?? 0) + Math.max(0, now - (subagentRunningSince.get(id) ?? now)))
+        subagentRunningSince.delete(id)
+      }
+      const probe = await probeSubagent(id, running)
+      const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt })
+      const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt
+      const title = titleCache.get(id)?.title
+      const depth =
+        typeof row.header?.delegationDepth === 'number' && row.header.delegationDepth > 0
+          ? row.header.delegationDepth
+          : 1
+      out.push({
+        id,
+        parentId: String(row.header?.parentSession ?? ''),
+        depth,
+        ...(title ? { title } : {}),
+        ...(probe.task ? { task: probe.task } : {}),
+        status: running ? 'running' : 'idle',
+        ...(iso(createdAt) ? { createdAt: iso(createdAt) } : {}),
+        ...(iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {}),
+        // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
+        workMs: Math.max(subagentWorkMs.get(id) ?? 0, probe.logWorkMs ?? 0),
+        idleMs: Math.max(0, now - (lastActive ?? now)),
+      })
+    }
+    // running 在前，同状态按最近活动倒序（监视器第一眼该看到"正在干活的那几个"）
+    out.sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'running' ? -1 : 1
+      return String(b.lastActiveAt ?? '').localeCompare(String(a.lastActiveAt ?? ''))
+    })
+    return out
+  }
   /**
    * 新建一条会话。
    *
@@ -1654,7 +1799,19 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       { agent?: LooseObject; status?: string; sessionId?: string } | undefined
     const sessionId = payload?.sessionId ?? String((payload?.agent as { session?: { id?: string } })?.session?.id ?? '')
     if (!sessionId) return
-    onEvent({ kind: 'run-state', sessionId, state: payload?.status === 'running' ? 'running' : 'idle' })
+    const running = payload?.status === 'running'
+    // 顺带记一笔子代理的工作时间：running 起点 / idle 时结算。普通会话也记，开销只是两个 Map。
+    const now = options.clock.now()
+    if (running) {
+      if (!subagentRunningSince.has(sessionId)) subagentRunningSince.set(sessionId, now)
+    } else if (subagentRunningSince.has(sessionId)) {
+      subagentWorkMs.set(
+        sessionId,
+        (subagentWorkMs.get(sessionId) ?? 0) + Math.max(0, now - (subagentRunningSince.get(sessionId) ?? now)),
+      )
+      subagentRunningSince.delete(sessionId)
+    }
+    onEvent({ kind: 'run-state', sessionId, state: running ? 'running' : 'idle' })
   }
 
   let sink: InteractionSink | undefined
@@ -1983,6 +2140,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     sendPrompt,
     interrupt,
     readHistory,
+    listSubagents,
     newSession,
     subscribe,
     /**

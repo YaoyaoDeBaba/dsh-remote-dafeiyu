@@ -1,3 +1,27 @@
+## 0.9.0-dafeiyu.6 —— 子代理监视器
+
+给大肥鱼加了一个「sub agent 监视器」：看得到每个子代理在干什么、跑了多久、闲了多久，
+闲置太久的可以一键归档。
+
+**数据从哪来**（全部是宿主现成的事实，没有新存储）：
+
+- 成员关系：子会话头里的 `parentSession` / `delegationDepth`（冷会话也在）；
+- 运行/空闲：`agents.get(id).status`，实时侧还有 `agent/status` 事件；
+- 任务：子会话日志里的第一条用户消息（截 160 字）；
+- 工作时长：`turn/start` → `turn/end` 的时间差累加（含当前未结束回合），插件重启后照样准；
+- 闲置时长：现在 − 最后一条事件时间；日志读不到时退回内存活动表与创建时间。
+
+**桌面端**：右侧悬浮 🐝 图标，只有当前对话有子代理时才出现；面板里列任务/状态/工作/闲置，
+闲置超 2 小时标黄并给「归档」（可恢复，走已有归档能力，不删数据）。路由：
+`GET /api/dsh-remote-dafeiyu/subagents`、`POST /api/dsh-remote-dafeiyu/subagents/archive`（要 `x-drc-pair`）。
+
+**手机端**：进对话页后每 5 秒拉一次 `cmd.list_subagents`，有子代理才显示 🐝 图标（带数量角标）；
+面板与桌面同款；归档用已有的 `cmd.archive_session`。协议侧在 `dsh-remote-protocol` 新增
+`cmd.list_subagents`（回复走 `ev.result.data.items`，不新增事件类型）。
+
+判据：新增 5 条载体判据（成员/任务/时长/递归/能力缺失抛错）+ 1 条 runtime 接线判据 +
+手机端 11 项 UI 自测；插件全量 798 项（781 通过 / 17 跳过）全绿。
+
 ## 0.9.0-dafeiyu.5 —— 人设面板汉化
 
 「大肥鱼」合页里的「人设」分栏，原先整片英文：宿主的界面语言被设成 en 时，

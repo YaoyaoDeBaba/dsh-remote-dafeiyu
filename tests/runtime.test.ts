@@ -4261,3 +4261,50 @@ test('cmd.file_image：分块回执带 kind=image，错误路径给人话而不�
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// ── 子代理监视器：cmd.list_subagents 的接线（协议 → 回执 → 手机分流）──────────
+test('cmd.list_subagents：回执走 ev.result.data.items；能力缺失时明确拒绝', async () => {
+  const { runtime, kernel, transport } = fixture()
+  runtime.start()
+  await settle()
+
+  // 能力缺失：这台载体的内核端口没有 listSubagents
+  const missing = cmd(PAYLOAD_TYPES.cmdListSubagents, { sessionId: 'a1' })
+  await runtime.handleCommand(missing, 'c_sub_0001')
+  await settle()
+  type ResultPayload = Extract<EvPayload, { t: 'ev.result' }>
+  const replies = () =>
+    transport.replies
+      .map((item) => item.payload)
+      .filter((p): p is ResultPayload => p.t === PAYLOAD_TYPES.evResult)
+  const denied = replies().filter((p) => p.cmdId === missing.cmdId).at(-1)
+  assert.ok(denied, '能力缺失也必须有回执：不回 = 手机端只剩 12 秒超时')
+  assert.equal(denied.ok, false)
+  assert.match(String(denied.message), /子代理列表/, '失败原因要说清是"这一代不支持"')
+
+  // 能力齐了：把表原样塞进 ev.result.data.items
+  ;(kernel as unknown as { listSubagents?: unknown }).listSubagents = async (sessionId: string, options?: unknown) => [
+    { id: 'child-1', parentId: sessionId, depth: 1, status: 'running', workMs: 5_000, idleMs: 1_000, task: '跑测试' },
+    { id: 'child-2', parentId: sessionId, depth: 1, status: 'idle', workMs: 60_000, idleMs: 2 * 60 * 60 * 1000 },
+  ]
+  const asked: Array<{ sessionId: string; options?: unknown }> = []
+  ;(kernel as unknown as { listSubagents?: unknown }).listSubagents = async (sessionId: string, options?: unknown) => {
+    asked.push({ sessionId, options })
+    return [
+      { id: 'child-1', parentId: sessionId, depth: 1, status: 'running', workMs: 5_000, idleMs: 1_000, task: '跑测试' },
+      { id: 'child-2', parentId: sessionId, depth: 1, status: 'idle', workMs: 60_000, idleMs: 2 * 60 * 60 * 1000 },
+    ]
+  }
+  const ok = cmd(PAYLOAD_TYPES.cmdListSubagents, { sessionId: 'a1', descendants: true })
+  await runtime.handleCommand(ok, 'c_sub_0002')
+  await settle()
+  const answer = replies().filter((p) => p.cmdId === ok.cmdId).at(-1)
+  assert.ok(answer)
+  assert.equal(answer.ok, true)
+  const data = answer.data as { items?: Array<{ id: string }> }
+  assert.equal(data.items?.length, 2)
+  assert.deepEqual(data.items?.map((row) => row.id), ['child-1', 'child-2'])
+  assert.equal(asked.length, 1)
+  assert.equal(asked[0]!.sessionId, 'a1', '必须点名父会话')
+  assert.equal((asked[0]!.options as { descendants?: boolean }).descendants, true, 'descendants 必须真的传下去')
+})
