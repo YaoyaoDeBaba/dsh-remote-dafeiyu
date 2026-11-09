@@ -1,3 +1,15 @@
+## 0.9.0-dafeiyu.8 —— 修 PC 端子代理图标不出现
+
+`.7` 的后端已经好了（`/subagents` 回 200、手机端 🐝 正常），只有桌面端不出现。两个原因：
+
+1. **当前会话 id 解析错了**：`sessions.list.getSnapshot()` 这一代的形状是
+   `{ids, byId, phase, projectionsBySession}`，**没有 `current`**。官方 UI 的“当前会话”
+   在 `uiSession.current.getSnapshot().key`（`dsh-client-ui-session` 提供的服务）。
+   改成按 `uiSession` → `sessions` 的顺序软探测。
+2. **一次性捕获**：apply 跑在客户端服务就绪之前，旧实现把当时的 `sessions`（undefined）
+   闭包缓存了下来，之后永远解析不到。现在每次调用都重新取服务。
+3. 顺手给面板加了 `DOMContentLoaded` 退避：插件可能跑在 `<body>` 之前，之前会静默不挂。
+
 ## 0.9.0-dafeiyu.7 —— 修子代理监视器路由没挂上
 
 `.6` 里 `src/subagents/start.ts` 探测 `webServer` 时直接读了 `ctx.webServer`——

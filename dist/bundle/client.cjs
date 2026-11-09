@@ -2627,7 +2627,24 @@ function fmtDuration(ms) {
 }
 function mountSubagentMonitor(deps) {
   const doc = globalThis.document;
-  if (!doc || !doc.body) return () => void 0;
+  if (!doc) return () => void 0;
+  if (!doc.body) {
+    let disposed = false;
+    let cleanup;
+    const onReady = () => {
+      if (disposed) return;
+      cleanup = mountSubagentMonitor(deps);
+    };
+    doc.addEventListener("DOMContentLoaded", onReady, { once: true });
+    return () => {
+      disposed = true;
+      doc.removeEventListener("DOMContentLoaded", onReady);
+      try {
+        cleanup?.();
+      } catch {
+      }
+    };
+  }
   const style = doc.createElement("style");
   style.textContent = `
     #dafeiyu-subagent-fab { position: fixed; right: 16px; top: 46%; z-index: 2147483000;
@@ -4607,27 +4624,34 @@ function resolveSessionInject(ctx) {
   };
 }
 function resolveCurrentSession(ctx) {
-  let sessions;
-  try {
-    sessions = ctx.sessions;
-  } catch {
-    sessions = void 0;
-  }
-  if (!sessions) {
+  const service = (name2) => {
     try {
-      sessions = ctx.get?.("sessions", true);
+      const direct = ctx[name2];
+      if (direct) return direct;
     } catch {
-      sessions = void 0;
     }
-  }
-  const list = sessions?.list;
-  return () => {
     try {
-      const current = list?.getSnapshot?.()?.current;
-      return typeof current === "string" && current !== "" ? current : void 0;
+      return ctx.get?.(name2, true);
     } catch {
       return void 0;
     }
+  };
+  return () => {
+    const ui = service("uiSession");
+    try {
+      const binding = ui?.current;
+      const snap = binding?.getSnapshot ? binding.getSnapshot() : binding?.value;
+      const key = typeof snap === "object" && snap !== null ? snap.key ?? snap.sessionId : void 0;
+      if (typeof key === "string" && key !== "") return key;
+    } catch {
+    }
+    const sessions = service("sessions");
+    try {
+      const current = sessions?.list?.getSnapshot?.()?.current;
+      if (typeof current === "string" && current !== "") return current;
+    } catch {
+    }
+    return void 0;
   };
 }
 function reportClient(fields) {

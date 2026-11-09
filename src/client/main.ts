@@ -260,27 +260,45 @@ function resolveSessionInject(ctx: ClientContext): ((text: string) => Promise<bo
  * 服务晚到时返回 undefined，监视器就保持隐藏——不会因为拿不到会话把页面搞坏。
  */
 function resolveCurrentSession(ctx: ClientContext): () => string | undefined {
-  let sessions: unknown
-  try {
-    sessions = (ctx as { sessions?: unknown }).sessions
-  } catch {
-    sessions = undefined
-  }
-  if (!sessions) {
+  /**
+   * 取一个客户端服务：先按属性读（cordis 声明过才有，未声明会抛），再走 `ctx.get(name, true)`。
+   * **每次调用都重新取**——apply 跑在服务就绪之前，一次性捕获会把 undefined 永久缓存下来。
+   */
+  const service = (name: string): unknown => {
     try {
-      sessions = ctx.get?.('sessions', true)
+      const direct = (ctx as Record<string, unknown>)[name]
+      if (direct) return direct
     } catch {
-      sessions = undefined
+      /* 未声明的服务：属性访问会抛，走 ctx.get */
     }
-  }
-  const list = (sessions as { list?: { getSnapshot?: () => { current?: unknown } } } | undefined)?.list
-  return () => {
     try {
-      const current = list?.getSnapshot?.()?.current
-      return typeof current === 'string' && current !== '' ? current : undefined
+      return ctx.get?.(name, true)
     } catch {
       return undefined
     }
+  }
+  return () => {
+    // ① 会话界面服务（`dsh-client-ui-session` 的 UiSession）：`current` 是 binding source，
+    //    getSnapshot() 返回 `{ key: sessionId, … }`。这是官方那套「当前选中会话」的权威来源。
+    const ui = service('uiSession') as { current?: { getSnapshot?: () => unknown; value?: unknown } } | undefined
+    try {
+      const binding = ui?.current
+      const snap = binding?.getSnapshot ? binding.getSnapshot() : binding?.value
+      const key = typeof snap === 'object' && snap !== null ? (snap as { key?: unknown; sessionId?: unknown }).key ?? (snap as { sessionId?: unknown }).sessionId : undefined
+      if (typeof key === 'string' && key !== '') return key
+    } catch {
+      /* 界面服务还没起来：继续试下一条 */
+    }
+    // ② 会话控制器（`sessions.list`）——这一代的快照里没有 current（只有 ids/byId/phase），
+    //    留着是给将来可能补字段的版本用，拿不到就返回 undefined。
+    const sessions = service('sessions') as { list?: { getSnapshot?: () => { current?: unknown } } } | undefined
+    try {
+      const current = sessions?.list?.getSnapshot?.()?.current
+      if (typeof current === 'string' && current !== '') return current
+    } catch {
+      /* 同上 */
+    }
+    return undefined
   }
 }
 

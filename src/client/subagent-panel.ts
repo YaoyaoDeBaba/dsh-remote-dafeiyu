@@ -51,7 +51,27 @@ function fmtDuration(ms: number | undefined): string {
 
 export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   const doc = (globalThis as { document?: Document }).document
-  if (!doc || !doc.body) return () => undefined
+  if (!doc) return () => undefined
+  // 客户端插件可能跑在 <body> 之前（loader immediately）：等 DOM 就绪再挂，
+  // 否则整个监视器会静默不出现（0.9.0-dafeiyu.7 的 PC 端就是这么消失的）。
+  if (!doc.body) {
+    let disposed = false
+    let cleanup: (() => void) | undefined
+    const onReady = (): void => {
+      if (disposed) return
+      cleanup = mountSubagentMonitor(deps)
+    }
+    doc.addEventListener('DOMContentLoaded', onReady, { once: true })
+    return () => {
+      disposed = true
+      doc.removeEventListener('DOMContentLoaded', onReady)
+      try {
+        cleanup?.()
+      } catch {
+        /* 卸载不许抛 */
+      }
+    }
+  }
 
   const style = doc.createElement('style')
   style.textContent = `
