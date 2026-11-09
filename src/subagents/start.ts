@@ -91,25 +91,29 @@ export function startSubagents(
     }
   }
 
-  const readCtx = ctx as { webServer?: unknown }
-  if (!acceptWeb(readCtx.webServer, 'ctx.webServer')) {
-    try {
-      const picked = pickFrom(readCtx)
-      if (picked) acceptWeb(picked, 'ctx.grab')
-    } catch {
-      /* 取不到就当没有 webServer */
-    }
+  // 与识图/记忆同一个探测顺序（⚠️ 直接读 `ctx.webServer` 在 cordis 未声明时会**抛**，
+  // 0.9.0-dafeiyu.6 就是栽在这一步：异常冒到外层 try，两条路由一条都没挂上，
+  // 表现是 /api/.../subagents 回 401 unauthorized）。
+  try {
+    const found = ctx.get?.('webServer', true)
+    if (found) acceptWeb(found, 'via get')
+    else probe.webServer = 'none'
+  } catch (error) {
+    probe.webServer = `get threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
   }
-  if (!web) {
-    probe.webServer = probe.webServer ?? 'absent'
-    try {
-      ctx.inject?.(['webServer'], (scoped) => {
-        const picked = pickFrom(scoped) ?? pickFrom(readCtx)
-        if (picked) acceptWeb(picked, 'inject(webServer)')
-      })
-    } catch (error) {
-      probe.webServer = `inject threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
-    }
+  try {
+    ctx.inject?.(['webServer'], ((...args: unknown[]) => {
+      try {
+        for (const candidate of [args[0], ...args, ctx]) {
+          if (acceptWeb(pickFrom(candidate), 'via inject')) return
+        }
+        probe.webServer = `${probe.webServer ?? 'none'} (inject fired, empty)`
+      } catch (error) {
+        probe['injectThrew:webServer'] = String((error as Error)?.message ?? error).slice(0, 160)
+      }
+    }) as never)
+  } catch (error) {
+    probe['injectThrew:webServer'] = String((error as Error)?.message ?? error).slice(0, 160)
   }
 
   return {

@@ -1,3 +1,13 @@
+## 0.9.0-dafeiyu.7 —— 修子代理监视器路由没挂上
+
+`.6` 里 `src/subagents/start.ts` 探测 `webServer` 时直接读了 `ctx.webServer`——
+cordis 对**未声明服务**的属性访问会抛，异常一路冒到 `index.ts` 外层 try 被吞掉，
+于是两条路由一条都没挂上：`GET /api/dsh-remote-dafeiyu/subagents` 回的是 DSH 的兜底
+`401 unauthorized`，PC 端图标永远不出现。
+
+改成与识图/记忆同一条探测顺序：`ctx.get('webServer', true)` 优先，`ctx.webServer`
+只在 `pickFrom` 的 try 里读，`inject(['webServer'])` 回调里再兜一层。
+
 ## 0.9.0-dafeiyu.6 —— 子代理监视器
 
 给大肥鱼加了一个「sub agent 监视器」：看得到每个子代理在干什么、跑了多久、闲了多久，

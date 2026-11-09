@@ -27644,7 +27644,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.6" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.7" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36575,24 +36575,26 @@ function startSubagents(ctx, deps) {
       return void 0;
     }
   };
-  const readCtx = ctx;
-  if (!acceptWeb(readCtx.webServer, "ctx.webServer")) {
-    try {
-      const picked = pickFrom(readCtx);
-      if (picked) acceptWeb(picked, "ctx.grab");
-    } catch {
-    }
+  try {
+    const found = ctx.get?.("webServer", true);
+    if (found) acceptWeb(found, "via get");
+    else probe.webServer = "none";
+  } catch (error62) {
+    probe.webServer = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
   }
-  if (!web) {
-    probe.webServer = probe.webServer ?? "absent";
-    try {
-      ctx.inject?.(["webServer"], (scoped) => {
-        const picked = pickFrom(scoped) ?? pickFrom(readCtx);
-        if (picked) acceptWeb(picked, "inject(webServer)");
-      });
-    } catch (error62) {
-      probe.webServer = `inject threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-    }
+  try {
+    ctx.inject?.(["webServer"], ((...args) => {
+      try {
+        for (const candidate of [args[0], ...args, ctx]) {
+          if (acceptWeb(pickFrom(candidate), "via inject")) return;
+        }
+        probe.webServer = `${probe.webServer ?? "none"} (inject fired, empty)`;
+      } catch (error62) {
+        probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
+      }
+    }));
+  } catch (error62) {
+    probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
   }
   return {
     probe,
