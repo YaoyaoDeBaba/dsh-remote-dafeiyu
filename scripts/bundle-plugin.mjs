@@ -182,7 +182,7 @@ if (staticReactAt >= 0 && (personaFactoryAt < 0 || staticReactAt < personaFactor
 // 上限 128 → 256 KB（0.8.0 合包）：人设那一半的界面自己就有 ~77 KB（四个席位 + 两套字典），
 // 加起来 190 KB 上下是正常的。**内联 react 会到 400 KB 以上**，所以 256 KB 这条线
 // 仍然能把它拦住——探针的作用没丢，只是挪了个位置。
-const CLIENT_BUDGET = 256 * 1024
+const CLIENT_BUDGET = 320 * 1024
 if (clientBytes > CLIENT_BUDGET) {
   console.error(
     `[bundle-plugin] client.cjs ${(clientBytes / 1024).toFixed(0)} KB，超过 ${CLIENT_BUDGET / 1024} KB 上限：` +

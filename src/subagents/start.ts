@@ -8,6 +8,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   SUBAGENTS_ARCHIVE_ROUTE,
   SUBAGENTS_CONFIG_ROUTE,
+  GUIDANCE_PUSH_ROUTE,
+  guidancePushHandler,
   SUBAGENTS_ROUTE,
   subagentsArchiveHandler,
   subagentsConfigHandler,
@@ -17,6 +19,9 @@ import {
 import { readSubagentsConfig, resolveSubagentsConfigFile, writeSubagentsConfig, type SubagentsConfig } from './config.js'
 import type { KernelSubagent } from '../ports/index.js'
 import { SUBAGENT_GUIDANCE } from './guidance.js'
+import { createGuidancePusher, type GuidancePushResult } from './pusher.js'
+import { readXyqConfig, resolveXyqConfigFile } from '../xyq/config.js'
+import { xyqGuidance } from '../xyq/guidance.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -90,6 +95,7 @@ export function startSubagents(
       disposers.push(
         web.register({ kind: 'exact', path: SUBAGENTS_CONFIG_ROUTE, handler: subagentsConfigHandler(deps) }),
       )
+      disposers.push(web.register({ kind: 'exact', path: GUIDANCE_PUSH_ROUTE, handler: guidancePushHandler(deps) }))
       unregister = () => {
         for (const dispose of disposers) dispose()
       }

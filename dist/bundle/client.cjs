@@ -2559,6 +2559,19 @@ var previewStyle = {
   overflow: "auto",
   margin: "0"
 };
+async function postConfig2(path, body) {
+  const response = await fetch(resolveHostUrl(path), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-drc-pair": "1" },
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: `\u5BBF\u4E3B\u8FD4\u56DE\u4E86\u975E JSON\uFF08HTTP ${response.status}\uFF09` };
+  }
+}
 async function postConfig(patch) {
   const response = await fetch(resolveHostUrl(`${BASE}/config`), {
     method: "POST",
@@ -2628,6 +2641,22 @@ function buildSubagentsPanel(deps) {
         ]
       });
     }
+    const push = async () => {
+      setBusy(true);
+      try {
+        const result = await postConfig2(`${BASE}/../guidance/push`, { which: "subagent" });
+        if (result.ok === true && result.result && typeof result.result === "object") {
+          const r = result.result;
+          setStatus(`\u5DF2\u63A8\u9001\u5230 ${r.pushed ?? 0}/${r.total ?? 0} \u4E2A\u5728\u7EBF\u4F1A\u8BDD${(r.failed ?? 0) > 0 ? `\uFF08${r.failed} \u4E2A\u5931\u8D25\uFF09` : ""}`);
+        } else {
+          setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
     const copy = async () => {
       try {
         await navigator.clipboard.writeText(preview);
@@ -2681,6 +2710,7 @@ function buildSubagentsPanel(deps) {
               children: [
                 h("span", { style: labelStyle3, children: "\u63D0\u793A\u8BCD\u9884\u89C8\uFF08\u4E0E\u6CE8\u5165\u7ED9\u6A21\u578B\u7684\u662F\u540C\u4E00\u4EFD\uFF09" }),
                 h("button", { type: "button", style: buttonStyle3, onClick: () => void copy(), children: "\u590D\u5236" }),
+                h("button", { type: "button", style: buttonStyle3, disabled: busy, onClick: () => void push(), children: "\u63A8\u9001\u5230\u6240\u6709\u5728\u7EBF\u4F1A\u8BDD" }),
                 h("button", { type: "button", style: buttonStyle3, onClick: () => void load(), children: "\u5237\u65B0" })
               ]
             }),
@@ -2776,6 +2806,22 @@ function buildXyqPanel(deps) {
         setBusy(false);
       }
     };
+    const push = async () => {
+      setBusy(true);
+      try {
+        const result = await postJson(`${BASE2}/../guidance/push`, { which: "xyq" });
+        if (result.ok === true && result.result && typeof result.result === "object") {
+          const r = result.result;
+          setStatus(`\u5DF2\u63A8\u9001\u5230 ${r.pushed ?? 0}/${r.total ?? 0} \u4E2A\u5728\u7EBF\u4F1A\u8BDD${(r.failed ?? 0) > 0 ? `\uFF08${r.failed} \u4E2A\u5931\u8D25\uFF09` : ""}`);
+        } else {
+          setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
+        }
+      } catch (error) {
+        setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
     const save = async (patch) => {
       setBusy(true);
       try {
@@ -2815,7 +2861,8 @@ function buildXyqPanel(deps) {
             h("div", { style: { display: "flex", gap: "8px" }, children: [
               h("input", { type: "password", value: key, placeholder: cfg.accessKeySet ? "\u7559\u7A7A\u5219\u4E0D\u6539" : "\u7C98\u8D34 Access Key", style: fieldStyle3, onChange: (event) => setKey(String(event?.target?.value ?? "")) }),
               h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void save(key.trim() === "" ? {} : { accessKey: key.trim() }), children: "\u4FDD\u5B58 Key" }),
-              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void checkStatus(), children: "\u68C0\u67E5\u72B6\u6001/\u4F59\u989D" })
+              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void checkStatus(), children: "\u68C0\u67E5\u72B6\u6001/\u4F59\u989D" }),
+              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void push(), children: "\u63A8\u9001\u5230\u6240\u6709\u5728\u7EBF\u4F1A\u8BDD" })
             ] }),
             h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: status }),
             h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: balance })

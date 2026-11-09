@@ -1,3 +1,14 @@
+## 0.9.0-dafeiyu.12 —— 提示词推送按钮
+
+- 设置页「派活助手」「小云雀」两个分栏各加一颗 **「推送到所有在线会话」**：把对应提示段用
+  `ctx.agents.list()` + `agent.inject()` 注入每个在线会话（不唤醒、下一轮可见），解决“常驻会话
+  拿不到后注册的系统提示段”的问题；
+- 推送文本带「【系统推送·大肥鱼插件】」前缀，避免被当成用户发言；返回“已推送 N/M，失败 K”；
+- 新路由 `POST /api/dsh-remote-dafeiyu/guidance/push`（`which: subagent|xyq|both`，要 `x-drc-pair`）；
+- 提示文本单一来源：`src/subagents/guidance.ts` / `src/xyq/guidance.ts`；
+- 客户端包上限 256 → 320 KB（扩展三块设置界面后的正常占用，仍禁止内联 react）；
+- 判据：pusher 单测 2 条（逐个注入、单点失败不拖累；agents 缺失不抛），全量 809 项。
+
 ## 0.9.0-dafeiyu.11 —— 小云雀工具并入（生图 / 生视频 / 余额）
 
 - 新模块 `src/xyq/`：通过官方 `pippit-tool-cli` 调用小云雀能力，**不碰网页 UI**；

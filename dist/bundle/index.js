@@ -27644,7 +27644,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.11" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.12" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36533,6 +36533,7 @@ var SUBAGENT_GUIDANCE = [
 var SUBAGENTS_ROUTE = "/api/dsh-remote-dafeiyu/subagents";
 var SUBAGENTS_ARCHIVE_ROUTE = "/api/dsh-remote-dafeiyu/subagents/archive";
 var SUBAGENTS_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/subagents/config";
+var GUIDANCE_PUSH_ROUTE = "/api/dsh-remote-dafeiyu/guidance/push";
 function json6(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -36668,6 +36669,35 @@ function subagentsConfigHandler(deps) {
       json6(response, 200, { ok: true, config: deps.config.write(body) });
     } catch (error62) {
       json6(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function guidancePushHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    const denied = rejected2(request);
+    if (denied) {
+      json6(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method !== "POST") {
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      return;
+    }
+    if (String(request.headers["x-drc-pair"] ?? "") === "") {
+      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      return;
+    }
+    if (deps.pushGuidance === void 0) {
+      json6(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
+      return;
+    }
+    try {
+      const body = JSON.parse(await readBody2(request));
+      const which = body.which === "xyq" ? "xyq" : body.which === "both" ? "both" : "subagent";
+      json6(response, 200, { ok: true, which, result: await deps.pushGuidance(which) });
+    } catch (error62) {
+      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -36901,6 +36931,7 @@ function startSubagents(ctx, input2) {
       disposers.push(
         web.register({ kind: "exact", path: SUBAGENTS_CONFIG_ROUTE, handler: subagentsConfigHandler(deps) })
       );
+      disposers.push(web.register({ kind: "exact", path: GUIDANCE_PUSH_ROUTE, handler: guidancePushHandler(deps) }));
       unregister = () => {
         for (const dispose of disposers) dispose();
       };
@@ -37550,8 +37581,8 @@ async function resolveCliPath(run, options = {}) {
   return void 0;
 }
 
-// src/xyq/start.ts
-function guidanceText(freedom) {
+// src/xyq/guidance.ts
+function xyqGuidance(freedom) {
   const lines = [
     "## \u5C0F\u4E91\u96C0\uFF08\u56FE\u7247 / \u89C6\u9891\u751F\u6210\uFF09",
     "\u672C\u673A\u63A5\u5165\u4E86\u5C0F\u4E91\u96C0\u5B98\u65B9 CLI\uFF0C\u63D0\u4F9B `generate_image`\u3001`generate_video`\u3001`xyq_balance`\u3001`xyq_models` \u56DB\u4E2A\u5DE5\u5177\u3002",
@@ -37564,6 +37595,8 @@ function guidanceText(freedom) {
   lines.push("Access Key \u8FC7\u671F/\u65E0\u6548\u65F6\u5DE5\u5177\u4F1A\u62A5\u9519\uFF0C\u628A\u539F\u6587\u8F6C\u544A\u7528\u6237\uFF0C\u8BA9\u4ED6\u53BB\u5C0F\u4E91\u96C0\u5B98\u7F51 \u26A1CLI/API \u2192 API \u66F4\u65B0\u3002");
   return lines.join("\n");
 }
+
+// src/xyq/start.ts
 function startXyq(ctx, deps) {
   const probe = {};
   const run = deps.run ?? defaultCliRunner;
@@ -37666,7 +37699,7 @@ function startXyq(ctx, deps) {
     try {
       const systemPrompt = ctx.get?.("systemPrompt", true);
       if (systemPrompt && typeof systemPrompt.section === "function") {
-        systemPrompt.section({ name: "dafeiyu:xyq", order: 10095, text: guidanceText(config2.freedom) });
+        systemPrompt.section({ name: "dafeiyu:xyq", order: 10095, text: xyqGuidance(config2.freedom) });
         probe.section = "registered";
       } else {
         probe.section = "no-systemPrompt";

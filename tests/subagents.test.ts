@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createServicesKernel, type ServicesBundle } from '../src/platform/carrier-services.js'
 import { readSubagentsConfig, writeSubagentsConfig } from '../src/subagents/config.js'
+import { createGuidancePusher } from '../src/subagents/pusher.js'
 
 const NOW = 1_800_000_000_000
 
@@ -165,4 +166,31 @@ test('subagents config：阈值夹取、读写回环、坏 JSON 回落默认', (
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+
+test('guidance pusher：逐个注入在线会话，单个失败不影响其它', async () => {
+  const injected: string[] = []
+  const fakeAgents = {
+    list: () => [
+      { id: 'a', inject: (message: { content: Array<{ text: string }> }) => void injected.push(message.content[0]!.text) },
+      { id: 'b' }, // 没有 inject
+      { id: 'c', inject: () => { throw new Error('boom') } },
+    ],
+  }
+  const push = createGuidancePusher(() => fakeAgents)
+  const result = await push('## 规范正文', '派活规范')
+  assert.equal(result.total, 3)
+  assert.equal(result.pushed, 1)
+  assert.equal(result.failed, 2)
+  assert.equal(injected.length, 1)
+  assert.match(injected[0]!, /系统推送/)
+  assert.match(injected[0]!, /规范正文/)
+})
+
+test('guidance pusher：agents 服务缺失时 total=0 不抛', async () => {
+  const push = createGuidancePusher(() => undefined)
+  const result = await push('x', 'y')
+  assert.equal(result.total, 0)
+  assert.equal(result.pushed, 0)
 })

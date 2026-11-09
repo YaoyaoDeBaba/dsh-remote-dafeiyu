@@ -9,10 +9,12 @@ import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/rou
 import type { KernelSubagent } from '../ports/index.js'
 import type { SubagentsConfig } from './config.js'
 import { SUBAGENT_GUIDANCE } from './guidance.js'
+import type { GuidancePushResult } from './pusher.js'
 
 export const SUBAGENTS_ROUTE = '/api/dsh-remote-dafeiyu/subagents'
 export const SUBAGENTS_ARCHIVE_ROUTE = '/api/dsh-remote-dafeiyu/subagents/archive'
 export const SUBAGENTS_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/subagents/config'
+export const GUIDANCE_PUSH_ROUTE = '/api/dsh-remote-dafeiyu/guidance/push'
 
 export interface SubagentRouteDeps {
   list: (sessionId: string, options?: { descendants?: boolean }) => Promise<KernelSubagent[]>
@@ -20,6 +22,8 @@ export interface SubagentRouteDeps {
   archive?: (sessionId: string, archived: boolean) => Promise<{ ok: boolean; message?: string }>
   /** 派活助手配置的读/写（闲置阈值、提示段开关）。 */
   config: { read(): SubagentsConfig; write(patch: unknown): SubagentsConfig }
+  /** 把提示段推送到所有在线会话（一次性上下文；用户按钮触发）。 */
+  pushGuidance?: (which: 'subagent' | 'xyq' | 'both') => Promise<GuidancePushResult>
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }
 
@@ -176,6 +180,38 @@ export function subagentsConfigHandler(deps: SubagentRouteDeps) {
       json(response, 200, { ok: true, config: deps.config.write(body) })
     } catch (error) {
       json(response, 400, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
+    }
+  }
+}
+
+
+/** `POST /guidance/push`：把提示段注入所有在线会话（不唤醒；下一轮可见）。 */
+export function guidancePushHandler(deps: SubagentRouteDeps) {
+  return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) {
+      json(response, 403, { ok: false, error: denied })
+      return
+    }
+    if (request.method !== 'POST') {
+      json(response, 405, { ok: false, error: '只支持 POST' })
+      return
+    }
+    if (String(request.headers['x-drc-pair'] ?? '') === '') {
+      json(response, 403, { ok: false, error: 'missing x-drc-pair' })
+      return
+    }
+    if (deps.pushGuidance === undefined) {
+      json(response, 503, { ok: false, error: '当前宿主没有 agents 服务，推送不可用' })
+      return
+    }
+    try {
+      const body = JSON.parse(await readBody(request)) as { which?: unknown }
+      const which = body.which === 'xyq' ? 'xyq' : body.which === 'both' ? 'both' : 'subagent'
+      json(response, 200, { ok: true, which, result: await deps.pushGuidance(which) })
+    } catch (error) {
+      json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
     }
   }
 }
