@@ -153,6 +153,7 @@ test('subagents config：阈值夹取、读写回环、坏 JSON 回落默认', (
     const fallback = readSubagentsConfig(file)
     assert.equal(fallback.idleWarnMs, 2 * 60 * 60 * 1000, '缺文件时默认 2 小时')
     assert.equal(fallback.guidance, true)
+    assert.equal(fallback.mode, 'foreman', '默认包工头模式')
 
     const written = writeSubagentsConfig(file, { idleWarnMs: 1000, guidance: false })
     assert.equal(written.idleWarnMs, 5 * 60 * 1000, '阈值低于 5 分钟要夹到下限')

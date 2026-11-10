@@ -2634,12 +2634,21 @@ function buildSubagentsPanel(deps) {
         setBusy(false);
       }
     };
+    const refreshPreview = async () => {
+      try {
+        const result = await callJson(`${BASE}/config`, void 0);
+        if (result.ok === true && typeof result.guidanceText === "string") setPreview(result.guidanceText);
+      } catch {
+      }
+    };
     const save = async (patch) => {
       setBusy(true);
       try {
         const result = await postConfig(patch);
         if (result.ok && result.config && typeof result.config === "object") {
           setCfg(result.config);
+          if (typeof result.guidanceText === "string") setPreview(result.guidanceText);
+          else void refreshPreview();
           setStatus("\u5DF2\u4FDD\u5B58");
         } else {
           setStatus(`\u4FDD\u5B58\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
@@ -2708,6 +2717,22 @@ function buildSubagentsPanel(deps) {
                   onChange: (event) => void save({ guidance: event?.target?.checked === true })
                 }),
                 h("span", { style: { ...labelStyle3, fontSize: "11.5px" }, children: cfg.guidance ? "\u5F00" : "\u5173" })
+              ]
+            }),
+            h("div", {
+              style: rowStyle,
+              children: [
+                h("span", { style: labelStyle3, children: "\u6D3E\u6D3B\u98CE\u683C\uFF08\u91CD\u542F DSH \u540E\u751F\u6548\uFF09" }),
+                h("select", {
+                  value: cfg.mode ?? "foreman",
+                  disabled: busy,
+                  style: { ...buttonStyle3, padding: "4px 8px" },
+                  onChange: (event) => void save({ mode: event?.target?.value === "hands-on" ? "hands-on" : "foreman" }),
+                  children: [
+                    h("option", { value: "foreman", children: "\u5305\u5DE5\u5934\uFF1A\u4E3B\u52A8\u62C6\u6D3B/\u6D3E\u6D3B/\u9A8C\u6536/\u6C47\u62A5" }),
+                    h("option", { value: "hands-on", children: "\u4EB2\u529B\u4EB2\u4E3A\uFF1A\u81EA\u5DF1\u52A8\u624B\u4E3A\u4E3B" })
+                  ]
+                })
               ]
             }),
             h("div", {

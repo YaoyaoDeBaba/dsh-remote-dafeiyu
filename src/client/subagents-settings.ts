@@ -22,6 +22,7 @@ export interface SubagentsSettingsView {
   enabled: boolean
   guidance: boolean
   idleWarnMs: number
+  mode: 'foreman' | 'hands-on'
 }
 
 const BASE = '/api/dsh-remote-dafeiyu/subagents'
@@ -125,12 +126,23 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
       }
     }
 
+    const refreshPreview = async (): Promise<void> => {
+      try {
+        const result = await callJson(`${BASE}/config`, undefined)
+        if (result.ok === true && typeof result.guidanceText === 'string') setPreview(result.guidanceText)
+      } catch {
+        /* 预览刷新失败不打扰 */
+      }
+    }
+
     const save = async (patch: Record<string, unknown>): Promise<void> => {
       setBusy(true)
       try {
         const result = await postConfig(patch)
         if (result.ok && result.config && typeof result.config === 'object') {
           setCfg(result.config as SubagentsSettingsView)
+          if (typeof result.guidanceText === 'string') setPreview(result.guidanceText)
+          else void refreshPreview()
           setStatus('已保存')
         } else {
           setStatus(`保存失败：${String(result.error ?? '未知错误')}`)
@@ -207,6 +219,23 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
                     void save({ guidance: event?.target?.checked === true }),
                 }),
                 h('span', { style: { ...labelStyle, fontSize: '11.5px' }, children: cfg.guidance ? '开' : '关' }),
+              ],
+            }),
+            h('div', {
+              style: rowStyle,
+              children: [
+                h('span', { style: labelStyle, children: '派活风格（重启 DSH 后生效）' }),
+                h('select', {
+                  value: cfg.mode ?? 'foreman',
+                  disabled: busy,
+                  style: { ...buttonStyle, padding: '4px 8px' },
+                  onChange: (event: { target?: { value?: string } }) =>
+                    void save({ mode: event?.target?.value === 'hands-on' ? 'hands-on' : 'foreman' }),
+                  children: [
+                    h('option', { value: 'foreman', children: '包工头：主动拆活/派活/验收/汇报' }),
+                    h('option', { value: 'hands-on', children: '亲力亲为：自己动手为主' }),
+                  ],
+                }),
               ],
             }),
             h('div', {

@@ -13,15 +13,19 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { resolveDshHome } from '../memory/service.js'
 
+export type DispatchMode = 'foreman' | 'hands-on'
+
 export interface SubagentsConfig {
   version: 1
   enabled: boolean
   guidance: boolean
   /** 闲置阈值（毫秒），默认 2 小时。 */
   idleWarnMs: number
+  /** 派活风格：包工头（默认，积极派活）/ 亲力亲为（回退，自己动手）。 */
+  mode: DispatchMode
 }
 
-const DEFAULT_CONFIG: SubagentsConfig = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1000 }
+const DEFAULT_CONFIG: SubagentsConfig = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1000, mode: 'foreman' }
 const MIN_IDLE = 5 * 60 * 1000
 const MAX_IDLE = 7 * 24 * 60 * 60 * 1000
 
@@ -37,6 +41,7 @@ export function normalizeSubagentsConfig(raw: unknown): SubagentsConfig {
     version: 1,
     enabled: typeof value.enabled === 'boolean' ? value.enabled : DEFAULT_CONFIG.enabled,
     guidance: typeof value.guidance === 'boolean' ? value.guidance : DEFAULT_CONFIG.guidance,
+    mode: value.mode === 'hands-on' ? 'hands-on' : 'foreman',
     idleWarnMs: Math.min(MAX_IDLE, Math.max(MIN_IDLE, Math.round(idle))),
   }
 }

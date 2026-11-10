@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.27" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.28" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36705,16 +36705,39 @@ function recognizeImageTool(service) {
 }
 
 // src/subagents/guidance.ts
-var SUBAGENT_GUIDANCE = [
-  "## \u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF08\u672C\u673A\u5DF2\u542F\u7528\uFF09",
-  "\u8FD9\u53F0 DSH \u88C5\u4E86\u300C\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\u300D\uFF0C\u7528\u6237\u4F1A\u5728\u7535\u8111\u53F3\u4FA7 / \u624B\u673A\u5BF9\u8BDD\u9875\u91CC\u770B\u5230\u4F60\u6D3E\u51FA\u53BB\u7684\u6BCF\u4E2A\u5B50\u4EE3\u7406\u3002",
-  "\u6D3E\u6D3B\u65F6**\u5FC5\u987B\u4F7F\u7528\u5185\u7F6E `subagent` \u5DE5\u5177**\uFF0C\u5E76\u4E14 `description` \u53C2\u6570\u6309 `\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0` \u586B\u5199\uFF1A",
-  "- \u540D\u79F0 \u2264 12 \u5B57\uFF0C\u80FD\u8BA9\u4EBA\u4E00\u773C\u8BA4\u51FA\u8FD9\u4EF6\u4E8B\uFF08\u4F8B\u5982 `\u6E32\u67D3\u5408\u6279`\u3001`\u8BCD\u6761\u6821\u5BF9`\uFF09\uFF1B",
-  "- \u7B80\u8FF0 \u2264 40 \u5B57\uFF0C\u8BF4\u6E05\u76EE\u6807\u4E0E\u9A8C\u6536\uFF08\u4F8B\u5982 `\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536`\uFF09\uFF1B",
-  '- \u793A\u4F8B\uFF1A`description: "\u6E32\u67D3\u5408\u6279\uFF5C\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536"`\uFF1B\u6B63\u6587 prompt \u7B2C\u4E00\u884C\u518D\u5199\u5B8C\u6574\u76EE\u6807\u3002',
-  "\u4E0D\u6309\u8FD9\u4E2A\u683C\u5F0F\u5199\u4E5F\u80FD\u6D3E\u51FA\u53BB\uFF0C\u4F46\u76D1\u89C6\u5668\u53EA\u80FD\u81EA\u52A8\u53D6\u540D\u5E76\u628A\u8FD9\u4E00\u884C\u6807\u9EC4\u2014\u2014\u7528\u6237\u4F1A\u770B\u4E0D\u61C2\u4F60\u5728\u5E72\u4EC0\u4E48\u3002",
-  "\u4E0D\u8981\u4E3A\u4E86\u201C\u5C11\u5199\u4E00\u884C\u201D\u800C\u7ED5\u8FC7\u8FD9\u4E2A\u5165\u53E3\uFF1B\u7528\u6237\u5C31\u662F\u9760\u5B83\u5224\u65AD\u8981\u4E0D\u8981\u7B49\u4F60\u3002"
+var NAMING = [
+  "### \u6D3E\u6D3B\u89C4\u8303\uFF08\u5FC5\u987B\u9075\u5B88\uFF09",
+  "- \u5FC5\u987B\u7528\u5185\u7F6E `subagent` \u5DE5\u5177\u6D3E\u6D3B\uFF1B",
+  "- `description` \u6309 **`\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0`** \u586B\u5199\uFF1A\u540D\u79F0 \u226412 \u5B57\u3001\u7B80\u8FF0 \u226440 \u5B57\uFF1B",
+  '- \u793A\u4F8B\uFF1A`description: "\u6E32\u67D3\u5408\u6279\uFF5C\u5347\u7EA7 VFX \u6279\u6B21\u5408\u5E76\u5E76\u8DD1\u901A\u9A8C\u6536"`\uFF1B\u6B63\u6587 prompt \u7B2C\u4E00\u884C\u5199\u5B8C\u6574\u76EE\u6807\uFF1B',
+  "- \u4E0D\u6309\u89C4\u8303\u5199\u4E5F\u80FD\u6D3E\u51FA\u53BB\uFF0C\u4F46\u754C\u9762\u4E0A\u53EA\u4F1A\u663E\u793A\u300C\u5B50\u4EE3\u7406N / \u672A\u6309\u8981\u6C42\u586B\u5199\u300D\u3002"
+];
+var FOREMAN_GUIDANCE = [
+  "## \u6D3E\u6D3B\u52A9\u624B\uFF08\u672C\u673A\u5DF2\u542F\u7528\uFF09\u2014\u2014\u4F60\u73B0\u5728\u662F\u300C\u5305\u5DE5\u5934\u300D",
+  "\u8FD9\u53F0 DSH \u88C5\u4E86\u300C\u6D3E\u6D3B\u52A9\u624B\u300D\uFF1A\u4F60\u6D3E\u51FA\u53BB\u7684\u6BCF\u4E2A\u5B50\u4EE3\u7406\u90FD\u4F1A\u51FA\u73B0\u5728\u7528\u6237\u754C\u9762\uFF08\u7535\u8111\u4E0A\u7684\u865A\u62DF\u5F62\u8C61\u83DC\u5355 / \u624B\u673A\uFF09\uFF0C\u7528\u6237\u80FD\u770B\u5230\u540D\u79F0\u3001\u7B80\u8FF0\u3001\u72B6\u6001\u548C\u8017\u65F6\u3002",
+  "### \u4F60\u7684\u9ED8\u8BA4\u89D2\u8272\uFF1A\u5305\u5DE5\u5934\uFF0C\u4E0D\u662F\u82E6\u529B",
+  "- **\u80FD\u62C6\u5C31\u62C6**\uFF1A\u63A5\u5230\u4EFB\u52A1\u5148\u60F3\u201C\u80FD\u4E0D\u80FD\u62C6\u6210 2~4 \u4E2A\u5B50\u4EFB\u52A1\u5E76\u884C\u6D3E\u51FA\u53BB\u201D\uFF0C\u800C\u4E0D\u662F\u81EA\u5DF1\u4ECE\u5934\u505A\uFF1B",
+  "- **\u81EA\u5DF1\u5C11\u52A8\u624B**\uFF1A\u4F60\u8D1F\u8D23\u62C6\u89E3\u3001\u6D3E\u6D3B\u3001\u76EF\u8FDB\u5EA6\u3001\u9A8C\u6536\u3001\u515C\u5E95\uFF1B\u5177\u4F53\u6267\u884C\u5C3D\u91CF\u4EA4\u7ED9\u5B50\u4EE3\u7406\uFF1B",
+  "- **\u4E3B\u52A8\u6D3E\u6D3B**\uFF1A\u4E0D\u8981\u7B49\u7528\u6237\u50AC\uFF0C\u8BC4\u4F30\u5230\u4EFB\u52A1\u53EF\u5E76\u884C/\u8017\u65F6\u5C31\u7ACB\u523B\u6D3E\uFF0C\u6BD4\u5982\u6279\u91CF\u6539\u9020\u3001\u591A\u6587\u4EF6\u8FC1\u79FB\u3001\u8D44\u6599\u8C03\u7814\u3001\u8DD1\u6D4B\u8BD5\uFF1B",
+  "- **\u9A8C\u6536**\uFF1A\u5B50\u4EE3\u7406\u4EA4\u4ED8\u540E\u5BF9\u7167\u76EE\u6807\u68C0\u67E5\uFF0C\u4E0D\u8FBE\u6807\u5C31\u6253\u56DE\u8BA9\u5B83\u91CD\u505A\u6216\u8865\u6D3E\u4E00\u4E2A\uFF1B",
+  "- **\u5199\u603B\u7ED3**\uFF1A\u4E00\u8F6E\u6D3B\u5E72\u5B8C\uFF0C\u7ED9\u7528\u6237\u4E00\u6BB5\u6C47\u62A5\uFF1A\u505A\u4E86\u4EC0\u4E48\u3001\u8C01\u505A\u7684\u3001\u7ED3\u679C\u5982\u4F55\u3001\u9057\u7559\u95EE\u9898\uFF1B",
+  "- **\u804A\u65B9\u6848**\uFF1A\u591A\u548C\u7528\u6237\u8BA8\u8BBA\u62C6\u6CD5\u548C\u9A8C\u6536\u6807\u51C6\uFF0C\u628A\u65B9\u6848\u5B9A\u6E05\u695A\u518D\u6D3E\u6D3B\uFF1B",
+  "- \u53EA\u6709\u4E24\u79CD\u60C5\u51B5\u81EA\u5DF1\u52A8\u624B\uFF1A\u4EFB\u52A1\u5C0F\u5230\u4E0D\u503C\u5F97\u6D3E\u3001\u6216\u7528\u6237\u660E\u786E\u8981\u4F60\u4EB2\u81EA\u505A\u3002",
+  ...NAMING
 ].join("\n");
+var HANDS_ON_GUIDANCE = [
+  "## \u6D3E\u6D3B\u52A9\u624B\uFF08\u672C\u673A\u5DF2\u542F\u7528\uFF09",
+  "\u8FD9\u53F0 DSH \u88C5\u4E86\u300C\u6D3E\u6D3B\u52A9\u624B\u300D\uFF1A\u6D3E\u51FA\u53BB\u7684\u5B50\u4EE3\u7406\u4F1A\u51FA\u73B0\u5728\u7528\u6237\u754C\u9762\u4E0A\uFF08\u540D\u79F0\u3001\u7B80\u8FF0\u3001\u72B6\u6001\u3001\u8017\u65F6\uFF09\u3002",
+  "### \u5F53\u524D\u98CE\u683C\uFF1A\u4EB2\u529B\u4EB2\u4E3A",
+  "- \u9ED8\u8BA4\u81EA\u5DF1\u52A8\u624B\u5B8C\u6210\u5DE5\u4F5C\uFF0C**\u4E0D\u8981\u4E3A\u4E86\u6D3E\u6D3B\u800C\u6D3E\u6D3B**\uFF0C\u4E0D\u8981\u4E3B\u52A8\u626E\u6F14\u5305\u5DE5\u5934\uFF1B",
+  "- \u53EA\u6709\u4EFB\u52A1\u660E\u663E\u53EF\u62C6\u5206\u3001\u8017\u65F6\u5F88\u957F\u3001\u6216\u7528\u6237\u660E\u786E\u8981\u6C42\u65F6\u624D\u6D3E\u5B50\u4EE3\u7406\uFF1B",
+  "- \u6D3E\u51FA\u53BB\u4E4B\u540E\u4ECD\u7136\u8981\u9A8C\u6536\u7ED3\u679C\u5E76\u5411\u7528\u6237\u8BF4\u660E\u3002",
+  ...NAMING
+].join("\n");
+var SUBAGENT_GUIDANCE = FOREMAN_GUIDANCE;
+function subagentGuidance(mode) {
+  return mode === "hands-on" ? HANDS_ON_GUIDANCE : FOREMAN_GUIDANCE;
+}
 
 // src/subagents/routes.ts
 var SUBAGENTS_ROUTE = "/api/dsh-remote-dafeiyu/subagents";
@@ -36840,7 +36863,7 @@ function subagentsConfigHandler(deps) {
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json7(response, 200, { ok: true, config: deps.config.read(), guidanceText: SUBAGENT_GUIDANCE });
+      json7(response, 200, { ok: true, config: deps.config.read(), guidanceText: deps.guidanceText ? deps.guidanceText() : SUBAGENT_GUIDANCE });
       return;
     }
     if (request.method !== "POST") {
@@ -37039,7 +37062,7 @@ function createMemoryService(dshHome, budget = DEFAULT_MEMORY_BUDGET) {
 }
 
 // src/subagents/config.ts
-var DEFAULT_CONFIG2 = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1e3 };
+var DEFAULT_CONFIG2 = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1e3, mode: "foreman" };
 var MIN_IDLE = 5 * 60 * 1e3;
 var MAX_IDLE = 7 * 24 * 60 * 60 * 1e3;
 function resolveSubagentsConfigFile(dshHome = resolveDshHome(process.env)) {
@@ -37052,6 +37075,7 @@ function normalizeSubagentsConfig(raw) {
     version: 1,
     enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_CONFIG2.enabled,
     guidance: typeof value.guidance === "boolean" ? value.guidance : DEFAULT_CONFIG2.guidance,
+    mode: value.mode === "hands-on" ? "hands-on" : "foreman",
     idleWarnMs: Math.min(MAX_IDLE, Math.max(MIN_IDLE, Math.round(idle)))
   };
 }
@@ -37198,7 +37222,6 @@ function xyqGuidance(freedom) {
 }
 
 // src/subagents/start.ts
-var GUIDANCE2 = SUBAGENT_GUIDANCE;
 function startSubagents(ctx, input2) {
   const probe = {};
   const configFile2 = resolveSubagentsConfigFile(input2.dshHome);
@@ -37219,7 +37242,9 @@ function startSubagents(ctx, input2) {
   });
   const xyqConfigFile = resolveXyqConfigFile(input2.dshHome);
   const guidanceTexts = {
-    subagent: SUBAGENT_GUIDANCE,
+    get subagent() {
+      return subagentGuidance(config2.mode);
+    },
     get xyq() {
       return xyqGuidance(readXyqConfig(xyqConfigFile).freedom);
     }
@@ -37227,6 +37252,7 @@ function startSubagents(ctx, input2) {
   const deps = {
     ...input2,
     config: configFace,
+    guidanceText: () => subagentGuidance(config2.mode),
     pushGuidance: async (which) => {
       const merged = { total: 0, pushed: 0, failed: 0, errors: [] };
       const targets = which === "both" ? ["subagent", "xyq"] : [which];
@@ -37247,7 +37273,7 @@ function startSubagents(ctx, input2) {
   else try {
     const systemPrompt = ctx.get?.("systemPrompt", true);
     if (systemPrompt && typeof systemPrompt.section === "function") {
-      systemPrompt.section({ name: "dafeiyu:subagents", order: 10090, text: GUIDANCE2 });
+      systemPrompt.section({ name: "dafeiyu:subagents", order: 10090, text: subagentGuidance(config2.mode) });
       probe.section = "registered";
     } else {
       probe.section = "no-systemPrompt";

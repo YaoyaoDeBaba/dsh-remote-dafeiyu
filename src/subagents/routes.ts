@@ -22,6 +22,8 @@ export interface SubagentRouteDeps {
   archive?: (sessionId: string, archived: boolean) => Promise<{ ok: boolean; message?: string }>
   /** 派活助手配置的读/写（闲置阈值、提示段开关）。 */
   config: { read(): SubagentsConfig; write(patch: unknown): SubagentsConfig }
+  /** 当前风格的提示词（设置页预览用，随 mode 变化）。 */
+  guidanceText?: () => string
   /** 把提示段推送到所有在线会话（一次性上下文；用户按钮触发）。 */
   pushGuidance?: (which: 'subagent' | 'xyq' | 'both') => Promise<GuidancePushResult>
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
@@ -164,7 +166,7 @@ export function subagentsConfigHandler(deps: SubagentRouteDeps) {
       return
     }
     if (request.method === 'GET' || request.method === 'HEAD') {
-      json(response, 200, { ok: true, config: deps.config.read(), guidanceText: SUBAGENT_GUIDANCE })
+      json(response, 200, { ok: true, config: deps.config.read(), guidanceText: deps.guidanceText ? deps.guidanceText() : SUBAGENT_GUIDANCE })
       return
     }
     if (request.method !== 'POST') {

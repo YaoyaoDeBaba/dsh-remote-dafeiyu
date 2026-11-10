@@ -18,7 +18,7 @@ import {
 } from './routes.js'
 import { readSubagentsConfig, resolveSubagentsConfigFile, writeSubagentsConfig, type SubagentsConfig } from './config.js'
 import type { KernelSubagent } from '../ports/index.js'
-import { SUBAGENT_GUIDANCE } from './guidance.js'
+import { SUBAGENT_GUIDANCE, subagentGuidance } from './guidance.js'
 import { createGuidancePusher, type GuidancePushResult } from './pusher.js'
 import { readXyqConfig, resolveXyqConfigFile } from '../xyq/config.js'
 import { xyqGuidance } from '../xyq/guidance.js'
@@ -71,7 +71,9 @@ export function startSubagents(
   })
   const xyqConfigFile = resolveXyqConfigFile(input.dshHome)
   const guidanceTexts: Record<'subagent' | 'xyq', string> = {
-    subagent: SUBAGENT_GUIDANCE,
+    get subagent(): string {
+      return subagentGuidance(config.mode)
+    },
     get xyq(): string {
       return xyqGuidance(readXyqConfig(xyqConfigFile).freedom)
     },
@@ -79,6 +81,7 @@ export function startSubagents(
   const deps: SubagentRouteDeps = {
     ...input,
     config: configFace,
+    guidanceText: () => subagentGuidance(config.mode),
     pushGuidance: async (which: 'subagent' | 'xyq' | 'both'): Promise<GuidancePushResult> => {
       const merged: GuidancePushResult = { total: 0, pushed: 0, failed: 0, errors: [] }
       const targets: Array<'subagent' | 'xyq'> = which === 'both' ? ['subagent', 'xyq'] : [which]
@@ -103,7 +106,7 @@ export function startSubagents(
       | { section?: (definition: { name: string; order: number; text: string }) => unknown }
       | undefined
     if (systemPrompt && typeof systemPrompt.section === 'function') {
-      systemPrompt.section({ name: 'dafeiyu:subagents', order: 10090, text: GUIDANCE })
+      systemPrompt.section({ name: 'dafeiyu:subagents', order: 10090, text: subagentGuidance(config.mode) })
       probe.section = 'registered'
     } else {
       probe.section = 'no-systemPrompt'
