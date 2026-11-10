@@ -135,6 +135,34 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     return Math.round(WIDGET_WIDTH * ratio)
   }
 
+  // 素材预加载：切换动作时如果新图还没解码好，浏览器会先白一下——这就是“切换瞬间空白”。
+  // 提前把所有 sheet 拉到内存并 decode，切的时候只换背景，不会闪。
+  const assetStatus = new Map<string, 'loading' | 'ready' | 'failed'>()
+  const assetImages = new Map<string, HTMLImageElement>()
+  const assetUrl = (state: AvatarStateView): string => resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}`)
+  const ready = (state: AvatarStateView): boolean => assetStatus.get(state.file) === 'ready'
+
+  const ensureAsset = (state: AvatarStateView, onReady?: () => void): void => {
+    const known = assetStatus.get(state.file)
+    if (known === 'ready' || known === 'failed') return
+    const url = assetUrl(state)
+    assetStatus.set(state.file, 'loading')
+    const img = new Image()
+    assetImages.set(state.file, img)
+    img.onload = () => {
+      const done = (): void => {
+        assetStatus.set(state.file, 'ready')
+        onReady?.()
+      }
+      if (typeof img.decode === 'function') img.decode().then(done).catch(done)
+      else done()
+    }
+    img.onerror = () => {
+      assetStatus.set(state.file, 'failed')
+    }
+    img.src = url
+  }
+
   const clamp = (x: number, y: number): { x: number; y: number } => {
     const { w, h } = viewport()
     return {
@@ -204,10 +232,14 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     return { id: last.id, loops: last.loops ?? 1 }
   }
 
-  const playClip = (id: string | undefined, loops: number): void => {
-    if (id === undefined) return
+  const playClip = (id: string | undefined, loops: number): boolean => {
+    if (id === undefined) return false
     const state = states.find((row) => row.id === id)
-    if (state === undefined) return
+    if (state === undefined) return false
+    if (!ready(state)) {
+      ensureAsset(state)
+      return false
+    }
     if (current?.id !== state.id) {
       current = state
       frame = 0
@@ -219,20 +251,34 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     }
     lastClipId = state.id
     clipUntil = Date.now() + Math.max(1, loops) * (state.frames / FPS) * 1000
+    return true
   }
 
   /** 进入语义状态：从池子里挑一个动作；已经在池内动作时尽量不打断。 */
+  let pendingClip: { id: string; loops: number } | undefined
+
   const enterState = (next: 'idle' | 'think' | 'talk'): void => {
     const changed = next !== stateKey
     stateKey = next
+    if (pendingClip !== undefined) {
+      if (playClip(pendingClip.id, pendingClip.loops)) pendingClip = undefined
+      return
+    }
     if (!changed && Date.now() < clipUntil) return
     const clip = pickClip(STATE_POOLS[next])
-    if (clip) playClip(clip.id, clip.loops)
+    if (!clip) return
+    if (!playClip(clip.id, clip.loops)) pendingClip = clip
   }
 
   const apply = (state: AvatarStateView | undefined): void => {
     if (!state) {
       wrap.hidden = true
+      return
+    }
+    if (!ready(state)) {
+      ensureAsset(state, () => {
+        if (current === undefined) apply(state)
+      })
       return
     }
     if (current?.id !== state.id) {
@@ -303,7 +349,13 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
       const answer = (await response.json()) as { ok?: boolean; manifest?: { states?: AvatarStateView[] } | null }
       if (answer.ok === true && answer.manifest && Array.isArray(answer.manifest.states) && answer.manifest.states.length > 0) {
         states = answer.manifest.states
-        apply(states.find((state) => state.id === 'idle') ?? states[0])
+        for (const state of states) ensureAsset(state)
+        const idle = states.find((state) => state.id === 'idle') ?? states[0]
+        if (idle) {
+          ensureAsset(idle, () => {
+            if (current === undefined) apply(idle)
+          })
+        }
       }
     } catch {
       /* 没素材就整块隐藏 */

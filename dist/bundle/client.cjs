@@ -3529,6 +3529,30 @@ function mountAvatarWidget(deps) {
     const ratio = current ? current.cellHeight / current.cellWidth : 480 / 354;
     return Math.round(WIDGET_WIDTH * ratio);
   };
+  const assetStatus = /* @__PURE__ */ new Map();
+  const assetImages = /* @__PURE__ */ new Map();
+  const assetUrl = (state) => resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`);
+  const ready = (state) => assetStatus.get(state.file) === "ready";
+  const ensureAsset = (state, onReady) => {
+    const known = assetStatus.get(state.file);
+    if (known === "ready" || known === "failed") return;
+    const url = assetUrl(state);
+    assetStatus.set(state.file, "loading");
+    const img = new Image();
+    assetImages.set(state.file, img);
+    img.onload = () => {
+      const done = () => {
+        assetStatus.set(state.file, "ready");
+        onReady?.();
+      };
+      if (typeof img.decode === "function") img.decode().then(done).catch(done);
+      else done();
+    };
+    img.onerror = () => {
+      assetStatus.set(state.file, "failed");
+    };
+    img.src = url;
+  };
   const clamp = (x, y) => {
     const { w, h } = viewport();
     return {
@@ -3590,9 +3614,13 @@ function mountAvatarWidget(deps) {
     return { id: last.id, loops: last.loops ?? 1 };
   };
   const playClip = (id, loops) => {
-    if (id === void 0) return;
+    if (id === void 0) return false;
     const state = states.find((row) => row.id === id);
-    if (state === void 0) return;
+    if (state === void 0) return false;
+    if (!ready(state)) {
+      ensureAsset(state);
+      return false;
+    }
     if (current?.id !== state.id) {
       current = state;
       frame = 0;
@@ -3604,17 +3632,30 @@ function mountAvatarWidget(deps) {
     }
     lastClipId = state.id;
     clipUntil = Date.now() + Math.max(1, loops) * (state.frames / FPS2) * 1e3;
+    return true;
   };
+  let pendingClip;
   const enterState = (next) => {
     const changed = next !== stateKey;
     stateKey = next;
+    if (pendingClip !== void 0) {
+      if (playClip(pendingClip.id, pendingClip.loops)) pendingClip = void 0;
+      return;
+    }
     if (!changed && Date.now() < clipUntil) return;
     const clip = pickClip(STATE_POOLS[next]);
-    if (clip) playClip(clip.id, clip.loops);
+    if (!clip) return;
+    if (!playClip(clip.id, clip.loops)) pendingClip = clip;
   };
   const apply2 = (state) => {
     if (!state) {
       wrap.hidden = true;
+      return;
+    }
+    if (!ready(state)) {
+      ensureAsset(state, () => {
+        if (current === void 0) apply2(state);
+      });
       return;
     }
     if (current?.id !== state.id) {
@@ -3679,7 +3720,13 @@ function mountAvatarWidget(deps) {
       const answer = await response.json();
       if (answer.ok === true && answer.manifest && Array.isArray(answer.manifest.states) && answer.manifest.states.length > 0) {
         states = answer.manifest.states;
-        apply2(states.find((state) => state.id === "idle") ?? states[0]);
+        for (const state of states) ensureAsset(state);
+        const idle = states.find((state) => state.id === "idle") ?? states[0];
+        if (idle) {
+          ensureAsset(idle, () => {
+            if (current === void 0) apply2(idle);
+          });
+        }
       }
     } catch {
     }
