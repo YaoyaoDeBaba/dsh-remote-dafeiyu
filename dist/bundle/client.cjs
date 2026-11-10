@@ -3439,6 +3439,25 @@ function mountSubagentMonitor(deps) {
 // src/client/avatar-widget.ts
 var BASE4 = "/api/dsh-remote-dafeiyu/avatar";
 var FPS2 = 24;
+var STATE_POOLS = {
+  idle: [
+    { id: "idle", weight: 60, loops: 2 },
+    { id: "nap", weight: 25, loops: 2 },
+    { id: "eat", weight: 15, loops: 1 }
+  ],
+  think: [
+    { id: "think", weight: 60, loops: 1 },
+    { id: "eat", weight: 25, loops: 1 },
+    { id: "sneak", weight: 15, loops: 1 }
+  ],
+  talk: [
+    { id: "talk", weight: 65, loops: 1 },
+    { id: "dance", weight: 20, loops: 1 },
+    { id: "tsundere", weight: 15, loops: 1 }
+  ]
+};
+var POKE_CLIP = "tsundere";
+var POKE_MS = 1800;
 var WIDGET_WIDTH = 132;
 var POS_KEY = "drc.avatarWidgetPos";
 var DRAG_SLOP = 4;
@@ -3469,7 +3488,7 @@ function mountAvatarWidget(deps) {
   sprite.className = "sprite";
   const hint = doc.createElement("div");
   hint.className = "hint";
-  hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u6682\u505C";
+  hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u9017\u5B83";
   wrap.append(sprite, hint);
   doc.body.appendChild(wrap);
   let states = [];
@@ -3480,6 +3499,10 @@ function mountAvatarWidget(deps) {
   let pollTimer;
   let lastStatus;
   let talkUntil = 0;
+  let stateKey = "idle";
+  let clipUntil = 0;
+  let pokeUntil = 0;
+  let lastClipId;
   let disposed = false;
   let placed = false;
   let drag;
@@ -3537,6 +3560,44 @@ function mountAvatarWidget(deps) {
     sprite.style.backgroundPosition = `${col / Math.max(1, current.cols - 1) * 100}% ${row / Math.max(1, current.rows - 1) * 100}%`;
     frame = (frame + 1) % current.frames;
   };
+  const available = (id) => states.some((state) => state.id === id);
+  const pickClip = (pool) => {
+    const options = pool.filter((entry) => available(entry.id));
+    if (options.length === 0) return void 0;
+    const fresh = options.filter((entry) => entry.id !== lastClipId);
+    const use = fresh.length > 0 ? fresh : options;
+    const total = use.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * total;
+    for (const entry of use) {
+      roll -= entry.weight;
+      if (roll <= 0) return { id: entry.id, loops: entry.loops ?? 1 };
+    }
+    const last = use[use.length - 1];
+    return { id: last.id, loops: last.loops ?? 1 };
+  };
+  const playClip = (id, loops) => {
+    if (id === void 0) return;
+    const state = states.find((row) => row.id === id);
+    if (state === void 0) return;
+    if (current?.id !== state.id) {
+      current = state;
+      frame = 0;
+      wrap.style.setProperty("--dafeiyu-avatar-ratio", `${state.cellWidth} / ${state.cellHeight}`);
+      sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
+      sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
+      if (!placed) restoreOrDefault();
+      paint();
+    }
+    lastClipId = state.id;
+    clipUntil = Date.now() + Math.max(1, loops) * (state.frames / FPS2) * 1e3;
+  };
+  const enterState = (next) => {
+    const changed = next !== stateKey;
+    stateKey = next;
+    if (!changed && Date.now() < clipUntil) return;
+    const clip = pickClip(STATE_POOLS[next]);
+    if (clip) playClip(clip.id, clip.loops);
+  };
   const apply2 = (state) => {
     if (!state) {
       wrap.hidden = true;
@@ -3552,7 +3613,7 @@ function mountAvatarWidget(deps) {
       paint();
     }
     wrap.hidden = false;
-    hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309" + (playing ? "\u6682\u505C" : "\u7EE7\u7EED");
+    hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u9017\u5B83";
   };
   const targetId = () => {
     const status = globalThis.__dafeiyuAvatarStatus;
@@ -3575,11 +3636,18 @@ function mountAvatarWidget(deps) {
         if (lastStatus === "running" && status === "idle") talkUntil = Date.now() + 2e3;
         lastStatus = status;
         globalThis.__dafeiyuAvatarStatus = status;
-        const wanted = targetId();
-        const fallback = states.find((state) => state.id === "idle");
-        apply2(states.find((state) => state.id === wanted) ?? fallback);
+        if (!current) {
+          const fallback = states.find((state) => state.id === "idle") ?? states[0];
+          apply2(fallback);
+        }
+        if (Date.now() < pokeUntil) {
+          wrap.hidden = false;
+          return;
+        }
+        enterState(targetId());
       } catch {
-        apply2(states.find((state) => state.id === "idle"));
+        if (!current) apply2(states.find((state) => state.id === "idle") ?? states[0]);
+        else enterState("idle");
       }
     })();
   };
@@ -3618,7 +3686,10 @@ function mountAvatarWidget(deps) {
     if (moved) {
       place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
     } else {
-      playing = !playing;
+      if (available(POKE_CLIP)) {
+        pokeUntil = Date.now() + POKE_MS;
+        playClip(POKE_CLIP, 1);
+      }
     }
   };
   const onDouble = () => {
@@ -3639,6 +3710,11 @@ function mountAvatarWidget(deps) {
     if (playing) paint();
   }, Math.round(1e3 / FPS2));
   pollTimer = setInterval(refresh, 2500);
+  setInterval(() => {
+    if (disposed || !playing) return;
+    if (Date.now() < pokeUntil) return;
+    if (Date.now() >= clipUntil) enterState(stateKey);
+  }, 400);
   refresh();
   return () => {
     disposed = true;
