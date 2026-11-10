@@ -15,6 +15,7 @@ export const SUBAGENTS_ROUTE = '/api/dsh-remote-dafeiyu/subagents'
 export const SUBAGENTS_ARCHIVE_ROUTE = '/api/dsh-remote-dafeiyu/subagents/archive'
 export const SUBAGENTS_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/subagents/config'
 export const GUIDANCE_PUSH_ROUTE = '/api/dsh-remote-dafeiyu/guidance/push'
+export const SUBAGENTS_STREAM_ROUTE = '/api/dsh-remote-dafeiyu/subagents/stream'
 
 export interface SubagentRouteDeps {
   list: (sessionId: string, options?: { descendants?: boolean }) => Promise<KernelSubagent[]>
@@ -218,3 +219,37 @@ export function guidancePushHandler(deps: SubagentRouteDeps) {
     }
   }
 }
+
+/** `GET /subagents/stream`：SSE，子代理有变化就推一条（客户端不再定时轮询）。 */
+export function subagentsStreamHandler() {
+  return (request: IncomingMessage, response: ServerResponse): void => {
+    const denied = rejected(request)
+    if (denied) {
+      json(response, 403, { ok: false, error: denied })
+      return
+    }
+    if (request.method !== 'GET') {
+      json(response, 405, { ok: false, error: '只支持 GET' })
+      return
+    }
+    response.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    })
+    response.write('retry: 3000\n\n')
+    const heartbeat = setInterval(() => {
+      try {
+        response.write(': hb\n\n')
+      } catch {
+        /* 关掉时忽略 */
+      }
+    }, 25_000)
+    request.on('close', () => clearInterval(heartbeat))
+    streamClients.add(response)
+  }
+}
+
+/** SSE 订阅者集合（start 里统一广播）。 */
+export const streamClients = new Set<ServerResponse>()

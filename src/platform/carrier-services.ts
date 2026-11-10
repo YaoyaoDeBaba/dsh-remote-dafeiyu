@@ -29,6 +29,7 @@ import type { QuestionItem, SessionSummary } from '@dsh-remote/protocol'
 import fs from 'node:fs'
 import path from 'node:path'
 import { loadAvatarManifest } from '../avatar/routes.js'
+import { emitSubagentChange } from '../subagents/bus.js'
 import { messageOf } from '../shell/log-line.js'
 import { canParticipate, guardedSubscribe } from './guard.js'
 import { tailOfPath as tailOfPathByPlatform, workspaceProblem } from './paths.js'
@@ -312,6 +313,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   const subagentProbe = new Map<string, { at: number; task?: string; logWorkMs?: number; lastTime?: number }>()
   /** 子代理「此刻正在干什么」：最后一条有意义的会话事件（工具名/写回复/待办…）。 */
   const subagentActivity = new Map<string, { text: string; at: number }>()
+  /** 已识别出来的子代理会话 id（用来判断某条会话事件要不要唤醒监视器）。 */
+  const knownSubagentIds = new Set<string>()
 
   /**
    * 「最后操作的那个会话」与它的目录（2026-10-06 用户："新建要落在最后操作的分组里"）。
@@ -928,6 +931,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         typeof row.header?.delegationDepth === 'number' && row.header.delegationDepth > 0
           ? row.header.delegationDepth
           : 1
+      knownSubagentIds.add(id)
       out.push({
         id,
         parentId: String(row.header?.parentSession ?? ''),
@@ -1940,6 +1944,13 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     } catch {
       /* 活动文案是增强项，绝不许影响事件分发 */
     }
+    if (knownSubagentIds.has(sessionId)) {
+      try {
+        emitSubagentChange()
+      } catch {
+        /* 订阅方异常不影响事件分发 */
+      }
+    }
     // 审批的审计面对象：`asked` 带 toolName，`decided` 带 outcome。这里只记账不翻译——
     // 卡片本身走 `approval/request` 那条 waterfall，见 attachInteractionSink。
     if (type === 'approval/asked') approvalAsked += 1
@@ -1971,6 +1982,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       { agent?: LooseObject; status?: string; sessionId?: string } | undefined
     const sessionId = payload?.sessionId ?? String((payload?.agent as { session?: { id?: string } })?.session?.id ?? '')
     if (!sessionId) return
+    // 状态变化 → 唤醒订阅者（客户端不再定时轮询）
+    emitSubagentChange()
     const running = payload?.status === 'running'
     // 顺带记一笔子代理的工作时间：running 起点 / idle 时结算。普通会话也记，开销只是两个 Map。
     const now = options.clock.now()

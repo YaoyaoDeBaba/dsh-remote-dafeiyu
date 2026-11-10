@@ -3270,9 +3270,12 @@ function mountSubagentMonitor(deps) {
   archiveIdle.className = "ghost";
   archiveIdle.textContent = "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
   archiveIdle.title = "\u628A\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4E00\u6B21\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09";
+  const refreshNow = doc.createElement("button");
+  refreshNow.className = "ghost";
+  refreshNow.textContent = "\u5237\u65B0";
   const close = doc.createElement("button");
   close.textContent = "\u5173\u95ED \u2715";
-  tools.append(pushBtn, restore, archiveIdle, close);
+  tools.append(pushBtn, restore, archiveIdle, refreshNow, close);
   head.append(title, tools);
   const body = doc.createElement("div");
   const foot = doc.createElement("div");
@@ -3562,19 +3565,51 @@ function mountSubagentMonitor(deps) {
     setOpen(false);
   };
   doc.addEventListener("click", onClick);
-  const POLL_FAST = 3e3;
-  const POLL_SLOW = 2e4;
-  const schedule = () => {
-    const fast = opened || items.length > 0;
-    timer = globalThis.setTimeout?.(() => {
-      void refresh().finally(schedule);
-    }, fast ? POLL_FAST : POLL_SLOW) ?? 0;
+  let fallbackTimer;
+  let stream;
+  const scheduleFallback = () => {
+    if (fallbackTimer) return;
+    fallbackTimer = globalThis.setTimeout?.(() => {
+      fallbackTimer = void 0;
+      if (stream === void 0 || stream.readyState === 2) void refresh().finally(scheduleFallback);
+    }, 3e4) ?? 0;
   };
-  schedule();
+  const startStream = () => {
+    if (typeof EventSource !== "function") {
+      scheduleFallback();
+      return;
+    }
+    try {
+      stream = new EventSource(resolveHostUrl("/api/dsh-remote-dafeiyu/subagents/stream"));
+      stream.onopen = () => {
+        if (fallbackTimer) {
+          ;
+          globalThis.clearTimeout?.(fallbackTimer);
+          fallbackTimer = void 0;
+        }
+      };
+      stream.onmessage = () => void refresh();
+      stream.onerror = () => scheduleFallback();
+    } catch {
+      scheduleFallback();
+    }
+  };
+  startStream();
+  const onFocus = () => void refresh();
+  globalThis.addEventListener?.("focus", onFocus);
+  refreshNow.addEventListener("click", (event) => {
+    event.stopPropagation();
+    void refresh();
+  });
   void refresh();
   return () => {
-    if (timer) globalThis.clearInterval?.(timer);
-    timer = 0;
+    if (fallbackTimer) globalThis.clearTimeout?.(fallbackTimer);
+    try {
+      stream?.close();
+    } catch {
+    }
+    ;
+    globalThis.removeEventListener?.("focus", onFocus);
     doc.removeEventListener("keydown", onKey);
     doc.removeEventListener("click", onClick);
     fab.remove();

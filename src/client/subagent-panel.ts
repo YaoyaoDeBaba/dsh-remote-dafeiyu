@@ -175,9 +175,12 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   archiveIdle.className = 'ghost'
   archiveIdle.textContent = '一键归档闲置'
   archiveIdle.title = '把闲置超过阈值的子代理一次归档（可恢复）'
+  const refreshNow = doc.createElement('button')
+  refreshNow.className = 'ghost'
+  refreshNow.textContent = '刷新'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  tools.append(pushBtn, restore, archiveIdle, close)
+  tools.append(pushBtn, restore, archiveIdle, refreshNow, close)
   head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
@@ -492,21 +495,52 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   }
   doc.addEventListener('click', onClick)
 
-  // 自适应轮询：面板打开或有子代理时 3s；没有子代理时 20s（只是等新的子代理出现）。
-  const POLL_FAST = 3000
-  const POLL_SLOW = 20_000
-  const schedule = (): void => {
-    const fast = opened || items.length > 0
-    timer = (globalThis as { setTimeout?: (fn: () => void, ms: number) => number }).setTimeout?.(() => {
-      void refresh().finally(schedule)
-    }, fast ? POLL_FAST : POLL_SLOW) ?? 0
+  // 实时刷新靠 SSE，不再定时轮询；EventSource 不可用/断开时才退化为 30s 慢轮询。
+  let fallbackTimer: ReturnType<typeof setTimeout> | undefined
+  let stream: EventSource | undefined
+  const scheduleFallback = (): void => {
+    if (fallbackTimer) return
+    fallbackTimer = (globalThis as { setTimeout?: (fn: () => void, ms: number) => number }).setTimeout?.(() => {
+      fallbackTimer = undefined
+      if (stream === undefined || stream.readyState === 2) void refresh().finally(scheduleFallback)
+    }, 30_000) ?? 0
   }
-  schedule()
+  const startStream = (): void => {
+    if (typeof EventSource !== 'function') {
+      scheduleFallback()
+      return
+    }
+    try {
+      stream = new EventSource(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/stream'))
+      stream.onopen = () => {
+        if (fallbackTimer) {
+          ;(globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(fallbackTimer as unknown as number)
+          fallbackTimer = undefined
+        }
+      }
+      stream.onmessage = () => void refresh()
+      stream.onerror = () => scheduleFallback()
+    } catch {
+      scheduleFallback()
+    }
+  }
+  startStream()
+  const onFocus = (): void => void refresh()
+  ;(globalThis as { addEventListener?: (type: string, fn: () => void) => void }).addEventListener?.('focus', onFocus)
+  refreshNow.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void refresh()
+  })
   void refresh()
 
   return () => {
-    if (timer) (globalThis as { clearInterval?: (id: number) => void }).clearInterval?.(timer)
-    timer = 0
+    if (fallbackTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(fallbackTimer as unknown as number)
+    try {
+      stream?.close()
+    } catch {
+      /* ignore */
+    }
+    ;(globalThis as { removeEventListener?: (type: string, fn: () => void) => void }).removeEventListener?.('focus', onFocus)
     doc.removeEventListener('keydown', onKey)
     doc.removeEventListener('click', onClick)
     fab.remove()

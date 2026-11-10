@@ -9,6 +9,9 @@ import {
   SUBAGENTS_ARCHIVE_ROUTE,
   SUBAGENTS_CONFIG_ROUTE,
   GUIDANCE_PUSH_ROUTE,
+  SUBAGENTS_STREAM_ROUTE,
+  streamClients,
+  subagentsStreamHandler,
   guidancePushHandler,
   SUBAGENTS_ROUTE,
   subagentsArchiveHandler,
@@ -20,6 +23,7 @@ import { readSubagentsConfig, resolveSubagentsConfigFile, writeSubagentsConfig, 
 import type { KernelSubagent } from '../ports/index.js'
 import { SUBAGENT_GUIDANCE, subagentGuidance } from './guidance.js'
 import { createGuidancePusher, type GuidancePushResult } from './pusher.js'
+import { subagentBus } from './bus.js'
 import { readXyqConfig, resolveXyqConfigFile } from '../xyq/config.js'
 import { xyqGuidance } from '../xyq/guidance.js'
 
@@ -133,6 +137,7 @@ export function startSubagents(
         web.register({ kind: 'exact', path: SUBAGENTS_CONFIG_ROUTE, handler: subagentsConfigHandler(deps) }),
       )
       disposers.push(web.register({ kind: 'exact', path: GUIDANCE_PUSH_ROUTE, handler: guidancePushHandler(deps) }))
+      disposers.push(web.register({ kind: 'exact', path: SUBAGENTS_STREAM_ROUTE, handler: subagentsStreamHandler() }))
       unregister = () => {
         for (const dispose of disposers) dispose()
       }

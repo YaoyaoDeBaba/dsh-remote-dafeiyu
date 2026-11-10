@@ -4779,7 +4779,7 @@ var require_extension = __commonJS({
 var require_websocket = __commonJS({
   "node_modules/.pnpm/ws@8.22.0/node_modules/ws/lib/websocket.js"(exports, module) {
     "use strict";
-    var EventEmitter = __require("events");
+    var EventEmitter2 = __require("events");
     var https = __require("https");
     var http = __require("http");
     var net = __require("net");
@@ -4811,7 +4811,7 @@ var require_websocket = __commonJS({
     var protocolVersions = [8, 13];
     var readyStates = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
     var subprotocolRegex = /^[!#$%&'*+\-.0-9A-Z^_`|a-z~]+$/;
-    var WebSocket2 = class _WebSocket extends EventEmitter {
+    var WebSocket2 = class _WebSocket extends EventEmitter2 {
       /**
        * Create a new `WebSocket`.
        *
@@ -5831,7 +5831,7 @@ var require_subprotocol = __commonJS({
 var require_websocket_server = __commonJS({
   "node_modules/.pnpm/ws@8.22.0/node_modules/ws/lib/websocket-server.js"(exports, module) {
     "use strict";
-    var EventEmitter = __require("events");
+    var EventEmitter2 = __require("events");
     var http = __require("http");
     var { Duplex } = __require("stream");
     var { createHash: createHash6 } = __require("crypto");
@@ -5844,7 +5844,7 @@ var require_websocket_server = __commonJS({
     var RUNNING = 0;
     var CLOSING = 1;
     var CLOSED = 2;
-    var WebSocketServer2 = class extends EventEmitter {
+    var WebSocketServer2 = class extends EventEmitter2 {
       /**
        * Create a `WebSocketServer` instance.
        *
@@ -23104,13 +23104,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
         ...params,
         path: [...params.path, "propertyNames"]
       });
-      let pending = pendingRecords.get(ctx);
-      if (!pending) {
-        pending = [];
-        pendingRecords.set(ctx, pending);
+      let pending2 = pendingRecords.get(ctx);
+      if (!pending2) {
+        pending2 = [];
+        pendingRecords.set(ctx, pending2);
         ctx.deferred.push(() => rewriteKeyNames(ctx));
       }
-      pending.push(schema);
+      pending2.push(schema);
     }
     json10.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.32" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.33" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -28130,7 +28130,7 @@ function createInteractions(deps) {
   function hostTimeoutMs(value) {
     return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : void 0;
   }
-  const pending = /* @__PURE__ */ new Map();
+  const pending2 = /* @__PURE__ */ new Map();
   const sessionAllowed = /* @__PURE__ */ new Map();
   let sessionAllowedHits = 0;
   const interactionDeclines = { noClient: 0, offlineHold: 0, aborted: 0 };
@@ -28149,7 +28149,7 @@ function createInteractions(deps) {
   }
   function pendingEntries(sessionId) {
     const out = [];
-    for (const [id, item] of pending) {
+    for (const [id, item] of pending2) {
       if (sessionId !== void 0 && item.sessionId !== sessionId) continue;
       out.push([id, item]);
     }
@@ -28165,16 +28165,16 @@ function createInteractions(deps) {
   function waiting() {
     const now = deps.clock.now();
     let oldest = 0;
-    for (const item of pending.values()) {
+    for (const item of pending2.values()) {
       const age = Math.max(0, Math.floor((now - item.askedAt) / 1e3));
       if (age > oldest) oldest = age;
     }
-    return { count: pending.size, oldestSec: oldest };
+    return { count: pending2.size, oldestSec: oldest };
   }
   function pendingKindForSession(sessionId) {
     let approval = false;
     let question = false;
-    for (const item of pending.values()) {
+    for (const item of pending2.values()) {
       if (item.sessionId !== sessionId) continue;
       if (item.kind === "approval") approval = true;
       else question = true;
@@ -28235,7 +28235,7 @@ function createInteractions(deps) {
           action: info.action,
           reason: info.reason
         };
-        pending.set(id, item);
+        pending2.set(id, item);
         armNotifyTimer(id, item);
         info.signal?.addEventListener(
           "abort",
@@ -28304,7 +28304,7 @@ function createInteractions(deps) {
           kind: "question",
           askedAt: deps.clock.now()
         };
-        pending.set(id, item);
+        pending2.set(id, item);
         armNotifyTimer(id, item);
         info.signal?.addEventListener(
           "abort",
@@ -28326,7 +28326,7 @@ function createInteractions(deps) {
     }
   }
   function settleApproval(requestId, decision) {
-    const item = pending.get(requestId);
+    const item = pending2.get(requestId);
     if (!item || item.kind !== "approval") return false;
     const outcome = decision === "approve" ? "allowed-once" : decision === "approve-session" ? "allowed-session" : "rejected";
     if (decision === "approve-session") {
@@ -28343,7 +28343,7 @@ function createInteractions(deps) {
     return true;
   }
   function settleQuestion(requestId, answers) {
-    const item = pending.get(requestId);
+    const item = pending2.get(requestId);
     if (!item || item.kind !== "question") return false;
     if (!Array.isArray(answers) || answers.length === 0) return false;
     const byQuestion = new Map((item.options ?? []).map((question) => [question.id, question]));
@@ -28369,11 +28369,11 @@ function createInteractions(deps) {
     item.notifyTimer = timer;
   }
   function onNotifyDue(id) {
-    const item = pending.get(id);
+    const item = pending2.get(id);
     if (item === void 0) return;
     if (deps.hasClient(item.conversationId)) return;
     const items = [];
-    for (const [requestId, p] of pending) {
+    for (const [requestId, p] of pending2) {
       if (p.conversationId !== item.conversationId) continue;
       if (p.notified === true) continue;
       items.push({
@@ -28385,7 +28385,7 @@ function createInteractions(deps) {
     }
     if (items.length === 0) return;
     for (const it of items) {
-      const p = pending.get(it.requestId);
+      const p = pending2.get(it.requestId);
       if (p !== void 0) p.notified = true;
     }
     const sent = deps.notifyApproval?.(item.conversationId, items) ?? false;
@@ -28396,9 +28396,9 @@ function createInteractions(deps) {
     });
   }
   function settle2(id, value, voidAs) {
-    const item = pending.get(id);
+    const item = pending2.get(id);
     if (!item) return;
-    pending.delete(id);
+    pending2.delete(id);
     if (item.timer !== void 0) deps.clock.clearTimeout(item.timer);
     if (item.notifyTimer !== void 0) deps.clock.clearTimeout(item.notifyTimer);
     if (voidAs) voidStaleCard(id, item, voidAs);
@@ -28459,7 +28459,7 @@ function createInteractions(deps) {
   function handleGetPending(conversationId, sessionId) {
     getPendingCount.calls += 1;
     getPendingCount.lastAt = deps.clock.now();
-    getPendingCount.last = { pending: pending.size, replayed: 0 };
+    getPendingCount.last = { pending: pending2.size, replayed: 0 };
     let replayed = 0;
     for (const [id, item] of pendingEntries(sessionId)) {
       const frame = buildPendingFrame(id, item);
@@ -28472,7 +28472,7 @@ function createInteractions(deps) {
     return replayed;
   }
   function withdrawAll() {
-    for (const [id] of [...pending]) settle2(id, void 0, "withdrawn");
+    for (const [id] of [...pending2]) settle2(id, void 0, "withdrawn");
   }
   function clearSessionAllowed() {
     sessionAllowed.clear();
@@ -29844,7 +29844,7 @@ function generatePskValue() {
 function createPairApproval(deps) {
   const now = deps.now ?? (() => Date.now());
   const ttlMs = deps.ttlMs ?? 9e4;
-  let pending;
+  let pending2;
   let lastGrantedEntry;
   const expired = (entry) => entry.expiresAt <= now();
   return {
@@ -29860,7 +29860,7 @@ function createPairApproval(deps) {
       const host = newPairingKeyPair();
       const shared = deriveSharedKey(host.secretKey, peerPublicKey);
       const sas = sasCode(shared);
-      pending = {
+      pending2 = {
         token: pairingToken2,
         shared,
         hostPub: toBase64(host.publicKey),
@@ -29871,39 +29871,39 @@ function createPairApproval(deps) {
       return { pairingToken: pairingToken2, sas, remainSec: Math.ceil(ttlMs / 1e3) };
     },
     current() {
-      if (pending === void 0) return void 0;
-      if (expired(pending)) {
-        pending = void 0;
+      if (pending2 === void 0) return void 0;
+      if (expired(pending2)) {
+        pending2 = void 0;
         return void 0;
       }
       return {
-        pairingToken: pending.token,
-        sas: pending.sas,
-        remainSec: Math.max(0, Math.ceil((pending.expiresAt - now()) / 1e3))
+        pairingToken: pending2.token,
+        sas: pending2.sas,
+        remainSec: Math.max(0, Math.ceil((pending2.expiresAt - now()) / 1e3))
       };
     },
     approve() {
-      if (pending === void 0 || expired(pending)) {
-        pending = void 0;
+      if (pending2 === void 0 || expired(pending2)) {
+        pending2 = void 0;
         return null;
       }
-      const pskText = deps.pskFor(pending.token);
+      const pskText = deps.pskFor(pending2.token);
       if (pskText === null) {
-        pending = void 0;
+        pending2 = void 0;
         return null;
       }
-      const { nonce, wrappedPsk } = wrapPsk(pending.shared, Uint8Array.from(Buffer.from(pskText, "base64")));
+      const { nonce, wrappedPsk } = wrapPsk(pending2.shared, Uint8Array.from(Buffer.from(pskText, "base64")));
       const result2 = {
-        pairingToken: pending.token,
+        pairingToken: pending2.token,
         // 中继按它转发（见 pairGrantFrame）。
-        sessionId: pending.sessionId,
+        sessionId: pending2.sessionId,
         // 手机要用它算共享密钥：**必须**带出去（少了它，手机侧 unwrap 永远解不开）。
-        hostPub: pending.hostPub,
+        hostPub: pending2.hostPub,
         nonce,
         wrappedPsk
       };
-      lastGrantedEntry = { token: pending.token, sas: pending.sas, expiresAt: now() + ttlMs };
-      pending = void 0;
+      lastGrantedEntry = { token: pending2.token, sas: pending2.sas, expiresAt: now() + ttlMs };
+      pending2 = void 0;
       return result2;
     },
     lastGranted() {
@@ -29919,7 +29919,7 @@ function createPairApproval(deps) {
       };
     },
     clear() {
-      pending = void 0;
+      pending2 = void 0;
       lastGrantedEntry = void 0;
     }
   };
@@ -32261,6 +32261,26 @@ function avatarStateHandler(getStatus) {
   };
 }
 
+// src/subagents/bus.ts
+import { EventEmitter } from "node:events";
+var subagentBus = new EventEmitter();
+subagentBus.setMaxListeners(64);
+var pending;
+function emitSubagentChange() {
+  if (pending !== void 0) return;
+  pending = setTimeout(() => {
+    pending = void 0;
+    try {
+      subagentBus.emit("change");
+    } catch {
+    }
+  }, 400);
+  if (typeof pending === "object" && pending !== null && "unref" in pending) {
+    ;
+    pending.unref?.();
+  }
+}
+
 // src/platform/carrier-services.ts
 init_ports();
 var PARTICIPATE_OPTIONS = { global: true, prepend: true };
@@ -32314,6 +32334,7 @@ function createServicesKernel(services, options) {
   const subagentWorkMs = /* @__PURE__ */ new Map();
   const subagentProbe = /* @__PURE__ */ new Map();
   const subagentActivity = /* @__PURE__ */ new Map();
+  const knownSubagentIds = /* @__PURE__ */ new Set();
   let lastTouchedSessionId = "";
   const cwdBySession = /* @__PURE__ */ new Map();
   const seenEventTypes = /* @__PURE__ */ new Set();
@@ -32385,14 +32406,14 @@ function createServicesKernel(services, options) {
   }
   function sessionState(sessionId, running, archived) {
     if (archived.has(sessionId)) return "archived";
-    let pending;
+    let pending2;
     try {
-      pending = options.pendingKindForSession?.(sessionId);
+      pending2 = options.pendingKindForSession?.(sessionId);
     } catch (error62) {
       log("pending query failed", { sessionId, message: String(error62?.message ?? error62) });
     }
-    if (pending === "approval") return "awaiting-permission";
-    if (pending === "question") return "awaiting-answer";
+    if (pending2 === "approval") return "awaiting-permission";
+    if (pending2 === "question") return "awaiting-answer";
     return running ? "running" : "idle";
   }
   function toSummary(record2, archived) {
@@ -32701,6 +32722,7 @@ function createServicesKernel(services, options) {
       const name2 = naming === "ok" ? labeled.name : void 0;
       const activity = subagentActivity.get(id);
       const depth = typeof row.header?.delegationDepth === "number" && row.header.delegationDepth > 0 ? row.header.delegationDepth : 1;
+      knownSubagentIds.add(id);
       out.push({
         id,
         parentId: String(row.header?.parentSession ?? ""),
@@ -33184,15 +33206,15 @@ function createServicesKernel(services, options) {
         scheduleLateBind();
         return;
       }
-      let pending = false;
+      let pending2 = false;
       for (const binder of [...lateBinders]) {
         try {
-          if (!binder()) pending = true;
+          if (!binder()) pending2 = true;
         } catch (error62) {
           log("late event bind failed", { message: messageOf(error62) });
         }
       }
-      if (pending) scheduleLateBind();
+      if (pending2) scheduleLateBind();
     }, delay);
     handle?.unref?.();
     lateTimer = handle;
@@ -33272,6 +33294,12 @@ function createServicesKernel(services, options) {
       recordActivity(sessionId, typeof event?.type === "string" ? event.type : "", data);
     } catch {
     }
+    if (knownSubagentIds.has(sessionId)) {
+      try {
+        emitSubagentChange();
+      } catch {
+      }
+    }
     if (type === "approval/asked") approvalAsked += 1;
     if (type === "approval/decided") approvalDecided = String(data.outcome ?? "?");
     for (const mapped of sessionEventKernelEvents({ sessionId, type, seq: event?.seq, data })) {
@@ -33293,6 +33321,7 @@ function createServicesKernel(services, options) {
     const payload = args.find((arg) => arg && typeof arg === "object");
     const sessionId = payload?.sessionId ?? String(payload?.agent?.session?.id ?? "");
     if (!sessionId) return;
+    emitSubagentChange();
     const running = payload?.status === "running";
     const now = options.clock.now();
     if (running) {
@@ -33427,12 +33456,12 @@ function createServicesKernel(services, options) {
       // runtime 抛了（未配对、不在线、被撤）同样不算答案。
       () => ({ answered: false })
     );
-    const pending = new Promise(() => {
+    const pending2 = new Promise(() => {
     });
     face.dispatched += 1;
     const winner = await Promise.race([
-      phone.then((chain) => chain.answered ? { src: "phone", chain } : pending),
-      desktop.then((chain) => chain.answered ? { src: "desktop", chain } : pending),
+      phone.then((chain) => chain.answered ? { src: "phone", chain } : pending2),
+      desktop.then((chain) => chain.answered ? { src: "desktop", chain } : pending2),
       Promise.all([phone, desktop]).then(([, chain]) => ({ src: "desktop", chain }))
     ]);
     if (!winner.chain.answered) {
@@ -36743,6 +36772,7 @@ var SUBAGENTS_ROUTE = "/api/dsh-remote-dafeiyu/subagents";
 var SUBAGENTS_ARCHIVE_ROUTE = "/api/dsh-remote-dafeiyu/subagents/archive";
 var SUBAGENTS_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/subagents/config";
 var GUIDANCE_PUSH_ROUTE = "/api/dsh-remote-dafeiyu/guidance/push";
+var SUBAGENTS_STREAM_ROUTE = "/api/dsh-remote-dafeiyu/subagents/stream";
 function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -36911,6 +36941,35 @@ function guidancePushHandler(deps) {
     }
   };
 }
+function subagentsStreamHandler() {
+  return (request, response) => {
+    const denied = rejected3(request);
+    if (denied) {
+      json7(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method !== "GET") {
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      return;
+    }
+    response.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no"
+    });
+    response.write("retry: 3000\n\n");
+    const heartbeat = setInterval(() => {
+      try {
+        response.write(": hb\n\n");
+      } catch {
+      }
+    }, 25e3);
+    request.on("close", () => clearInterval(heartbeat));
+    streamClients.add(response);
+  };
+}
+var streamClients = /* @__PURE__ */ new Set();
 
 // src/subagents/config.ts
 import fs7 from "node:fs";
@@ -37304,6 +37363,7 @@ function startSubagents(ctx, input2) {
         web.register({ kind: "exact", path: SUBAGENTS_CONFIG_ROUTE, handler: subagentsConfigHandler(deps) })
       );
       disposers.push(web.register({ kind: "exact", path: GUIDANCE_PUSH_ROUTE, handler: guidancePushHandler(deps) }));
+      disposers.push(web.register({ kind: "exact", path: SUBAGENTS_STREAM_ROUTE, handler: subagentsStreamHandler() }));
       unregister = () => {
         for (const dispose of disposers) dispose();
       };
