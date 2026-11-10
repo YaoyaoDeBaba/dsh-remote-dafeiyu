@@ -101,9 +101,10 @@ test('listSubagents：名称/简述来自官方 label，任务跳过系统注入
   assert.equal(run.name, '渲染合批', '名称取 label 里 ｜ 左边')
   assert.equal(run.summary, '升级 VFX 批次合并并跑通验收', '简述取 ｜ 右边')
   assert.equal(run.naming, 'ok')
-  assert.equal(idle.naming, 'fallback', '没按格式写的 label 要标记出来（端上标黄）')
-  assert.equal(idle.name, '没按格式写的名字')
-  assert.equal(run.task, '把 E:\\a.cs 的循环改成 for', '任务必须跳过 working directory changed 这类系统注入')
+  assert.equal(idle.naming, 'fallback', '没按格式写的 label 要标记出来（端上显示 子代理N）')
+  assert.equal(idle.name, undefined, '不合规的名字不往外带')
+  assert.equal(idle.summary, undefined, '不合规也不带简述')
+  assert.equal(run.task, undefined, '任务正文不再下发（界面只显示简述）')
   assert.equal(typeof run.runningMs, 'number', 'running 时必须给本轮运行时长')
 })
 
@@ -112,7 +113,7 @@ test('listSubagents：工作时长/闲置时长/标题仍然照旧', async () =>
   const rows = await port.listSubagents!('session-p')
   const run = rows.find((row) => row.id === 'child-run')!
   const idle = rows.find((row) => row.id === 'child-idle')!
-  assert.equal(run.title, '标题 child-run')
+  assert.equal(run.title, undefined, '标题也不下发，避免带出指令内容')
   assert.equal(Math.round(run.workMs / 1000), 470 + 60, '工作时间 = turn 时间差，含当前未结束回合')
   assert.equal(Math.round(run.idleMs / 1000), 60, '闲置 = 现在 − 最后一条事件')
   assert.equal(Math.round(idle.workMs / 1000), 590, '空闲子代理用日志里的回合差')

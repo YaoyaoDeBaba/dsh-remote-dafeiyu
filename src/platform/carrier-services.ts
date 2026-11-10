@@ -915,9 +915,10 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt
       const title = titleCache.get(id)?.title
       const labeled = splitSubagentLabel(labels.get(id))
-      const fallbackName = (title ?? probe.task ?? '').trim().slice(0, 20)
-      const name = labeled.name ?? (fallbackName !== '' ? fallbackName : undefined)
       const naming = labeled.naming
+      // 只信「名称｜简述」约定：没按规范填的一律不往外带名字/简述，
+      // 由端上显示「子代理N / 未按要求填写」——也避免把指令正文泄漏到界面。
+      const name = naming === 'ok' ? labeled.name : undefined
       const activity = subagentActivity.get(id)
       const depth =
         typeof row.header?.delegationDepth === 'number' && row.header.delegationDepth > 0
@@ -927,10 +928,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         id,
         parentId: String(row.header?.parentSession ?? ''),
         depth,
-        ...(title ? { title } : {}),
-        ...(probe.task ? { task: probe.task } : {}),
         ...(name ? { name } : {}),
-        ...(labeled.summary ? { summary: labeled.summary } : (probe.task ? { summary: probe.task.slice(0, 80) } : {})),
+        ...(naming === 'ok' && labeled.summary ? { summary: labeled.summary } : {}),
         naming,
         ...(running && activity ? { activity: activity.text } : {}),
         status: running ? 'running' : 'idle',

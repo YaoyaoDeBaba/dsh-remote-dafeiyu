@@ -110,15 +110,20 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
     #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
     #dafeiyu-subagent-panel .head button { background: transparent; color: #9a9ab0; border: 0; cursor: pointer; font-size: 13px; }
-    #dafeiyu-subagent-panel .row { border-top: 1px solid var(--dsw-alias-border-l2, #2a2a3a); padding: 8px 0; }
-    #dafeiyu-subagent-panel .row .top { display: flex; gap: 6px; align-items: center; }
-    #dafeiyu-subagent-panel .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
-    #dafeiyu-subagent-panel .dot.run { background: #3ecf8e; }
-    #dafeiyu-subagent-panel .dot.idle { background: #8a8aa0; }
-    #dafeiyu-subagent-panel .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #dafeiyu-subagent-panel .meta { color: #9a9ab0; margin-top: 3px; line-height: 1.5; }
+    #dafeiyu-subagent-panel .card { border: 1px solid var(--dsw-alias-border-l2, #2a2a3a); border-radius: 10px;
+      padding: 10px; margin-top: 8px; background: rgba(127,127,127,.06); }
+    #dafeiyu-subagent-panel .card .top { display: flex; gap: 8px; align-items: center; }
+    #dafeiyu-subagent-panel .card .name { flex: 1; font-weight: 600; font-size: 13px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; }
+    #dafeiyu-subagent-panel .status { font-size: 12px; font-weight: 600; flex: 0 0 auto; }
+    #dafeiyu-subagent-panel .status.running { color: #e0a83a; }
+    #dafeiyu-subagent-panel .status.idle { color: #3ecf8e; }
+    #dafeiyu-subagent-panel .summary { margin-top: 6px; color: #b9b9cc; font-size: 12.5px; line-height: 1.45; }
+    #dafeiyu-subagent-panel .time { margin-top: 4px; color: #9a9ab0; font-size: 11.5px; }
     #dafeiyu-subagent-panel .stale { color: #e0a83a; }
-    #dafeiyu-subagent-panel .task { margin-top: 3px; color: #b9b9cc; line-height: 1.45; max-height: 2.9em; overflow: hidden; }
+    #dafeiyu-subagent-panel .restoreRow { display: flex; align-items: center; gap: 8px; margin-top: 6px;
+      border: 1px solid var(--dsw-alias-border-l2, #2a2a3a); border-radius: 8px; padding: 6px 8px; }
+    #dafeiyu-subagent-panel .restoreRow .grow { flex: 1; }
     #dafeiyu-subagent-panel .acts { margin-top: 5px; }
     #dafeiyu-subagent-panel .acts button { background: #2a2a40; color: #cfcfe0; border: 0; border-radius: 7px;
       padding: 4px 9px; font-size: 11.5px; cursor: pointer; }
@@ -146,13 +151,17 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   title.textContent = '子代理监视器'
   const tools = doc.createElement('span')
   tools.className = 'tools'
+  const restore = doc.createElement('button')
+  restore.className = 'ghost'
+  restore.textContent = '恢复归档子代理'
+  restore.title = '把本面板归档过的子代理恢复回来'
   const archiveIdle = doc.createElement('button')
   archiveIdle.className = 'ghost'
   archiveIdle.textContent = '一键归档闲置'
-  archiveIdle.title = '把闲置超过 2 小时的子代理一次归档（可恢复）'
+  archiveIdle.title = '把闲置超过阈值的子代理一次归档（可恢复）'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  tools.append(archiveIdle, close)
+  tools.append(restore, archiveIdle, close)
   head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
@@ -168,6 +177,43 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   let timer = 0
   let busy = false
   let opened = false
+  let restoring = false
+  let numbering = new Map<string, number>()
+  let nextNumber = 1
+  let ledger: Array<{ id: string; name: string }> = []
+
+  const ledgerKey = (sid: string): string => 'drc.subagentArchive.' + sid
+  const loadLedger = (sid: string): void => {
+    try {
+      const raw = localStorage.getItem(ledgerKey(sid))
+      const parsed = raw ? JSON.parse(raw) : []
+      ledger = Array.isArray(parsed)
+        ? parsed.filter((row) => row && typeof row.id === 'string').map((row) => ({ id: row.id, name: String(row.name ?? '子代理') }))
+        : []
+    } catch {
+      ledger = []
+    }
+  }
+  const saveLedger = (): void => {
+    if (!session) return
+    try {
+      localStorage.setItem(ledgerKey(session), JSON.stringify(ledger))
+    } catch {
+      /* 隐私模式 */
+    }
+  }
+  const displayName = (row: SubagentRow): string => {
+    if (row.naming === 'ok' && row.name) return row.name
+    if (!numbering.has(row.id)) numbering.set(row.id, nextNumber++)
+    return '子代理' + numbering.get(row.id)
+  }
+  const rememberArchived = (ids: string[]): void => {
+    for (const row of items) {
+      if (!ids.includes(row.id)) continue
+      if (!ledger.some((entry) => entry.id === row.id)) ledger.push({ id: row.id, name: displayName(row) })
+    }
+    saveLedger()
+  }
 
   const setOpen = (next: boolean): void => {
     opened = next
@@ -179,6 +225,28 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
 
   const render = (): void => {
     body.textContent = ''
+    if (restoring) {
+      const titleLine = doc.createElement('div')
+      titleLine.className = 'empty'
+      titleLine.textContent = ledger.length === 0 ? '没有本面板归档过的子代理。' : '已归档（本面板记录）：'
+      body.appendChild(titleLine)
+      for (const entry of ledger) {
+        const row = doc.createElement('div')
+        row.className = 'restoreRow'
+        const label = doc.createElement('span')
+        label.className = 'grow'
+        label.textContent = entry.name
+        const button = doc.createElement('button')
+        button.textContent = '恢复'
+        button.addEventListener('click', (event) => {
+          event.stopPropagation()
+          void restoreEntry(entry.id, button)
+        })
+        row.append(label, button)
+        body.appendChild(row)
+      }
+      return
+    }
     if (items.length === 0) {
       const empty = doc.createElement('div')
       empty.className = 'empty'
@@ -187,50 +255,30 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       return
     }
     for (const row of items) {
-      const line = doc.createElement('div')
-      line.className = 'row'
+      const card = doc.createElement('div')
+      card.className = 'card'
       const top = doc.createElement('div')
       top.className = 'top'
-      const dot = doc.createElement('span')
-      dot.className = 'dot ' + (row.status === 'running' ? 'run' : 'idle')
-      const name = doc.createElement('span')
-      name.className = 'name'
-      // 名称优先级：官方 label 的「名称」→ 会话标题 → 任务首行 → id
-      name.textContent = row.name || row.title || row.task || row.id.slice(0, 12)
-      name.title = row.id
-      top.append(dot, name)
-      if (row.naming === 'fallback') {
-        const warn = doc.createElement('span')
-        warn.className = 'warn'
-        warn.textContent = '⚠ 命名不合规'
-        warn.title = '派活时 description 应按「名称｜一句话简述」填写'
-        top.appendChild(warn)
-      }
-      const meta = doc.createElement('div')
-      meta.className = 'meta'
+      const nameSpan = doc.createElement('span')
+      nameSpan.className = 'name'
+      nameSpan.textContent = displayName(row)
+      const status = doc.createElement('span')
+      status.className = 'status ' + (row.status === 'running' ? 'running' : 'idle')
+      status.textContent = row.status === 'running' ? '工作中' : '空闲'
+      top.append(nameSpan, status)
+      card.appendChild(top)
+      const summary = doc.createElement('div')
+      summary.className = 'summary'
+      summary.textContent = row.naming === 'ok' && row.summary ? row.summary : '未按要求填写'
+      card.appendChild(summary)
       const idleWarn = row.status === 'idle' && (row.idleMs ?? 0) >= idleWarnMs
-      meta.classList.toggle('stale', idleWarn)
-      // 两个时间**互斥**：跑着看「运行」，停了看「闲置」
-      const time = row.status === 'running'
-        ? '运行 ' + fmtDuration(row.runningMs ?? row.workMs)
-        : '闲置 ' + fmtDuration(row.idleMs)
-      meta.textContent =
-        (row.status === 'running' ? '运行中' : '空闲') + ' · ' + time + (idleWarn ? ' · 建议归档' : '')
-      line.append(top, meta)
-      const summary = row.summary || (row.task && row.task !== name.textContent ? row.task : '')
-      if (summary) {
-        const text = doc.createElement('div')
-        text.className = 'task'
-        text.textContent = summary
-        line.appendChild(text)
-      }
-      if (row.status === 'running' && row.activity) {
-        const act = doc.createElement('div')
-        act.className = 'act'
-        act.textContent = '正在：' + row.activity
-        line.appendChild(act)
-      }
-      // 归档：非运行中的行都给按钮（宿主本来就拒归档运行中的会话）
+      const time = doc.createElement('div')
+      time.className = 'time' + (idleWarn ? ' stale' : '')
+      time.textContent =
+        row.status === 'running'
+          ? '工作时间 ' + fmtDuration(row.runningMs ?? row.workMs)
+          : '闲置时间 ' + fmtDuration(row.idleMs) + (idleWarn ? ' · 建议归档' : '')
+      card.appendChild(time)
       if (row.status !== 'running') {
         const acts = doc.createElement('div')
         acts.className = 'acts'
@@ -241,13 +289,35 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
           void archiveRow(row.id, archive)
         })
         acts.appendChild(archive)
-        line.appendChild(acts)
+        card.appendChild(acts)
       }
-      body.appendChild(line)
+      body.appendChild(card)
     }
     const idleCount = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs).length
     archiveIdle.disabled = idleCount === 0
     archiveIdle.textContent = idleCount > 0 ? `一键归档闲置 (${idleCount})` : '一键归档闲置'
+  }
+
+  const restoreEntry = async (id: string, button: HTMLButtonElement): Promise<void> => {
+    button.disabled = true
+    button.textContent = '恢复中…'
+    try {
+      const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/archive'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+        body: JSON.stringify({ ids: [id], archived: false }),
+      })
+      const answer = (await response.json()) as { ok?: boolean; message?: string }
+      if (answer.ok !== true) throw new Error(answer.message || '恢复失败')
+      ledger = ledger.filter((entry) => entry.id !== id)
+      saveLedger()
+      restoring = ledger.length > 0
+      await refresh()
+    } catch (error) {
+      button.disabled = false
+      button.textContent = '恢复失败'
+      button.title = String((error as Error)?.message ?? error)
+    }
   }
 
   /** 顶栏的批量归档：一口气归档所有闲置 ≥ 2h 的子代理（逐条走同一归档端口）。 */
@@ -264,6 +334,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       })
       const answer = (await response.json()) as { ok?: boolean }
       if (answer.ok !== true) archiveIdle.title = '部分归档失败，见宿主日志'
+      rememberArchived(ids)
       await refresh()
     } catch (error) {
       archiveIdle.title = String((error as Error)?.message ?? error)
@@ -287,6 +358,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       })
       const answer = (await response.json()) as { ok?: boolean; message?: string }
       if (answer.ok !== true) throw new Error(answer.message || '归档失败')
+      rememberArchived([id])
       await refresh()
     } catch (error) {
       button.disabled = false
@@ -316,6 +388,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     if (current !== session) {
       session = current
       items = []
+      numbering = new Map()
+      nextNumber = 1
+      restoring = false
+      loadLedger(current)
       render()
     }
     busy = true
@@ -346,6 +422,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     setOpen(!opened)
   })
   close.addEventListener('click', () => setOpen(false))
+  restore.addEventListener('click', (event) => {
+    event.stopPropagation()
+    restoring = !restoring
+    render()
+  })
   const onKey = (event: KeyboardEvent): void => {
     if (event.key === 'Escape' && opened) setOpen(false)
   }

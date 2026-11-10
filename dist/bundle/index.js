@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.23" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.24" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32698,19 +32698,16 @@ function createServicesKernel(services, options) {
       const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt;
       const title = titleCache.get(id)?.title;
       const labeled = splitSubagentLabel(labels.get(id));
-      const fallbackName = (title ?? probe.task ?? "").trim().slice(0, 20);
-      const name2 = labeled.name ?? (fallbackName !== "" ? fallbackName : void 0);
       const naming = labeled.naming;
+      const name2 = naming === "ok" ? labeled.name : void 0;
       const activity = subagentActivity.get(id);
       const depth = typeof row.header?.delegationDepth === "number" && row.header.delegationDepth > 0 ? row.header.delegationDepth : 1;
       out.push({
         id,
         parentId: String(row.header?.parentSession ?? ""),
         depth,
-        ...title ? { title } : {},
-        ...probe.task ? { task: probe.task } : {},
         ...name2 ? { name: name2 } : {},
-        ...labeled.summary ? { summary: labeled.summary } : probe.task ? { summary: probe.task.slice(0, 80) } : {},
+        ...naming === "ok" && labeled.summary ? { summary: labeled.summary } : {},
         naming,
         ...running && activity ? { activity: activity.text } : {},
         status: running ? "running" : "idle",

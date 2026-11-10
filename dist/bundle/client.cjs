@@ -3210,15 +3210,20 @@ function mountSubagentMonitor(deps) {
     #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
     #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
     #dafeiyu-subagent-panel .head button { background: transparent; color: #9a9ab0; border: 0; cursor: pointer; font-size: 13px; }
-    #dafeiyu-subagent-panel .row { border-top: 1px solid var(--dsw-alias-border-l2, #2a2a3a); padding: 8px 0; }
-    #dafeiyu-subagent-panel .row .top { display: flex; gap: 6px; align-items: center; }
-    #dafeiyu-subagent-panel .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
-    #dafeiyu-subagent-panel .dot.run { background: #3ecf8e; }
-    #dafeiyu-subagent-panel .dot.idle { background: #8a8aa0; }
-    #dafeiyu-subagent-panel .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #dafeiyu-subagent-panel .meta { color: #9a9ab0; margin-top: 3px; line-height: 1.5; }
+    #dafeiyu-subagent-panel .card { border: 1px solid var(--dsw-alias-border-l2, #2a2a3a); border-radius: 10px;
+      padding: 10px; margin-top: 8px; background: rgba(127,127,127,.06); }
+    #dafeiyu-subagent-panel .card .top { display: flex; gap: 8px; align-items: center; }
+    #dafeiyu-subagent-panel .card .name { flex: 1; font-weight: 600; font-size: 13px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; }
+    #dafeiyu-subagent-panel .status { font-size: 12px; font-weight: 600; flex: 0 0 auto; }
+    #dafeiyu-subagent-panel .status.running { color: #e0a83a; }
+    #dafeiyu-subagent-panel .status.idle { color: #3ecf8e; }
+    #dafeiyu-subagent-panel .summary { margin-top: 6px; color: #b9b9cc; font-size: 12.5px; line-height: 1.45; }
+    #dafeiyu-subagent-panel .time { margin-top: 4px; color: #9a9ab0; font-size: 11.5px; }
     #dafeiyu-subagent-panel .stale { color: #e0a83a; }
-    #dafeiyu-subagent-panel .task { margin-top: 3px; color: #b9b9cc; line-height: 1.45; max-height: 2.9em; overflow: hidden; }
+    #dafeiyu-subagent-panel .restoreRow { display: flex; align-items: center; gap: 8px; margin-top: 6px;
+      border: 1px solid var(--dsw-alias-border-l2, #2a2a3a); border-radius: 8px; padding: 6px 8px; }
+    #dafeiyu-subagent-panel .restoreRow .grow { flex: 1; }
     #dafeiyu-subagent-panel .acts { margin-top: 5px; }
     #dafeiyu-subagent-panel .acts button { background: #2a2a40; color: #cfcfe0; border: 0; border-radius: 7px;
       padding: 4px 9px; font-size: 11.5px; cursor: pointer; }
@@ -3244,13 +3249,17 @@ function mountSubagentMonitor(deps) {
   title.textContent = "\u5B50\u4EE3\u7406\u76D1\u89C6\u5668";
   const tools = doc.createElement("span");
   tools.className = "tools";
+  const restore = doc.createElement("button");
+  restore.className = "ghost";
+  restore.textContent = "\u6062\u590D\u5F52\u6863\u5B50\u4EE3\u7406";
+  restore.title = "\u628A\u672C\u9762\u677F\u5F52\u6863\u8FC7\u7684\u5B50\u4EE3\u7406\u6062\u590D\u56DE\u6765";
   const archiveIdle = doc.createElement("button");
   archiveIdle.className = "ghost";
   archiveIdle.textContent = "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
-  archiveIdle.title = "\u628A\u95F2\u7F6E\u8D85\u8FC7 2 \u5C0F\u65F6\u7684\u5B50\u4EE3\u7406\u4E00\u6B21\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09";
+  archiveIdle.title = "\u628A\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4E00\u6B21\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09";
   const close = doc.createElement("button");
   close.textContent = "\u5173\u95ED \u2715";
-  tools.append(archiveIdle, close);
+  tools.append(restore, archiveIdle, close);
   head.append(title, tools);
   const body = doc.createElement("div");
   const foot = doc.createElement("div");
@@ -3264,6 +3273,39 @@ function mountSubagentMonitor(deps) {
   let timer = 0;
   let busy = false;
   let opened = false;
+  let restoring = false;
+  let numbering = /* @__PURE__ */ new Map();
+  let nextNumber = 1;
+  let ledger = [];
+  const ledgerKey = (sid) => "drc.subagentArchive." + sid;
+  const loadLedger = (sid) => {
+    try {
+      const raw = localStorage.getItem(ledgerKey(sid));
+      const parsed = raw ? JSON.parse(raw) : [];
+      ledger = Array.isArray(parsed) ? parsed.filter((row) => row && typeof row.id === "string").map((row) => ({ id: row.id, name: String(row.name ?? "\u5B50\u4EE3\u7406") })) : [];
+    } catch {
+      ledger = [];
+    }
+  };
+  const saveLedger = () => {
+    if (!session) return;
+    try {
+      localStorage.setItem(ledgerKey(session), JSON.stringify(ledger));
+    } catch {
+    }
+  };
+  const displayName = (row) => {
+    if (row.naming === "ok" && row.name) return row.name;
+    if (!numbering.has(row.id)) numbering.set(row.id, nextNumber++);
+    return "\u5B50\u4EE3\u7406" + numbering.get(row.id);
+  };
+  const rememberArchived = (ids) => {
+    for (const row of items) {
+      if (!ids.includes(row.id)) continue;
+      if (!ledger.some((entry) => entry.id === row.id)) ledger.push({ id: row.id, name: displayName(row) });
+    }
+    saveLedger();
+  };
   const setOpen = (next) => {
     opened = next;
     panel.classList.toggle("open", next);
@@ -3273,6 +3315,28 @@ function mountSubagentMonitor(deps) {
   deps.expose?.({ open: () => setOpen(true), close: () => setOpen(false) });
   const render = () => {
     body.textContent = "";
+    if (restoring) {
+      const titleLine = doc.createElement("div");
+      titleLine.className = "empty";
+      titleLine.textContent = ledger.length === 0 ? "\u6CA1\u6709\u672C\u9762\u677F\u5F52\u6863\u8FC7\u7684\u5B50\u4EE3\u7406\u3002" : "\u5DF2\u5F52\u6863\uFF08\u672C\u9762\u677F\u8BB0\u5F55\uFF09\uFF1A";
+      body.appendChild(titleLine);
+      for (const entry of ledger) {
+        const row = doc.createElement("div");
+        row.className = "restoreRow";
+        const label = doc.createElement("span");
+        label.className = "grow";
+        label.textContent = entry.name;
+        const button = doc.createElement("button");
+        button.textContent = "\u6062\u590D";
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          void restoreEntry(entry.id, button);
+        });
+        row.append(label, button);
+        body.appendChild(row);
+      }
+      return;
+    }
     if (items.length === 0) {
       const empty = doc.createElement("div");
       empty.className = "empty";
@@ -3281,44 +3345,27 @@ function mountSubagentMonitor(deps) {
       return;
     }
     for (const row of items) {
-      const line = doc.createElement("div");
-      line.className = "row";
+      const card = doc.createElement("div");
+      card.className = "card";
       const top = doc.createElement("div");
       top.className = "top";
-      const dot = doc.createElement("span");
-      dot.className = "dot " + (row.status === "running" ? "run" : "idle");
-      const name2 = doc.createElement("span");
-      name2.className = "name";
-      name2.textContent = row.name || row.title || row.task || row.id.slice(0, 12);
-      name2.title = row.id;
-      top.append(dot, name2);
-      if (row.naming === "fallback") {
-        const warn2 = doc.createElement("span");
-        warn2.className = "warn";
-        warn2.textContent = "\u26A0 \u547D\u540D\u4E0D\u5408\u89C4";
-        warn2.title = "\u6D3E\u6D3B\u65F6 description \u5E94\u6309\u300C\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0\u300D\u586B\u5199";
-        top.appendChild(warn2);
-      }
-      const meta = doc.createElement("div");
-      meta.className = "meta";
+      const nameSpan = doc.createElement("span");
+      nameSpan.className = "name";
+      nameSpan.textContent = displayName(row);
+      const status = doc.createElement("span");
+      status.className = "status " + (row.status === "running" ? "running" : "idle");
+      status.textContent = row.status === "running" ? "\u5DE5\u4F5C\u4E2D" : "\u7A7A\u95F2";
+      top.append(nameSpan, status);
+      card.appendChild(top);
+      const summary = doc.createElement("div");
+      summary.className = "summary";
+      summary.textContent = row.naming === "ok" && row.summary ? row.summary : "\u672A\u6309\u8981\u6C42\u586B\u5199";
+      card.appendChild(summary);
       const idleWarn = row.status === "idle" && (row.idleMs ?? 0) >= idleWarnMs;
-      meta.classList.toggle("stale", idleWarn);
-      const time = row.status === "running" ? "\u8FD0\u884C " + fmtDuration(row.runningMs ?? row.workMs) : "\u95F2\u7F6E " + fmtDuration(row.idleMs);
-      meta.textContent = (row.status === "running" ? "\u8FD0\u884C\u4E2D" : "\u7A7A\u95F2") + " \xB7 " + time + (idleWarn ? " \xB7 \u5EFA\u8BAE\u5F52\u6863" : "");
-      line.append(top, meta);
-      const summary = row.summary || (row.task && row.task !== name2.textContent ? row.task : "");
-      if (summary) {
-        const text = doc.createElement("div");
-        text.className = "task";
-        text.textContent = summary;
-        line.appendChild(text);
-      }
-      if (row.status === "running" && row.activity) {
-        const act = doc.createElement("div");
-        act.className = "act";
-        act.textContent = "\u6B63\u5728\uFF1A" + row.activity;
-        line.appendChild(act);
-      }
+      const time = doc.createElement("div");
+      time.className = "time" + (idleWarn ? " stale" : "");
+      time.textContent = row.status === "running" ? "\u5DE5\u4F5C\u65F6\u95F4 " + fmtDuration(row.runningMs ?? row.workMs) : "\u95F2\u7F6E\u65F6\u95F4 " + fmtDuration(row.idleMs) + (idleWarn ? " \xB7 \u5EFA\u8BAE\u5F52\u6863" : "");
+      card.appendChild(time);
       if (row.status !== "running") {
         const acts = doc.createElement("div");
         acts.className = "acts";
@@ -3329,13 +3376,34 @@ function mountSubagentMonitor(deps) {
           void archiveRow(row.id, archive);
         });
         acts.appendChild(archive);
-        line.appendChild(acts);
+        card.appendChild(acts);
       }
-      body.appendChild(line);
+      body.appendChild(card);
     }
     const idleCount = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= idleWarnMs).length;
     archiveIdle.disabled = idleCount === 0;
     archiveIdle.textContent = idleCount > 0 ? `\u4E00\u952E\u5F52\u6863\u95F2\u7F6E (${idleCount})` : "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
+  };
+  const restoreEntry = async (id, button) => {
+    button.disabled = true;
+    button.textContent = "\u6062\u590D\u4E2D\u2026";
+    try {
+      const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/subagents/archive"), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-drc-pair": "1" },
+        body: JSON.stringify({ ids: [id], archived: false })
+      });
+      const answer = await response.json();
+      if (answer.ok !== true) throw new Error(answer.message || "\u6062\u590D\u5931\u8D25");
+      ledger = ledger.filter((entry) => entry.id !== id);
+      saveLedger();
+      restoring = ledger.length > 0;
+      await refresh();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = "\u6062\u590D\u5931\u8D25";
+      button.title = String(error?.message ?? error);
+    }
   };
   const archiveIdleNow = async () => {
     const ids = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= IDLE_WARN_MS).map((row) => row.id);
@@ -3350,6 +3418,7 @@ function mountSubagentMonitor(deps) {
       });
       const answer = await response.json();
       if (answer.ok !== true) archiveIdle.title = "\u90E8\u5206\u5F52\u6863\u5931\u8D25\uFF0C\u89C1\u5BBF\u4E3B\u65E5\u5FD7";
+      rememberArchived(ids);
       await refresh();
     } catch (error) {
       archiveIdle.title = String(error?.message ?? error);
@@ -3372,6 +3441,7 @@ function mountSubagentMonitor(deps) {
       });
       const answer = await response.json();
       if (answer.ok !== true) throw new Error(answer.message || "\u5F52\u6863\u5931\u8D25");
+      rememberArchived([id]);
       await refresh();
     } catch (error) {
       button.disabled = false;
@@ -3399,6 +3469,10 @@ function mountSubagentMonitor(deps) {
     if (current !== session) {
       session = current;
       items = [];
+      numbering = /* @__PURE__ */ new Map();
+      nextNumber = 1;
+      restoring = false;
+      loadLedger(current);
       render();
     }
     busy = true;
@@ -3423,6 +3497,11 @@ function mountSubagentMonitor(deps) {
     setOpen(!opened);
   });
   close.addEventListener("click", () => setOpen(false));
+  restore.addEventListener("click", (event) => {
+    event.stopPropagation();
+    restoring = !restoring;
+    render();
+  });
   const onKey = (event) => {
     if (event.key === "Escape" && opened) setOpen(false);
   };
