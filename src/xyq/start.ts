@@ -5,15 +5,24 @@
  * 任何一块挂不上都只少那一块，远控主链路不受影响；`stop()` 幂等。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import path from 'node:path'
 import { createXyqService, type XyqService } from './service.js'
 import { resolveXyqConfigFile, readXyqConfig } from './config.js'
 import {
   XYQ_BALANCE_ROUTE,
   XYQ_CONFIG_ROUTE,
+  XYQ_DESCRIBE_ROUTE,
+  XYQ_FILE_ROUTE,
+  XYQ_GENERATE_ROUTE,
   XYQ_MODELS_ROUTE,
+  XYQ_RESULT_ROUTE,
   XYQ_STATUS_ROUTE,
   xyqConfigHandler,
+  xyqDescribeHandler,
+  xyqFileHandler,
+  xyqGenerateHandler,
   xyqQueryHandler,
+  xyqResultHandler,
   type XyqRouteDeps,
 } from './routes.js'
 import { xyqTools } from './tools.js'
@@ -64,7 +73,8 @@ export function startXyq(
   let started = false
   let stopped = false
 
-  const routeDeps: XyqRouteDeps = { service, log: deps.log }
+  const outDir = path.join(deps.dshHome, 'storages', 'dsh-remote-dafeiyu', 'xyq-output')
+  const routeDeps: XyqRouteDeps = { service, outDir, log: deps.log }
   const tryStart = (): void => {
     if (started || stopped) return
     started = true
@@ -74,6 +84,10 @@ export function startXyq(
         [XYQ_STATUS_ROUTE, xyqQueryHandler('status', routeDeps)],
         [XYQ_BALANCE_ROUTE, xyqQueryHandler('balance', routeDeps)],
         [XYQ_MODELS_ROUTE, xyqQueryHandler('models', routeDeps)],
+        [XYQ_DESCRIBE_ROUTE, xyqDescribeHandler(routeDeps)],
+        [XYQ_GENERATE_ROUTE, xyqGenerateHandler(routeDeps)],
+        [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
+        [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)],
       ]
       for (const [path, handler] of registers) disposers.push(web!.register({ kind: 'exact', path, handler }))
       unregister = () => {

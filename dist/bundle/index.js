@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path22 from "node:path";
+import path23 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path23) {
-  if (!path23)
+function getElementAtPath(obj, path24) {
+  if (!path24)
     return obj;
-  return path23.reduce((acc, key) => acc?.[key], obj);
+  return path24.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path23, issues) {
+function prefixIssues(path24, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path23);
+    iss.path.unshift(path24);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path23 = []) => {
+  const processError = (error63, path24 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path23, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path24, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else {
-        const fullpath = [...path23, ...issue2.path];
+        const fullpath = [...path24, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path23 = []) => {
+  const processError = (error63, path24 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path23, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path24, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path23, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else {
-        const fullpath = [...path23, ...issue2.path];
+        const fullpath = [...path24, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path23 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path23) {
+  const path24 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path24) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path23 = ref.slice(1).split("/").filter(Boolean);
-  if (path23.length === 0) {
+  const path24 = ref.slice(1).split("/").filter(Boolean);
+  if (path24.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path23[0] === defsKey) {
-    const key = path23[1] === void 0 ? void 0 : decodeJSONPointerSegment(path23[1]);
+  if (path24[0] === defsKey) {
+    const key = path24[1] === void 0 ? void 0 : decodeJSONPointerSegment(path24[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.24" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.25" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32084,12 +32084,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path23 = __require("node:path");
+        const path24 = __require("node:path");
         const fs10 = __require("node:fs");
-        const dir = path23.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path24.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs10.mkdirSync(dir, { recursive: true, mode: 448 });
         fs10.writeFileSync(
-          path23.join(dir, "client-report.json"),
+          path24.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -36059,16 +36059,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path23) {
+function deepGet(value, path24) {
   let cursor = value;
-  for (const key of path23) {
+  for (const key of path24) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path23) {
-  return String(path23 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path24) {
+  return String(path24 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -37352,6 +37352,9 @@ function startSubagents(ctx, input2) {
   };
 }
 
+// src/xyq/start.ts
+import path18 from "node:path";
+
 // src/xyq/service.ts
 function parseJson(text) {
   const trimmed = text.trim();
@@ -37516,6 +37519,82 @@ ${result2.stderr}`;
         ...typeof json10.web_thread_link === "string" ? { webLink: json10.web_thread_link } : {}
       };
     },
+    /** UI 用：只提交生图任务，返回 thread/run（结果由 queryOnce 轮询）。 */
+    async startImage(input2) {
+      const config2 = readConfig2();
+      const budget = budgetOf(input2.sessionKey ?? "default");
+      if (config2.budget.images > 0 && budget.images >= config2.budget.images) {
+        return { ok: false, message: `\u672C\u4F1A\u8BDD\u7684\u751F\u56FE\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF08\u4E0A\u9650 ${config2.budget.images} \u5F20\uFF09` };
+      }
+      if (input2.model.trim() === "") return { ok: false, message: "\u6CA1\u6307\u5B9A\u56FE\u7247\u6A21\u578B" };
+      const args = ["generate-image", "--prompt", input2.prompt, "--model", input2.model];
+      for (const image of input2.images ?? []) if (image !== "") args.push("--image", image);
+      if (typeof input2.ratio === "string" && input2.ratio !== "") args.push("--ratio", input2.ratio);
+      if (typeof input2.resolution === "string" && input2.resolution !== "") args.push("--resolution", input2.resolution);
+      if (typeof input2.count === "number" && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
+      const submitted = await call(args, 12e4);
+      if (submitted.message !== void 0) return { ok: false, message: submitted.message };
+      const json10 = submitted.json ?? {};
+      const threadId = typeof json10.thread_id === "string" ? json10.thread_id : "";
+      const runId = typeof json10.run_id === "string" ? json10.run_id : "";
+      if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
+      budget.images += 1;
+      return { ok: true, threadId, runId, ...typeof json10.web_thread_link === "string" ? { webLink: json10.web_thread_link } : {} };
+    },
+    /** UI 用：只提交生视频任务。 */
+    async startVideo(input2) {
+      const config2 = readConfig2();
+      const budget = budgetOf(input2.sessionKey ?? "default");
+      if (config2.budget.videos > 0 && budget.videos >= config2.budget.videos) {
+        return { ok: false, message: `\u672C\u4F1A\u8BDD\u7684\u89C6\u9891\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF08\u4E0A\u9650 ${config2.budget.videos} \u6761\uFF09` };
+      }
+      if (input2.model.trim() === "") return { ok: false, message: "\u6CA1\u6307\u5B9A\u89C6\u9891\u6A21\u578B" };
+      const duration3 = Math.min(config2.budget.maxVideoSeconds, Math.max(4, Math.round(input2.duration ?? config2.defaultVideoDurationSec)));
+      const args = ["generate-video", "--model", input2.model, "--prompt", input2.prompt, "--duration", String(duration3)];
+      for (const image of input2.images ?? []) if (image !== "") args.push("--image", image);
+      if (typeof input2.ratio === "string" && input2.ratio !== "" && input2.ratio !== "adaptive") args.push("--ratio", input2.ratio);
+      if (typeof input2.resolution === "string" && input2.resolution !== "") args.push("--resolution", input2.resolution);
+      args.push("--task-type", "reference");
+      const submitted = await call(args, 18e4);
+      if (submitted.message !== void 0) return { ok: false, message: submitted.message };
+      const json10 = submitted.json ?? {};
+      const threadId = typeof json10.thread_id === "string" ? json10.thread_id : "";
+      const runId = typeof json10.run_id === "string" ? json10.run_id : "";
+      if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
+      budget.videos += 1;
+      return { ok: true, threadId, runId, ...typeof json10.web_thread_link === "string" ? { webLink: json10.web_thread_link } : {} };
+    },
+    /** UI 用：查一次任务状态（不轮询、不阻塞）。 */
+    async queryOnce(threadId, runId, outDir) {
+      const answered = await call(
+        ["query-result", "--thread-id", threadId, "--run-id", runId, "--download-dir", outDir],
+        12e4
+      );
+      if (answered.message !== void 0) return { ok: false, message: answered.message };
+      const json10 = answered.json ?? {};
+      const status = typeof json10.status === "string" ? json10.status : "unknown";
+      if (typeof json10.error_message === "string" && json10.error_message !== "") {
+        return { ok: false, status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${json10.error_message.slice(0, 200)}` };
+      }
+      if (status !== "succeeded") return { ok: true, status };
+      const files = [];
+      for (const key of ["videos", "images"]) {
+        const list = Array.isArray(json10[key]) ? json10[key] : [];
+        for (const item of list) {
+          if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
+        }
+      }
+      return { ok: true, status, files };
+    },
+    /** 模型详情（比例/分辨率/时长等），给设置面板的下拉框用。 */
+    async describe(name2, kind) {
+      const answered = await call(["model", "describe", name2, "--type", kind], 6e4);
+      if (answered.message !== void 0) return { ok: false, message: answered.message };
+      const json10 = answered.json ?? {};
+      const model2 = json10.model && typeof json10.model === "object" ? json10.model : void 0;
+      if (model2 === void 0) return { ok: false, message: "\u6CA1\u6709\u62FF\u5230\u6A21\u578B\u8BE6\u60C5" };
+      return { ok: true, model: model2 };
+    },
     async generateVideo(input2) {
       const config2 = readConfig2();
       const sessionKey2 = input2.sessionKey ?? "default";
@@ -37558,6 +37637,10 @@ var XYQ_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/xyq/config";
 var XYQ_STATUS_ROUTE = "/api/dsh-remote-dafeiyu/xyq/status";
 var XYQ_BALANCE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/balance";
 var XYQ_MODELS_ROUTE = "/api/dsh-remote-dafeiyu/xyq/models";
+var XYQ_DESCRIBE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/describe";
+var XYQ_GENERATE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/generate";
+var XYQ_RESULT_ROUTE = "/api/dsh-remote-dafeiyu/xyq/result";
+var XYQ_FILE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/file";
 function json8(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -37640,6 +37723,106 @@ function xyqQueryHandler(kind, deps) {
     } catch (error62) {
       deps.log("\u5C0F\u4E91\u96C0\u67E5\u8BE2\u8DEF\u7531\u5931\u8D25", { kind, message: String(error62?.message ?? error62).slice(0, 160) });
       json8(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function xyqDescribeHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    const denied = rejected4(request);
+    if (denied) return json8(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const name2 = (url2.searchParams.get("name") ?? "").trim();
+    const type = url2.searchParams.get("type") === "video" ? "video" : "image";
+    if (name2 === "") return json8(response, 400, { ok: false, error: "\u7F3A\u5C11 name" });
+    try {
+      json8(response, 200, await deps.service.describe(name2, type));
+    } catch (error62) {
+      json8(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function xyqGenerateHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    const denied = rejected4(request);
+    if (denied) return json8(response, 403, { ok: false, error: denied });
+    if (request.method !== "POST") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+    if (String(request.headers["x-drc-pair"] ?? "") === "") return json8(response, 403, { ok: false, error: "missing x-drc-pair" });
+    try {
+      const body = JSON.parse(await readBody3(request));
+      const type = body.type === "video" ? "video" : "image";
+      const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+      const model2 = typeof body.model === "string" ? body.model.trim() : "";
+      if (prompt === "" || model2 === "") return json8(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
+      try {
+        const { mkdirSync: mkdirSync7 } = await import("node:fs");
+        mkdirSync7(deps.outDir, { recursive: true });
+      } catch {
+      }
+      const sessionKey2 = typeof body.sessionKey === "string" && body.sessionKey !== "" ? body.sessionKey : "xyq-panel";
+      const result2 = type === "video" ? await deps.service.startVideo({
+        prompt,
+        model: model2,
+        sessionKey: sessionKey2,
+        ...typeof body.duration === "number" ? { duration: body.duration } : {},
+        ...typeof body.ratio === "string" ? { ratio: body.ratio } : {},
+        ...typeof body.resolution === "string" ? { resolution: body.resolution } : {}
+      }) : await deps.service.startImage({
+        prompt,
+        model: model2,
+        sessionKey: sessionKey2,
+        ...typeof body.ratio === "string" ? { ratio: body.ratio } : {},
+        ...typeof body.resolution === "string" ? { resolution: body.resolution } : {},
+        ...typeof body.count === "number" ? { count: body.count } : {}
+      });
+      json8(response, result2.ok ? 200 : 502, result2);
+    } catch (error62) {
+      json8(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function xyqResultHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    const denied = rejected4(request);
+    if (denied) return json8(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const threadId = (url2.searchParams.get("threadId") ?? "").trim();
+    const runId = (url2.searchParams.get("runId") ?? "").trim();
+    if (threadId === "" || runId === "") return json8(response, 400, { ok: false, error: "\u7F3A\u5C11 threadId / runId" });
+    try {
+      json8(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir));
+    } catch (error62) {
+      json8(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function xyqFileHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    const denied = rejected4(request);
+    if (denied) return json8(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const target = (url2.searchParams.get("path") ?? "").trim();
+    if (target === "") return json8(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
+    const path24 = await import("node:path");
+    const fs10 = await import("node:fs");
+    const resolved = path24.resolve(target);
+    const root = path24.resolve(deps.outDir);
+    if (!resolved.startsWith(root + path24.sep)) return json8(response, 403, { ok: false, error: "path-escape" });
+    try {
+      const data = fs10.readFileSync(resolved);
+      const ext = path24.extname(resolved).toLowerCase();
+      const mime = ext === ".mp4" ? "video/mp4" : ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "application/octet-stream";
+      response.writeHead(200, { "Content-Type": mime, "Content-Length": data.byteLength });
+      if (request.method === "HEAD") response.end();
+      else response.end(data);
+    } catch {
+      json8(response, 404, { ok: false, error: "\u6587\u4EF6\u4E0D\u5B58\u5728" });
     }
   };
 }
@@ -37859,7 +38042,8 @@ function startXyq(ctx, deps) {
   let unregister;
   let started = false;
   let stopped = false;
-  const routeDeps = { service, log: deps.log };
+  const outDir = path18.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "xyq-output");
+  const routeDeps = { service, outDir, log: deps.log };
   const tryStart = () => {
     if (started || stopped) return;
     started = true;
@@ -37868,9 +38052,13 @@ function startXyq(ctx, deps) {
         [XYQ_CONFIG_ROUTE, xyqConfigHandler(routeDeps)],
         [XYQ_STATUS_ROUTE, xyqQueryHandler("status", routeDeps)],
         [XYQ_BALANCE_ROUTE, xyqQueryHandler("balance", routeDeps)],
-        [XYQ_MODELS_ROUTE, xyqQueryHandler("models", routeDeps)]
+        [XYQ_MODELS_ROUTE, xyqQueryHandler("models", routeDeps)],
+        [XYQ_DESCRIBE_ROUTE, xyqDescribeHandler(routeDeps)],
+        [XYQ_GENERATE_ROUTE, xyqGenerateHandler(routeDeps)],
+        [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
+        [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)]
       ];
-      for (const [path23, handler] of registers) disposers.push(web.register({ kind: "exact", path: path23, handler }));
+      for (const [path24, handler] of registers) disposers.push(web.register({ kind: "exact", path: path24, handler }));
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -38405,11 +38593,11 @@ function startMemory(ctx, deps) {
 
 // src/backup/service.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync6, readdirSync as readdirSync2, readFileSync as readFileSync6, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import path20 from "node:path";
+import path21 from "node:path";
 
 // src/backup/config.ts
 import { existsSync, readFileSync as readFileSync4 } from "node:fs";
-import path18 from "node:path";
+import path19 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -38421,19 +38609,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path18.join(dshHome, "dsh-backup-git");
+  return path19.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path18.join(backupDir(dshHome), "config.json");
+  return path19.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path18.join(backupDir(dshHome), "credential.json");
+  return path19.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path18.join(backupDir(dshHome), "status.json");
+  return path19.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path18.join(backupDir(dshHome), "work");
+  return path19.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -38670,16 +38858,16 @@ import { createHash as createHash5 } from "node:crypto";
 import { existsSync as existsSync2, readdirSync, readFileSync as readFileSync5, statSync as statSync2 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path19 from "node:path";
+import path20 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path19.join(sessionsRoot, slug);
+    const slugDir = path20.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path19.join(slugDir, dirName);
+      const sessionDir = path20.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path19.join(sessionDir, fileName);
+        const file2 = path20.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync2(file2);
@@ -38691,7 +38879,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path19.posix.join(slug, dirName, fileName),
+          relPath: path20.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -38740,11 +38928,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path19.join(input2.stagingDir, "latest");
+  const staging = path20.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path19.join(staging, "sessions", entry.relPath);
+    const target = path20.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -38753,20 +38941,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path19.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path20.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path19.join(staging, "profiles", path19.basename(input2.profileDir));
+    const target = path20.join(staging, "profiles", path20.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path19.join(input2.profileDir, name2);
+      const source = path20.join(input2.profileDir, name2);
       if (!existsSync2(source)) continue;
-      await copyFileFresh(source, path19.join(target, name2));
+      await copyFileFresh(source, path20.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path19.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path20.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -38782,17 +38970,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path19.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path20.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path19.join(stagingDir, "archive");
+  const root = path20.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path19.join(root, entry.relPath);
+    const target = path20.join(root, entry.relPath);
     if (existsSync2(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -38838,7 +39026,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path19.join(dir, entry.name);
+    const full = path20.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -38849,7 +39037,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path19.dirname(target), { recursive: true });
+  await mkdir(path20.dirname(target), { recursive: true });
   if (existsSync2(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -38862,7 +39050,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path19.join(sourceDir, name2), path19.join(targetDir, name2));
+    await copyFileFresh(path20.join(sourceDir, name2), path20.join(targetDir, name2));
     names.push(name2);
   }
   return names;
@@ -38875,8 +39063,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path19.join(sourceDir, entry.name);
-    const target = path19.join(targetDir, entry.name);
+    const source = path20.join(sourceDir, entry.name);
+    const target = path20.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -38911,8 +39099,8 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync2(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path19.join(profilesRoot, name2);
-    const manifest = path19.join(dir, "package.json");
+    const dir = path20.join(profilesRoot, name2);
+    const manifest = path20.join(dir, "package.json");
     if (!existsSync2(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync5(manifest, "utf8"));
@@ -39164,13 +39352,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path20.join(base, "staging"),
-      hotRepo: path20.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path20.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path20.join(this.deps.dshHome, "sessions"),
-      storagesDir: path20.join(this.deps.dshHome, "storages"),
-      profilesRoot: path20.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path20.join(this.deps.dshHome, "attachments")
+      staging: path21.join(base, "staging"),
+      hotRepo: path21.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path21.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path21.join(this.deps.dshHome, "sessions"),
+      storagesDir: path21.join(this.deps.dshHome, "storages"),
+      profilesRoot: path21.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path21.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -39193,7 +39381,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync6(repo, { recursive: true });
-    if (!existsSync3(path20.join(repo, ".git"))) {
+    if (!existsSync3(path21.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -39213,7 +39401,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path20.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path21.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync3(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -39259,11 +39447,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync6(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path20.join(base, "askpass.cmd");
+      const file3 = path21.join(base, "askpass.cmd");
       if (!existsSync3(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path20.join(base, "askpass.sh");
+    const file2 = path21.join(base, "askpass.sh");
     if (!existsSync3(file2)) {
       writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -39287,31 +39475,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path20.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path21.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path20.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path20.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path21.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path21.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path20.join(staging, "latest");
-      const restoredHot = existsSync3(path20.join(restoreLatest, "sessions")) ? countSessionFiles(path20.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path21.join(staging, "latest");
+      const restoredHot = existsSync3(path21.join(restoreLatest, "sessions")) ? countSessionFiles(path21.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path20.join(this.deps.dshHome, name2);
+        const target = path21.join(this.deps.dshHome, name2);
         if (existsSync3(target)) {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path20.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path20.join(restoreLatest, "storages"), path20.join(this.deps.dshHome, "storages"));
-      if (existsSync3(path20.join(restoreLatest, "attachments"))) {
-        await mergeTree(path20.join(restoreLatest, "attachments"), path20.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path21.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path21.join(restoreLatest, "storages"), path21.join(this.deps.dshHome, "storages"));
+      if (existsSync3(path21.join(restoreLatest, "attachments"))) {
+        await mergeTree(path21.join(restoreLatest, "attachments"), path21.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path20.join(staging, "archive"), sessionsRoot);
-      const profiles = path20.join(restoreLatest, "profiles");
+      await mergeTree(path21.join(staging, "archive"), sessionsRoot);
+      const profiles = path21.join(restoreLatest, "profiles");
       if (existsSync3(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -39348,15 +39536,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync2(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path20.join(repo, entry.name);
+    const target = path21.join(repo, entry.name);
     rmSync2(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync3(source)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
-    const from = path20.join(source, entry.name);
-    const to = path20.join(target, entry.name);
+    const from = path21.join(source, entry.name);
+    const to = path21.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync6(to, { recursive: true });
       await mergeTree(from, to);
@@ -39372,12 +39560,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync3(profilesRoot)) return;
   for (const entry of readdirSync2(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path20.join(source, entry.name);
-    const to = path20.join(profilesRoot, entry.name);
+    const from = path21.join(source, entry.name);
+    const to = path21.join(profilesRoot, entry.name);
     if (!existsSync3(to)) continue;
     for (const file2 of readdirSync2(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path20.join(from, file2.name), path20.join(to, file2.name));
+      await copyFileFresh(path21.join(from, file2.name), path21.join(to, file2.name));
     }
   }
 }
@@ -39391,7 +39579,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path20.join(dir, entry.name);
+      const full = path21.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -39407,7 +39595,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync7 } from "node:fs";
-import path21 from "node:path";
+import path22 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -39437,8 +39625,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path21.dirname(statusFile2) : dataDir();
-  return path21.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path22.dirname(statusFile2) : dataDir();
+  return path22.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -39452,12 +39640,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path21.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path22.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path21.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path22.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -39496,7 +39684,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path21.dirname(file2));
+    ensureSecureDir(path22.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -39679,7 +39867,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path22.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path23.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -39702,7 +39890,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path22.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path23.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -40251,7 +40439,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path22.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path23.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -40433,7 +40621,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path22.dirname(path22.dirname(config2.statusFile)) : path22.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path23.dirname(path23.dirname(config2.statusFile)) : path23.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });

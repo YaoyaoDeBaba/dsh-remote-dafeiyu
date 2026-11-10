@@ -340,14 +340,14 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     const state = await late.waitForCarrier()
     assert.equal((state.pill as Record<string, string>).webServer, 'via inject')
     assert.equal((state.pill as Record<string, string>).routes, 'registered', '七条配对路由补挂上了')
-    assert.equal(late.registerCalls.length, 23, '二十三条一起挂（子代理 4 + 形象 3 + 小云雀 4 + 识图 3 + 配对/配置/自报/放行/备份 8 + 记忆 1）')
+    assert.equal(late.registerCalls.length, 27, '二十七条一起挂（子代理 4 + 形象 3 + 小云雀 8 + 识图 3 + 配对/配置/自报/放行/备份 8 + 记忆 1）')
     assert.equal(
       pillProblem(state),
       undefined,
       `routes 已 registered 却还报 warn:pill = 启动快照的假警报：${JSON.stringify(state.problems)}`,
     )
     late.dispose()
-    assert.equal(late.unregistered(), 23, '晚到挂上的路由（含子代理/形象/小云雀/识图/记忆），停机时同样要注销干净')
+    assert.equal(late.unregistered(), 27, '晚到挂上的路由（含子代理/形象/小云雀/识图/记忆），停机时同样要注销干净')
   } finally {
     late.dispose()
   }
@@ -422,7 +422,7 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     // 而表现是"重载一次之后那颗 pill 再也不出现"。这里在断言之后 dispose，两个 finally
     // 里的 dispose 是同一次（helper 内部有 once 守卫）。
     withWeb.dispose()
-    assert.equal(withWeb.unregistered(), 23, '八条配对路由 + 三条识图 + 四条子代理 + 三条形象 + 四条小云雀 + 一条记忆都要注销')
+    assert.equal(withWeb.unregistered(), 27, '八条配对路由 + 三条识图 + 四条子代理 + 三条形象 + 八条小云雀 + 一条记忆都要注销')
   } finally {
     without.dispose()
     withWeb.dispose()

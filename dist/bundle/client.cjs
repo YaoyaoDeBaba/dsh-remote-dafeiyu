@@ -3939,64 +3939,395 @@ function mountAvatarWidget(deps) {
 
 // src/client/xyq-quick.ts
 var BASE5 = "/api/dsh-remote-dafeiyu/xyq";
+var PRICE_PER_SECOND = {
+  "Seedance_2.0_mini_lite": 4,
+  "Seedance_2.0_mini": 6,
+  "Seedance_2.5": 20,
+  "Seedance_2.5_draft": 2,
+  "seedance2.0_vision": 12,
+  "seedance2.0_fast_vision": 8
+};
+var PRICE_PER_IMAGE = {
+  "\u667A\u80FD\u56FE\u7247V2.5 Fast": 2,
+  "\u667A\u80FD\u56FE\u7247V2.5 Pro": 6
+};
+async function getJson(path) {
+  const response = await fetch(resolveHostUrl(path), { signal: AbortSignal.timeout(3e4) });
+  return await response.json();
+}
+async function postJson2(path, body) {
+  const response = await fetch(resolveHostUrl(path), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-drc-pair": "1" },
+    body: JSON.stringify(body)
+  });
+  return await response.json();
+}
 function mountXyqQuick() {
   const doc = globalThis.document;
   if (!doc || !doc.body) return { open: () => {
   }, dispose: () => {
   } };
   const styleId = "dafeiyu-xyq-quick-style";
-  const oldStyle = doc.getElementById(styleId);
-  if (oldStyle) oldStyle.remove();
+  doc.getElementById(styleId)?.remove();
   const style = doc.createElement("style");
   style.id = styleId;
   style.textContent = `
-#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 300px; width: 260px; padding: 12px;
+#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 240px; width: 340px; max-height: 78vh; overflow: auto; padding: 12px;
   border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
   background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee);
   box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 13px; z-index: 2147483001; display: none; }
 #dafeiyu-xyq-quick.open { display: block; }
-#dafeiyu-xyq-quick .title { font-weight: 600; margin-bottom: 6px; }
-#dafeiyu-xyq-quick .line { color: var(--dsw-alias-label-secondary, #aaa); margin-top: 4px; word-break: break-word; }
-#dafeiyu-xyq-quick .row { display: flex; gap: 8px; margin-top: 8px; }
-#dafeiyu-xyq-quick button { padding: 4px 10px; border-radius: 6px;
-  border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; cursor: pointer; font-size: 12px; }
+#dafeiyu-xyq-quick .head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 600; }
+#dafeiyu-xyq-quick .head .grow { flex: 1; }
+#dafeiyu-xyq-quick .head button { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 14px; }
+#dafeiyu-xyq-quick textarea { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; padding: 8px;
+  border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; font: inherit; }
+#dafeiyu-xyq-quick select, #dafeiyu-xyq-quick input { width: 100%; box-sizing: border-box; padding: 6px 8px; margin-top: 6px;
+  border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; font: inherit; }
+#dafeiyu-xyq-quick .params { display: flex; flex-direction: column; gap: 0; margin-top: 6px; }
+#dafeiyu-xyq-quick .line { color: var(--dsw-alias-label-secondary, #aaa); margin-top: 6px; font-size: 12px; }
+#dafeiyu-xyq-quick .actions { display: flex; gap: 8px; margin-top: 10px; }
+#dafeiyu-xyq-quick .actions button { flex: 1; padding: 7px 10px; border-radius: 8px; border: 0; cursor: pointer;
+  background: #4b7bec; color: #fff; font-size: 13px; }
+#dafeiyu-xyq-quick .actions button.ghost { background: #2a2a40; color: #cfcfe0; }
+#dafeiyu-xyq-quick .result { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+#dafeiyu-xyq-quick .result img, #dafeiyu-xyq-quick .result video { max-width: 100%; border-radius: 8px; }
+#dafeiyu-xyq-quick .status { margin-top: 6px; font-size: 12px; color: var(--dsw-alias-label-tertiary, #888); }
+#dafeiyu-xyq-settings { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center;
+  justify-content: center; z-index: 2147483002; }
+#dafeiyu-xyq-settings.open { display: flex; }
+#dafeiyu-xyq-settings .box { width: 320px; padding: 14px; border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
+  background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee); font-size: 13px; }
+#dafeiyu-xyq-settings .box .title { font-weight: 600; margin-bottom: 8px; }
+#dafeiyu-xyq-settings .box input { width: 100%; box-sizing: border-box; padding: 6px 8px; margin-top: 6px; border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; font: inherit; }
+#dafeiyu-xyq-settings .box .row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+#dafeiyu-xyq-settings .box button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #333);
+  background: transparent; color: inherit; cursor: pointer; font-size: 13px; }
 `;
   doc.head.appendChild(style);
   const panel = doc.createElement("div");
   panel.id = "dafeiyu-xyq-quick";
-  const title = doc.createElement("div");
-  title.className = "title";
+  const head = doc.createElement("div");
+  head.className = "head";
+  const title = doc.createElement("span");
+  title.className = "grow";
   title.textContent = "\u5C0F\u4E91\u96C0";
-  const line = doc.createElement("div");
-  line.className = "line";
-  line.textContent = "\u6B63\u5728\u8BFB\u53D6\u2026";
-  const row = doc.createElement("div");
-  row.className = "row";
-  const refresh = doc.createElement("button");
-  refresh.type = "button";
-  refresh.textContent = "\u5237\u65B0";
+  const gear = doc.createElement("button");
+  gear.type = "button";
+  gear.textContent = "\u2699";
+  gear.title = "\u8BBE\u7F6E Access Key";
   const close = doc.createElement("button");
   close.type = "button";
-  close.textContent = "\u5173\u95ED";
-  row.append(refresh, close);
-  panel.append(title, line, row);
+  close.textContent = "\u2715";
+  head.append(title, gear, close);
+  const prompt = doc.createElement("textarea");
+  prompt.placeholder = "\u63CF\u8FF0\u4F60\u8981\u751F\u6210\u7684\u5185\u5BB9\uFF08\u7528\u6237\u539F\u8BDD\uFF0C\u4E0D\u8981\u6269\u5199\uFF09";
+  const modelSelect = doc.createElement("select");
+  const params = doc.createElement("div");
+  params.className = "params";
+  const estimate = doc.createElement("div");
+  estimate.className = "line";
+  const balance = doc.createElement("div");
+  balance.className = "line";
+  const actions = doc.createElement("div");
+  actions.className = "actions";
+  const generate = doc.createElement("button");
+  generate.type = "button";
+  generate.textContent = "\u751F\u6210";
+  const refreshBtn = doc.createElement("button");
+  refreshBtn.type = "button";
+  refreshBtn.className = "ghost";
+  refreshBtn.textContent = "\u5237\u65B0\u4F59\u989D";
+  actions.append(generate, refreshBtn);
+  const status = doc.createElement("div");
+  status.className = "status";
+  const result = doc.createElement("div");
+  result.className = "result";
+  panel.append(head, prompt, modelSelect, params, estimate, balance, actions, status, result);
   doc.body.appendChild(panel);
-  const load = async () => {
-    line.textContent = "\u6B63\u5728\u8BFB\u53D6\u2026";
+  const overlay = doc.createElement("div");
+  overlay.id = "dafeiyu-xyq-settings";
+  const box = doc.createElement("div");
+  box.className = "box";
+  const boxTitle = doc.createElement("div");
+  boxTitle.className = "title";
+  boxTitle.textContent = "\u5C0F\u4E91\u96C0 Access Key";
+  const keyInput = doc.createElement("input");
+  keyInput.type = "password";
+  keyInput.placeholder = "\u7C98\u8D34 Access Key";
+  const keyHint = doc.createElement("div");
+  keyHint.className = "line";
+  keyHint.textContent = "\u5728 \u5C0F\u4E91\u96C0\u5B98\u7F51 \u2192 \u26A1CLI/API \u2192 API \u2192 \u7BA1\u7406 Access Key \u65B0\u5EFA";
+  const boxRow = doc.createElement("div");
+  boxRow.className = "row";
+  const cancel = doc.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "\u53D6\u6D88";
+  const saveKey = doc.createElement("button");
+  saveKey.type = "button";
+  saveKey.textContent = "\u4FDD\u5B58";
+  boxRow.append(cancel, saveKey);
+  box.append(boxTitle, keyInput, keyHint, boxRow);
+  overlay.appendChild(box);
+  doc.body.appendChild(overlay);
+  let options = [];
+  let paramSpec = {};
+  let busy = false;
+  let pollTimer;
+  const clearPoll = () => {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = void 0;
+  };
+  const setStatus = (text) => {
+    status.textContent = text;
+  };
+  const selected = () => {
+    const value = modelSelect.value;
+    return options.find((entry) => `${entry.type}::${entry.name}` === value);
+  };
+  const refreshBalance = async () => {
     try {
-      const status = await (await fetch(resolveHostUrl(`${BASE5}/status`), { signal: AbortSignal.timeout(8e3) })).json();
-      const balance = await (await fetch(resolveHostUrl(`${BASE5}/balance`), { signal: AbortSignal.timeout(8e3) })).json();
-      const bits = [];
-      bits.push(status?.ok === true && status.loggedIn === true ? "Access Key \u6709\u6548" : String(status?.message ?? "Key \u672A\u751F\u6548"));
-      bits.push(balance?.ok === true ? `\u5269\u4F59\u79EF\u5206 ${String(balance.totalRemain ?? "\u672A\u77E5")}` : String(balance?.message ?? "\u79EF\u5206\u8BFB\u53D6\u5931\u8D25"));
-      bits.push("\u8BE6\u7EC6\u914D\u7F6E\uFF1A\u8BBE\u7F6E \u2192 \u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0");
-      line.textContent = bits.join("\uFF5C");
+      const answer = await getJson(`${BASE5}/balance`);
+      balance.textContent = answer.ok === true ? `\u5269\u4F59\u79EF\u5206\uFF1A${String(answer.totalRemain ?? "\u672A\u77E5")}` : String(answer.message ?? "\u4F59\u989D\u8BFB\u53D6\u5931\u8D25");
     } catch (error) {
-      line.textContent = `\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
+      balance.textContent = `\u4F59\u989D\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
     }
   };
-  refresh.addEventListener("click", () => void load());
+  const loadModels = async () => {
+    setStatus("\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u2026");
+    try {
+      const [images, videos] = await Promise.all([getJson(`${BASE5}/models?type=image`), getJson(`${BASE5}/models?type=video`)]);
+      const list = [];
+      for (const row of Array.isArray(images.models) ? images.models : []) {
+        if (typeof row.name === "string") list.push({ type: "image", name: row.name });
+      }
+      for (const row of Array.isArray(videos.models) ? videos.models : []) {
+        if (typeof row.name === "string") list.push({ type: "video", name: row.name });
+      }
+      options = list;
+      modelSelect.textContent = "";
+      for (const option of options) {
+        const element = doc.createElement("option");
+        element.value = `${option.type}::${option.name}`;
+        element.textContent = `${option.type === "image" ? "\u{1F5BC} " : "\u{1F3AC} "}${option.name}`;
+        modelSelect.appendChild(element);
+      }
+      if (options.length > 0) await onModelChange();
+      else setStatus("\u6CA1\u6709\u53EF\u7528\u6A21\u578B");
+    } catch (error) {
+      setStatus(`\u8BFB\u53D6\u6A21\u578B\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+    }
+  };
+  const fillSelect = (label, values, current) => {
+    const wrapper = doc.createElement("label");
+    wrapper.style.display = "block";
+    const text = doc.createElement("span");
+    text.className = "line";
+    text.textContent = label;
+    const select = doc.createElement("select");
+    for (const value of values) {
+      const element = doc.createElement("option");
+      element.value = value.value;
+      element.textContent = value.text;
+      select.appendChild(element);
+    }
+    if (current !== void 0 && values.some((value) => value.value === String(current))) select.value = String(current);
+    wrapper.append(text, select);
+    params.appendChild(wrapper);
+    return select;
+  };
+  const updateEstimate = () => {
+    const option = selected();
+    if (!option) {
+      estimate.textContent = "\u9884\u8BA1\u6D88\u8017\uFF1A\u2014";
+      return;
+    }
+    if (option.type === "video") {
+      const duration = Number(panel.querySelector('select[data-param="duration"]')?.value ?? paramSpec.duration?.default ?? 5);
+      const price = PRICE_PER_SECOND[option.name.replace(/\s/g, "_")] ?? Object.entries(PRICE_PER_SECOND).find(([key]) => option.name.includes(key.replace(/_/g, " ")))?.[1];
+      estimate.textContent = price ? `\u9884\u8BA1\u6D88\u8017\uFF1A\u7EA6 ${duration * price} \u79EF\u5206\uFF08${duration}s \xD7 ${price}/s\uFF0C\u53C2\u8003\uFF09` : "\u9884\u8BA1\u6D88\u8017\uFF1A\u4EE5\u5B9E\u9645\u6263\u8D39\u4E3A\u51C6";
+    } else {
+      const count = Number(panel.querySelector('select[data-param="count"]')?.value ?? 1);
+      const price = PRICE_PER_IMAGE[option.name];
+      estimate.textContent = price ? `\u9884\u8BA1\u6D88\u8017\uFF1A\u7EA6 ${count * price} \u79EF\u5206\uFF08\u53C2\u8003\uFF09` : "\u9884\u8BA1\u6D88\u8017\uFF1A\u4EE5\u5B9E\u9645\u6263\u8D39\u4E3A\u51C6";
+    }
+  };
+  const onModelChange = async () => {
+    const option = selected();
+    params.textContent = "";
+    paramSpec = {};
+    updateEstimate();
+    if (!option) return;
+    setStatus("\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u53C2\u6570\u2026");
+    try {
+      const answer = await getJson(`${BASE5}/describe?name=${encodeURIComponent(option.name)}&type=${option.type}`);
+      if (answer.ok !== true) {
+        setStatus(String(answer.message ?? "\u8BFB\u53D6\u6A21\u578B\u53C2\u6570\u5931\u8D25"));
+        return;
+      }
+      const model = answer.model ?? {};
+      paramSpec.ratio = model.ratio;
+      paramSpec.resolution = model.resolution;
+      paramSpec.duration = model.duration;
+      if (option.type === "image") {
+        if (model.ratio?.options) {
+          const labels = model.ratio.option_labels ?? {};
+          fillSelect("\u6BD4\u4F8B", model.ratio.options.map((value) => ({ value: String(value), text: String(labels[String(value)] ?? String(value)) })), model.ratio.default);
+        }
+        if (model.resolution?.options) {
+          fillSelect("\u5206\u8FA8\u7387", model.resolution.options.map((value) => ({ value, text: value })), model.resolution.default);
+        }
+        fillSelect("\u6570\u91CF", [1, 2, 3, 4].map((n) => ({ value: String(n), text: String(n) + " \u5F20" })), "1");
+      } else {
+        if (model.duration) {
+          const min = Number(model.duration.min ?? 4);
+          const max = Number(model.duration.max ?? 10);
+          const values = [];
+          for (let d = min; d <= max; d += 1) values.push({ value: String(d), text: `${d} \u79D2` });
+          const select = fillSelect("\u65F6\u957F", values, model.duration.default ?? min);
+          select.dataset.param = "duration";
+          select.addEventListener("change", updateEstimate);
+        }
+        if (model.ratio?.options) {
+          const labels = model.ratio.option_labels ?? {};
+          fillSelect("\u753B\u5E45\u6BD4\u4F8B", model.ratio.options.map((value) => ({ value: String(value), text: String(labels[String(value)] ?? String(value)) })), model.ratio.default);
+        }
+        if (model.resolution?.options) {
+          fillSelect("\u5206\u8FA8\u7387", model.resolution.options.map((value) => ({ value, text: value })), model.resolution.default);
+        }
+      }
+      const countSelect = params.querySelector("select:last-of-type");
+      if (countSelect && option.type === "image") countSelect.addEventListener("change", updateEstimate);
+      setStatus("");
+      updateEstimate();
+    } catch (error) {
+      setStatus(`\u8BFB\u53D6\u6A21\u578B\u53C2\u6570\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+    }
+  };
+  const readParam = (index) => {
+    const selects = params.querySelectorAll("select");
+    const element = selects[index];
+    return element?.value;
+  };
+  const startGenerate = async () => {
+    if (busy) return;
+    const option = selected();
+    const text = prompt.value.trim();
+    if (!option) return setStatus("\u5148\u9009\u4E00\u4E2A\u6A21\u578B");
+    if (text === "") return setStatus("\u5148\u5199 prompt");
+    busy = true;
+    generate.disabled = true;
+    clearPoll();
+    result.textContent = "";
+    setStatus("\u63D0\u4EA4\u4E2D\u2026");
+    try {
+      const payload = { type: option.type, prompt: text, model: option.name, sessionKey: "xyq-panel" };
+      if (option.type === "image") {
+        const selects = params.querySelectorAll("select");
+        if (selects[0]) payload.ratio = selects[0].value;
+        if (selects[1]) payload.resolution = selects[1].value;
+        if (selects[2]) payload.count = Number(selects[2].value);
+      } else {
+        const selects = params.querySelectorAll("select");
+        let i = 0;
+        if (paramSpec.duration) payload.duration = Number(selects[i++].value);
+        if (paramSpec.ratio) payload.ratio = selects[i++].value;
+        if (paramSpec.resolution) payload.resolution = selects[i++].value;
+      }
+      const answer = await postJson2(`${BASE5}/generate`, payload);
+      if (answer.ok !== true) throw new Error(String(answer.message ?? answer.error ?? "\u63D0\u4EA4\u5931\u8D25"));
+      const threadId = String(answer.threadId ?? "");
+      const runId = String(answer.runId ?? "");
+      if (!threadId || !runId) throw new Error("\u6CA1\u6709\u62FF\u5230\u4EFB\u52A1 id");
+      setStatus("\u5DF2\u63D0\u4EA4\uFF0C\u7B49\u5F85\u51FA\u7247\u2026");
+      void refreshBalance();
+      const started = Date.now();
+      pollTimer = setInterval(() => {
+        void (async () => {
+          try {
+            const state = await getJson(`${BASE5}/result?threadId=${encodeURIComponent(threadId)}&runId=${encodeURIComponent(runId)}`);
+            if (state.ok !== true) throw new Error(String(state.message ?? "\u67E5\u8BE2\u5931\u8D25"));
+            const st = String(state.status ?? "");
+            if (st === "succeeded") {
+              clearPoll();
+              busy = false;
+              generate.disabled = false;
+              setStatus("\u5DF2\u5B8C\u6210");
+              for (const file of Array.isArray(state.files) ? state.files : []) {
+                const url = resolveHostUrl(`${BASE5}/file?path=${encodeURIComponent(file)}`);
+                if (/\.(png|jpe?g|webp)$/i.test(file)) {
+                  const img = doc.createElement("img");
+                  img.src = url;
+                  result.appendChild(img);
+                } else {
+                  const video = doc.createElement("video");
+                  video.src = url;
+                  video.controls = true;
+                  result.appendChild(video);
+                }
+              }
+              void refreshBalance();
+            } else if (st === "failed" || st === "canceled" || st === "interrupted") {
+              clearPoll();
+              busy = false;
+              generate.disabled = false;
+              setStatus(`\u4EFB\u52A1${st === "canceled" ? "\u88AB\u53D6\u6D88" : "\u5931\u8D25"}`);
+            } else if (Date.now() - started > 15 * 6e4) {
+              clearPoll();
+              busy = false;
+              generate.disabled = false;
+              setStatus("\u7B49\u5F85\u8D85\u65F6\uFF0C\u4EFB\u52A1\u53EF\u80FD\u8FD8\u5728\u8DD1\uFF1B\u7A0D\u540E\u5230\u7F51\u9875\u7AEF\u67E5\u770B");
+            } else {
+              setStatus(`\u751F\u6210\u4E2D\u2026\uFF08${Math.round((Date.now() - started) / 1e3)}s\uFF09`);
+            }
+          } catch (error) {
+            clearPoll();
+            busy = false;
+            generate.disabled = false;
+            setStatus(`\u67E5\u8BE2\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+          }
+        })();
+      }, 2500);
+    } catch (error) {
+      busy = false;
+      generate.disabled = false;
+      setStatus(`\u751F\u6210\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+    }
+  };
+  modelSelect.addEventListener("change", () => void onModelChange());
+  generate.addEventListener("click", () => void startGenerate());
+  refreshBtn.addEventListener("click", () => void refreshBalance());
   close.addEventListener("click", () => panel.classList.remove("open"));
+  gear.addEventListener("click", async () => {
+    overlay.classList.add("open");
+    keyInput.value = "";
+    try {
+      const answer = await getJson(`${BASE5}/config`);
+      const cfg = answer.config ?? {};
+      keyHint.textContent = cfg.accessKeySet === true ? `\u5DF2\u8BBE\u7F6E\uFF08${String(cfg.accessKeyHint ?? "")}\uFF09\uFF0C\u91CD\u65B0\u8F93\u5165\u4F1A\u8986\u76D6` : "\u5C1A\u672A\u8BBE\u7F6E";
+    } catch {
+    }
+  });
+  cancel.addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) overlay.classList.remove("open");
+  });
+  saveKey.addEventListener("click", async () => {
+    const value = keyInput.value.trim();
+    if (value === "") return;
+    try {
+      const answer = await postJson2(`${BASE5}/config`, { accessKey: value });
+      if (answer.ok !== true) throw new Error(String(answer.error ?? "\u4FDD\u5B58\u5931\u8D25"));
+      keyInput.value = "";
+      overlay.classList.remove("open");
+      setStatus("Access Key \u5DF2\u4FDD\u5B58");
+      await refreshBalance();
+    } catch (error) {
+      keyHint.textContent = `\u4FDD\u5B58\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
+    }
+  });
   const onClick = (event) => {
     if (!panel.classList.contains("open")) return;
     const target = event.target;
@@ -4007,11 +4338,14 @@ function mountXyqQuick() {
   return {
     open() {
       panel.classList.add("open");
-      void load();
+      void refreshBalance();
+      if (options.length === 0) void loadModels();
     },
     dispose() {
+      clearPoll();
       doc.removeEventListener("click", onClick);
       panel.remove();
+      overlay.remove();
       style.remove();
     }
   };

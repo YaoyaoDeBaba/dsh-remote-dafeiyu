@@ -12,9 +12,15 @@ export const XYQ_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/xyq/config'
 export const XYQ_STATUS_ROUTE = '/api/dsh-remote-dafeiyu/xyq/status'
 export const XYQ_BALANCE_ROUTE = '/api/dsh-remote-dafeiyu/xyq/balance'
 export const XYQ_MODELS_ROUTE = '/api/dsh-remote-dafeiyu/xyq/models'
+export const XYQ_DESCRIBE_ROUTE = '/api/dsh-remote-dafeiyu/xyq/describe'
+export const XYQ_GENERATE_ROUTE = '/api/dsh-remote-dafeiyu/xyq/generate'
+export const XYQ_RESULT_ROUTE = '/api/dsh-remote-dafeiyu/xyq/result'
+export const XYQ_FILE_ROUTE = '/api/dsh-remote-dafeiyu/xyq/file'
 
 export interface XyqRouteDeps {
   service: XyqService
+  /** 生成的产物目录（file 路由只允许读这下面）。 */
+  outDir: string
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }
 
@@ -105,6 +111,118 @@ export function xyqQueryHandler(kind: 'status' | 'balance' | 'models', deps: Xyq
     } catch (error) {
       deps.log('小云雀查询路由失败', { kind, message: String((error as Error)?.message ?? error).slice(0, 160) })
       json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
+    }
+  }
+}
+
+/** `GET /xyq/describe?name=&type=`：模型的比例/分辨率/时长等选项。 */
+export function xyqDescribeHandler(deps: XyqRouteDeps) {
+  return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) return json(response, 403, { ok: false, error: denied })
+    if (request.method !== 'GET' && request.method !== 'HEAD') return json(response, 405, { ok: false, error: '只支持 GET' })
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    const name = (url.searchParams.get('name') ?? '').trim()
+    const type = url.searchParams.get('type') === 'video' ? 'video' : 'image'
+    if (name === '') return json(response, 400, { ok: false, error: '缺少 name' })
+    try {
+      json(response, 200, await deps.service.describe(name, type))
+    } catch (error) {
+      json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
+    }
+  }
+}
+
+/** `POST /xyq/generate`：提交生图/生视频任务（不等待完成）。 */
+export function xyqGenerateHandler(deps: XyqRouteDeps) {
+  return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) return json(response, 403, { ok: false, error: denied })
+    if (request.method !== 'POST') return json(response, 405, { ok: false, error: '只支持 POST' })
+    if (String(request.headers['x-drc-pair'] ?? '') === '') return json(response, 403, { ok: false, error: 'missing x-drc-pair' })
+    try {
+      const body = JSON.parse(await readBody(request)) as Record<string, unknown>
+      const type = body.type === 'video' ? 'video' : 'image'
+      const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
+      const model = typeof body.model === 'string' ? body.model.trim() : ''
+      if (prompt === '' || model === '') return json(response, 400, { ok: false, error: 'prompt 与 model 必填' })
+      try {
+        const { mkdirSync } = await import('node:fs')
+        mkdirSync(deps.outDir, { recursive: true })
+      } catch {
+        /* 目录删了就删了，下载时会报错 */
+      }
+      const sessionKey = typeof body.sessionKey === 'string' && body.sessionKey !== '' ? body.sessionKey : 'xyq-panel'
+      const result =
+        type === 'video'
+          ? await deps.service.startVideo({
+              prompt,
+              model,
+              sessionKey,
+              ...(typeof body.duration === 'number' ? { duration: body.duration } : {}),
+              ...(typeof body.ratio === 'string' ? { ratio: body.ratio } : {}),
+              ...(typeof body.resolution === 'string' ? { resolution: body.resolution } : {}),
+            })
+          : await deps.service.startImage({
+              prompt,
+              model,
+              sessionKey,
+              ...(typeof body.ratio === 'string' ? { ratio: body.ratio } : {}),
+              ...(typeof body.resolution === 'string' ? { resolution: body.resolution } : {}),
+              ...(typeof body.count === 'number' ? { count: body.count } : {}),
+            })
+      json(response, result.ok ? 200 : 502, result)
+    } catch (error) {
+      json(response, 400, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
+    }
+  }
+}
+
+/** `GET /xyq/result?threadId=&runId=`：查一次任务状态。 */
+export function xyqResultHandler(deps: XyqRouteDeps) {
+  return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) return json(response, 403, { ok: false, error: denied })
+    if (request.method !== 'GET' && request.method !== 'HEAD') return json(response, 405, { ok: false, error: '只支持 GET' })
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    const threadId = (url.searchParams.get('threadId') ?? '').trim()
+    const runId = (url.searchParams.get('runId') ?? '').trim()
+    if (threadId === '' || runId === '') return json(response, 400, { ok: false, error: '缺少 threadId / runId' })
+    try {
+      json(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir))
+    } catch (error) {
+      json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
+    }
+  }
+}
+
+/** `GET /xyq/file?path=`：把生成的文件读给面板预览（只允许 outDir 下的文件）。 */
+export function xyqFileHandler(deps: XyqRouteDeps) {
+  return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+    applyCors(request, response)
+    const denied = rejected(request)
+    if (denied) return json(response, 403, { ok: false, error: denied })
+    if (request.method !== 'GET' && request.method !== 'HEAD') return json(response, 405, { ok: false, error: '只支持 GET' })
+    const url = new URL(request.url ?? '/', 'http://localhost')
+    const target = (url.searchParams.get('path') ?? '').trim()
+    if (target === '') return json(response, 400, { ok: false, error: '缺少 path' })
+    const path = await import('node:path')
+    const fs = await import('node:fs')
+    const resolved = path.resolve(target)
+    const root = path.resolve(deps.outDir)
+    if (!resolved.startsWith(root + path.sep)) return json(response, 403, { ok: false, error: 'path-escape' })
+    try {
+      const data = fs.readFileSync(resolved)
+      const ext = path.extname(resolved).toLowerCase()
+      const mime = ext === '.mp4' ? 'video/mp4' : ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'application/octet-stream'
+      response.writeHead(200, { 'Content-Type': mime, 'Content-Length': data.byteLength })
+      if (request.method === 'HEAD') response.end()
+      else response.end(data)
+    } catch {
+      json(response, 404, { ok: false, error: '文件不存在' })
     }
   }
 }

@@ -226,6 +226,107 @@ export function createXyqService(deps: XyqServiceDeps) {
       }
     },
 
+    /** UI 用：只提交生图任务，返回 thread/run（结果由 queryOnce 轮询）。 */
+    async startImage(input: {
+      prompt: string
+      model: string
+      images?: string[]
+      ratio?: string
+      resolution?: string
+      count?: number
+      sessionKey?: string
+    }): Promise<{ ok: boolean; threadId?: string; runId?: string; webLink?: string; message?: string }> {
+      const config = readConfig()
+      const budget = budgetOf(input.sessionKey ?? 'default')
+      if (config.budget.images > 0 && budget.images >= config.budget.images) {
+        return { ok: false, message: `本会话的生图额度已用完（上限 ${config.budget.images} 张）` }
+      }
+      if (input.model.trim() === '') return { ok: false, message: '没指定图片模型' }
+      const args = ['generate-image', '--prompt', input.prompt, '--model', input.model]
+      for (const image of input.images ?? []) if (image !== '') args.push('--image', image)
+      if (typeof input.ratio === 'string' && input.ratio !== '') args.push('--ratio', input.ratio)
+      if (typeof input.resolution === 'string' && input.resolution !== '') args.push('--resolution', input.resolution)
+      if (typeof input.count === 'number' && input.count > 0) args.push('--generate-image-count', String(Math.round(input.count)))
+      const submitted = await call(args, 120_000)
+      if (submitted.message !== undefined) return { ok: false, message: submitted.message }
+      const json = submitted.json ?? {}
+      const threadId = typeof json.thread_id === 'string' ? json.thread_id : ''
+      const runId = typeof json.run_id === 'string' ? json.run_id : ''
+      if (threadId === '' || runId === '') return { ok: false, message: '小云雀没有返回 thread_id / run_id' }
+      budget.images += 1
+      return { ok: true, threadId, runId, ...(typeof json.web_thread_link === 'string' ? { webLink: json.web_thread_link } : {}) }
+    },
+
+    /** UI 用：只提交生视频任务。 */
+    async startVideo(input: {
+      prompt: string
+      model: string
+      duration?: number
+      ratio?: string
+      resolution?: string
+      images?: string[]
+      sessionKey?: string
+    }): Promise<{ ok: boolean; threadId?: string; runId?: string; webLink?: string; message?: string }> {
+      const config = readConfig()
+      const budget = budgetOf(input.sessionKey ?? 'default')
+      if (config.budget.videos > 0 && budget.videos >= config.budget.videos) {
+        return { ok: false, message: `本会话的视频额度已用完（上限 ${config.budget.videos} 条）` }
+      }
+      if (input.model.trim() === '') return { ok: false, message: '没指定视频模型' }
+      const duration = Math.min(config.budget.maxVideoSeconds, Math.max(4, Math.round(input.duration ?? config.defaultVideoDurationSec)))
+      const args = ['generate-video', '--model', input.model, '--prompt', input.prompt, '--duration', String(duration)]
+      for (const image of input.images ?? []) if (image !== '') args.push('--image', image)
+      if (typeof input.ratio === 'string' && input.ratio !== '' && input.ratio !== 'adaptive') args.push('--ratio', input.ratio)
+      if (typeof input.resolution === 'string' && input.resolution !== '') args.push('--resolution', input.resolution)
+      args.push('--task-type', 'reference')
+      const submitted = await call(args, 180_000)
+      if (submitted.message !== undefined) return { ok: false, message: submitted.message }
+      const json = submitted.json ?? {}
+      const threadId = typeof json.thread_id === 'string' ? json.thread_id : ''
+      const runId = typeof json.run_id === 'string' ? json.run_id : ''
+      if (threadId === '' || runId === '') return { ok: false, message: '小云雀没有返回 thread_id / run_id' }
+      budget.videos += 1
+      return { ok: true, threadId, runId, ...(typeof json.web_thread_link === 'string' ? { webLink: json.web_thread_link } : {}) }
+    },
+
+    /** UI 用：查一次任务状态（不轮询、不阻塞）。 */
+    async queryOnce(threadId: string, runId: string, outDir: string): Promise<{
+      ok: boolean
+      status?: string
+      files?: string[]
+      message?: string
+    }> {
+      const answered = await call(
+        ['query-result', '--thread-id', threadId, '--run-id', runId, '--download-dir', outDir],
+        120_000,
+      )
+      if (answered.message !== undefined) return { ok: false, message: answered.message }
+      const json = answered.json ?? {}
+      const status = typeof json.status === 'string' ? json.status : 'unknown'
+      if (typeof json.error_message === 'string' && json.error_message !== '') {
+        return { ok: false, status, message: `小云雀任务失败：${json.error_message.slice(0, 200)}` }
+      }
+      if (status !== 'succeeded') return { ok: true, status }
+      const files: string[] = []
+      for (const key of ['videos', 'images'] as const) {
+        const list = Array.isArray(json[key]) ? (json[key] as Array<Record<string, unknown>>) : []
+        for (const item of list) {
+          if (typeof item.output_path === 'string' && item.output_path !== '') files.push(item.output_path)
+        }
+      }
+      return { ok: true, status, files }
+    },
+
+    /** 模型详情（比例/分辨率/时长等），给设置面板的下拉框用。 */
+    async describe(name: string, kind: 'video' | 'image'): Promise<{ ok: boolean; model?: Record<string, unknown>; message?: string }> {
+      const answered = await call(['model', 'describe', name, '--type', kind], 60_000)
+      if (answered.message !== undefined) return { ok: false, message: answered.message }
+      const json = answered.json ?? {}
+      const model = json.model && typeof json.model === 'object' ? (json.model as Record<string, unknown>) : undefined
+      if (model === undefined) return { ok: false, message: '没有拿到模型详情' }
+      return { ok: true, model }
+    },
+
     async generateVideo(input: {
       prompt: string
       model?: string
