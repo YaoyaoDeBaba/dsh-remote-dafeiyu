@@ -54,36 +54,36 @@ export function mountXyqQuick(): XyqQuickHandle {
   style.id = styleId
   style.textContent = `
 #dafeiyu-xyq-quick { position: fixed; right: 24px; top: 240px; width: 340px; max-height: 78vh; overflow: auto; padding: 12px;
-  border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
-  background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee);
+  border-radius: 12px; border: 1px solid var(#1f3b63);
+  background: var(#0d1117); color: var(#7fb0ff);
   box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 13px; z-index: 2147483001; display: none; }
 #dafeiyu-xyq-quick.open { display: block; }
 #dafeiyu-xyq-quick .head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 600; }
 #dafeiyu-xyq-quick .head .grow { flex: 1; }
 #dafeiyu-xyq-quick .head button { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 14px; }
 #dafeiyu-xyq-quick textarea { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; padding: 8px;
-  border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; font: inherit; }
+  border-radius: 8px; border: 1px solid var(#1f3b63); background: transparent; color: inherit; font: inherit; }
 #dafeiyu-xyq-quick select, #dafeiyu-xyq-quick input { width: 100%; box-sizing: border-box; padding: 6px 8px; margin-top: 6px;
-  border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; font: inherit; }
+  border-radius: 8px; border: 1px solid var(#1f3b63); background: transparent; color: inherit; font: inherit; }
 #dafeiyu-xyq-quick .params { display: flex; flex-direction: column; gap: 0; margin-top: 6px; }
-#dafeiyu-xyq-quick .line { color: var(--dsw-alias-label-secondary, #aaa); margin-top: 6px; font-size: 12px; }
+#dafeiyu-xyq-quick .line { color: var(#5f8fe0); margin-top: 6px; font-size: 12px; }
 #dafeiyu-xyq-quick .actions { display: flex; gap: 8px; margin-top: 10px; }
 #dafeiyu-xyq-quick .actions button { flex: 1; padding: 7px 10px; border-radius: 8px; border: 0; cursor: pointer;
   background: #4b7bec; color: #fff; font-size: 13px; }
-#dafeiyu-xyq-quick .actions button.ghost { background: #2a2a40; color: #cfcfe0; }
+#dafeiyu-xyq-quick .actions button.ghost { background: #13233f; color: #8ab4ff; }
 #dafeiyu-xyq-quick .result { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 #dafeiyu-xyq-quick .result img, #dafeiyu-xyq-quick .result video { max-width: 100%; border-radius: 8px; }
-#dafeiyu-xyq-quick .status { margin-top: 6px; font-size: 12px; color: var(--dsw-alias-label-tertiary, #888); }
+#dafeiyu-xyq-quick .status { margin-top: 6px; font-size: 12px; color: var(#4b7bec); }
 #dafeiyu-xyq-settings { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center;
   justify-content: center; z-index: 2147483002; }
 #dafeiyu-xyq-settings.open { display: flex; }
-#dafeiyu-xyq-settings .box { width: 320px; padding: 14px; border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
-  background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee); font-size: 13px; }
+#dafeiyu-xyq-settings .box { width: 320px; padding: 14px; border-radius: 12px; border: 1px solid var(#1f3b63);
+  background: var(#0d1117); color: var(#7fb0ff); font-size: 13px; }
 #dafeiyu-xyq-settings .box .title { font-weight: 600; margin-bottom: 8px; }
 #dafeiyu-xyq-settings .box input { width: 100%; box-sizing: border-box; padding: 6px 8px; margin-top: 6px; border-radius: 8px;
-  border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; font: inherit; }
+  border: 1px solid var(#1f3b63); background: transparent; color: inherit; font: inherit; }
 #dafeiyu-xyq-settings .box .row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
-#dafeiyu-xyq-settings .box button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #333);
+#dafeiyu-xyq-settings .box button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(#1f3b63);
   background: transparent; color: inherit; cursor: pointer; font-size: 13px; }
 `
   doc.head.appendChild(style)
