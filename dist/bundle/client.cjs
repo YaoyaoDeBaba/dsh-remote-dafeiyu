@@ -2988,7 +2988,7 @@ function buildAvatarPanel(deps) {
       style: {
         width: "100%",
         maxWidth: "520px",
-        aspectRatio: `${current.cellWidth} / ${current.cellHeight}`,
+        aspectRatio: "3 / 4",
         backgroundImage: `url(${BASE3}/sheet?id=${encodeURIComponent(current.id)}${version > 0 ? `&v=${version}` : ""})`,
         backgroundSize: `${current.cols * 100}% ${current.rows * 100}%`,
         backgroundRepeat: "no-repeat",
@@ -3490,7 +3490,7 @@ function mountAvatarWidget(deps) {
 #dafeiyu-avatar-widget { position: fixed; left: 24px; top: 120px; width: ${WIDGET_WIDTH}px; z-index: 2147482999;
   display: flex; flex-direction: column; align-items: center; gap: 2px; }
 #dafeiyu-avatar-widget[hidden] { display: none !important; }
-#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: var(--dafeiyu-avatar-ratio, 354 / 480);
+#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: 3 / 4;
   border-radius: 12px; background-repeat: no-repeat; cursor: grab; touch-action: none;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
 #dafeiyu-avatar-widget .sprite.dragging { cursor: grabbing; }
@@ -3627,7 +3627,6 @@ function mountAvatarWidget(deps) {
     if (current?.id !== state.id) {
       current = state;
       frame = 0;
-      wrap.style.setProperty("--dafeiyu-avatar-ratio", `${state.cellWidth} / ${state.cellHeight}`);
       sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
       sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
       if (!placed) restoreOrDefault();
@@ -3664,7 +3663,6 @@ function mountAvatarWidget(deps) {
     if (current?.id !== state.id) {
       current = state;
       frame = 0;
-      wrap.style.setProperty("--dafeiyu-avatar-ratio", `${state.cellWidth} / ${state.cellHeight}`);
       sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
       sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
       if (!placed) restoreOrDefault();

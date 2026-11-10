@@ -89,7 +89,7 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
 #dafeiyu-avatar-widget { position: fixed; left: 24px; top: 120px; width: ${WIDGET_WIDTH}px; z-index: 2147482999;
   display: flex; flex-direction: column; align-items: center; gap: 2px; }
 #dafeiyu-avatar-widget[hidden] { display: none !important; }
-#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: var(--dafeiyu-avatar-ratio, 354 / 480);
+#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: 3 / 4;
   border-radius: 12px; background-repeat: no-repeat; cursor: grab; touch-action: none;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
 #dafeiyu-avatar-widget .sprite.dragging { cursor: grabbing; }
@@ -245,7 +245,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     if (current?.id !== state.id) {
       current = state
       frame = 0
-      wrap.style.setProperty('--dafeiyu-avatar-ratio', `${state.cellWidth} / ${state.cellHeight}`)
       sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}`)})`
       sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`
       if (!placed) restoreOrDefault()
@@ -287,7 +286,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
       // 首次拿到素材时由 apply 兜底；后续动作切换统一走 playClip
       current = state
       frame = 0
-      wrap.style.setProperty('--dafeiyu-avatar-ratio', `${state.cellWidth} / ${state.cellHeight}`)
       sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}`)})`
       sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`
       if (!placed) restoreOrDefault()

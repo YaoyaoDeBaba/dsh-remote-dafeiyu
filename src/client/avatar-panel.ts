@@ -106,7 +106,7 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
           style: {
             width: '100%',
             maxWidth: '520px',
-            aspectRatio: `${current.cellWidth} / ${current.cellHeight}`,
+            aspectRatio: '3 / 4',
             backgroundImage: `url(${BASE}/sheet?id=${encodeURIComponent(current.id)}${version > 0 ? `&v=${version}` : ''})`,
             backgroundSize: `${current.cols * 100}% ${current.rows * 100}%`,
             backgroundRepeat: 'no-repeat',
