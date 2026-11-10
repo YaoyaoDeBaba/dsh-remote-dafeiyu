@@ -98,6 +98,7 @@ export function avatarManifestHandler(dir: string) {
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (!readonly(request)) return json(response, 405, { ok: false, error: '只支持 GET' })
     const manifest = loadAvatarManifest(dir)
+    response.setHeader('Cache-Control', 'no-store')
     if (manifest === undefined) return json(response, 200, { ok: true, manifest: null, message: '虚拟形象素材未安装' })
     json(response, 200, { ok: true, manifest })
   }

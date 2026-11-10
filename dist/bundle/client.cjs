@@ -2938,15 +2938,17 @@ function buildAvatarPanel(deps) {
     const [active, setActive] = useState("idle");
     const [playing, setPlaying] = useState(true);
     const [status, setStatus] = useState("\u6B63\u5728\u8BFB\u53D6\u7D20\u6750\u2026");
+    const [version, setVersion] = useState(0);
     useEffect?.(() => {
       let cancelled = false;
       void (async () => {
         try {
-          const result = await callJson(`${BASE3}/manifest`, void 0);
+          const result = await callJson(`${BASE3}/manifest?t=${Date.now()}`, void 0);
           const manifest = result.manifest;
           if (cancelled) return;
           if (result.ok === true && manifest && Array.isArray(manifest.states) && manifest.states.length > 0) {
             setStates(manifest.states);
+            setVersion(typeof manifest.version === "number" ? manifest.version : 0);
             setStatus(`\u5171 ${manifest.states.length} \u4E2A\u52A8\u4F5C`);
             if (!manifest.states.some((state) => state.id === "idle")) setActive(manifest.states[0].id);
           } else {
@@ -2987,7 +2989,7 @@ function buildAvatarPanel(deps) {
         width: "100%",
         maxWidth: "520px",
         aspectRatio: `${current.cellWidth} / ${current.cellHeight}`,
-        backgroundImage: `url(${BASE3}/sheet?id=${encodeURIComponent(current.id)})`,
+        backgroundImage: `url(${BASE3}/sheet?id=${encodeURIComponent(current.id)}${version > 0 ? `&v=${version}` : ""})`,
         backgroundSize: `${current.cols * 100}% ${current.rows * 100}%`,
         backgroundRepeat: "no-repeat",
         borderRadius: "12px",
@@ -3531,7 +3533,8 @@ function mountAvatarWidget(deps) {
   };
   const assetStatus = /* @__PURE__ */ new Map();
   const assetImages = /* @__PURE__ */ new Map();
-  const assetUrl = (state) => resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`);
+  let manifestVersion = 0;
+  const assetUrl = (state) => resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}${manifestVersion > 0 ? `&v=${manifestVersion}` : ""}`);
   const ready = (state) => assetStatus.get(state.file) === "ready";
   const ensureAsset = (state, onReady) => {
     const known = assetStatus.get(state.file);
@@ -3716,10 +3719,14 @@ function mountAvatarWidget(deps) {
   };
   void (async () => {
     try {
-      const response = await fetch(resolveHostUrl(`${BASE4}/manifest`), { signal: AbortSignal.timeout(8e3) });
+      const response = await fetch(resolveHostUrl(`${BASE4}/manifest?t=${Date.now()}`), {
+        signal: AbortSignal.timeout(8e3),
+        cache: "no-store"
+      });
       const answer = await response.json();
       if (answer.ok === true && answer.manifest && Array.isArray(answer.manifest.states) && answer.manifest.states.length > 0) {
         states = answer.manifest.states;
+        manifestVersion = typeof answer.manifest.version === "number" ? answer.manifest.version : 0;
         for (const state of states) ensureAsset(state);
         const idle = states.find((state) => state.id === "idle") ?? states[0];
         if (idle) {

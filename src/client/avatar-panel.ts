@@ -50,16 +50,18 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
     const [active, setActive] = useState<string>('idle')
     const [playing, setPlaying] = useState<boolean>(true)
     const [status, setStatus] = useState<string>('正在读取素材…')
+    const [version, setVersion] = useState<number>(0)
 
     useEffect?.(() => {
       let cancelled = false
       void (async () => {
         try {
-          const result = await callJson(`${BASE}/manifest`, undefined)
-          const manifest = result.manifest as { states?: AvatarStateView[] } | null | undefined
+          const result = await callJson(`${BASE}/manifest?t=${Date.now()}`, undefined)
+          const manifest = result.manifest as { version?: number; states?: AvatarStateView[] } | null | undefined
           if (cancelled) return
           if (result.ok === true && manifest && Array.isArray(manifest.states) && manifest.states.length > 0) {
             setStates(manifest.states)
+            setVersion(typeof manifest.version === 'number' ? manifest.version : 0)
             setStatus(`共 ${manifest.states.length} 个动作`)
             if (!manifest.states.some((state) => state.id === 'idle')) setActive(manifest.states[0]!.id)
           } else {
@@ -105,7 +107,7 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
             width: '100%',
             maxWidth: '520px',
             aspectRatio: `${current.cellWidth} / ${current.cellHeight}`,
-            backgroundImage: `url(${BASE}/sheet?id=${encodeURIComponent(current.id)})`,
+            backgroundImage: `url(${BASE}/sheet?id=${encodeURIComponent(current.id)}${version > 0 ? `&v=${version}` : ''})`,
             backgroundSize: `${current.cols * 100}% ${current.rows * 100}%`,
             backgroundRepeat: 'no-repeat',
             borderRadius: '12px',

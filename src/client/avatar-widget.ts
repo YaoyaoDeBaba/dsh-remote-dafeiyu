@@ -139,7 +139,9 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   // 提前把所有 sheet 拉到内存并 decode，切的时候只换背景，不会闪。
   const assetStatus = new Map<string, 'loading' | 'ready' | 'failed'>()
   const assetImages = new Map<string, HTMLImageElement>()
-  const assetUrl = (state: AvatarStateView): string => resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}`)
+  let manifestVersion = 0
+  const assetUrl = (state: AvatarStateView): string =>
+    resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}${manifestVersion > 0 ? `&v=${manifestVersion}` : ''}`)
   const ready = (state: AvatarStateView): boolean => assetStatus.get(state.file) === 'ready'
 
   const ensureAsset = (state: AvatarStateView, onReady?: () => void): void => {
@@ -345,10 +347,17 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
 
   void (async () => {
     try {
-      const response = await fetch(resolveHostUrl(`${BASE}/manifest`), { signal: AbortSignal.timeout(8000) })
-      const answer = (await response.json()) as { ok?: boolean; manifest?: { states?: AvatarStateView[] } | null }
+      const response = await fetch(resolveHostUrl(`${BASE}/manifest?t=${Date.now()}`), {
+        signal: AbortSignal.timeout(8000),
+        cache: 'no-store',
+      })
+      const answer = (await response.json()) as {
+        ok?: boolean
+        manifest?: { version?: number; states?: AvatarStateView[] } | null
+      }
       if (answer.ok === true && answer.manifest && Array.isArray(answer.manifest.states) && answer.manifest.states.length > 0) {
         states = answer.manifest.states
+        manifestVersion = typeof answer.manifest.version === 'number' ? answer.manifest.version : 0
         for (const state of states) ensureAsset(state)
         const idle = states.find((state) => state.id === 'idle') ?? states[0]
         if (idle) {

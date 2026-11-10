@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.18" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.19" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32208,6 +32208,7 @@ function avatarManifestHandler(dir) {
     if (denied) return json5(response, 403, { ok: false, error: denied });
     if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const manifest = loadAvatarManifest(dir);
+    response.setHeader("Cache-Control", "no-store");
     if (manifest === void 0) return json5(response, 200, { ok: true, manifest: null, message: "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5" });
     json5(response, 200, { ok: true, manifest });
   };
