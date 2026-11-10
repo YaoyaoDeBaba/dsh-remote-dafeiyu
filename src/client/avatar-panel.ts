@@ -24,6 +24,8 @@ export interface AvatarStateView {
   cellWidth: number
   cellHeight: number
   file: string
+  anchorX?: number
+  anchorY?: number
 }
 
 const BASE = '/api/dsh-remote-dafeiyu/avatar'
@@ -51,6 +53,7 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
     const [playing, setPlaying] = useState<boolean>(true)
     const [status, setStatus] = useState<string>('正在读取素材…')
     const [version, setVersion] = useState<number>(0)
+    const [showAnchor, setShowAnchor] = useState<boolean>(true)
 
     useEffect?.(() => {
       let cancelled = false
@@ -101,9 +104,46 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
       return h('p', { style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' }, children: status })
     }
 
+    const anchorX = typeof current?.anchorX === 'number' ? current.anchorX : 0.5
+    const anchorY = typeof current?.anchorY === 'number' ? current.anchorY : 0.955
+    const overlay = showAnchor
+      ? [
+          h('div', {
+            key: 'baseline',
+            style: {
+              position: 'absolute', left: 0, right: 0, top: `${anchorY * 100}%`, height: '2px',
+              background: 'rgba(255,64,64,.9)', transform: 'translateY(-50%)', pointerEvents: 'none',
+            },
+          }),
+          h('div', {
+            key: 'center',
+            style: {
+              position: 'absolute', top: 0, bottom: 0, left: `${anchorX * 100}%`, width: '2px',
+              background: 'rgba(64,200,255,.9)', transform: 'translateX(-50%)', pointerEvents: 'none',
+            },
+          }),
+          h('div', {
+            key: 'dot',
+            style: {
+              position: 'absolute', left: `${anchorX * 100}%`, top: `${anchorY * 100}%`, width: '10px', height: '10px',
+              borderRadius: '50%', border: '2px solid #ffd166', background: 'rgba(0,0,0,.35)',
+              transform: 'translate(-50%,-50%)', pointerEvents: 'none',
+            },
+          }),
+          h('div', {
+            key: 'label',
+            style: {
+              position: 'absolute', left: '6px', top: '6px', fontSize: '11px', padding: '2px 6px',
+              borderRadius: '6px', background: 'rgba(0,0,0,.55)', color: '#fff', pointerEvents: 'none',
+            },
+            children: `锚点 x=${anchorX.toFixed(3)} y=${anchorY.toFixed(3)}`,
+          }),
+        ]
+      : []
     const sprite = current
       ? h('div', {
           style: {
+            position: 'relative',
             width: '100%',
             maxWidth: '520px',
             aspectRatio: '3 / 4',
@@ -115,6 +155,7 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
             backgroundPosition: '0% 0%',
           },
           id: 'dafeiyu-avatar-sprite',
+          children: overlay,
         })
       : null
 
@@ -142,7 +183,13 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
           style: { display: 'flex', gap: '8px', alignItems: 'center' },
           children: [
             h('button', { type: 'button', style: buttonStyle, onClick: () => setPlaying(!playing), children: playing ? '暂停' : '播放' }),
-            h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' }, children: current ? `${current.frames} 帧 · ${FPS}fps · ${playing ? '循环中' : '已暂停'}` : '' }),
+            h('button', {
+              type: 'button',
+              style: showAnchor ? { ...buttonStyle, fontWeight: 600 } : buttonStyle,
+              onClick: () => setShowAnchor(!showAnchor),
+              children: showAnchor ? '隐藏锚点' : '显示锚点',
+            }),
+            h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' }, children: current ? `${current.frames} 帧 · ${FPS}fps · ${playing ? '循环中' : '已暂停'} · 红线=脚底基线 蓝线=中心` : '' }),
           ],
         }),
       ],

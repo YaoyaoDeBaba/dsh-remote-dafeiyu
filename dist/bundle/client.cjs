@@ -2945,6 +2945,7 @@ function buildAvatarPanel(deps) {
     const [playing, setPlaying] = useState(true);
     const [status, setStatus] = useState("\u6B63\u5728\u8BFB\u53D6\u7D20\u6750\u2026");
     const [version, setVersion] = useState(0);
+    const [showAnchor, setShowAnchor] = useState(true);
     useEffect?.(() => {
       let cancelled = false;
       void (async () => {
@@ -2990,8 +2991,69 @@ function buildAvatarPanel(deps) {
     if (states.length === 0) {
       return h("p", { style: { margin: 0, fontSize: "13px", color: "var(--dsw-alias-label-tertiary)" }, children: status });
     }
+    const anchorX = typeof current?.anchorX === "number" ? current.anchorX : 0.5;
+    const anchorY = typeof current?.anchorY === "number" ? current.anchorY : 0.955;
+    const overlay = showAnchor ? [
+      h("div", {
+        key: "baseline",
+        style: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: `${anchorY * 100}%`,
+          height: "2px",
+          background: "rgba(255,64,64,.9)",
+          transform: "translateY(-50%)",
+          pointerEvents: "none"
+        }
+      }),
+      h("div", {
+        key: "center",
+        style: {
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: `${anchorX * 100}%`,
+          width: "2px",
+          background: "rgba(64,200,255,.9)",
+          transform: "translateX(-50%)",
+          pointerEvents: "none"
+        }
+      }),
+      h("div", {
+        key: "dot",
+        style: {
+          position: "absolute",
+          left: `${anchorX * 100}%`,
+          top: `${anchorY * 100}%`,
+          width: "10px",
+          height: "10px",
+          borderRadius: "50%",
+          border: "2px solid #ffd166",
+          background: "rgba(0,0,0,.35)",
+          transform: "translate(-50%,-50%)",
+          pointerEvents: "none"
+        }
+      }),
+      h("div", {
+        key: "label",
+        style: {
+          position: "absolute",
+          left: "6px",
+          top: "6px",
+          fontSize: "11px",
+          padding: "2px 6px",
+          borderRadius: "6px",
+          background: "rgba(0,0,0,.55)",
+          color: "#fff",
+          pointerEvents: "none"
+        },
+        children: `\u951A\u70B9 x=${anchorX.toFixed(3)} y=${anchorY.toFixed(3)}`
+      })
+    ] : [];
     const sprite = current ? h("div", {
       style: {
+        position: "relative",
         width: "100%",
         maxWidth: "520px",
         aspectRatio: "3 / 4",
@@ -3002,7 +3064,8 @@ function buildAvatarPanel(deps) {
         border: "1px solid var(--dsw-alias-border-l2)",
         backgroundPosition: "0% 0%"
       },
-      id: "dafeiyu-avatar-sprite"
+      id: "dafeiyu-avatar-sprite",
+      children: overlay
     }) : null;
     return h("div", {
       style: { display: "flex", flexDirection: "column", gap: "12px" },
@@ -3028,7 +3091,13 @@ function buildAvatarPanel(deps) {
           style: { display: "flex", gap: "8px", alignItems: "center" },
           children: [
             h("button", { type: "button", style: buttonStyle5, onClick: () => setPlaying(!playing), children: playing ? "\u6682\u505C" : "\u64AD\u653E" }),
-            h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: current ? `${current.frames} \u5E27 \xB7 ${FPS}fps \xB7 ${playing ? "\u5FAA\u73AF\u4E2D" : "\u5DF2\u6682\u505C"}` : "" })
+            h("button", {
+              type: "button",
+              style: showAnchor ? { ...buttonStyle5, fontWeight: 600 } : buttonStyle5,
+              onClick: () => setShowAnchor(!showAnchor),
+              children: showAnchor ? "\u9690\u85CF\u951A\u70B9" : "\u663E\u793A\u951A\u70B9"
+            }),
+            h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: current ? `${current.frames} \u5E27 \xB7 ${FPS}fps \xB7 ${playing ? "\u5FAA\u73AF\u4E2D" : "\u5DF2\u6682\u505C"} \xB7 \u7EA2\u7EBF=\u811A\u5E95\u57FA\u7EBF \u84DD\u7EBF=\u4E2D\u5FC3` : "" })
           ]
         })
       ]
