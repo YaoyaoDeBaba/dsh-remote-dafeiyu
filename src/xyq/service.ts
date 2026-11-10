@@ -103,6 +103,8 @@ export function createXyqService(deps: XyqServiceDeps) {
     const combined = `${result.stdout}\n${result.stderr}`
     const auth = authMessage(combined)
     if (auth !== undefined) return { result, message: auth }
+    const modelMissing = combined.match(/未找到可用模型[^\n]*/)
+    if (modelMissing) return { result, message: modelMissing[0].trim() }
     const json = parseJson(result.stdout) as Json | undefined
     if (result.timedOut) return { result, message: `小云雀命令超时（${Math.round(timeoutMs / 1000)} 秒）` }
     if (json === undefined) {
@@ -177,8 +179,12 @@ export function createXyqService(deps: XyqServiceDeps) {
       return {
         ok: true,
         models: list
-          .filter((row) => typeof row.key === 'string' && typeof row.name === 'string')
-          .map((row) => ({ key: String(row.key), name: String(row.name) })),
+          .filter((row) => typeof row.name === 'string' && String(row.name).trim() !== '')
+          .map((row) => ({
+            // 生图模型只有 name（CLI 就用完整名称）；生视频模型有 key（提交要用 key）。
+            key: typeof row.key === 'string' && row.key !== '' ? String(row.key) : String(row.name),
+            name: String(row.name),
+          })),
       }
     },
 

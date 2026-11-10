@@ -22,6 +22,8 @@ const PRICE_PER_IMAGE: Record<string, number> = {
 
 interface ModelOption {
   type: 'image' | 'video'
+  /** 提交/查询用的标识：生图=完整名称；生视频=模型 key。 */
+  key: string
   name: string
 }
 
@@ -172,7 +174,7 @@ export function mountXyqQuick(): XyqQuickHandle {
 
   const selected = (): ModelOption | undefined => {
     const value = modelSelect.value
-    return options.find((entry) => `${entry.type}::${entry.name}` === value)
+    return options.find((entry) => `${entry.type}::${entry.key}` === value)
   }
 
   const refreshBalance = async (): Promise<void> => {
@@ -190,16 +192,17 @@ export function mountXyqQuick(): XyqQuickHandle {
       const [images, videos] = await Promise.all([getJson(`${BASE}/models?type=image`), getJson(`${BASE}/models?type=video`)])
       const list: ModelOption[] = []
       for (const row of Array.isArray(images.models) ? (images.models as Array<Record<string, unknown>>) : []) {
-        if (typeof row.name === 'string') list.push({ type: 'image', name: row.name })
+        if (typeof row.name === 'string') list.push({ type: 'image', key: row.name, name: row.name })
       }
       for (const row of Array.isArray(videos.models) ? (videos.models as Array<Record<string, unknown>>) : []) {
-        if (typeof row.name === 'string') list.push({ type: 'video', name: row.name })
+        if (typeof row.name !== 'string') continue
+        list.push({ type: 'video', key: typeof row.key === 'string' && row.key !== '' ? row.key : row.name, name: row.name })
       }
       options = list
       modelSelect.textContent = ''
       for (const option of options) {
         const element = doc.createElement('option')
-        element.value = `${option.type}::${option.name}`
+        element.value = `${option.type}::${option.key}`
         element.textContent = `${option.type === 'image' ? '🖼 ' : '🎬 '}${option.name}`
         modelSelect.appendChild(element)
       }
@@ -237,7 +240,7 @@ export function mountXyqQuick(): XyqQuickHandle {
     }
     if (option.type === 'video') {
       const duration = Number((panel.querySelector('select[data-param="duration"]') as HTMLSelectElement | null)?.value ?? paramSpec.duration?.default ?? 5)
-      const price = PRICE_PER_SECOND[option.name.replace(/\s/g, '_')] ?? Object.entries(PRICE_PER_SECOND).find(([key]) => option.name.includes(key.replace(/_/g, ' ')))?.[1]
+      const price = PRICE_PER_SECOND[option.key] ?? Object.entries(PRICE_PER_SECOND).find(([key]) => option.key === key)?.[1]
       estimate.textContent = price ? `预计消耗：约 ${duration * price} 积分（${duration}s × ${price}/s，参考）` : '预计消耗：以实际扣费为准'
     } else {
       const count = Number((panel.querySelector('select[data-param="count"]') as HTMLSelectElement | null)?.value ?? 1)
@@ -254,7 +257,7 @@ export function mountXyqQuick(): XyqQuickHandle {
     if (!option) return
     setStatus('正在读取模型参数…')
     try {
-      const answer = await getJson(`${BASE}/describe?name=${encodeURIComponent(option.name)}&type=${option.type}`)
+      const answer = await getJson(`${BASE}/describe?name=${encodeURIComponent(option.key)}&type=${option.type}`)
       if (answer.ok !== true) {
         setStatus(String(answer.message ?? '读取模型参数失败'))
         return
@@ -318,7 +321,7 @@ export function mountXyqQuick(): XyqQuickHandle {
     result.textContent = ''
     setStatus('提交中…')
     try {
-      const payload: Record<string, unknown> = { type: option.type, prompt: text, model: option.name, sessionKey: 'xyq-panel' }
+      const payload: Record<string, unknown> = { type: option.type, prompt: text, model: option.key, sessionKey: 'xyq-panel' }
       if (option.type === 'image') {
         const selects = params.querySelectorAll('select')
         if (selects[0]) payload.ratio = (selects[0] as HTMLSelectElement).value

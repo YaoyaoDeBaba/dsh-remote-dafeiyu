@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.28" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.29" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37439,6 +37439,8 @@ function createXyqService(deps) {
 ${result2.stderr}`;
     const auth = authMessage(combined);
     if (auth !== void 0) return { result: result2, message: auth };
+    const modelMissing = combined.match(/未找到可用模型[^\n]*/);
+    if (modelMissing) return { result: result2, message: modelMissing[0].trim() };
     const json10 = parseJson(result2.stdout);
     if (result2.timedOut) return { result: result2, message: `\u5C0F\u4E91\u96C0\u547D\u4EE4\u8D85\u65F6\uFF08${Math.round(timeoutMs / 1e3)} \u79D2\uFF09` };
     if (json10 === void 0) {
@@ -37507,7 +37509,11 @@ ${result2.stderr}`;
       const list = Array.isArray(json10.models) ? json10.models : [];
       return {
         ok: true,
-        models: list.filter((row) => typeof row.key === "string" && typeof row.name === "string").map((row) => ({ key: String(row.key), name: String(row.name) }))
+        models: list.filter((row) => typeof row.name === "string" && String(row.name).trim() !== "").map((row) => ({
+          // 生图模型只有 name（CLI 就用完整名称）；生视频模型有 key（提交要用 key）。
+          key: typeof row.key === "string" && row.key !== "" ? String(row.key) : String(row.name),
+          name: String(row.name)
+        }))
       };
     },
     async generateImage(input2) {

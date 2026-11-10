@@ -4124,7 +4124,7 @@ function mountXyqQuick() {
   };
   const selected = () => {
     const value = modelSelect.value;
-    return options.find((entry) => `${entry.type}::${entry.name}` === value);
+    return options.find((entry) => `${entry.type}::${entry.key}` === value);
   };
   const refreshBalance = async () => {
     try {
@@ -4140,16 +4140,17 @@ function mountXyqQuick() {
       const [images, videos] = await Promise.all([getJson(`${BASE5}/models?type=image`), getJson(`${BASE5}/models?type=video`)]);
       const list = [];
       for (const row of Array.isArray(images.models) ? images.models : []) {
-        if (typeof row.name === "string") list.push({ type: "image", name: row.name });
+        if (typeof row.name === "string") list.push({ type: "image", key: row.name, name: row.name });
       }
       for (const row of Array.isArray(videos.models) ? videos.models : []) {
-        if (typeof row.name === "string") list.push({ type: "video", name: row.name });
+        if (typeof row.name !== "string") continue;
+        list.push({ type: "video", key: typeof row.key === "string" && row.key !== "" ? row.key : row.name, name: row.name });
       }
       options = list;
       modelSelect.textContent = "";
       for (const option of options) {
         const element = doc.createElement("option");
-        element.value = `${option.type}::${option.name}`;
+        element.value = `${option.type}::${option.key}`;
         element.textContent = `${option.type === "image" ? "\u{1F5BC} " : "\u{1F3AC} "}${option.name}`;
         modelSelect.appendChild(element);
       }
@@ -4185,7 +4186,7 @@ function mountXyqQuick() {
     }
     if (option.type === "video") {
       const duration = Number(panel.querySelector('select[data-param="duration"]')?.value ?? paramSpec.duration?.default ?? 5);
-      const price = PRICE_PER_SECOND[option.name.replace(/\s/g, "_")] ?? Object.entries(PRICE_PER_SECOND).find(([key]) => option.name.includes(key.replace(/_/g, " ")))?.[1];
+      const price = PRICE_PER_SECOND[option.key] ?? Object.entries(PRICE_PER_SECOND).find(([key]) => option.key === key)?.[1];
       estimate.textContent = price ? `\u9884\u8BA1\u6D88\u8017\uFF1A\u7EA6 ${duration * price} \u79EF\u5206\uFF08${duration}s \xD7 ${price}/s\uFF0C\u53C2\u8003\uFF09` : "\u9884\u8BA1\u6D88\u8017\uFF1A\u4EE5\u5B9E\u9645\u6263\u8D39\u4E3A\u51C6";
     } else {
       const count = Number(panel.querySelector('select[data-param="count"]')?.value ?? 1);
@@ -4201,7 +4202,7 @@ function mountXyqQuick() {
     if (!option) return;
     setStatus("\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u53C2\u6570\u2026");
     try {
-      const answer = await getJson(`${BASE5}/describe?name=${encodeURIComponent(option.name)}&type=${option.type}`);
+      const answer = await getJson(`${BASE5}/describe?name=${encodeURIComponent(option.key)}&type=${option.type}`);
       if (answer.ok !== true) {
         setStatus(String(answer.message ?? "\u8BFB\u53D6\u6A21\u578B\u53C2\u6570\u5931\u8D25"));
         return;
@@ -4262,7 +4263,7 @@ function mountXyqQuick() {
     result.textContent = "";
     setStatus("\u63D0\u4EA4\u4E2D\u2026");
     try {
-      const payload = { type: option.type, prompt: text, model: option.name, sessionKey: "xyq-panel" };
+      const payload = { type: option.type, prompt: text, model: option.key, sessionKey: "xyq-panel" };
       if (option.type === "image") {
         const selects = params.querySelectorAll("select");
         if (selects[0]) payload.ratio = selects[0].value;
