@@ -3441,6 +3441,9 @@ function mountSubagentMonitor(deps) {
 // src/client/avatar-widget.ts
 var BASE4 = "/api/dsh-remote-dafeiyu/avatar";
 var FPS2 = 24;
+var WIDGET_WIDTH = 132;
+var POS_KEY = "drc.avatarWidgetPos";
+var DRAG_SLOP = 4;
 var STATE_POOLS = {
   idle: [
     { id: "idle", weight: 60, loops: 2 },
@@ -3460,9 +3463,6 @@ var STATE_POOLS = {
 };
 var POKE_CLIP = "tsundere";
 var POKE_MS = 1800;
-var WIDGET_WIDTH = 132;
-var POS_KEY = "drc.avatarWidgetPos";
-var DRAG_SLOP = 4;
 function mountAvatarWidget(deps) {
   const doc = globalThis.document;
   if (!doc || !doc.body) return () => {
@@ -3487,25 +3487,32 @@ function mountAvatarWidget(deps) {
   const style = doc.createElement("style");
   style.id = styleId;
   style.textContent = `
-#dafeiyu-avatar-widget { position: fixed; left: 24px; top: 120px; width: ${WIDGET_WIDTH}px; z-index: 2147482999;
+#dafeiyu-avatar-widget { position: fixed; left: 24px; top: 96px; width: ${WIDGET_WIDTH}px; z-index: 2147482999;
   display: flex; flex-direction: column; align-items: center; gap: 2px; }
 #dafeiyu-avatar-widget[hidden] { display: none !important; }
-#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: 3 / 4;
-  border-radius: 12px; background-repeat: no-repeat; cursor: grab; touch-action: none;
-  filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
-#dafeiyu-avatar-widget .sprite.dragging { cursor: grabbing; }
+#dafeiyu-avatar-widget .stage { position: relative; width: ${WIDGET_WIDTH}px; aspect-ratio: 3 / 4;
+  border-radius: 12px; cursor: grab; touch-action: none; filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
+#dafeiyu-avatar-widget .stage.dragging { cursor: grabbing; }
+#dafeiyu-avatar-widget .layer { position: absolute; inset: 0; background-repeat: no-repeat;
+  pointer-events: none; will-change: opacity; }
 #dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; pointer-events: none; }
 `;
   doc.head.appendChild(style);
   const wrap = doc.createElement("div");
   wrap.id = "dafeiyu-avatar-widget";
   wrap.hidden = true;
-  const sprite = doc.createElement("div");
-  sprite.className = "sprite";
+  const stage = doc.createElement("div");
+  stage.className = "stage";
+  const layers = [doc.createElement("div"), doc.createElement("div")];
+  for (const layer of layers) layer.className = "layer";
+  layers[0].style.opacity = "1";
+  layers[1].style.opacity = "0";
+  let active = 0;
+  stage.append(layers[0], layers[1]);
   const hint = doc.createElement("div");
   hint.className = "hint";
   hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u9017\u5B83";
-  wrap.append(sprite, hint);
+  wrap.append(stage, hint);
   doc.body.appendChild(wrap);
   let states = [];
   let current;
@@ -3515,34 +3522,23 @@ function mountAvatarWidget(deps) {
   let pollTimer;
   let lastStatus;
   let talkUntil = 0;
+  let disposed = false;
+  let placed = false;
+  let drag;
   let stateKey = "idle";
   let clipUntil = 0;
   let pokeUntil = 0;
   let lastClipId;
-  let disposed = false;
-  let placed = false;
-  let drag;
-  const viewport = () => {
-    const w = doc.documentElement?.clientWidth || globalThis.innerWidth || 1280;
-    const h = doc.documentElement?.clientHeight || globalThis.innerHeight || 800;
-    return { w, h };
-  };
-  const spriteHeight = () => {
-    const ratio = current ? current.cellHeight / current.cellWidth : 480 / 354;
-    return Math.round(WIDGET_WIDTH * ratio);
-  };
-  const assetStatus = /* @__PURE__ */ new Map();
-  const assetImages = /* @__PURE__ */ new Map();
+  let pendingClip;
   let manifestVersion = 0;
+  const assetStatus = /* @__PURE__ */ new Map();
   const assetUrl = (state) => resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}${manifestVersion > 0 ? `&v=${manifestVersion}` : ""}`);
   const ready = (state) => assetStatus.get(state.file) === "ready";
   const ensureAsset = (state, onReady) => {
     const known = assetStatus.get(state.file);
     if (known === "ready" || known === "failed") return;
-    const url = assetUrl(state);
     assetStatus.set(state.file, "loading");
     const img = new Image();
-    assetImages.set(state.file, img);
     img.onload = () => {
       const done = () => {
         assetStatus.set(state.file, "ready");
@@ -3551,11 +3547,15 @@ function mountAvatarWidget(deps) {
       if (typeof img.decode === "function") img.decode().then(done).catch(done);
       else done();
     };
-    img.onerror = () => {
-      assetStatus.set(state.file, "failed");
-    };
-    img.src = url;
+    img.onerror = () => assetStatus.set(state.file, "failed");
+    img.src = assetUrl(state);
   };
+  const viewport = () => {
+    const w = doc.documentElement?.clientWidth || globalThis.innerWidth || 1280;
+    const h = doc.documentElement?.clientHeight || globalThis.innerHeight || 800;
+    return { w, h };
+  };
+  const spriteHeight = () => Math.round(WIDGET_WIDTH * 4 / 3);
   const clamp = (x, y) => {
     const { w, h } = viewport();
     return {
@@ -3576,7 +3576,7 @@ function mountAvatarWidget(deps) {
     }
   };
   const defaultPosition = () => {
-    const { w, h } = viewport();
+    const { w } = viewport();
     return { x: w - WIDGET_WIDTH - 24, y: 96 };
   };
   const restoreOrDefault = () => {
@@ -3587,9 +3587,8 @@ function mountAvatarWidget(deps) {
     } catch {
       saved = null;
     }
-    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
-      place(Number(saved.x), Number(saved.y), false);
-    } else {
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) place(Number(saved.x), Number(saved.y), false);
+    else {
       const p = defaultPosition();
       place(p.x, p.y, false);
     }
@@ -3598,8 +3597,32 @@ function mountAvatarWidget(deps) {
     if (!current) return;
     const col = frame % current.cols;
     const row = Math.floor(frame / current.cols) % current.rows;
-    sprite.style.backgroundPosition = `${col / Math.max(1, current.cols - 1) * 100}% ${row / Math.max(1, current.rows - 1) * 100}%`;
+    const layer = layers[active];
+    layer.style.backgroundPosition = `${col / Math.max(1, current.cols - 1) * 100}% ${row / Math.max(1, current.rows - 1) * 100}%`;
     frame = (frame + 1) % current.frames;
+  };
+  let swapping = false;
+  const switchTo = (state) => {
+    if (swapping) return;
+    const previousIndex = active;
+    const next = 1 - active;
+    const layer = layers[next];
+    const previousLayer = layers[previousIndex];
+    layer.style.backgroundImage = `url(${assetUrl(state)})`;
+    layer.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
+    layer.style.backgroundPosition = "0% 0%";
+    layer.style.zIndex = "2";
+    layer.style.opacity = "1";
+    active = next;
+    current = state;
+    frame = 0;
+    paint();
+    swapping = true;
+    requestAnimationFrame(() => {
+      previousLayer.style.opacity = "0";
+      previousLayer.style.zIndex = "1";
+      swapping = false;
+    });
   };
   const available = (id) => states.some((state) => state.id === id);
   const pickClip = (pool) => {
@@ -3624,19 +3647,11 @@ function mountAvatarWidget(deps) {
       ensureAsset(state);
       return false;
     }
-    if (current?.id !== state.id) {
-      current = state;
-      frame = 0;
-      sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
-      sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
-      if (!placed) restoreOrDefault();
-      paint();
-    }
+    if (current?.id !== state.id) switchTo(state);
     lastClipId = state.id;
     clipUntil = Date.now() + Math.max(1, loops) * (state.frames / FPS2) * 1e3;
     return true;
   };
-  let pendingClip;
   const enterState = (next) => {
     const changed = next !== stateKey;
     stateKey = next;
@@ -3648,28 +3663,6 @@ function mountAvatarWidget(deps) {
     const clip = pickClip(STATE_POOLS[next]);
     if (!clip) return;
     if (!playClip(clip.id, clip.loops)) pendingClip = clip;
-  };
-  const apply2 = (state) => {
-    if (!state) {
-      wrap.hidden = true;
-      return;
-    }
-    if (!ready(state)) {
-      ensureAsset(state, () => {
-        if (current === void 0) apply2(state);
-      });
-      return;
-    }
-    if (current?.id !== state.id) {
-      current = state;
-      frame = 0;
-      sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
-      sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
-      if (!placed) restoreOrDefault();
-      paint();
-    }
-    wrap.hidden = false;
-    hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u9017\u5B83";
   };
   const targetId = () => {
     const status = globalThis.__dafeiyuAvatarStatus;
@@ -3694,15 +3687,20 @@ function mountAvatarWidget(deps) {
     }
     void (async () => {
       try {
-        const response = await fetch(resolveHostUrl(`${BASE4}/state?sessionId=${encodeURIComponent(session)}`), { signal: AbortSignal.timeout(4e3) });
+        const response = await fetch(resolveHostUrl(`${BASE4}/state?sessionId=${encodeURIComponent(session)}`), {
+          signal: AbortSignal.timeout(4e3)
+        });
         const answer = await response.json();
         const status = answer.status === "running" ? "running" : "idle";
         if (lastStatus === "running" && status === "idle") talkUntil = Date.now() + 2e3;
         lastStatus = status;
         globalThis.__dafeiyuAvatarStatus = status;
-        if (!current) {
-          const fallback = states.find((state) => state.id === "idle") ?? states[0];
-          apply2(fallback);
+        if (current === void 0) {
+          const idle = states.find((state) => state.id === "idle") ?? states[0];
+          if (idle && ready(idle)) switchTo(idle);
+          else if (idle) ensureAsset(idle, () => {
+            if (current === void 0) switchTo(idle);
+          });
         }
         if (Date.now() < pokeUntil) {
           wrap.hidden = false;
@@ -3710,9 +3708,12 @@ function mountAvatarWidget(deps) {
         }
         enterState(targetId());
       } catch {
-        if (!current) apply2(states.find((state) => state.id === "idle") ?? states[0]);
-        else enterState("idle");
+        if (current === void 0) {
+          const idle = states.find((state) => state.id === "idle") ?? states[0];
+          if (idle && ready(idle)) switchTo(idle);
+        } else enterState("idle");
       }
+      wrap.hidden = false;
     })();
   };
   void (async () => {
@@ -3727,11 +3728,9 @@ function mountAvatarWidget(deps) {
         manifestVersion = typeof answer.manifest.version === "number" ? answer.manifest.version : 0;
         for (const state of states) ensureAsset(state);
         const idle = states.find((state) => state.id === "idle") ?? states[0];
-        if (idle) {
-          ensureAsset(idle, () => {
-            if (current === void 0) apply2(idle);
-          });
-        }
+        if (idle) ensureAsset(idle, () => {
+          if (current === void 0) switchTo(idle);
+        });
       }
     } catch {
     }
@@ -3739,9 +3738,9 @@ function mountAvatarWidget(deps) {
   const onDown = (event) => {
     if (event.button !== void 0 && event.button !== 0) return;
     drag = { x: event.clientX, y: event.clientY, left: parseFloat(wrap.style.left) || 0, top: parseFloat(wrap.style.top) || 0, moved: false };
-    sprite.classList.add("dragging");
+    stage.classList.add("dragging");
     try {
-      sprite.setPointerCapture(event.pointerId);
+      stage.setPointerCapture(event.pointerId);
     } catch {
     }
   };
@@ -3756,14 +3755,11 @@ function mountAvatarWidget(deps) {
     if (!drag) return;
     const moved = drag.moved;
     drag = void 0;
-    sprite.classList.remove("dragging");
-    if (moved) {
-      place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
-    } else {
-      if (available(POKE_CLIP)) {
-        pokeUntil = Date.now() + POKE_MS;
-        playClip(POKE_CLIP, 1);
-      }
+    stage.classList.remove("dragging");
+    if (moved) place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
+    else if (available(POKE_CLIP)) {
+      pokeUntil = Date.now() + POKE_MS;
+      playClip(POKE_CLIP, 1);
     }
   };
   const onDouble = () => {
@@ -3771,20 +3767,19 @@ function mountAvatarWidget(deps) {
     place(p.x, p.y, true);
   };
   const onResize = () => {
-    if (!placed) return;
-    place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, false);
+    if (placed) place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, false);
   };
-  sprite.addEventListener("pointerdown", onDown);
-  sprite.addEventListener("pointermove", onMove);
-  sprite.addEventListener("pointerup", onUp);
-  sprite.addEventListener("pointercancel", onUp);
-  sprite.addEventListener("dblclick", onDouble);
+  stage.addEventListener("pointerdown", onDown);
+  stage.addEventListener("pointermove", onMove);
+  stage.addEventListener("pointerup", onUp);
+  stage.addEventListener("pointercancel", onUp);
+  stage.addEventListener("dblclick", onDouble);
   globalThis.addEventListener?.("resize", onResize);
   timer = setInterval(() => {
     if (playing) paint();
   }, Math.round(1e3 / FPS2));
   pollTimer = setInterval(refresh, 2500);
-  setInterval(() => {
+  const clipTimer = setInterval(() => {
     if (disposed || !playing) return;
     if (Date.now() < pokeUntil) return;
     if (Date.now() >= clipUntil) enterState(stateKey);
@@ -3795,6 +3790,7 @@ function mountAvatarWidget(deps) {
     drag = void 0;
     if (timer) clearInterval(timer);
     if (pollTimer) clearInterval(pollTimer);
+    clearInterval(clipTimer);
     try {
       wrap.remove();
       style.remove();
