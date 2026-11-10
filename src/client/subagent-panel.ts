@@ -492,9 +492,16 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   }
   doc.addEventListener('click', onClick)
 
-  timer = (globalThis as { setInterval?: (fn: () => void, ms: number) => number }).setInterval?.(() => {
-    void refresh()
-  }, POLL_MS) ?? 0
+  // 自适应轮询：面板打开或有子代理时 3s；没有子代理时 20s（只是等新的子代理出现）。
+  const POLL_FAST = 3000
+  const POLL_SLOW = 20_000
+  const schedule = (): void => {
+    const fast = opened || items.length > 0
+    timer = (globalThis as { setTimeout?: (fn: () => void, ms: number) => number }).setTimeout?.(() => {
+      void refresh().finally(schedule)
+    }, fast ? POLL_FAST : POLL_SLOW) ?? 0
+  }
+  schedule()
   void refresh()
 
   return () => {

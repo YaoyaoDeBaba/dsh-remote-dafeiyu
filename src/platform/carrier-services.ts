@@ -736,7 +736,10 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   ): Promise<{ task?: string; logWorkMs?: number; lastTime?: number }> {
     const now = options.clock.now()
     const cached = subagentProbe.get(id)
-    if (cached && now - cached.at < (running ? 5_000 : 60_000)) return cached
+    // readSession 会把整份会话日志读出来（大日志几十 MB）；子代理监视器每 3 秒轮询一次，
+    // 5 秒就重新读一遍会把宿主的 GC 打满（2026-11-10 排查：宿主 3GB 抖动、手机侧断连）。
+    // 工作/闲置时间的主要来源已经是事件流与 runningSince，日志探针只做兜底，没必要高频。
+    if (cached && now - cached.at < (running ? 60_000 : 10 * 60_000)) return cached
     const read = fn(services.sessionQuery, 'readSession')
     if (!read) return cached ?? {}
     try {
@@ -896,7 +899,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
     collect(parentSessionId)
     if (targets.length === 0) return []
-    await loadTitles(targets.map((row) => String(row.header?.id)))
+    // 不再读标题快照：界面只显示 label 里的「名称｜简述」，标题既不下发也不显示，
+    // 每轮列表都去读 52 条标题是纯浪费（还会放大宿主内存抖动）。
     // 官方 label（内置 subagent 工具的 description）：拿不到就退回标题/任务
     const labels = await subagentLabels(parentSessionId, listOptions?.descendants === true)
     const now = options.clock.now()

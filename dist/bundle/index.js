@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.31" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.32" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32555,7 +32555,7 @@ function createServicesKernel(services, options) {
   async function probeSubagent(id, running) {
     const now = options.clock.now();
     const cached2 = subagentProbe.get(id);
-    if (cached2 && now - cached2.at < (running ? 5e3 : 6e4)) return cached2;
+    if (cached2 && now - cached2.at < (running ? 6e4 : 10 * 6e4)) return cached2;
     const read = fn(services.sessionQuery, "readSession");
     if (!read) return cached2 ?? {};
     try {
@@ -32680,7 +32680,6 @@ function createServicesKernel(services, options) {
     };
     collect(parentSessionId);
     if (targets.length === 0) return [];
-    await loadTitles(targets.map((row) => String(row.header?.id)));
     const labels = await subagentLabels(parentSessionId, listOptions?.descendants === true);
     const now = options.clock.now();
     const out = [];

@@ -3154,7 +3154,6 @@ var activeTabStyle = {
 
 // src/client/subagent-panel.ts
 var IDLE_WARN_MS = 2 * 60 * 60 * 1e3;
-var POLL_MS2 = 3e3;
 function fmtDuration(ms) {
   if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) return "\u2014";
   const total = Math.floor(ms / 1e3);
@@ -3563,9 +3562,15 @@ function mountSubagentMonitor(deps) {
     setOpen(false);
   };
   doc.addEventListener("click", onClick);
-  timer = globalThis.setInterval?.(() => {
-    void refresh();
-  }, POLL_MS2) ?? 0;
+  const POLL_FAST = 3e3;
+  const POLL_SLOW = 2e4;
+  const schedule = () => {
+    const fast = opened || items.length > 0;
+    timer = globalThis.setTimeout?.(() => {
+      void refresh().finally(schedule);
+    }, fast ? POLL_FAST : POLL_SLOW) ?? 0;
+  };
+  schedule();
   void refresh();
   return () => {
     if (timer) globalThis.clearInterval?.(timer);
