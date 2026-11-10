@@ -1,13 +1,13 @@
 /**
- * avatar-widget — 聊天页左下角的虚拟形象小窗（0.14）。
+ * avatar-widget — 聊天页的虚拟形象小窗（0.15：默认右侧 + 可拖动）。
  *
  * 行为：
- * - 有当前会话且有素材时出现；点一下暂停/继续；
+ * - 默认贴右下（会话列表在左侧，不挡列表）；拖动后位置记在 localStorage；
+ * - 点一下暂停/继续，按住拖动换位置，双击回到默认位置；
  * - 每 2.5s 问一次 `/avatar/state?sessionId=`，按 agent 状态自动切动作：
- *   running → 动脑（think）；idle → 待机（idle）；从 running→idle 的头 2 秒播「讲话」；
- * - 素材清单只拉一次；首帧就位前不显示，避免白框。
+ *   running → 动脑（think）；回复到达后的 2.5 秒 → 讲话（talk）；其余 → 待机（idle）。
  *
- * 纪律：所有 DOM 操作都包 try；素材缺失就整块隐藏（不占地方）。
+ * 纪律：所有 DOM 操作都包 try；素材缺失就整块隐藏。
  */
 import { resolveHostUrl } from './host-url.js'
 
@@ -24,6 +24,9 @@ type AvatarStateView = {
 
 const BASE = '/api/dsh-remote-dafeiyu/avatar'
 const FPS = 24
+const WIDGET_WIDTH = 132
+const POS_KEY = 'drc.avatarWidgetPos'
+const DRAG_SLOP = 4
 
 export interface AvatarWidgetDeps {
   getCurrentSession: () => string | undefined | null
@@ -32,20 +35,21 @@ export interface AvatarWidgetDeps {
 export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   const doc = (globalThis as { document?: Document }).document
   if (!doc || !doc.body) return () => {}
-  const style = doc.createElement('style')
-  style.textContent = `
-#dafeiyu-avatar-widget { position: fixed; left: 20px; bottom: 88px; width: 132px; z-index: 2147482999;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
-#dafeiyu-avatar-widget[hidden] { display: none !important; }
-#dafeiyu-avatar-widget .sprite { width: 132px; aspect-ratio: var(--dafeiyu-avatar-ratio, 1 / 1);
-  border-radius: 12px; background-repeat: no-repeat; pointer-events: auto; cursor: pointer;
-  filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
-#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; }
-`
   const styleId = 'dafeiyu-avatar-widget-style'
   const existing = doc.getElementById(styleId)
   if (existing) existing.remove()
+  const style = doc.createElement('style')
   style.id = styleId
+  style.textContent = `
+#dafeiyu-avatar-widget { position: fixed; left: 24px; top: 120px; width: ${WIDGET_WIDTH}px; z-index: 2147482999;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#dafeiyu-avatar-widget[hidden] { display: none !important; }
+#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: var(--dafeiyu-avatar-ratio, 354 / 480);
+  border-radius: 12px; background-repeat: no-repeat; cursor: grab; touch-action: none;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
+#dafeiyu-avatar-widget .sprite.dragging { cursor: grabbing; }
+#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; pointer-events: none; }
+`
   doc.head.appendChild(style)
 
   const wrap = doc.createElement('div')
@@ -55,7 +59,7 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   sprite.className = 'sprite'
   const hint = doc.createElement('div')
   hint.className = 'hint'
-  hint.textContent = '点击暂停/继续'
+  hint.textContent = '拖动换位置 · 点按暂停'
   wrap.append(sprite, hint)
   doc.body.appendChild(wrap)
 
@@ -68,6 +72,63 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   let lastStatus: 'running' | 'idle' | undefined
   let talkUntil = 0
   let disposed = false
+  let placed = false
+  let drag: { x: number; y: number; left: number; top: number; moved: boolean } | undefined
+
+  const viewport = (): { w: number; h: number } => {
+    const w = doc.documentElement?.clientWidth || (globalThis as { innerWidth?: number }).innerWidth || 1280
+    const h = doc.documentElement?.clientHeight || (globalThis as { innerHeight?: number }).innerHeight || 800
+    return { w, h }
+  }
+
+  const spriteHeight = (): number => {
+    const ratio = current ? current.cellHeight / current.cellWidth : 480 / 354
+    return Math.round(WIDGET_WIDTH * ratio)
+  }
+
+  const clamp = (x: number, y: number): { x: number; y: number } => {
+    const { w, h } = viewport()
+    return {
+      x: Math.min(Math.max(8, x), Math.max(8, w - WIDGET_WIDTH - 8)),
+      y: Math.min(Math.max(8, y), Math.max(8, h - spriteHeight() - 40)),
+    }
+  }
+
+  const place = (x: number, y: number, persist: boolean): void => {
+    const p = clamp(x, y)
+    wrap.style.left = p.x + 'px'
+    wrap.style.top = p.y + 'px'
+    placed = true
+    if (persist) {
+      try {
+        localStorage.setItem(POS_KEY, JSON.stringify(p))
+      } catch {
+        /* 隐私模式可能禁止 localStorage */
+      }
+    }
+  }
+
+  const defaultPosition = (): { x: number; y: number } => {
+    const { w, h } = viewport()
+    // 右上角贴边：会话列表在左、输入框在底，这里都不挡
+    return { x: w - WIDGET_WIDTH - 24, y: 96 }
+  }
+
+  const restoreOrDefault = (): void => {
+    let saved: { x?: unknown; y?: unknown } | null = null
+    try {
+      const raw = localStorage.getItem(POS_KEY)
+      saved = raw ? (JSON.parse(raw) as { x?: unknown; y?: unknown }) : null
+    } catch {
+      saved = null
+    }
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      place(Number(saved.x), Number(saved.y), false)
+    } else {
+      const p = defaultPosition()
+      place(p.x, p.y, false)
+    }
+  }
 
   const paint = (): void => {
     if (!current) return
@@ -88,10 +149,11 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
       wrap.style.setProperty('--dafeiyu-avatar-ratio', `${state.cellWidth} / ${state.cellHeight}`)
       sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}`)})`
       sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`
+      if (!placed) restoreOrDefault()
       paint()
     }
     wrap.hidden = false
-    hint.textContent = state.label + (playing ? '' : ' · 已暂停')
+    hint.textContent = '拖动换位置 · 点按' + (playing ? '暂停' : '继续')
   }
 
   const targetId = (): string => {
@@ -120,7 +182,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
         const fallback = states.find((state) => state.id === 'idle')
         apply(states.find((state) => state.id === wanted) ?? fallback)
       } catch {
-        /* 状态读不到就按 idle 显示 */
         apply(states.find((state) => state.id === 'idle'))
       }
     })()
@@ -139,19 +200,60 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     }
   })()
 
+  // 拖动 + 点按
+  const onDown = (event: PointerEvent): void => {
+    if (event.button !== undefined && event.button !== 0) return
+    drag = { x: event.clientX, y: event.clientY, left: parseFloat(wrap.style.left) || 0, top: parseFloat(wrap.style.top) || 0, moved: false }
+    sprite.classList.add('dragging')
+    try {
+      sprite.setPointerCapture(event.pointerId)
+    } catch {
+      /* 老浏览器 */
+    }
+  }
+  const onMove = (event: PointerEvent): void => {
+    if (!drag) return
+    const dx = event.clientX - drag.x
+    const dy = event.clientY - drag.y
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) drag.moved = true
+    if (drag.moved) place(drag.left + dx, drag.top + dy, false)
+  }
+  const onUp = (): void => {
+    if (!drag) return
+    const moved = drag.moved
+    drag = undefined
+    sprite.classList.remove('dragging')
+    if (moved) {
+      place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true)
+    } else {
+      playing = !playing
+    }
+  }
+  const onDouble = (): void => {
+    const p = defaultPosition()
+    place(p.x, p.y, true)
+  }
+  const onResize = (): void => {
+    if (!placed) return
+    place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, false)
+  }
+
+  sprite.addEventListener('pointerdown', onDown)
+  sprite.addEventListener('pointermove', onMove)
+  sprite.addEventListener('pointerup', onUp)
+  sprite.addEventListener('pointercancel', onUp)
+  sprite.addEventListener('dblclick', onDouble)
+  ;(globalThis as { addEventListener?: (type: string, listener: () => void) => void }).addEventListener?.('resize', onResize)
+
   timer = setInterval(() => {
     if (playing) paint()
   }, Math.round(1000 / FPS))
   pollTimer = setInterval(refresh, 2500)
   refresh()
 
-  sprite.addEventListener('click', () => {
-    playing = !playing
-    hint.textContent = (current?.label ?? '') + (playing ? '' : ' · 已暂停')
-  })
-
   return () => {
     disposed = true
+    drag = undefined
     if (timer) clearInterval(timer)
     if (pollTimer) clearInterval(pollTimer)
     try {

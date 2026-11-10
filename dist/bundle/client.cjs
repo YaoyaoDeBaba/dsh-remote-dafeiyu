@@ -3439,24 +3439,28 @@ function mountSubagentMonitor(deps) {
 // src/client/avatar-widget.ts
 var BASE4 = "/api/dsh-remote-dafeiyu/avatar";
 var FPS2 = 24;
+var WIDGET_WIDTH = 132;
+var POS_KEY = "drc.avatarWidgetPos";
+var DRAG_SLOP = 4;
 function mountAvatarWidget(deps) {
   const doc = globalThis.document;
   if (!doc || !doc.body) return () => {
   };
-  const style = doc.createElement("style");
-  style.textContent = `
-#dafeiyu-avatar-widget { position: fixed; left: 20px; bottom: 88px; width: 132px; z-index: 2147482999;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
-#dafeiyu-avatar-widget[hidden] { display: none !important; }
-#dafeiyu-avatar-widget .sprite { width: 132px; aspect-ratio: var(--dafeiyu-avatar-ratio, 1 / 1);
-  border-radius: 12px; background-repeat: no-repeat; pointer-events: auto; cursor: pointer;
-  filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
-#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; }
-`;
   const styleId = "dafeiyu-avatar-widget-style";
   const existing = doc.getElementById(styleId);
   if (existing) existing.remove();
+  const style = doc.createElement("style");
   style.id = styleId;
+  style.textContent = `
+#dafeiyu-avatar-widget { position: fixed; left: 24px; top: 120px; width: ${WIDGET_WIDTH}px; z-index: 2147482999;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#dafeiyu-avatar-widget[hidden] { display: none !important; }
+#dafeiyu-avatar-widget .sprite { width: ${WIDGET_WIDTH}px; aspect-ratio: var(--dafeiyu-avatar-ratio, 354 / 480);
+  border-radius: 12px; background-repeat: no-repeat; cursor: grab; touch-action: none;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
+#dafeiyu-avatar-widget .sprite.dragging { cursor: grabbing; }
+#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; pointer-events: none; }
+`;
   doc.head.appendChild(style);
   const wrap = doc.createElement("div");
   wrap.id = "dafeiyu-avatar-widget";
@@ -3465,7 +3469,7 @@ function mountAvatarWidget(deps) {
   sprite.className = "sprite";
   const hint = doc.createElement("div");
   hint.className = "hint";
-  hint.textContent = "\u70B9\u51FB\u6682\u505C/\u7EE7\u7EED";
+  hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u6682\u505C";
   wrap.append(sprite, hint);
   doc.body.appendChild(wrap);
   let states = [];
@@ -3477,6 +3481,55 @@ function mountAvatarWidget(deps) {
   let lastStatus;
   let talkUntil = 0;
   let disposed = false;
+  let placed = false;
+  let drag;
+  const viewport = () => {
+    const w = doc.documentElement?.clientWidth || globalThis.innerWidth || 1280;
+    const h = doc.documentElement?.clientHeight || globalThis.innerHeight || 800;
+    return { w, h };
+  };
+  const spriteHeight = () => {
+    const ratio = current ? current.cellHeight / current.cellWidth : 480 / 354;
+    return Math.round(WIDGET_WIDTH * ratio);
+  };
+  const clamp = (x, y) => {
+    const { w, h } = viewport();
+    return {
+      x: Math.min(Math.max(8, x), Math.max(8, w - WIDGET_WIDTH - 8)),
+      y: Math.min(Math.max(8, y), Math.max(8, h - spriteHeight() - 40))
+    };
+  };
+  const place = (x, y, persist) => {
+    const p = clamp(x, y);
+    wrap.style.left = p.x + "px";
+    wrap.style.top = p.y + "px";
+    placed = true;
+    if (persist) {
+      try {
+        localStorage.setItem(POS_KEY, JSON.stringify(p));
+      } catch {
+      }
+    }
+  };
+  const defaultPosition = () => {
+    const { w, h } = viewport();
+    return { x: w - WIDGET_WIDTH - 24, y: 96 };
+  };
+  const restoreOrDefault = () => {
+    let saved = null;
+    try {
+      const raw = localStorage.getItem(POS_KEY);
+      saved = raw ? JSON.parse(raw) : null;
+    } catch {
+      saved = null;
+    }
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      place(Number(saved.x), Number(saved.y), false);
+    } else {
+      const p = defaultPosition();
+      place(p.x, p.y, false);
+    }
+  };
   const paint = () => {
     if (!current) return;
     const col = frame % current.cols;
@@ -3495,10 +3548,11 @@ function mountAvatarWidget(deps) {
       wrap.style.setProperty("--dafeiyu-avatar-ratio", `${state.cellWidth} / ${state.cellHeight}`);
       sprite.style.backgroundImage = `url(${resolveHostUrl(`${BASE4}/sheet?id=${encodeURIComponent(state.id)}`)})`;
       sprite.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
+      if (!placed) restoreOrDefault();
       paint();
     }
     wrap.hidden = false;
-    hint.textContent = state.label + (playing ? "" : " \xB7 \u5DF2\u6682\u505C");
+    hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309" + (playing ? "\u6682\u505C" : "\u7EE7\u7EED");
   };
   const targetId = () => {
     const status = globalThis.__dafeiyuAvatarStatus;
@@ -3540,17 +3594,55 @@ function mountAvatarWidget(deps) {
     } catch {
     }
   })();
+  const onDown = (event) => {
+    if (event.button !== void 0 && event.button !== 0) return;
+    drag = { x: event.clientX, y: event.clientY, left: parseFloat(wrap.style.left) || 0, top: parseFloat(wrap.style.top) || 0, moved: false };
+    sprite.classList.add("dragging");
+    try {
+      sprite.setPointerCapture(event.pointerId);
+    } catch {
+    }
+  };
+  const onMove = (event) => {
+    if (!drag) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) drag.moved = true;
+    if (drag.moved) place(drag.left + dx, drag.top + dy, false);
+  };
+  const onUp = () => {
+    if (!drag) return;
+    const moved = drag.moved;
+    drag = void 0;
+    sprite.classList.remove("dragging");
+    if (moved) {
+      place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
+    } else {
+      playing = !playing;
+    }
+  };
+  const onDouble = () => {
+    const p = defaultPosition();
+    place(p.x, p.y, true);
+  };
+  const onResize = () => {
+    if (!placed) return;
+    place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, false);
+  };
+  sprite.addEventListener("pointerdown", onDown);
+  sprite.addEventListener("pointermove", onMove);
+  sprite.addEventListener("pointerup", onUp);
+  sprite.addEventListener("pointercancel", onUp);
+  sprite.addEventListener("dblclick", onDouble);
+  globalThis.addEventListener?.("resize", onResize);
   timer = setInterval(() => {
     if (playing) paint();
   }, Math.round(1e3 / FPS2));
   pollTimer = setInterval(refresh, 2500);
   refresh();
-  sprite.addEventListener("click", () => {
-    playing = !playing;
-    hint.textContent = (current?.label ?? "") + (playing ? "" : " \xB7 \u5DF2\u6682\u505C");
-  });
   return () => {
     disposed = true;
+    drag = void 0;
     if (timer) clearInterval(timer);
     if (pollTimer) clearInterval(pollTimer);
     try {
