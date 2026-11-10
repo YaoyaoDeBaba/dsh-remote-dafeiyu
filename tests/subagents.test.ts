@@ -172,10 +172,10 @@ test('subagents config：阈值夹取、读写回环、坏 JSON 回落默认', (
 
 
 test('guidance pusher：逐个注入在线会话，单个失败不影响其它', async () => {
-  const injected: string[] = []
+  const injected: Array<{ id?: unknown; content: Array<{ text: string }> }> = []
   const fakeAgents = {
     list: () => [
-      { id: 'a', inject: (message: { content: Array<{ text: string }> }) => void injected.push(message.content[0]!.text) },
+      { id: 'a', inject: (message: { id?: unknown; content: Array<{ text: string }> }) => void injected.push(message) },
       { id: 'b' }, // 没有 inject
       { id: 'c', inject: () => { throw new Error('boom') } },
     ],
@@ -186,8 +186,14 @@ test('guidance pusher：逐个注入在线会话，单个失败不影响其它',
   assert.equal(result.pushed, 1)
   assert.equal(result.failed, 2)
   assert.equal(injected.length, 1)
-  assert.match(injected[0]!, /系统推送/)
-  assert.match(injected[0]!, /规范正文/)
+  assert.equal(typeof injected[0]!.id, 'string', '注入消息必须带 id（缺 id 会把会话历史写坏）')
+  assert.ok(String(injected[0]!.id).length > 8, 'id 不能是空串')
+  assert.match(injected[0]!.content[0]!.text, /系统推送/)
+  assert.match(injected[0]!.content[0]!.text, /规范正文/)
+
+  const second = await push('第二段', '再次推送')
+  assert.equal(second.pushed, 1)
+  assert.notEqual(injected[0]!.id, injected[1]!.id, '两次推送的 id 必须不同')
 })
 
 test('guidance pusher：agents 服务缺失时 total=0 不抛', async () => {

@@ -1,3 +1,10 @@
+## 0.9.0-dafeiyu.30 —— 修复推送注入缺 id 导致会话历史损坏
+
+- 事故：`guidance-push` 调 `agent.inject()` 时没给消息 id，会话里 `inbox/spliced.inserted[0]`
+  与 `user/message` 两处对不上，回放时同一条消息被当成两条、整段历史读坏（用户手动修过会话文件）；
+- 修复：注入消息补 `id`（`crypto.randomUUID()`，不可用时回退时间戳+随机串），并加了注释说明原因；
+- 判据：pusher 单测断言「id 非空、两次推送 id 不同」，全量 813 项。
+
 ## 0.9.0-dafeiyu.29 —— 小云雀模型标识修正（生图用名称、生视频用 key）
 
 - 报错「未找到可用模型 Seedance 2.0 Mini 体验版」的根因：面板把**显示名**当成提交标识传给了 CLI，

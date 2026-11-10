@@ -43,6 +43,11 @@ export function createGuidancePusher(getAgents: () => unknown) {
       }
       try {
         agent.inject({
+          // ⚠️ 必须带 id：缺少 id 的注入消息会让会话日志里出现
+          // `inbox/spliced.inserted[0]` 与 `user/message` 对不上（同一条消息两处 id 缺失/不一致），
+          // 回放时被当成两条、甚至整段历史读坏（2026-11-10 真机事故，用户手动修过会话文件）。
+          id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
+            ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
           role: 'user',
           content: [{ type: 'text', text: body }],
           source: { kind: 'user' },
