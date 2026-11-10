@@ -249,9 +249,18 @@ export function mountVisionFab(deps: {
 
   const panel = doc.createElement('div')
   panel.id = 'dafeiyu-vision-panel'
+  const head = doc.createElement('div')
+  head.style.cssText = 'display:flex; align-items:center; gap:8px;'
   const title = doc.createElement('div')
   title.textContent = '发一张图给大肥鱼看'
-  title.style.fontWeight = '600'
+  title.style.cssText = 'flex:1; font-weight:600;'
+  const closePanel = doc.createElement('button')
+  closePanel.type = 'button'
+  closePanel.textContent = '✕'
+  closePanel.title = '关闭'
+  closePanel.style.cssText = 'background:transparent; border:0; color:inherit; cursor:pointer; font-size:15px;'
+  closePanel.addEventListener('click', () => panel.classList.remove('open'))
+  head.append(title, closePanel)
   const input = doc.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
@@ -270,7 +279,7 @@ export function mountVisionFab(deps: {
   const note = doc.createElement('div')
   note.id = 'dafeiyu-vision-note'
   actions.append(sendBtn, copyBtn)
-  panel.append(title, input, result, actions, note)
+  panel.append(head, input, result, actions, note)
   doc.body.appendChild(panel)
 
   let recognized = ''
@@ -342,6 +351,11 @@ export function mountVisionFab(deps: {
     if (panel.classList.contains('open')) setNote('选一张图，识别结果会出现在下面')
   })
 
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') panel.classList.remove('open')
+  }
+  doc.addEventListener('keydown', onKey)
+
   deps.expose?.({
     open: () => {
       if (!panel.classList.contains('open')) fab.click()
@@ -351,6 +365,7 @@ export function mountVisionFab(deps: {
 
   const cleanup = (): void => {
     try {
+      doc.removeEventListener('keydown', onKey)
       fab.remove()
       panel.remove()
       style.remove()

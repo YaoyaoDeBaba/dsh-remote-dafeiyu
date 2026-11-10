@@ -2184,9 +2184,18 @@ function mountVisionFab(deps) {
   if (deps.hideFab === true) fab.hidden = true;
   const panel = doc.createElement("div");
   panel.id = "dafeiyu-vision-panel";
+  const head = doc.createElement("div");
+  head.style.cssText = "display:flex; align-items:center; gap:8px;";
   const title = doc.createElement("div");
   title.textContent = "\u53D1\u4E00\u5F20\u56FE\u7ED9\u5927\u80A5\u9C7C\u770B";
-  title.style.fontWeight = "600";
+  title.style.cssText = "flex:1; font-weight:600;";
+  const closePanel = doc.createElement("button");
+  closePanel.type = "button";
+  closePanel.textContent = "\u2715";
+  closePanel.title = "\u5173\u95ED";
+  closePanel.style.cssText = "background:transparent; border:0; color:inherit; cursor:pointer; font-size:15px;";
+  closePanel.addEventListener("click", () => panel.classList.remove("open"));
+  head.append(title, closePanel);
   const input = doc.createElement("input");
   input.type = "file";
   input.accept = "image/*";
@@ -2205,7 +2214,7 @@ function mountVisionFab(deps) {
   const note = doc.createElement("div");
   note.id = "dafeiyu-vision-note";
   actions.append(sendBtn, copyBtn);
-  panel.append(title, input, result, actions, note);
+  panel.append(head, input, result, actions, note);
   doc.body.appendChild(panel);
   let recognized = "";
   let busy = false;
@@ -2270,6 +2279,10 @@ ${recognized}`;
     panel.classList.toggle("open");
     if (panel.classList.contains("open")) setNote("\u9009\u4E00\u5F20\u56FE\uFF0C\u8BC6\u522B\u7ED3\u679C\u4F1A\u51FA\u73B0\u5728\u4E0B\u9762");
   });
+  const onKey = (event) => {
+    if (event.key === "Escape") panel.classList.remove("open");
+  };
+  doc.addEventListener("keydown", onKey);
   deps.expose?.({
     open: () => {
       if (!panel.classList.contains("open")) fab.click();
@@ -2278,6 +2291,7 @@ ${recognized}`;
   });
   const cleanup = () => {
     try {
+      doc.removeEventListener("keydown", onKey);
       fab.remove();
       panel.remove();
       style.remove();
