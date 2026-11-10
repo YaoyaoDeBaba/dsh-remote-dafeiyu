@@ -62,6 +62,24 @@ export interface AvatarWidgetDeps {
 export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   const doc = (globalThis as { document?: Document }).document
   if (!doc || !doc.body) return () => {}
+  // 幂等：客户端插件在某些宿主里会被 apply 多次（或者热更新），
+  // 不拆旧实例就会叠出好几个鲸鱼娘——用户看到的“多个动画重叠”就是这个。
+  const previous = (globalThis as Record<string, unknown>).__dafeiyuAvatarCleanup
+  if (typeof previous === 'function') {
+    try {
+      ;(previous as () => void)()
+    } catch {
+      /* 旧实例已经拆过 */
+    }
+  }
+  // 兜底：DOM 里残留的同 id 元素一律清掉（清理函数丢了也不会叠）
+  for (const stale of Array.from(doc.querySelectorAll('#dafeiyu-avatar-widget'))) {
+    try {
+      stale.remove()
+    } catch {
+      /* ignore */
+    }
+  }
   const styleId = 'dafeiyu-avatar-widget-style'
   const existing = doc.getElementById(styleId)
   if (existing) existing.remove()
@@ -240,6 +258,16 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
 
   const refresh = (): void => {
     if (disposed) return
+    // 兜底：任何时候 DOM 里出现同 id 的第二个实例，都只保留自己这一个
+    for (const stale of Array.from(doc.querySelectorAll('#dafeiyu-avatar-widget'))) {
+      if (stale !== wrap) {
+        try {
+          stale.remove()
+        } catch {
+          /* ignore */
+        }
+      }
+    }
     const session = deps.getCurrentSession?.()
     if (!session) {
       wrap.hidden = true
@@ -343,7 +371,7 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   }, 400)
   refresh()
 
-  return () => {
+  const dispose = (): void => {
     disposed = true
     drag = undefined
     if (timer) clearInterval(timer)
@@ -355,4 +383,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
       /* 宿主可能已经拆了 */
     }
   }
+  ;(globalThis as Record<string, unknown>).__dafeiyuAvatarCleanup = dispose
+  return dispose
 }

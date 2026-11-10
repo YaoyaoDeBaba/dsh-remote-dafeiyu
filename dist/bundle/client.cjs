@@ -3465,6 +3465,20 @@ function mountAvatarWidget(deps) {
   const doc = globalThis.document;
   if (!doc || !doc.body) return () => {
   };
+  const previous = globalThis.__dafeiyuAvatarCleanup;
+  if (typeof previous === "function") {
+    try {
+      ;
+      previous();
+    } catch {
+    }
+  }
+  for (const stale of Array.from(doc.querySelectorAll("#dafeiyu-avatar-widget"))) {
+    try {
+      stale.remove();
+    } catch {
+    }
+  }
   const styleId = "dafeiyu-avatar-widget-style";
   const existing = doc.getElementById(styleId);
   if (existing) existing.remove();
@@ -3623,6 +3637,14 @@ function mountAvatarWidget(deps) {
   };
   const refresh = () => {
     if (disposed) return;
+    for (const stale of Array.from(doc.querySelectorAll("#dafeiyu-avatar-widget"))) {
+      if (stale !== wrap) {
+        try {
+          stale.remove();
+        } catch {
+        }
+      }
+    }
     const session = deps.getCurrentSession?.();
     if (!session) {
       wrap.hidden = true;
@@ -3716,7 +3738,7 @@ function mountAvatarWidget(deps) {
     if (Date.now() >= clipUntil) enterState(stateKey);
   }, 400);
   refresh();
-  return () => {
+  const dispose = () => {
     disposed = true;
     drag = void 0;
     if (timer) clearInterval(timer);
@@ -3727,6 +3749,8 @@ function mountAvatarWidget(deps) {
     } catch {
     }
   };
+  globalThis.__dafeiyuAvatarCleanup = dispose;
+  return dispose;
 }
 
 // src/persona/client-factory.js
