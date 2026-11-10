@@ -309,8 +309,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   /** 子代理运行计时：running 的起点 + 已结算的累计工作毫秒。只在插件进程内有效。 */
   const subagentRunningSince = new Map<string, number>()
   const subagentWorkMs = new Map<string, number>()
-  /** 子代理日志探针缓存：任务文本、回合耗时合计、最后事件时间（`readSession` 很贵）。 */
-  const subagentProbe = new Map<string, { at: number; task?: string; logWorkMs?: number; lastTime?: number }>()
+  /** 子代理当前回合的开始时刻（用事件流累计工作时长，不再读日志）。 */
+  const subagentTurnStart = new Map<string, number>()
   /** 子代理「此刻正在干什么」：最后一条有意义的会话事件（工具名/写回复/待办…）。 */
   const subagentActivity = new Map<string, { text: string; at: number }>()
   /** 已识别出来的子代理会话 id（用来判断某条会话事件要不要唤醒监视器）。 */
@@ -733,50 +733,6 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    *
    * 缓存：running 的 5 秒一刷（日志还在长），idle 的 60 秒（基本不变）。
    */
-  async function probeSubagent(
-    id: string,
-    running: boolean,
-  ): Promise<{ task?: string; logWorkMs?: number; lastTime?: number }> {
-    const now = options.clock.now()
-    const cached = subagentProbe.get(id)
-    // readSession 会把整份会话日志读出来（大日志几十 MB）；子代理监视器每 3 秒轮询一次，
-    // 5 秒就重新读一遍会把宿主的 GC 打满（2026-11-10 排查：宿主 3GB 抖动、手机侧断连）。
-    // 工作/闲置时间的主要来源已经是事件流与 runningSince，日志探针只做兜底，没必要高频。
-    if (cached && now - cached.at < (running ? 60_000 : 10 * 60_000)) return cached
-    const read = fn(services.sessionQuery, 'readSession')
-    if (!read) return cached ?? {}
-    try {
-      const loaded = (await withTimeout(
-        Promise.resolve(read.call(services.sessionQuery, id)),
-        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
-      )) as { events?: Array<{ type?: unknown; time?: unknown; data?: unknown }> } | undefined
-      const events = Array.isArray(loaded?.events) ? loaded.events : []
-      let lastTime: number | undefined
-      let logWorkMs = 0
-      let openStart: number | undefined
-      for (const event of events) {
-        const time = typeof event?.time === 'number' && Number.isFinite(event.time) ? event.time : undefined
-        if (time !== undefined && (lastTime === undefined || time > lastTime)) lastTime = time
-        if (event?.type === 'turn/start' && time !== undefined) openStart = time
-        else if (event?.type === 'turn/end' && time !== undefined && openStart !== undefined) {
-          logWorkMs += Math.max(0, time - openStart)
-          openStart = undefined
-        }
-      }
-      const task = taskFromEvents(events as Array<{ type?: unknown; data?: unknown }>)
-      if (running && openStart !== undefined) logWorkMs += Math.max(0, options.clock.now() - openStart)
-      const fresh: { at: number; task?: string; logWorkMs?: number; lastTime?: number } = { at: now }
-      if (task !== undefined) fresh.task = task
-      if (events.length > 0) fresh.logWorkMs = logWorkMs
-      if (lastTime !== undefined) fresh.lastTime = lastTime
-      subagentProbe.set(id, fresh)
-      return fresh
-    } catch (error) {
-      log('subagent probe failed', { sessionId: id.slice(0, 40), message: messageOf(error).slice(0, 120) })
-      return cached ?? {}
-    }
-  }
-
   /**
    * 把官方 label（内置 `subagent` 工具的 `description`）拆成「名称｜简述」。
    *
@@ -917,9 +873,10 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         subagentWorkMs.set(id, (subagentWorkMs.get(id) ?? 0) + Math.max(0, now - (subagentRunningSince.get(id) ?? now)))
         subagentRunningSince.delete(id)
       }
-      const probe = await probeSubagent(id, running)
+      // 不再读日志：工作时长只由事件流（turn/start→turn/end 与 runningSince）累计，
+      // 最后活动时间来自 session/event。子代理监视器因此不会碰 sessionQuery 的 5 格 LRU。
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt })
-      const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt
+      const lastActive = lastActivityAt.get(id) ?? createdAt
       const title = titleCache.get(id)?.title
       const labeled = splitSubagentLabel(labels.get(id))
       const naming = labeled.naming
@@ -944,7 +901,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         ...(iso(createdAt) ? { createdAt: iso(createdAt) } : {}),
         ...(iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {}),
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
-        workMs: Math.max(subagentWorkMs.get(id) ?? 0, probe.logWorkMs ?? 0),
+        workMs: subagentWorkMs.get(id) ?? 0,
         idleMs: Math.max(0, now - (lastActive ?? now)),
         ...(running ? { runningMs: Math.max(0, now - (subagentRunningSince.get(id) ?? now)) } : {}),
       })
@@ -1943,6 +1900,25 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       recordActivity(sessionId, typeof event?.type === 'string' ? event.type : '', data)
     } catch {
       /* 活动文案是增强项，绝不许影响事件分发 */
+    }
+    // 用事件流累计子代理的工作时长：turn/start → turn/end 的差。
+    // 这样不必为了计时去读整份日志（readSession 会挤 sessionQuery 的 5 格 LRU）。
+    try {
+      const rawTime = (event as { time?: unknown } | undefined)?.time
+      const eventTime = typeof rawTime === 'number' && Number.isFinite(rawTime) ? rawTime : undefined
+      if (eventTime !== undefined) {
+        if (event?.type === 'turn/start') {
+          subagentTurnStart.set(sessionId, eventTime)
+        } else if (event?.type === 'turn/end') {
+          const started = subagentTurnStart.get(sessionId)
+          if (started !== undefined) {
+            subagentWorkMs.set(sessionId, (subagentWorkMs.get(sessionId) ?? 0) + Math.max(0, eventTime - started))
+            subagentTurnStart.delete(sessionId)
+          }
+        }
+      }
+    } catch {
+      /* 计时是增强项，不许影响事件分发 */
     }
     if (knownSubagentIds.has(sessionId)) {
       try {

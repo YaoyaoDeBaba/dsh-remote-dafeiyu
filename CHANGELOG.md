@@ -1,3 +1,12 @@
+## 0.9.0-dafeiyu.34 —— 派活助手不再读会话日志（B 方案）
+
+- 删除 `probeSubagent` 的 `readSession`：子代理的工作时长改为**事件流累计**
+  （`turn/start` → `turn/end`，配合 runningSince 算本轮时长），最后活动时间沿用 `session/event`；
+- 派活助手现在完全不碰 `sessionQuery.readSession`，不会再占用/挤出 DSH 那个 **5 格 LRU**
+  （`preparedSessionCacheSize = 5`）导致桌面端冷读“载入历史…”；
+- 任务文本/标题此前已不下发、不显示，这次把唯一还会读日志的探针也去掉了；
+- 判据：subagents 单测同步更新（不再有日志回合差），全量 813 项通过。
+
 ## 0.9.0-dafeiyu.33 —— 派活助手改为事件驱动（SSE），不再定时轮询
 
 - 宿主新增 `GET /subagents/stream`（SSE）：子代理环状态变化、或已识别子代理会话有新事件时推送

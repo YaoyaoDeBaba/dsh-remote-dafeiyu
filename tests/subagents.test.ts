@@ -114,9 +114,9 @@ test('listSubagents：工作时长/闲置时长/标题仍然照旧', async () =>
   const run = rows.find((row) => row.id === 'child-run')!
   const idle = rows.find((row) => row.id === 'child-idle')!
   assert.equal(run.title, undefined, '标题也不下发，避免带出指令内容')
-  assert.equal(Math.round(run.workMs / 1000), 470 + 60, '工作时间 = turn 时间差，含当前未结束回合')
-  assert.equal(Math.round(run.idleMs / 1000), 60, '闲置 = 现在 − 最后一条事件')
-  assert.equal(Math.round(idle.workMs / 1000), 590, '空闲子代理用日志里的回合差')
+  assert.equal(run.workMs, 0, '不再读日志：工作时长只由事件流累计（此用例没有事件）')
+  assert.equal(Math.round(run.idleMs / 1000), 600, '没有事件时闲置时间按创建时间兜底')
+  assert.equal(idle.workMs, 0, '空闲子代理也不读日志')
 })
 
 test('listSubagents：descendants=true 才递归，默认只一层', async () => {

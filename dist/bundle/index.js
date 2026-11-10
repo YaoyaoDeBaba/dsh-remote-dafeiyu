@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.33" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.34" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32332,7 +32332,7 @@ function createServicesKernel(services, options) {
   const lastActivityAt = /* @__PURE__ */ new Map();
   const subagentRunningSince = /* @__PURE__ */ new Map();
   const subagentWorkMs = /* @__PURE__ */ new Map();
-  const subagentProbe = /* @__PURE__ */ new Map();
+  const subagentTurnStart = /* @__PURE__ */ new Map();
   const subagentActivity = /* @__PURE__ */ new Map();
   const knownSubagentIds = /* @__PURE__ */ new Set();
   let lastTouchedSessionId = "";
@@ -32573,43 +32573,6 @@ function createServicesKernel(services, options) {
       return null;
     }
   }
-  async function probeSubagent(id, running) {
-    const now = options.clock.now();
-    const cached2 = subagentProbe.get(id);
-    if (cached2 && now - cached2.at < (running ? 6e4 : 10 * 6e4)) return cached2;
-    const read = fn(services.sessionQuery, "readSession");
-    if (!read) return cached2 ?? {};
-    try {
-      const loaded = await withTimeout(
-        Promise.resolve(read.call(services.sessionQuery, id)),
-        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT
-      );
-      const events = Array.isArray(loaded?.events) ? loaded.events : [];
-      let lastTime;
-      let logWorkMs = 0;
-      let openStart;
-      for (const event of events) {
-        const time3 = typeof event?.time === "number" && Number.isFinite(event.time) ? event.time : void 0;
-        if (time3 !== void 0 && (lastTime === void 0 || time3 > lastTime)) lastTime = time3;
-        if (event?.type === "turn/start" && time3 !== void 0) openStart = time3;
-        else if (event?.type === "turn/end" && time3 !== void 0 && openStart !== void 0) {
-          logWorkMs += Math.max(0, time3 - openStart);
-          openStart = void 0;
-        }
-      }
-      const task = taskFromEvents(events);
-      if (running && openStart !== void 0) logWorkMs += Math.max(0, options.clock.now() - openStart);
-      const fresh = { at: now };
-      if (task !== void 0) fresh.task = task;
-      if (events.length > 0) fresh.logWorkMs = logWorkMs;
-      if (lastTime !== void 0) fresh.lastTime = lastTime;
-      subagentProbe.set(id, fresh);
-      return fresh;
-    } catch (error62) {
-      log("subagent probe failed", { sessionId: id.slice(0, 40), message: messageOf(error62).slice(0, 120) });
-      return cached2 ?? {};
-    }
-  }
   function splitSubagentLabel(label) {
     const raw = typeof label === "string" ? label.trim().replace(/\s+/g, " ") : "";
     if (raw === "") return { naming: "fallback" };
@@ -32713,9 +32676,8 @@ function createServicesKernel(services, options) {
         subagentWorkMs.set(id, (subagentWorkMs.get(id) ?? 0) + Math.max(0, now - (subagentRunningSince.get(id) ?? now)));
         subagentRunningSince.delete(id);
       }
-      const probe = await probeSubagent(id, running);
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt });
-      const lastActive = probe.lastTime ?? lastActivityAt.get(id) ?? createdAt;
+      const lastActive = lastActivityAt.get(id) ?? createdAt;
       const title = titleCache.get(id)?.title;
       const labeled = splitSubagentLabel(labels.get(id));
       const naming = labeled.naming;
@@ -32735,7 +32697,7 @@ function createServicesKernel(services, options) {
         ...iso(createdAt) ? { createdAt: iso(createdAt) } : {},
         ...iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {},
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
-        workMs: Math.max(subagentWorkMs.get(id) ?? 0, probe.logWorkMs ?? 0),
+        workMs: subagentWorkMs.get(id) ?? 0,
         idleMs: Math.max(0, now - (lastActive ?? now)),
         ...running ? { runningMs: Math.max(0, now - (subagentRunningSince.get(id) ?? now)) } : {}
       });
@@ -33292,6 +33254,22 @@ function createServicesKernel(services, options) {
     const data = event?.data ?? {};
     try {
       recordActivity(sessionId, typeof event?.type === "string" ? event.type : "", data);
+    } catch {
+    }
+    try {
+      const rawTime = event?.time;
+      const eventTime = typeof rawTime === "number" && Number.isFinite(rawTime) ? rawTime : void 0;
+      if (eventTime !== void 0) {
+        if (event?.type === "turn/start") {
+          subagentTurnStart.set(sessionId, eventTime);
+        } else if (event?.type === "turn/end") {
+          const started = subagentTurnStart.get(sessionId);
+          if (started !== void 0) {
+            subagentWorkMs.set(sessionId, (subagentWorkMs.get(sessionId) ?? 0) + Math.max(0, eventTime - started));
+            subagentTurnStart.delete(sessionId);
+          }
+        }
+      }
     } catch {
     }
     if (knownSubagentIds.has(sessionId)) {
