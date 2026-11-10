@@ -29,6 +29,7 @@ import { mountDafeiyuSettings } from './dafeiyu-page.js'
 import { mountVisionFab } from './vision-panel.js'
 import { mountSubagentMonitor } from './subagent-panel.js'
 import { mountAvatarWidget } from './avatar-widget.js'
+import { mountXyqQuick } from './xyq-quick.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -121,8 +122,17 @@ export function apply(ctx: ClientContext): (() => void) | void {
 
   // 识图那颗鲸鱼按钮（0.9.0）：先探当前会话注入通道，探不到也挂——只是退化成"复制结果"。
   let visionCleanup: (() => void) | undefined
+  let openVision: (() => void) | undefined
+  let openSubagents: (() => void) | undefined
+  let xyqQuick: ReturnType<typeof mountXyqQuick> | undefined
   try {
-    visionCleanup = mountVisionFab({ injectText: resolveSessionInject(ctx) })
+    visionCleanup = mountVisionFab({
+    injectText: resolveSessionInject(ctx),
+    hideFab: true,
+    expose: (api) => {
+      openVision = api.open
+    },
+  })
   } catch (error) {
     swallow('识图按钮挂载抛错（已吞掉）', error)
   }
@@ -131,11 +141,29 @@ export function apply(ctx: ClientContext): (() => void) | void {
   let subagentsCleanup: (() => void) | undefined
   let avatarCleanup: (() => void) | undefined
   try {
-    subagentsCleanup = mountSubagentMonitor({ getCurrentSession: resolveCurrentSession(ctx) })
+    xyqQuick = mountXyqQuick()
+  } catch (error) {
+    swallow('小云雀快捷面板挂载抛错（已吞掉）', error)
+  }
+  try {
+    subagentsCleanup = mountSubagentMonitor({
+      getCurrentSession: resolveCurrentSession(ctx),
+      showFab: false,
+      expose: (api) => {
+        openSubagents = api.open
+      },
+    })
 
   // avatar widget (0.14): chat page bottom-left, auto-switches by agent status.
   try {
-    avatarCleanup = mountAvatarWidget({ getCurrentSession: resolveCurrentSession(ctx) })
+    avatarCleanup = mountAvatarWidget({
+      getCurrentSession: resolveCurrentSession(ctx),
+      onMenuAction: (id) => {
+        if (id === 'subagents') openSubagents?.()
+        else if (id === 'vision') openVision?.()
+        else xyqQuick?.open()
+      },
+    })
   } catch (error) {
     swallow('avatar widget mount failed (swallowed)', error)
   }
@@ -215,6 +243,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
       avatarCleanup?.()
     } catch {
       /* avatar cleanup must not throw */
+    }
+    try {
+      xyqQuick?.dispose()
+    } catch {
+      /* xyq quick dispose must not throw */
     }
     try {
       visionCleanup?.()

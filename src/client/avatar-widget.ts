@@ -49,6 +49,8 @@ const POKE_MS = 1800
 
 export interface AvatarWidgetDeps {
   getCurrentSession: () => string | undefined | null
+  /** 点击菜单项：派活助手 / 小云雀 / 肥鱼识图（入口都收在形象身上）。 */
+  onMenuAction?: (id: 'subagents' | 'xyq' | 'vision') => void
 }
 
 export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
@@ -84,7 +86,15 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
 #dafeiyu-avatar-widget .stage.dragging { cursor: grabbing; }
 #dafeiyu-avatar-widget .layer { position: absolute; inset: 0; background-repeat: no-repeat;
   pointer-events: none; will-change: opacity; }
-#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; pointer-events: none; }
+#dafeiyu-avatar-menu { position: absolute; top: calc(100% + 4px); right: 0; width: 148px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px; border-radius: 10px;
+  border: 1px solid var(--dsw-alias-border-l2, #333); background: var(--dsw-alias-bg-primary, #1e1e1e);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 3; }
+#dafeiyu-avatar-menu[hidden] { display: none !important; }
+#dafeiyu-avatar-menu button { display: flex; gap: 8px; align-items: center; width: 100%;
+  padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; text-align: left;
+  color: var(--dsw-alias-label-primary, #eee); font-size: 13px; cursor: pointer; }
+#dafeiyu-avatar-menu button:hover { background: rgba(127,127,127,.16); }
 `
   doc.head.appendChild(style)
 
@@ -99,11 +109,48 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   layers[1]!.style.opacity = '0'
   let active = 0
   stage.append(layers[0]!, layers[1]!)
-  const hint = doc.createElement('div')
-  hint.className = 'hint'
-  hint.textContent = '拖动换位置 · 点按逗它'
-  wrap.append(stage, hint)
+  const menu = doc.createElement('div')
+  menu.id = 'dafeiyu-avatar-menu'
+  menu.hidden = true
+  let menuOpen = false
+  const toggleMenu = (next?: boolean): void => {
+    menuOpen = next ?? !menuOpen
+    menu.hidden = !menuOpen
+  }
+  const addMenuButton = (icon: string, label: string, onClick: () => void): void => {
+    const button = doc.createElement('button')
+    button.type = 'button'
+    button.textContent = `${icon} ${label}`
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      toggleMenu(false)
+      onClick()
+    })
+    menu.appendChild(button)
+  }
+  addMenuButton('🐝', '派活助手', () => deps.onMenuAction?.('subagents'))
+  addMenuButton('☁️', '小云雀', () => deps.onMenuAction?.('xyq'))
+  addMenuButton('🐳', '肥鱼识图', () => deps.onMenuAction?.('vision'))
+  addMenuButton('😤', '戳一下', () => {
+    if (available(POKE_CLIP)) {
+      pokeUntil = Date.now() + POKE_MS
+      playClip(POKE_CLIP, 1)
+    }
+  })
+  wrap.append(stage, menu)
   doc.body.appendChild(wrap)
+
+  const onDocClick = (event: Event): void => {
+    if (!menuOpen) return
+    const target = event.target as Node | null
+    if (target && wrap.contains(target)) return
+    toggleMenu(false)
+  }
+  doc.addEventListener('click', onDocClick)
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') toggleMenu(false)
+  }
+  doc.addEventListener('keydown', onKey as EventListener)
 
   let states: AvatarStateView[] = []
   let current: AvatarStateView | undefined
@@ -375,10 +422,10 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     const moved = drag.moved
     drag = undefined
     stage.classList.remove('dragging')
-    if (moved) place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true)
-    else if (available(POKE_CLIP)) {
-      pokeUntil = Date.now() + POKE_MS
-      playClip(POKE_CLIP, 1)
+    if (moved) {
+      place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true)
+    } else {
+      toggleMenu()
     }
   }
   const onDouble = (): void => {
@@ -414,6 +461,8 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     if (pollTimer) clearInterval(pollTimer)
     clearInterval(clipTimer)
     try {
+      doc.removeEventListener('click', onDocClick)
+      doc.removeEventListener('keydown', onKey as EventListener)
       wrap.remove()
       style.remove()
     } catch {

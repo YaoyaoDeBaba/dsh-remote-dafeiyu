@@ -40,6 +40,10 @@ export interface SubagentRow {
 }
 
 export interface SubagentMonitorDeps {
+  /** 入口收在形象菜单里时设 false：不显示独立 🐝 按钮，但面板仍可通过 expose 打开。 */
+  showFab?: boolean
+  /** 把 open/close 交给外部（虚拟形象菜单）。 */
+  expose?: (api: { open: () => void; close: () => void }) => void
   /** 当前选中的会话 id（拿不到就返回 undefined：列表页/设置页都不显示）。 */
   getCurrentSession: () => string | undefined
 }
@@ -91,6 +95,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       display: none; align-items: center; justify-content: center; font-size: 18px;
       box-shadow: 0 4px 14px rgba(0,0,0,.3); }
     #dafeiyu-subagent-fab.open, #dafeiyu-subagent-fab.has-items { display: flex; }
+  #dafeiyu-subagent-fab[hidden] { display: none !important; }
     #dafeiyu-subagent-fab:hover { border-color: #4b7bec; }
     #dafeiyu-subagent-fab .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
       padding: 0 4px; border-radius: 8px; background: #4b7bec; color: #fff; font-size: 10px; line-height: 16px; }
@@ -131,6 +136,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   badge.hidden = true
   fab.appendChild(badge)
   doc.body.appendChild(fab)
+  if (deps.showFab === false) fab.hidden = true
 
   const panel = doc.createElement('div')
   panel.id = 'dafeiyu-subagent-panel'
@@ -169,6 +175,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     fab.classList.toggle('open', next)
     if (next) void refresh()
   }
+  deps.expose?.({ open: () => setOpen(true), close: () => setOpen(false) })
 
   const render = (): void => {
     body.textContent = ''

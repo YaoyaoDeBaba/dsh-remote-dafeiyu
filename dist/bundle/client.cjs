@@ -2165,6 +2165,7 @@ function mountVisionFab(deps) {
       color: #4b7bec; cursor: pointer; z-index: 2147483000; box-shadow: 0 4px 14px rgba(0,0,0,.3);
       display: flex; align-items: center; justify-content: center; font-size: 20px; }
     #dafeiyu-vision-fab:hover { border-color: #4b7bec; }
+  #dafeiyu-vision-fab[hidden] { display: none !important; }
     #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 140px; width: 320px; max-height: 70vh; overflow: auto;
       padding: 12px; border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
       background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee);
@@ -2180,6 +2181,7 @@ function mountVisionFab(deps) {
   fab.title = "\u5927\u80A5\u9C7C\u8BC6\u56FE\uFF1A\u70B9\u4E00\u4E0B\u9009\u56FE";
   fab.textContent = "\u{1F433}";
   doc.body.appendChild(fab);
+  if (deps.hideFab === true) fab.hidden = true;
   const panel = doc.createElement("div");
   panel.id = "dafeiyu-vision-panel";
   const title = doc.createElement("div");
@@ -2267,6 +2269,12 @@ ${recognized}`;
   fab.addEventListener("click", () => {
     panel.classList.toggle("open");
     if (panel.classList.contains("open")) setNote("\u9009\u4E00\u5F20\u56FE\uFF0C\u8BC6\u522B\u7ED3\u679C\u4F1A\u51FA\u73B0\u5728\u4E0B\u9762");
+  });
+  deps.expose?.({
+    open: () => {
+      if (!panel.classList.contains("open")) fab.click();
+    },
+    close: () => panel.classList.remove("open")
   });
   const cleanup = () => {
     try {
@@ -3187,6 +3195,7 @@ function mountSubagentMonitor(deps) {
       display: none; align-items: center; justify-content: center; font-size: 18px;
       box-shadow: 0 4px 14px rgba(0,0,0,.3); }
     #dafeiyu-subagent-fab.open, #dafeiyu-subagent-fab.has-items { display: flex; }
+  #dafeiyu-subagent-fab[hidden] { display: none !important; }
     #dafeiyu-subagent-fab:hover { border-color: #4b7bec; }
     #dafeiyu-subagent-fab .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
       padding: 0 4px; border-radius: 8px; background: #4b7bec; color: #fff; font-size: 10px; line-height: 16px; }
@@ -3226,6 +3235,7 @@ function mountSubagentMonitor(deps) {
   badge.hidden = true;
   fab.appendChild(badge);
   doc.body.appendChild(fab);
+  if (deps.showFab === false) fab.hidden = true;
   const panel = doc.createElement("div");
   panel.id = "dafeiyu-subagent-panel";
   const head = doc.createElement("div");
@@ -3260,6 +3270,7 @@ function mountSubagentMonitor(deps) {
     fab.classList.toggle("open", next);
     if (next) void refresh();
   };
+  deps.expose?.({ open: () => setOpen(true), close: () => setOpen(false) });
   const render = () => {
     body.textContent = "";
     if (items.length === 0) {
@@ -3495,7 +3506,15 @@ function mountAvatarWidget(deps) {
 #dafeiyu-avatar-widget .stage.dragging { cursor: grabbing; }
 #dafeiyu-avatar-widget .layer { position: absolute; inset: 0; background-repeat: no-repeat;
   pointer-events: none; will-change: opacity; }
-#dafeiyu-avatar-widget .hint { font-size: 10px; color: rgba(127,127,127,.85); user-select: none; pointer-events: none; }
+#dafeiyu-avatar-menu { position: absolute; top: calc(100% + 4px); right: 0; width: 148px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px; border-radius: 10px;
+  border: 1px solid var(--dsw-alias-border-l2, #333); background: var(--dsw-alias-bg-primary, #1e1e1e);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 3; }
+#dafeiyu-avatar-menu[hidden] { display: none !important; }
+#dafeiyu-avatar-menu button { display: flex; gap: 8px; align-items: center; width: 100%;
+  padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; text-align: left;
+  color: var(--dsw-alias-label-primary, #eee); font-size: 13px; cursor: pointer; }
+#dafeiyu-avatar-menu button:hover { background: rgba(127,127,127,.16); }
 `;
   doc.head.appendChild(style);
   const wrap = doc.createElement("div");
@@ -3509,11 +3528,47 @@ function mountAvatarWidget(deps) {
   layers[1].style.opacity = "0";
   let active = 0;
   stage.append(layers[0], layers[1]);
-  const hint = doc.createElement("div");
-  hint.className = "hint";
-  hint.textContent = "\u62D6\u52A8\u6362\u4F4D\u7F6E \xB7 \u70B9\u6309\u9017\u5B83";
-  wrap.append(stage, hint);
+  const menu = doc.createElement("div");
+  menu.id = "dafeiyu-avatar-menu";
+  menu.hidden = true;
+  let menuOpen = false;
+  const toggleMenu = (next) => {
+    menuOpen = next ?? !menuOpen;
+    menu.hidden = !menuOpen;
+  };
+  const addMenuButton = (icon, label, onClick) => {
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.textContent = `${icon} ${label}`;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleMenu(false);
+      onClick();
+    });
+    menu.appendChild(button);
+  };
+  addMenuButton("\u{1F41D}", "\u6D3E\u6D3B\u52A9\u624B", () => deps.onMenuAction?.("subagents"));
+  addMenuButton("\u2601\uFE0F", "\u5C0F\u4E91\u96C0", () => deps.onMenuAction?.("xyq"));
+  addMenuButton("\u{1F433}", "\u80A5\u9C7C\u8BC6\u56FE", () => deps.onMenuAction?.("vision"));
+  addMenuButton("\u{1F624}", "\u6233\u4E00\u4E0B", () => {
+    if (available(POKE_CLIP)) {
+      pokeUntil = Date.now() + POKE_MS;
+      playClip(POKE_CLIP, 1);
+    }
+  });
+  wrap.append(stage, menu);
   doc.body.appendChild(wrap);
+  const onDocClick = (event) => {
+    if (!menuOpen) return;
+    const target = event.target;
+    if (target && wrap.contains(target)) return;
+    toggleMenu(false);
+  };
+  doc.addEventListener("click", onDocClick);
+  const onKey = (event) => {
+    if (event.key === "Escape") toggleMenu(false);
+  };
+  doc.addEventListener("keydown", onKey);
   let states = [];
   let current;
   let frame = 0;
@@ -3756,10 +3811,10 @@ function mountAvatarWidget(deps) {
     const moved = drag.moved;
     drag = void 0;
     stage.classList.remove("dragging");
-    if (moved) place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
-    else if (available(POKE_CLIP)) {
-      pokeUntil = Date.now() + POKE_MS;
-      playClip(POKE_CLIP, 1);
+    if (moved) {
+      place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
+    } else {
+      toggleMenu();
     }
   };
   const onDouble = () => {
@@ -3792,6 +3847,8 @@ function mountAvatarWidget(deps) {
     if (pollTimer) clearInterval(pollTimer);
     clearInterval(clipTimer);
     try {
+      doc.removeEventListener("click", onDocClick);
+      doc.removeEventListener("keydown", onKey);
       wrap.remove();
       style.remove();
     } catch {
@@ -3799,6 +3856,86 @@ function mountAvatarWidget(deps) {
   };
   globalThis.__dafeiyuAvatarCleanup = dispose;
   return dispose;
+}
+
+// src/client/xyq-quick.ts
+var BASE5 = "/api/dsh-remote-dafeiyu/xyq";
+function mountXyqQuick() {
+  const doc = globalThis.document;
+  if (!doc || !doc.body) return { open: () => {
+  }, dispose: () => {
+  } };
+  const styleId = "dafeiyu-xyq-quick-style";
+  const oldStyle = doc.getElementById(styleId);
+  if (oldStyle) oldStyle.remove();
+  const style = doc.createElement("style");
+  style.id = styleId;
+  style.textContent = `
+#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 300px; width: 260px; padding: 12px;
+  border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
+  background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee);
+  box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 13px; z-index: 2147483001; display: none; }
+#dafeiyu-xyq-quick.open { display: block; }
+#dafeiyu-xyq-quick .title { font-weight: 600; margin-bottom: 6px; }
+#dafeiyu-xyq-quick .line { color: var(--dsw-alias-label-secondary, #aaa); margin-top: 4px; word-break: break-word; }
+#dafeiyu-xyq-quick .row { display: flex; gap: 8px; margin-top: 8px; }
+#dafeiyu-xyq-quick button { padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, #333); background: transparent; color: inherit; cursor: pointer; font-size: 12px; }
+`;
+  doc.head.appendChild(style);
+  const panel = doc.createElement("div");
+  panel.id = "dafeiyu-xyq-quick";
+  const title = doc.createElement("div");
+  title.className = "title";
+  title.textContent = "\u5C0F\u4E91\u96C0";
+  const line = doc.createElement("div");
+  line.className = "line";
+  line.textContent = "\u6B63\u5728\u8BFB\u53D6\u2026";
+  const row = doc.createElement("div");
+  row.className = "row";
+  const refresh = doc.createElement("button");
+  refresh.type = "button";
+  refresh.textContent = "\u5237\u65B0";
+  const close = doc.createElement("button");
+  close.type = "button";
+  close.textContent = "\u5173\u95ED";
+  row.append(refresh, close);
+  panel.append(title, line, row);
+  doc.body.appendChild(panel);
+  const load = async () => {
+    line.textContent = "\u6B63\u5728\u8BFB\u53D6\u2026";
+    try {
+      const status = await (await fetch(resolveHostUrl(`${BASE5}/status`), { signal: AbortSignal.timeout(8e3) })).json();
+      const balance = await (await fetch(resolveHostUrl(`${BASE5}/balance`), { signal: AbortSignal.timeout(8e3) })).json();
+      const bits = [];
+      bits.push(status?.ok === true && status.loggedIn === true ? "Access Key \u6709\u6548" : String(status?.message ?? "Key \u672A\u751F\u6548"));
+      bits.push(balance?.ok === true ? `\u5269\u4F59\u79EF\u5206 ${String(balance.totalRemain ?? "\u672A\u77E5")}` : String(balance?.message ?? "\u79EF\u5206\u8BFB\u53D6\u5931\u8D25"));
+      bits.push("\u8BE6\u7EC6\u914D\u7F6E\uFF1A\u8BBE\u7F6E \u2192 \u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0");
+      line.textContent = bits.join("\uFF5C");
+    } catch (error) {
+      line.textContent = `\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
+    }
+  };
+  refresh.addEventListener("click", () => void load());
+  close.addEventListener("click", () => panel.classList.remove("open"));
+  const onClick = (event) => {
+    if (!panel.classList.contains("open")) return;
+    const target = event.target;
+    if (target && panel.contains(target)) return;
+    panel.classList.remove("open");
+  };
+  doc.addEventListener("click", onClick);
+  return {
+    open() {
+      panel.classList.add("open");
+      void load();
+    },
+    dispose() {
+      doc.removeEventListener("click", onClick);
+      panel.remove();
+      style.remove();
+    }
+  };
 }
 
 // src/persona/client-factory.js
@@ -5468,17 +5605,44 @@ function apply(ctx) {
     warnPersona(`\u4EBA\u8BBE\u5BA2\u6237\u7AEF\u672A\u5C31\u7EEA\uFF08${personaLoadNote}\uFF1A\u9000\u56DE\u4E24\u5F20\u5361\uFF0C\u6216\u53EA\u5269\u8FDC\u63A7\u4E00\u5361\uFF09`);
   }
   let visionCleanup;
+  let openVision;
+  let openSubagents;
+  let xyqQuick;
   try {
-    visionCleanup = mountVisionFab({ injectText: resolveSessionInject(ctx) });
+    visionCleanup = mountVisionFab({
+      injectText: resolveSessionInject(ctx),
+      hideFab: true,
+      expose: (api) => {
+        openVision = api.open;
+      }
+    });
   } catch (error) {
     swallow("\u8BC6\u56FE\u6309\u94AE\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
   }
   let subagentsCleanup;
   let avatarCleanup;
   try {
-    subagentsCleanup = mountSubagentMonitor({ getCurrentSession: resolveCurrentSession(ctx) });
+    xyqQuick = mountXyqQuick();
+  } catch (error) {
+    swallow("\u5C0F\u4E91\u96C0\u5FEB\u6377\u9762\u677F\u6302\u8F7D\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", error);
+  }
+  try {
+    subagentsCleanup = mountSubagentMonitor({
+      getCurrentSession: resolveCurrentSession(ctx),
+      showFab: false,
+      expose: (api) => {
+        openSubagents = api.open;
+      }
+    });
     try {
-      avatarCleanup = mountAvatarWidget({ getCurrentSession: resolveCurrentSession(ctx) });
+      avatarCleanup = mountAvatarWidget({
+        getCurrentSession: resolveCurrentSession(ctx),
+        onMenuAction: (id) => {
+          if (id === "subagents") openSubagents?.();
+          else if (id === "vision") openVision?.();
+          else xyqQuick?.open();
+        }
+      });
     } catch (error) {
       swallow("avatar widget mount failed (swallowed)", error);
     }
@@ -5547,6 +5711,10 @@ function apply(ctx) {
     }
     try {
       avatarCleanup?.();
+    } catch {
+    }
+    try {
+      xyqQuick?.dispose();
     } catch {
     }
     try {

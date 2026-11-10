@@ -212,7 +212,12 @@ export function buildVisionPanel(deps: VisionPanelDeps): (() => unknown) | undef
  * 聊天页右下角的鲸鱼按钮：选图 → 宿主识图 → 注入当前会话。
  * 返回清理函数（客户端 apply 的返回值就是 disposer）。
  */
-export function mountVisionFab(deps: { injectText?: (text: string) => Promise<boolean> | boolean }): () => void {
+export function mountVisionFab(deps: {
+  injectText?: (text: string) => Promise<boolean> | boolean
+  /** 入口收在形象菜单里时设 true：不显示独立 🐳 按钮。 */
+  hideFab?: boolean
+  expose?: (api: { open: () => void; close: () => void }) => void
+}): () => void {
   const doc = (globalThis as { document?: Document }).document
   if (!doc || !doc.body) return () => undefined
 
@@ -223,6 +228,7 @@ export function mountVisionFab(deps: { injectText?: (text: string) => Promise<bo
       color: #4b7bec; cursor: pointer; z-index: 2147483000; box-shadow: 0 4px 14px rgba(0,0,0,.3);
       display: flex; align-items: center; justify-content: center; font-size: 20px; }
     #dafeiyu-vision-fab:hover { border-color: #4b7bec; }
+  #dafeiyu-vision-fab[hidden] { display: none !important; }
     #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 140px; width: 320px; max-height: 70vh; overflow: auto;
       padding: 12px; border-radius: 12px; border: 1px solid var(--dsw-alias-border-l2, #333);
       background: var(--dsw-alias-bg-primary, #1e1e1e); color: var(--dsw-alias-label-primary, #eee);
@@ -239,6 +245,7 @@ export function mountVisionFab(deps: { injectText?: (text: string) => Promise<bo
   fab.title = '大肥鱼识图：点一下选图'
   fab.textContent = '🐳'
   doc.body.appendChild(fab)
+  if (deps.hideFab === true) fab.hidden = true
 
   const panel = doc.createElement('div')
   panel.id = 'dafeiyu-vision-panel'
@@ -333,6 +340,13 @@ export function mountVisionFab(deps: { injectText?: (text: string) => Promise<bo
   fab.addEventListener('click', () => {
     panel.classList.toggle('open')
     if (panel.classList.contains('open')) setNote('选一张图，识别结果会出现在下面')
+  })
+
+  deps.expose?.({
+    open: () => {
+      if (!panel.classList.contains('open')) fab.click()
+    },
+    close: () => panel.classList.remove('open'),
   })
 
   const cleanup = (): void => {
