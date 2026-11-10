@@ -53,7 +53,8 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
     const [playing, setPlaying] = useState<boolean>(true)
     const [status, setStatus] = useState<string>('正在读取素材…')
     const [version, setVersion] = useState<number>(0)
-    const [showAnchor, setShowAnchor] = useState<boolean>(true)
+    // 锚点是排查工具，默认不画；想看时点按钮打开。
+    const [showAnchor, setShowAnchor] = useState<boolean>(false)
 
     useEffect?.(() => {
       let cancelled = false

@@ -2945,7 +2945,7 @@ function buildAvatarPanel(deps) {
     const [playing, setPlaying] = useState(true);
     const [status, setStatus] = useState("\u6B63\u5728\u8BFB\u53D6\u7D20\u6750\u2026");
     const [version, setVersion] = useState(0);
-    const [showAnchor, setShowAnchor] = useState(true);
+    const [showAnchor, setShowAnchor] = useState(false);
     useEffect?.(() => {
       let cancelled = false;
       void (async () => {
