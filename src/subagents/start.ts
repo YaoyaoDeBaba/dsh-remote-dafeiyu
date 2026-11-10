@@ -61,7 +61,40 @@ export function startSubagents(
       return config
     },
   }
-  const deps: SubagentRouteDeps = { ...input, config: configFace }
+  // 推送：懒取 agents（启动时服务可能还没就绪），每次推送现取一次在线列表。
+  const pusher = createGuidancePusher(() => {
+    try {
+      return (ctx.get?.('agents', true) as unknown) ?? undefined
+    } catch {
+      return undefined
+    }
+  })
+  const xyqConfigFile = resolveXyqConfigFile(input.dshHome)
+  const guidanceTexts: Record<'subagent' | 'xyq', string> = {
+    subagent: SUBAGENT_GUIDANCE,
+    get xyq(): string {
+      return xyqGuidance(readXyqConfig(xyqConfigFile).freedom)
+    },
+  }
+  const deps: SubagentRouteDeps = {
+    ...input,
+    config: configFace,
+    pushGuidance: async (which: 'subagent' | 'xyq' | 'both'): Promise<GuidancePushResult> => {
+      const merged: GuidancePushResult = { total: 0, pushed: 0, failed: 0, errors: [] }
+      const targets: Array<'subagent' | 'xyq'> = which === 'both' ? ['subagent', 'xyq'] : [which]
+      for (const target of targets) {
+        const one = await pusher(
+          guidanceTexts[target],
+          target === 'subagent' ? '派活规范（子代理监视器）' : '小云雀工具使用说明',
+        )
+        merged.total = Math.max(merged.total, one.total)
+        merged.pushed += one.pushed
+        merged.failed += one.failed
+        merged.errors.push(...one.errors)
+      }
+      return merged
+    },
+  }
   // 提示词段：插件激活就告诉模型「按 名称｜简述 派活」。拿不到 systemPrompt 只是少一段提示。
   // 配置里 guidance=false 就不注入（改开关要重启宿主才生效，与识图同一条纪律）。
   if (!config.guidance) probe.section = 'disabled-by-config'

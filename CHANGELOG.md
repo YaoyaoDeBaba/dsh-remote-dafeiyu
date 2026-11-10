@@ -1,3 +1,10 @@
+## 0.9.0-dafeiyu.22 —— 修复「推送到所有在线会话」
+
+- 根因 1：`startSubagents` 里 `pushGuidance` 的接线没落地（类型修完后那段替换没匹配上），路由存在但 `deps.pushGuidance` 为空 → 503；
+- 根因 2：设置页用 `${BASE}/../guidance/push`，`..` 归一化后请求没打到宿主 → 浏览器报 `Failed to fetch`；
+- 现在：push 用绝对路径 `/api/dsh-remote-dafeiyu/guidance/push`；宿主侧真正接上 `createGuidancePusher`（懒取 `ctx.get('agents')`，逐个 `agent.inject`），并带「已推送 N/M」回执；
+- 失败提示改成「网络错误（…）——宿主可能还没重启到最新插件」。
+
 ## 0.9.0-dafeiyu.21 —— 形象切换不再闪白（双层交叉 + 小图）
 
 - 闪白的根因不是没预加载，而是**单层元素替换 background-image 时浏览器要重新光栅化**

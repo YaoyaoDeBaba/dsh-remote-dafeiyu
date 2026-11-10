@@ -160,7 +160,7 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
     const push = async (): Promise<void> => {
       setBusy(true)
       try {
-        const result = await postConfig2(`${BASE}/../guidance/push`, { which: 'subagent' })
+        const result = await postConfig2('/api/dsh-remote-dafeiyu/guidance/push', { which: 'subagent' })
         if (result.ok === true && result.result && typeof result.result === 'object') {
           const r = result.result as { pushed?: number; failed?: number; total?: number }
           setStatus(`已推送到 ${r.pushed ?? 0}/${r.total ?? 0} 个在线会话${(r.failed ?? 0) > 0 ? `（${r.failed} 个失败）` : ''}`)
@@ -168,7 +168,7 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
           setStatus(`推送失败：${String(result.error ?? '未知错误')}`)
         }
       } catch (error) {
-        setStatus(`推送失败：${String((error as Error)?.message ?? error)}`)
+        setStatus(`推送失败：网络错误（${String((error as Error)?.message ?? error)}）——宿主可能还没重启到最新插件`)
       } finally {
         setBusy(false)
       }

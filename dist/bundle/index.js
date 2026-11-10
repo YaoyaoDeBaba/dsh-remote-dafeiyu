@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.21" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.22" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37079,6 +37079,127 @@ function writeSubagentsConfig(file2, patch) {
   return next;
 }
 
+// src/subagents/pusher.ts
+function createGuidancePusher(getAgents) {
+  return async function push(text, summary2) {
+    const result2 = { total: 0, pushed: 0, failed: 0, errors: [] };
+    const service = getAgents();
+    const list = service && typeof service.list === "function" ? service.list() ?? [] : [];
+    const agents = Array.isArray(list) ? list : [];
+    result2.total = agents.length;
+    const body = `\u3010\u7CFB\u7EDF\u63A8\u9001\xB7\u5927\u80A5\u9C7C\u63D2\u4EF6\u3011${summary2}
+${text}
+\uFF08\u4EE5\u4E0A\u89C4\u8303\u7531\u63D2\u4EF6\u63A8\u9001\u5230\u672C\u4F1A\u8BDD\uFF0C\u540E\u7EED\u8BF7\u9075\u5B88\uFF1B\u8FD9\u662F\u7CFB\u7EDF\u63A8\u9001\uFF0C\u4E0D\u662F\u7528\u6237\u53D1\u8A00\u3002\uFF09`;
+    for (const agent of agents) {
+      if (!agent || typeof agent.inject !== "function") {
+        result2.failed += 1;
+        result2.errors.push("\u4E00\u4E2A\u5728\u7EBF\u4F1A\u8BDD\u6CA1\u6709 inject \u80FD\u529B");
+        continue;
+      }
+      try {
+        agent.inject({
+          role: "user",
+          content: [{ type: "text", text: body }],
+          source: { kind: "user" }
+        });
+        result2.pushed += 1;
+      } catch (error62) {
+        result2.failed += 1;
+        result2.errors.push(String(error62?.message ?? error62).slice(0, 120));
+      }
+    }
+    return result2;
+  };
+}
+
+// src/xyq/config.ts
+import fs8 from "node:fs";
+import path16 from "node:path";
+var DEFAULTS4 = {
+  version: 1,
+  enabled: true,
+  accessKey: "",
+  defaultVideoModel: "Seedance_2.0_mini_lite",
+  defaultVideoDurationSec: 4,
+  defaultImageModel: "",
+  budget: { images: 10, videos: 2, maxVideoSeconds: 10 },
+  freedom: "explicit"
+};
+function resolveXyqConfigFile(dshHome = resolveDshHome(process.env)) {
+  return path16.join(dshHome, "storages", "dsh-remote-dafeiyu", "xyq.json");
+}
+function clampInt(value, min, max, fallback) {
+  const num = typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
+  return Math.min(max, Math.max(min, num));
+}
+function normalizeXyqConfig(raw) {
+  const value = raw && typeof raw === "object" ? raw : {};
+  const budget = value.budget && typeof value.budget === "object" ? value.budget : {};
+  const freedom = value.freedom === "budgeted" || value.freedom === "open" ? value.freedom : "explicit";
+  const duration3 = clampInt(value.defaultVideoDurationSec, 4, 30, DEFAULTS4.defaultVideoDurationSec);
+  return {
+    version: 1,
+    enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULTS4.enabled,
+    accessKey: typeof value.accessKey === "string" ? value.accessKey.trim() : "",
+    defaultVideoModel: typeof value.defaultVideoModel === "string" && value.defaultVideoModel.trim() !== "" ? value.defaultVideoModel.trim() : DEFAULTS4.defaultVideoModel,
+    defaultVideoDurationSec: duration3,
+    defaultImageModel: typeof value.defaultImageModel === "string" ? value.defaultImageModel.trim() : "",
+    budget: {
+      images: clampInt(budget.images, 0, 200, DEFAULTS4.budget.images),
+      videos: clampInt(budget.videos, 0, 50, DEFAULTS4.budget.videos),
+      maxVideoSeconds: clampInt(budget.maxVideoSeconds, 4, 30, DEFAULTS4.budget.maxVideoSeconds)
+    },
+    freedom
+  };
+}
+function readXyqConfig(file2) {
+  try {
+    return normalizeXyqConfig(JSON.parse(fs8.readFileSync(file2, "utf8")));
+  } catch {
+    return { ...DEFAULTS4, budget: { ...DEFAULTS4.budget } };
+  }
+}
+function writeXyqConfig(file2, patch) {
+  const next = normalizeXyqConfig({ ...readXyqConfig(file2), ...patch });
+  try {
+    fs8.mkdirSync(path16.dirname(file2), { recursive: true });
+    const tmp = `${file2}.${process.pid}.tmp`;
+    fs8.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
+`, "utf8");
+    fs8.renameSync(tmp, file2);
+  } catch {
+  }
+  return next;
+}
+function viewXyqConfig(config2) {
+  const key = config2.accessKey;
+  return {
+    enabled: config2.enabled,
+    accessKeySet: key !== "",
+    accessKeyHint: key === "" ? "" : `\u2026${key.slice(-4)}`,
+    defaultVideoModel: config2.defaultVideoModel,
+    defaultVideoDurationSec: config2.defaultVideoDurationSec,
+    defaultImageModel: config2.defaultImageModel,
+    budget: config2.budget,
+    freedom: config2.freedom
+  };
+}
+
+// src/xyq/guidance.ts
+function xyqGuidance(freedom) {
+  const lines = [
+    "## \u5C0F\u4E91\u96C0\uFF08\u56FE\u7247 / \u89C6\u9891\u751F\u6210\uFF09",
+    "\u672C\u673A\u63A5\u5165\u4E86\u5C0F\u4E91\u96C0\u5B98\u65B9 CLI\uFF0C\u63D0\u4F9B `generate_image`\u3001`generate_video`\u3001`xyq_balance`\u3001`xyq_models` \u56DB\u4E2A\u5DE5\u5177\u3002",
+    "\u4F7F\u7528\u987A\u5E8F\uFF1A\u5148 `xyq_models` \u67E5\u6A21\u578B \u2192 `xyq_balance` \u770B\u79EF\u5206 \u2192 \u751F\u6210 \u2192 \u628A\u5DE5\u5177\u8FD4\u56DE\u7684**\u672C\u5730\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84**\u544A\u8BC9\u7528\u6237\u3002",
+    "\u6210\u672C\uFF1A\u89C6\u9891\u6309\u65F6\u957F\u8BA1\u8D39\uFF08Seedance 2.0 Mini \u4F53\u9A8C\u7248\u7EA6 4 \u79EF\u5206/\u79D2\uFF09\uFF0C\u56FE\u7247\u6309\u5F20\u8BA1\u8D39\uFF1B\u65F6\u957F\u4F1A\u88AB\u8BBE\u7F6E\u91CC\u7684\u4E0A\u9650\u622A\u65AD\u3002"
+  ];
+  if (freedom === "explicit") lines.push("\u8C03\u7528\u7EA6\u675F\uFF1A**\u53EA\u6709\u7528\u6237\u660E\u786E\u8981\u6C42\u751F\u6210\u56FE\u7247/\u89C6\u9891\u65F6\u624D\u80FD\u8C03\u7528**\uFF1B\u4E0D\u8981\u4E3A\u4E86\u201C\u7701\u4E8B\u201D\u81EA\u884C\u751F\u6210\u3002");
+  else if (freedom === "budgeted") lines.push("\u8C03\u7528\u7EA6\u675F\uFF1A\u5F00\u53D1\u4EFB\u52A1\u9700\u8981\u7D20\u6750\u65F6\u53EF\u4EE5\u81EA\u884C\u8C03\u7528\uFF0C\u4F46\u5FC5\u987B\u53D7\u8BBE\u7F6E\u91CC\u7684\u989D\u5EA6\u4E0E\u65F6\u957F\u4E0A\u9650\u7EA6\u675F\uFF1B\u7528\u5B8C\u5C31\u505C\uFF0C\u4E0D\u8981\u91CD\u590D\u751F\u6210\u3002");
+  else lines.push("\u8C03\u7528\u7EA6\u675F\uFF1A\u989D\u5EA6\u5DF2\u653E\u5F00\uFF0C\u81EA\u884C\u5224\u65AD\u662F\u5426\u751F\u6210\uFF1B\u4ECD\u7136\u4E0D\u8981\u91CD\u590D\u751F\u6210\u540C\u4E00\u4E2A\u7D20\u6750\u3002");
+  lines.push("Access Key \u8FC7\u671F/\u65E0\u6548\u65F6\u5DE5\u5177\u4F1A\u62A5\u9519\uFF0C\u628A\u539F\u6587\u8F6C\u544A\u7528\u6237\uFF0C\u8BA9\u4ED6\u53BB\u5C0F\u4E91\u96C0\u5B98\u7F51 \u26A1CLI/API \u2192 API \u66F4\u65B0\u3002");
+  return lines.join("\n");
+}
+
 // src/subagents/start.ts
 var GUIDANCE2 = SUBAGENT_GUIDANCE;
 function startSubagents(ctx, input2) {
@@ -37092,7 +37213,39 @@ function startSubagents(ctx, input2) {
       return config2;
     }
   };
-  const deps = { ...input2, config: configFace };
+  const pusher = createGuidancePusher(() => {
+    try {
+      return ctx.get?.("agents", true) ?? void 0;
+    } catch {
+      return void 0;
+    }
+  });
+  const xyqConfigFile = resolveXyqConfigFile(input2.dshHome);
+  const guidanceTexts = {
+    subagent: SUBAGENT_GUIDANCE,
+    get xyq() {
+      return xyqGuidance(readXyqConfig(xyqConfigFile).freedom);
+    }
+  };
+  const deps = {
+    ...input2,
+    config: configFace,
+    pushGuidance: async (which) => {
+      const merged = { total: 0, pushed: 0, failed: 0, errors: [] };
+      const targets = which === "both" ? ["subagent", "xyq"] : [which];
+      for (const target of targets) {
+        const one = await pusher(
+          guidanceTexts[target],
+          target === "subagent" ? "\u6D3E\u6D3B\u89C4\u8303\uFF08\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF09" : "\u5C0F\u4E91\u96C0\u5DE5\u5177\u4F7F\u7528\u8BF4\u660E"
+        );
+        merged.total = Math.max(merged.total, one.total);
+        merged.pushed += one.pushed;
+        merged.failed += one.failed;
+        merged.errors.push(...one.errors);
+      }
+      return merged;
+    }
+  };
   if (!config2.guidance) probe.section = "disabled-by-config";
   else try {
     const systemPrompt = ctx.get?.("systemPrompt", true);
@@ -37199,79 +37352,6 @@ function startSubagents(ctx, input2) {
       } catch {
       }
     }
-  };
-}
-
-// src/xyq/config.ts
-import fs8 from "node:fs";
-import path16 from "node:path";
-var DEFAULTS4 = {
-  version: 1,
-  enabled: true,
-  accessKey: "",
-  defaultVideoModel: "Seedance_2.0_mini_lite",
-  defaultVideoDurationSec: 4,
-  defaultImageModel: "",
-  budget: { images: 10, videos: 2, maxVideoSeconds: 10 },
-  freedom: "explicit"
-};
-function resolveXyqConfigFile(dshHome = resolveDshHome(process.env)) {
-  return path16.join(dshHome, "storages", "dsh-remote-dafeiyu", "xyq.json");
-}
-function clampInt(value, min, max, fallback) {
-  const num = typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
-  return Math.min(max, Math.max(min, num));
-}
-function normalizeXyqConfig(raw) {
-  const value = raw && typeof raw === "object" ? raw : {};
-  const budget = value.budget && typeof value.budget === "object" ? value.budget : {};
-  const freedom = value.freedom === "budgeted" || value.freedom === "open" ? value.freedom : "explicit";
-  const duration3 = clampInt(value.defaultVideoDurationSec, 4, 30, DEFAULTS4.defaultVideoDurationSec);
-  return {
-    version: 1,
-    enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULTS4.enabled,
-    accessKey: typeof value.accessKey === "string" ? value.accessKey.trim() : "",
-    defaultVideoModel: typeof value.defaultVideoModel === "string" && value.defaultVideoModel.trim() !== "" ? value.defaultVideoModel.trim() : DEFAULTS4.defaultVideoModel,
-    defaultVideoDurationSec: duration3,
-    defaultImageModel: typeof value.defaultImageModel === "string" ? value.defaultImageModel.trim() : "",
-    budget: {
-      images: clampInt(budget.images, 0, 200, DEFAULTS4.budget.images),
-      videos: clampInt(budget.videos, 0, 50, DEFAULTS4.budget.videos),
-      maxVideoSeconds: clampInt(budget.maxVideoSeconds, 4, 30, DEFAULTS4.budget.maxVideoSeconds)
-    },
-    freedom
-  };
-}
-function readXyqConfig(file2) {
-  try {
-    return normalizeXyqConfig(JSON.parse(fs8.readFileSync(file2, "utf8")));
-  } catch {
-    return { ...DEFAULTS4, budget: { ...DEFAULTS4.budget } };
-  }
-}
-function writeXyqConfig(file2, patch) {
-  const next = normalizeXyqConfig({ ...readXyqConfig(file2), ...patch });
-  try {
-    fs8.mkdirSync(path16.dirname(file2), { recursive: true });
-    const tmp = `${file2}.${process.pid}.tmp`;
-    fs8.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
-`, "utf8");
-    fs8.renameSync(tmp, file2);
-  } catch {
-  }
-  return next;
-}
-function viewXyqConfig(config2) {
-  const key = config2.accessKey;
-  return {
-    enabled: config2.enabled,
-    accessKeySet: key !== "",
-    accessKeyHint: key === "" ? "" : `\u2026${key.slice(-4)}`,
-    defaultVideoModel: config2.defaultVideoModel,
-    defaultVideoDurationSec: config2.defaultVideoDurationSec,
-    defaultImageModel: config2.defaultImageModel,
-    budget: config2.budget,
-    freedom: config2.freedom
   };
 }
 
@@ -37769,21 +37849,6 @@ async function resolveCliPath(run, options = {}) {
     return installed;
   }
   return void 0;
-}
-
-// src/xyq/guidance.ts
-function xyqGuidance(freedom) {
-  const lines = [
-    "## \u5C0F\u4E91\u96C0\uFF08\u56FE\u7247 / \u89C6\u9891\u751F\u6210\uFF09",
-    "\u672C\u673A\u63A5\u5165\u4E86\u5C0F\u4E91\u96C0\u5B98\u65B9 CLI\uFF0C\u63D0\u4F9B `generate_image`\u3001`generate_video`\u3001`xyq_balance`\u3001`xyq_models` \u56DB\u4E2A\u5DE5\u5177\u3002",
-    "\u4F7F\u7528\u987A\u5E8F\uFF1A\u5148 `xyq_models` \u67E5\u6A21\u578B \u2192 `xyq_balance` \u770B\u79EF\u5206 \u2192 \u751F\u6210 \u2192 \u628A\u5DE5\u5177\u8FD4\u56DE\u7684**\u672C\u5730\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84**\u544A\u8BC9\u7528\u6237\u3002",
-    "\u6210\u672C\uFF1A\u89C6\u9891\u6309\u65F6\u957F\u8BA1\u8D39\uFF08Seedance 2.0 Mini \u4F53\u9A8C\u7248\u7EA6 4 \u79EF\u5206/\u79D2\uFF09\uFF0C\u56FE\u7247\u6309\u5F20\u8BA1\u8D39\uFF1B\u65F6\u957F\u4F1A\u88AB\u8BBE\u7F6E\u91CC\u7684\u4E0A\u9650\u622A\u65AD\u3002"
-  ];
-  if (freedom === "explicit") lines.push("\u8C03\u7528\u7EA6\u675F\uFF1A**\u53EA\u6709\u7528\u6237\u660E\u786E\u8981\u6C42\u751F\u6210\u56FE\u7247/\u89C6\u9891\u65F6\u624D\u80FD\u8C03\u7528**\uFF1B\u4E0D\u8981\u4E3A\u4E86\u201C\u7701\u4E8B\u201D\u81EA\u884C\u751F\u6210\u3002");
-  else if (freedom === "budgeted") lines.push("\u8C03\u7528\u7EA6\u675F\uFF1A\u5F00\u53D1\u4EFB\u52A1\u9700\u8981\u7D20\u6750\u65F6\u53EF\u4EE5\u81EA\u884C\u8C03\u7528\uFF0C\u4F46\u5FC5\u987B\u53D7\u8BBE\u7F6E\u91CC\u7684\u989D\u5EA6\u4E0E\u65F6\u957F\u4E0A\u9650\u7EA6\u675F\uFF1B\u7528\u5B8C\u5C31\u505C\uFF0C\u4E0D\u8981\u91CD\u590D\u751F\u6210\u3002");
-  else lines.push("\u8C03\u7528\u7EA6\u675F\uFF1A\u989D\u5EA6\u5DF2\u653E\u5F00\uFF0C\u81EA\u884C\u5224\u65AD\u662F\u5426\u751F\u6210\uFF1B\u4ECD\u7136\u4E0D\u8981\u91CD\u590D\u751F\u6210\u540C\u4E00\u4E2A\u7D20\u6750\u3002");
-  lines.push("Access Key \u8FC7\u671F/\u65E0\u6548\u65F6\u5DE5\u5177\u4F1A\u62A5\u9519\uFF0C\u628A\u539F\u6587\u8F6C\u544A\u7528\u6237\uFF0C\u8BA9\u4ED6\u53BB\u5C0F\u4E91\u96C0\u5B98\u7F51 \u26A1CLI/API \u2192 API \u66F4\u65B0\u3002");
-  return lines.join("\n");
 }
 
 // src/xyq/start.ts

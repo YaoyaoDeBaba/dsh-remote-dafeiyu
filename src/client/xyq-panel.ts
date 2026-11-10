@@ -116,7 +116,7 @@ export function buildXyqPanel(deps: { createElement: CreateElement; hooks: Hooks
     const push = async (): Promise<void> => {
       setBusy(true)
       try {
-        const result = await postJson(`${BASE}/../guidance/push`, { which: 'xyq' })
+        const result = await postJson('/api/dsh-remote-dafeiyu/guidance/push', { which: 'xyq' })
         if (result.ok === true && result.result && typeof result.result === 'object') {
           const r = result.result as { pushed?: number; failed?: number; total?: number }
           setStatus(`已推送到 ${r.pushed ?? 0}/${r.total ?? 0} 个在线会话${(r.failed ?? 0) > 0 ? `（${r.failed} 个失败）` : ''}`)

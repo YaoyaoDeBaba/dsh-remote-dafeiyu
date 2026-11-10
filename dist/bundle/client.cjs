@@ -2644,7 +2644,7 @@ function buildSubagentsPanel(deps) {
     const push = async () => {
       setBusy(true);
       try {
-        const result = await postConfig2(`${BASE}/../guidance/push`, { which: "subagent" });
+        const result = await postConfig2("/api/dsh-remote-dafeiyu/guidance/push", { which: "subagent" });
         if (result.ok === true && result.result && typeof result.result === "object") {
           const r = result.result;
           setStatus(`\u5DF2\u63A8\u9001\u5230 ${r.pushed ?? 0}/${r.total ?? 0} \u4E2A\u5728\u7EBF\u4F1A\u8BDD${(r.failed ?? 0) > 0 ? `\uFF08${r.failed} \u4E2A\u5931\u8D25\uFF09` : ""}`);
@@ -2652,7 +2652,7 @@ function buildSubagentsPanel(deps) {
           setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
         }
       } catch (error) {
-        setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+        setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A\u7F51\u7EDC\u9519\u8BEF\uFF08${String(error?.message ?? error)}\uFF09\u2014\u2014\u5BBF\u4E3B\u53EF\u80FD\u8FD8\u6CA1\u91CD\u542F\u5230\u6700\u65B0\u63D2\u4EF6`);
       } finally {
         setBusy(false);
       }
@@ -2809,7 +2809,7 @@ function buildXyqPanel(deps) {
     const push = async () => {
       setBusy(true);
       try {
-        const result = await postJson(`${BASE2}/../guidance/push`, { which: "xyq" });
+        const result = await postJson("/api/dsh-remote-dafeiyu/guidance/push", { which: "xyq" });
         if (result.ok === true && result.result && typeof result.result === "object") {
           const r = result.result;
           setStatus(`\u5DF2\u63A8\u9001\u5230 ${r.pushed ?? 0}/${r.total ?? 0} \u4E2A\u5728\u7EBF\u4F1A\u8BDD${(r.failed ?? 0) > 0 ? `\uFF08${r.failed} \u4E2A\u5931\u8D25\uFF09` : ""}`);
