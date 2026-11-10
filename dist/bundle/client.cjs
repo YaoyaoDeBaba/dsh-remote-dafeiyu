@@ -2174,7 +2174,13 @@ function mountVisionFab(deps) {
     #dafeiyu-vision-result { width: 100%; min-height: 120px; margin-top: 8px; box-sizing: border-box;
       background: transparent; color: inherit; border: 1px solid var(#1f3b63); border-radius: 8px; padding: 8px; }
     #dafeiyu-vision-note { color: var(#4b7bec); font-size: 12px; margin-top: 6px; word-break: break-word; }
-  `;
+  
+  /* \u767D\u5E95\u84DD\u5B57\u8986\u76D6\uFF080.31\uFF09 */
+  #dafeiyu-vision-panel { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-vision-panel textarea, #dafeiyu-vision-panel input { background: #ffffff !important; color: #1d3f8f !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-vision-panel button { background: #eaf1ff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-vision-panel #dafeiyu-vision-note { color: #4a6bb3 !important; }
+`;
   doc.head?.appendChild(style);
   const fab = doc.createElement("button");
   fab.id = "dafeiyu-vision-fab";
@@ -2581,19 +2587,6 @@ var previewStyle = {
   overflow: "auto",
   margin: "0"
 };
-async function postConfig2(path, body) {
-  const response = await fetch(resolveHostUrl(path), {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-drc-pair": "1" },
-    body: JSON.stringify(body)
-  });
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { ok: false, error: `\u5BBF\u4E3B\u8FD4\u56DE\u4E86\u975E JSON\uFF08HTTP ${response.status}\uFF09` };
-  }
-}
 async function postConfig(patch) {
   const response = await fetch(resolveHostUrl(`${BASE}/config`), {
     method: "POST",
@@ -2672,22 +2665,6 @@ function buildSubagentsPanel(deps) {
         ]
       });
     }
-    const push = async () => {
-      setBusy(true);
-      try {
-        const result = await postConfig2("/api/dsh-remote-dafeiyu/guidance/push", { which: "subagent" });
-        if (result.ok === true && result.result && typeof result.result === "object") {
-          const r = result.result;
-          setStatus(`\u5DF2\u63A8\u9001\u5230 ${r.pushed ?? 0}/${r.total ?? 0} \u4E2A\u5728\u7EBF\u4F1A\u8BDD${(r.failed ?? 0) > 0 ? `\uFF08${r.failed} \u4E2A\u5931\u8D25\uFF09` : ""}`);
-        } else {
-          setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
-        }
-      } catch (error) {
-        setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A\u7F51\u7EDC\u9519\u8BEF\uFF08${String(error?.message ?? error)}\uFF09\u2014\u2014\u5BBF\u4E3B\u53EF\u80FD\u8FD8\u6CA1\u91CD\u542F\u5230\u6700\u65B0\u63D2\u4EF6`);
-      } finally {
-        setBusy(false);
-      }
-    };
     const copy = async () => {
       try {
         await navigator.clipboard.writeText(preview);
@@ -2757,7 +2734,6 @@ function buildSubagentsPanel(deps) {
               children: [
                 h("span", { style: labelStyle3, children: "\u63D0\u793A\u8BCD\u9884\u89C8\uFF08\u4E0E\u6CE8\u5165\u7ED9\u6A21\u578B\u7684\u662F\u540C\u4E00\u4EFD\uFF09" }),
                 h("button", { type: "button", style: buttonStyle3, onClick: () => void copy(), children: "\u590D\u5236" }),
-                h("button", { type: "button", style: buttonStyle3, disabled: busy, onClick: () => void push(), children: "\u63A8\u9001\u5230\u6240\u6709\u5728\u7EBF\u4F1A\u8BDD" }),
                 h("button", { type: "button", style: buttonStyle3, onClick: () => void load(), children: "\u5237\u65B0" })
               ]
             }),
@@ -2853,22 +2829,6 @@ function buildXyqPanel(deps) {
         setBusy(false);
       }
     };
-    const push = async () => {
-      setBusy(true);
-      try {
-        const result = await postJson("/api/dsh-remote-dafeiyu/guidance/push", { which: "xyq" });
-        if (result.ok === true && result.result && typeof result.result === "object") {
-          const r = result.result;
-          setStatus(`\u5DF2\u63A8\u9001\u5230 ${r.pushed ?? 0}/${r.total ?? 0} \u4E2A\u5728\u7EBF\u4F1A\u8BDD${(r.failed ?? 0) > 0 ? `\uFF08${r.failed} \u4E2A\u5931\u8D25\uFF09` : ""}`);
-        } else {
-          setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(result.error ?? "\u672A\u77E5\u9519\u8BEF")}`);
-        }
-      } catch (error) {
-        setStatus(`\u63A8\u9001\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
-      } finally {
-        setBusy(false);
-      }
-    };
     const save = async (patch) => {
       setBusy(true);
       try {
@@ -2908,8 +2868,7 @@ function buildXyqPanel(deps) {
             h("div", { style: { display: "flex", gap: "8px" }, children: [
               h("input", { type: "password", value: key, placeholder: cfg.accessKeySet ? "\u7559\u7A7A\u5219\u4E0D\u6539" : "\u7C98\u8D34 Access Key", style: fieldStyle3, onChange: (event) => setKey(String(event?.target?.value ?? "")) }),
               h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void save(key.trim() === "" ? {} : { accessKey: key.trim() }), children: "\u4FDD\u5B58 Key" }),
-              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void checkStatus(), children: "\u68C0\u67E5\u72B6\u6001/\u4F59\u989D" }),
-              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void push(), children: "\u63A8\u9001\u5230\u6240\u6709\u5728\u7EBF\u4F1A\u8BDD" })
+              h("button", { type: "button", style: buttonStyle4, disabled: busy, onClick: () => void checkStatus(), children: "\u68C0\u67E5\u72B6\u6001/\u4F59\u989D" })
             ] }),
             h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: status }),
             h("span", { style: { fontSize: "12px", color: "var(--dsw-alias-label-tertiary)" }, children: balance })
@@ -3268,7 +3227,19 @@ function mountSubagentMonitor(deps) {
       padding: 4px 9px; font-size: 11.5px; cursor: pointer; }
     #dafeiyu-subagent-panel .empty { color: #5f8fe0; padding: 8px 0; }
     #dafeiyu-subagent-panel .foot { color: #4b7bec; margin-top: 8px; font-size: 11px; line-height: 1.5; }
-  `;
+  
+  /* \u767D\u5E95\u84DD\u5B57\u8986\u76D6\uFF080.31\uFF09\uFF1A\u7528\u6237\u8981\u6C42\u767D\u8272\u80CC\u666F\u3001\u4E0D\u8981\u900F\u660E\u5E95 */
+  #dafeiyu-subagent-panel { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-subagent-panel .card { background: #f7faff !important; border-color: #dbe6fb !important; }
+  #dafeiyu-subagent-panel .summary { color: #1d3f8f !important; }
+  #dafeiyu-subagent-panel .time { color: #4a6bb3 !important; }
+  #dafeiyu-subagent-panel .empty, #dafeiyu-subagent-panel .foot { color: #5b7bb5 !important; }
+  #dafeiyu-subagent-panel .head .ghost { background: #eaf1ff !important; color: #1d4ed8 !important; }
+  #dafeiyu-subagent-panel .acts button { background: #eaf1ff !important; color: #1d4ed8 !important; }
+  #dafeiyu-subagent-panel .status.running { color: #b7791f !important; }
+  #dafeiyu-subagent-panel .status.idle { color: #16803c !important; }
+  #dafeiyu-subagent-panel .restoreRow { border-color: #dbe6fb !important; }
+`;
   doc.head?.appendChild(style);
   const fab = doc.createElement("button");
   fab.id = "dafeiyu-subagent-fab";
@@ -3288,6 +3259,10 @@ function mountSubagentMonitor(deps) {
   title.textContent = "\u5B50\u4EE3\u7406\u76D1\u89C6\u5668";
   const tools = doc.createElement("span");
   tools.className = "tools";
+  const pushBtn = doc.createElement("button");
+  pushBtn.className = "ghost";
+  pushBtn.textContent = "\u63A8\u9001\u672C\u4F1A\u8BDD";
+  pushBtn.title = "\u628A\u300C\u5305\u5DE5\u5934/\u6D3E\u6D3B\u89C4\u8303\u300D\u63A8\u5230\u5F53\u524D\u8FD9\u4E2A\u4F1A\u8BDD\uFF08\u53EA\u63A8\u5F53\u524D\uFF0C\u4E0D\u63A8\u5168\u90E8\uFF09";
   const restore = doc.createElement("button");
   restore.className = "ghost";
   restore.textContent = "\u6062\u590D\u5F52\u6863\u5B50\u4EE3\u7406";
@@ -3298,7 +3273,7 @@ function mountSubagentMonitor(deps) {
   archiveIdle.title = "\u628A\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4E00\u6B21\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09";
   const close = doc.createElement("button");
   close.textContent = "\u5173\u95ED \u2715";
-  tools.append(restore, archiveIdle, close);
+  tools.append(pushBtn, restore, archiveIdle, close);
   head.append(title, tools);
   const body = doc.createElement("div");
   const foot = doc.createElement("div");
@@ -3540,6 +3515,42 @@ function mountSubagentMonitor(deps) {
     event.stopPropagation();
     restoring = !restoring;
     render();
+  });
+  const defaultFoot = "\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4F1A\u6807\u9EC4\uFF0C\u53EF\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09\u3002";
+  const setFoot = (text) => {
+    foot.textContent = text;
+    if (text !== defaultFoot) {
+      setTimeout(() => {
+        foot.textContent = defaultFoot;
+      }, 6e3);
+    }
+  };
+  pushBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const sid = session || deps.getCurrentSession?.() || "";
+    if (sid === "") {
+      setFoot("\u6CA1\u6709\u5F53\u524D\u4F1A\u8BDD\uFF0C\u65E0\u6CD5\u63A8\u9001");
+      return;
+    }
+    void (async () => {
+      pushBtn.disabled = true;
+      pushBtn.textContent = "\u63A8\u9001\u4E2D\u2026";
+      try {
+        const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/guidance/push"), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-drc-pair": "1" },
+          body: JSON.stringify({ which: "subagent", sessionId: sid })
+        });
+        const answer = await response.json();
+        const pushed = answer.result?.pushed ?? 0;
+        setFoot(pushed > 0 ? "\u5DF2\u628A\u6D3E\u6D3B\u89C4\u8303\u63A8\u9001\u5230\u5F53\u524D\u4F1A\u8BDD" : `\u63A8\u9001\u5931\u8D25\uFF1A${String(answer.error ?? "\u5F53\u524D\u4F1A\u8BDD\u4E0D\u5728\u7EBF")}`);
+      } catch (error) {
+        setFoot(`\u63A8\u9001\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
+      } finally {
+        pushBtn.disabled = false;
+        pushBtn.textContent = "\u63A8\u9001\u672C\u4F1A\u8BDD";
+      }
+    })();
   });
   const onKey = (event) => {
     if (event.key === "Escape" && opened) setOpen(false);
@@ -4044,6 +4055,17 @@ function mountXyqQuick() {
 #dafeiyu-xyq-settings .box .row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
 #dafeiyu-xyq-settings .box button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(#1f3b63);
   background: transparent; color: inherit; cursor: pointer; font-size: 13px; }
+
+  /* \u767D\u5E95\u84DD\u5B57\u8986\u76D6\uFF080.31\uFF09 */
+  #dafeiyu-xyq-quick { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-quick textarea, #dafeiyu-xyq-quick select, #dafeiyu-xyq-quick input { background: #ffffff !important; color: #1d3f8f !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-quick .line, #dafeiyu-xyq-quick .status { color: #4a6bb3 !important; }
+  #dafeiyu-xyq-quick .actions button { background: #1d4ed8 !important; color: #ffffff !important; }
+  #dafeiyu-xyq-quick .actions button.ghost { background: #eaf1ff !important; color: #1d4ed8 !important; }
+  #dafeiyu-xyq-quick .head button { color: #1d4ed8 !important; }
+  #dafeiyu-xyq-settings .box { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-settings .box input { background: #ffffff !important; color: #1d3f8f !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-settings .box button { background: #eaf1ff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
 `;
   doc.head.appendChild(style);
   const panel = doc.createElement("div");

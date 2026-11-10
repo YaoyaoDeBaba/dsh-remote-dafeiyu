@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.30" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.31" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36905,7 +36905,8 @@ function guidancePushHandler(deps) {
     try {
       const body = JSON.parse(await readBody2(request));
       const which = body.which === "xyq" ? "xyq" : body.which === "both" ? "both" : "subagent";
-      json7(response, 200, { ok: true, which, result: await deps.pushGuidance(which) });
+      const sessionId = typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? body.sessionId.trim() : void 0;
+      json7(response, 200, { ok: true, which, result: await deps.pushGuidance(which, sessionId) });
     } catch (error62) {
       json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
@@ -37102,11 +37103,12 @@ function writeSubagentsConfig(file2, patch) {
 
 // src/subagents/pusher.ts
 function createGuidancePusher(getAgents) {
-  return async function push(text, summary2) {
+  return async function push(text, summary2, onlyId) {
     const result2 = { total: 0, pushed: 0, failed: 0, errors: [] };
     const service = getAgents();
     const list = service && typeof service.list === "function" ? service.list() ?? [] : [];
-    const agents = Array.isArray(list) ? list : [];
+    const all = Array.isArray(list) ? list : [];
+    const agents = onlyId !== void 0 && onlyId !== "" ? all.filter((agent) => typeof agent?.id === "string" && agent.id === onlyId) : all;
     result2.total = agents.length;
     const body = `\u3010\u7CFB\u7EDF\u63A8\u9001\xB7\u5927\u80A5\u9C7C\u63D2\u4EF6\u3011${summary2}
 ${text}
@@ -37257,13 +37259,14 @@ function startSubagents(ctx, input2) {
     ...input2,
     config: configFace,
     guidanceText: () => subagentGuidance(config2.mode),
-    pushGuidance: async (which) => {
+    pushGuidance: async (which, sessionId) => {
       const merged = { total: 0, pushed: 0, failed: 0, errors: [] };
       const targets = which === "both" ? ["subagent", "xyq"] : [which];
       for (const target of targets) {
         const one = await pusher(
           guidanceTexts[target],
-          target === "subagent" ? "\u6D3E\u6D3B\u89C4\u8303\uFF08\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF09" : "\u5C0F\u4E91\u96C0\u5DE5\u5177\u4F7F\u7528\u8BF4\u660E"
+          target === "subagent" ? "\u6D3E\u6D3B\u89C4\u8303\uFF08\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF09" : "\u5C0F\u4E91\u96C0\u5DE5\u5177\u4F7F\u7528\u8BF4\u660E",
+          sessionId
         );
         merged.total = Math.max(merged.total, one.total);
         merged.pushed += one.pushed;

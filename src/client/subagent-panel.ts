@@ -129,7 +129,19 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       padding: 4px 9px; font-size: 11.5px; cursor: pointer; }
     #dafeiyu-subagent-panel .empty { color: #5f8fe0; padding: 8px 0; }
     #dafeiyu-subagent-panel .foot { color: #4b7bec; margin-top: 8px; font-size: 11px; line-height: 1.5; }
-  `
+  
+  /* 白底蓝字覆盖（0.31）：用户要求白色背景、不要透明底 */
+  #dafeiyu-subagent-panel { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-subagent-panel .card { background: #f7faff !important; border-color: #dbe6fb !important; }
+  #dafeiyu-subagent-panel .summary { color: #1d3f8f !important; }
+  #dafeiyu-subagent-panel .time { color: #4a6bb3 !important; }
+  #dafeiyu-subagent-panel .empty, #dafeiyu-subagent-panel .foot { color: #5b7bb5 !important; }
+  #dafeiyu-subagent-panel .head .ghost { background: #eaf1ff !important; color: #1d4ed8 !important; }
+  #dafeiyu-subagent-panel .acts button { background: #eaf1ff !important; color: #1d4ed8 !important; }
+  #dafeiyu-subagent-panel .status.running { color: #b7791f !important; }
+  #dafeiyu-subagent-panel .status.idle { color: #16803c !important; }
+  #dafeiyu-subagent-panel .restoreRow { border-color: #dbe6fb !important; }
+`
   doc.head?.appendChild(style)
 
   const fab = doc.createElement('button')
@@ -151,6 +163,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   title.textContent = '子代理监视器'
   const tools = doc.createElement('span')
   tools.className = 'tools'
+  const pushBtn = doc.createElement('button')
+  pushBtn.className = 'ghost'
+  pushBtn.textContent = '推送本会话'
+  pushBtn.title = '把「包工头/派活规范」推到当前这个会话（只推当前，不推全部）'
   const restore = doc.createElement('button')
   restore.className = 'ghost'
   restore.textContent = '恢复归档子代理'
@@ -161,7 +177,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   archiveIdle.title = '把闲置超过阈值的子代理一次归档（可恢复）'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  tools.append(restore, archiveIdle, close)
+  tools.append(pushBtn, restore, archiveIdle, close)
   head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
@@ -426,6 +442,43 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     event.stopPropagation()
     restoring = !restoring
     render()
+  })
+
+  const defaultFoot = '闲置超过阈值的子代理会标黄，可归档（可恢复）。'
+  const setFoot = (text: string): void => {
+    foot.textContent = text
+    if (text !== defaultFoot) {
+      setTimeout(() => {
+        foot.textContent = defaultFoot
+      }, 6000)
+    }
+  }
+  pushBtn.addEventListener('click', (event) => {
+    event.stopPropagation()
+    const sid = session || deps.getCurrentSession?.() || ''
+    if (sid === '') {
+      setFoot('没有当前会话，无法推送')
+      return
+    }
+    void (async () => {
+      pushBtn.disabled = true
+      pushBtn.textContent = '推送中…'
+      try {
+        const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/guidance/push'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+          body: JSON.stringify({ which: 'subagent', sessionId: sid }),
+        })
+        const answer = (await response.json()) as { ok?: boolean; error?: string; result?: { pushed?: number; total?: number } }
+        const pushed = answer.result?.pushed ?? 0
+        setFoot(pushed > 0 ? '已把派活规范推送到当前会话' : `推送失败：${String(answer.error ?? '当前会话不在线')}`)
+      } catch (error) {
+        setFoot(`推送失败：${String((error as Error)?.message ?? error)}`)
+      } finally {
+        pushBtn.disabled = false
+        pushBtn.textContent = '推送本会话'
+      }
+    })()
   })
   const onKey = (event: KeyboardEvent): void => {
     if (event.key === 'Escape' && opened) setOpen(false)

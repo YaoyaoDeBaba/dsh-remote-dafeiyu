@@ -237,7 +237,13 @@ export function mountVisionFab(deps: {
     #dafeiyu-vision-result { width: 100%; min-height: 120px; margin-top: 8px; box-sizing: border-box;
       background: transparent; color: inherit; border: 1px solid var(#1f3b63); border-radius: 8px; padding: 8px; }
     #dafeiyu-vision-note { color: var(#4b7bec); font-size: 12px; margin-top: 6px; word-break: break-word; }
-  `
+  
+  /* 白底蓝字覆盖（0.31） */
+  #dafeiyu-vision-panel { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-vision-panel textarea, #dafeiyu-vision-panel input { background: #ffffff !important; color: #1d3f8f !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-vision-panel button { background: #eaf1ff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-vision-panel #dafeiyu-vision-note { color: #4a6bb3 !important; }
+`
   doc.head?.appendChild(style)
 
   const fab = doc.createElement('button')

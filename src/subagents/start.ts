@@ -82,13 +82,14 @@ export function startSubagents(
     ...input,
     config: configFace,
     guidanceText: () => subagentGuidance(config.mode),
-    pushGuidance: async (which: 'subagent' | 'xyq' | 'both'): Promise<GuidancePushResult> => {
+    pushGuidance: async (which: 'subagent' | 'xyq' | 'both', sessionId?: string): Promise<GuidancePushResult> => {
       const merged: GuidancePushResult = { total: 0, pushed: 0, failed: 0, errors: [] }
       const targets: Array<'subagent' | 'xyq'> = which === 'both' ? ['subagent', 'xyq'] : [which]
       for (const target of targets) {
         const one = await pusher(
           guidanceTexts[target],
           target === 'subagent' ? '派活规范（子代理监视器）' : '小云雀工具使用说明',
+          sessionId,
         )
         merged.total = Math.max(merged.total, one.total)
         merged.pushed += one.pushed

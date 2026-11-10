@@ -113,23 +113,6 @@ export function buildXyqPanel(deps: { createElement: CreateElement; hooks: Hooks
       }
     }
 
-    const push = async (): Promise<void> => {
-      setBusy(true)
-      try {
-        const result = await postJson('/api/dsh-remote-dafeiyu/guidance/push', { which: 'xyq' })
-        if (result.ok === true && result.result && typeof result.result === 'object') {
-          const r = result.result as { pushed?: number; failed?: number; total?: number }
-          setStatus(`已推送到 ${r.pushed ?? 0}/${r.total ?? 0} 个在线会话${(r.failed ?? 0) > 0 ? `（${r.failed} 个失败）` : ''}`)
-        } else {
-          setStatus(`推送失败：${String(result.error ?? '未知错误')}`)
-        }
-      } catch (error) {
-        setStatus(`推送失败：${String((error as Error)?.message ?? error)}`)
-      } finally {
-        setBusy(false)
-      }
-    }
-
     const save = async (patch: Record<string, unknown>): Promise<void> => {
       setBusy(true)
       try {
@@ -176,7 +159,6 @@ export function buildXyqPanel(deps: { createElement: CreateElement; hooks: Hooks
               h('input', { type: 'password', value: key, placeholder: cfg.accessKeySet ? '留空则不改' : '粘贴 Access Key', style: fieldStyle, onChange: (event: { target?: { value?: string } }) => setKey(String(event?.target?.value ?? '')) }),
               h('button', { type: 'button', style: buttonStyle, disabled: busy, onClick: () => void save(key.trim() === '' ? {} : { accessKey: key.trim() }), children: '保存 Key' }),
               h('button', { type: 'button', style: buttonStyle, disabled: busy, onClick: () => void checkStatus(), children: '检查状态/余额' }),
-              h('button', { type: 'button', style: buttonStyle, disabled: busy, onClick: () => void push(), children: '推送到所有在线会话' }),
             ] }),
             h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' }, children: status }),
             h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' }, children: balance }),

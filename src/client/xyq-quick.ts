@@ -87,6 +87,17 @@ export function mountXyqQuick(): XyqQuickHandle {
 #dafeiyu-xyq-settings .box .row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
 #dafeiyu-xyq-settings .box button { padding: 5px 12px; border-radius: 8px; border: 1px solid var(#1f3b63);
   background: transparent; color: inherit; cursor: pointer; font-size: 13px; }
+
+  /* 白底蓝字覆盖（0.31） */
+  #dafeiyu-xyq-quick { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-quick textarea, #dafeiyu-xyq-quick select, #dafeiyu-xyq-quick input { background: #ffffff !important; color: #1d3f8f !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-quick .line, #dafeiyu-xyq-quick .status { color: #4a6bb3 !important; }
+  #dafeiyu-xyq-quick .actions button { background: #1d4ed8 !important; color: #ffffff !important; }
+  #dafeiyu-xyq-quick .actions button.ghost { background: #eaf1ff !important; color: #1d4ed8 !important; }
+  #dafeiyu-xyq-quick .head button { color: #1d4ed8 !important; }
+  #dafeiyu-xyq-settings .box { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-settings .box input { background: #ffffff !important; color: #1d3f8f !important; border-color: #c7d9f7 !important; }
+  #dafeiyu-xyq-settings .box button { background: #eaf1ff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
 `
   doc.head.appendChild(style)
 

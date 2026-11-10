@@ -68,20 +68,6 @@ const previewStyle: Record<string, string> = {
   margin: '0',
 }
 
-async function postConfig2(path: string, body: unknown): Promise<Record<string, unknown>> {
-  const response = await fetch(resolveHostUrl(path), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
-    body: JSON.stringify(body),
-  })
-  const text = await response.text()
-  try {
-    return JSON.parse(text) as Record<string, unknown>
-  } catch {
-    return { ok: false, error: `宿主返回了非 JSON（HTTP ${response.status}）` }
-  }
-}
-
 async function postConfig(patch: Record<string, unknown>): Promise<Record<string, unknown>> {
   const response = await fetch(resolveHostUrl(`${BASE}/config`), {
     method: 'POST',
@@ -169,23 +155,6 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
       })
     }
 
-    const push = async (): Promise<void> => {
-      setBusy(true)
-      try {
-        const result = await postConfig2('/api/dsh-remote-dafeiyu/guidance/push', { which: 'subagent' })
-        if (result.ok === true && result.result && typeof result.result === 'object') {
-          const r = result.result as { pushed?: number; failed?: number; total?: number }
-          setStatus(`已推送到 ${r.pushed ?? 0}/${r.total ?? 0} 个在线会话${(r.failed ?? 0) > 0 ? `（${r.failed} 个失败）` : ''}`)
-        } else {
-          setStatus(`推送失败：${String(result.error ?? '未知错误')}`)
-        }
-      } catch (error) {
-        setStatus(`推送失败：网络错误（${String((error as Error)?.message ?? error)}）——宿主可能还没重启到最新插件`)
-      } finally {
-        setBusy(false)
-      }
-    }
-
     const copy = async (): Promise<void> => {
       try {
         await navigator.clipboard.writeText(preview)
@@ -261,7 +230,6 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
               children: [
                 h('span', { style: labelStyle, children: '提示词预览（与注入给模型的是同一份）' }),
                 h('button', { type: 'button', style: buttonStyle, onClick: () => void copy(), children: '复制' }),
-                h('button', { type: 'button', style: buttonStyle, disabled: busy, onClick: () => void push(), children: '推送到所有在线会话' }),
                 h('button', { type: 'button', style: buttonStyle, onClick: () => void load(), children: '刷新' }),
               ],
             }),

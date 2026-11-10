@@ -26,13 +26,17 @@ interface LiveAgent {
 type AgentLister = () => unknown
 
 export function createGuidancePusher(getAgents: () => unknown) {
-  return async function push(text: string, summary: string): Promise<GuidancePushResult> {
+  return async function push(text: string, summary: string, onlyId?: string): Promise<GuidancePushResult> {
     const result: GuidancePushResult = { total: 0, pushed: 0, failed: 0, errors: [] }
     const service = getAgents()
     const list = service && typeof (service as { list?: unknown }).list === 'function'
       ? ((service as { list: () => unknown[] }).list() ?? [])
       : []
-    const agents = Array.isArray(list) ? (list as LiveAgent[]) : []
+    const all = Array.isArray(list) ? (list as LiveAgent[]) : []
+    // 只推给“当前会话”时用 id 过滤；找不到就如实回 total=0，不静默推给别人。
+    const agents = onlyId !== undefined && onlyId !== ''
+      ? all.filter((agent) => typeof agent?.id === 'string' && agent.id === onlyId)
+      : all
     result.total = agents.length
     const body = `【系统推送·大肥鱼插件】${summary}\n${text}\n（以上规范由插件推送到本会话，后续请遵守；这是系统推送，不是用户发言。）`
     for (const agent of agents) {

@@ -25,7 +25,7 @@ export interface SubagentRouteDeps {
   /** 当前风格的提示词（设置页预览用，随 mode 变化）。 */
   guidanceText?: () => string
   /** 把提示段推送到所有在线会话（一次性上下文；用户按钮触发）。 */
-  pushGuidance?: (which: 'subagent' | 'xyq' | 'both') => Promise<GuidancePushResult>
+  pushGuidance?: (which: 'subagent' | 'xyq' | 'both', sessionId?: string) => Promise<GuidancePushResult>
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }
 
@@ -209,9 +209,10 @@ export function guidancePushHandler(deps: SubagentRouteDeps) {
       return
     }
     try {
-      const body = JSON.parse(await readBody(request)) as { which?: unknown }
+      const body = JSON.parse(await readBody(request)) as { which?: unknown; sessionId?: unknown }
       const which = body.which === 'xyq' ? 'xyq' : body.which === 'both' ? 'both' : 'subagent'
-      json(response, 200, { ok: true, which, result: await deps.pushGuidance(which) })
+      const sessionId = typeof body.sessionId === 'string' && body.sessionId.trim() !== '' ? body.sessionId.trim() : undefined
+      json(response, 200, { ok: true, which, result: await deps.pushGuidance(which, sessionId) })
     } catch (error) {
       json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
     }
