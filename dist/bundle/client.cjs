@@ -3709,6 +3709,16 @@ function mountSubagentMonitor(deps) {
       undoForeman.disabled = true;
       undoForeman.textContent = "\u64A4\u9500\u4E2D\u2026";
       try {
+        const saved = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/subagents/config"), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-drc-pair": "1" },
+          body: JSON.stringify({ mode: "hands-on" })
+        });
+        const savedAnswer = await saved.json();
+        if (savedAnswer.ok !== true) {
+          foot.textContent = `\u64A4\u9500\u5931\u8D25\uFF1A${String(savedAnswer.error ?? "\u914D\u7F6E\u6CA1\u4FDD\u5B58")}`;
+          return;
+        }
         const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/guidance/push"), {
           method: "POST",
           headers: { "content-type": "application/json", "x-drc-pair": "1" },
@@ -3716,7 +3726,7 @@ function mountSubagentMonitor(deps) {
         });
         const answer = await response.json();
         const pushed = answer.result?.pushed ?? 0;
-        foot.textContent = pushed > 0 ? "\u5DF2\u628A\u300C\u4EB2\u529B\u4EB2\u4E3A\u300D\u63A8\u9001\u5230\u5F53\u524D\u4F1A\u8BDD" : `\u64A4\u9500\u5931\u8D25\uFF1A${String(answer.error ?? "\u5F53\u524D\u4F1A\u8BDD\u4E0D\u5728\u7EBF")}`;
+        foot.textContent = pushed > 0 ? "\u5DF2\u64A4\u9500\uFF1A\u5168\u5C40\u6539\u4E3A\u300C\u4EB2\u529B\u4EB2\u4E3A\u300D\uFF0C\u5E76\u5DF2\u63A8\u9001\u5230\u5F53\u524D\u4F1A\u8BDD" : `\u5DF2\u6539\u5168\u5C40\u914D\u7F6E\uFF0C\u4F46\u5F53\u524D\u4F1A\u8BDD\u6CA1\u63A8\u6210\uFF1A${String(answer.error ?? "\u4F1A\u8BDD\u4E0D\u5728\u7EBF")}`;
       } catch (error) {
         foot.textContent = `\u64A4\u9500\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
       } finally {

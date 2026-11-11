@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.44" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.45" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37390,7 +37390,12 @@ function startSubagents(ctx, input2) {
   else try {
     const systemPrompt = ctx.get?.("systemPrompt", true);
     if (systemPrompt && typeof systemPrompt.section === "function") {
-      systemPrompt.section({ name: "dafeiyu:subagents", order: 10090, text: subagentGuidance(config2.mode) });
+      systemPrompt.section({
+        name: "dafeiyu:subagents",
+        order: 10090,
+        // 宿主类型写的是 string，但 assemble 时会调用函数（见 dsh-system-prompt 的 section.text 分支）。
+        text: (() => subagentGuidance(config2.mode))
+      });
       probe.section = "registered";
     } else {
       probe.section = "no-systemPrompt";

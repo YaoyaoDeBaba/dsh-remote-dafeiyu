@@ -487,6 +487,18 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       undoForeman.disabled = true
       undoForeman.textContent = '撤销中…'
       try {
+        // ① 先把全局派活风格改回「亲力亲为」（落盘，下一轮提示段就会换）
+        const saved = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/config'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+          body: JSON.stringify({ mode: 'hands-on' }),
+        })
+        const savedAnswer = (await saved.json()) as { ok?: boolean; error?: string }
+        if (savedAnswer.ok !== true) {
+          foot.textContent = `撤销失败：${String(savedAnswer.error ?? '配置没保存')}`
+          return
+        }
+        // ② 再往当前会话推一条「亲力亲为」变更通知（历史里的包工头消息不会删，但工作方式会覆盖）
         const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/guidance/push'), {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
@@ -494,7 +506,9 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
         })
         const answer = (await response.json()) as { ok?: boolean; error?: string; result?: { pushed?: number } }
         const pushed = answer.result?.pushed ?? 0
-        foot.textContent = pushed > 0 ? '已把「亲力亲为」推送到当前会话' : `撤销失败：${String(answer.error ?? '当前会话不在线')}`
+        foot.textContent = pushed > 0
+          ? '已撤销：全局改为「亲力亲为」，并已推送到当前会话'
+          : `已改全局配置，但当前会话没推成：${String(answer.error ?? '会话不在线')}`
       } catch (error) {
         foot.textContent = `撤销失败：${String((error as Error)?.message ?? error)}`
       } finally {

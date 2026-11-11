@@ -114,7 +114,13 @@ export function startSubagents(
       | { section?: (definition: { name: string; order: number; text: string }) => unknown }
       | undefined
     if (systemPrompt && typeof systemPrompt.section === 'function') {
-      systemPrompt.section({ name: 'dafeiyu:subagents', order: 10090, text: subagentGuidance(config.mode) })
+      // 动态取文本：mode 改了下一轮重新装配时就能生效，不需要重启。
+    systemPrompt.section({
+      name: 'dafeiyu:subagents',
+      order: 10090,
+      // 宿主类型写的是 string，但 assemble 时会调用函数（见 dsh-system-prompt 的 section.text 分支）。
+      text: (() => subagentGuidance(config.mode)) as unknown as string,
+    })
       probe.section = 'registered'
     } else {
       probe.section = 'no-systemPrompt'
