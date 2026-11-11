@@ -401,7 +401,9 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     fab.classList.toggle('has-items', has)
     badge.hidden = !has
     badge.textContent = String(items.length)
-    if (!has && opened) setOpen(false)
+    // 不要因为“当前会话没有子代理”就自动关面板：从形象菜单手动打开的面板
+    // 会在刷新返回空时瞬间被关掉（闪退），推送/切会话后尤其明显。
+    // 空列表就显示空态，让用户自己关。
     render()
   }
 
@@ -409,8 +411,12 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     if (busy) return
     const current = deps.getCurrentSession()
     if (!current) {
-      session = ''
-      apply([])
+      // 拿不到当前会话（切换瞬间/推送后上下文更新）时不要清空并关闭面板，
+      // 保留面板与上一次内容，等下一次刷新拿到会话再更新。
+      if (!opened) {
+        session = ''
+        apply([])
+      }
       return
     }
     if (current !== session) {

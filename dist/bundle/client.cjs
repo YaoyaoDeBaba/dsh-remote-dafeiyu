@@ -3640,15 +3640,16 @@ function mountSubagentMonitor(deps) {
     fab.classList.toggle("has-items", has);
     badge.hidden = !has;
     badge.textContent = String(items.length);
-    if (!has && opened) setOpen(false);
     render();
   };
   const refresh = async () => {
     if (busy) return;
     const current = deps.getCurrentSession();
     if (!current) {
-      session = "";
-      apply2([]);
+      if (!opened) {
+        session = "";
+        apply2([]);
+      }
       return;
     }
     if (current !== session) {
