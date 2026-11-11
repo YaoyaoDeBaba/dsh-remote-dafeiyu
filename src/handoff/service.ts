@@ -44,8 +44,8 @@ export interface HandoffDeps {
   dshHome: string
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
   now?: () => number
-  /** 往当前会话注入写作指令（agent.inject，必须带唯一 id）。 */
-  inject: (sessionId: string, text: string) => { ok: boolean; message?: string }
+  /** 往当前会话投递写作指令（空闲会话靠 sendPrompt 唤醒，跑着的会话走 inject）。 */
+  inject: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }> | { ok: boolean; message?: string }
   /** 新建会话（工作目录显式给，否则内核会落到 `/`，GUI 列表里看不见）。 */
   newSession: (args: { workspace?: string }) => Promise<{ ok: boolean; sessionId?: string; message?: string }>
   /** 往新会话发第一句。 */
@@ -267,8 +267,8 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
         ...(trimmedNote ? { note: trimmedNote } : {}),
         ...(String(boundary ?? '').trim() ? { boundary: String(boundary ?? '').trim() } : {}),
       }
-      const injected = deps.inject(id, buildInjection(plan))
-      if (!injected.ok) return { ok: false, message: injected.message ?? '注入写作指令失败（会话可能不在线）' }
+      const injected = await deps.inject(id, buildInjection(plan))
+      if (!injected.ok) return { ok: false, message: injected.message ?? '投递写作指令失败（会话可能不在线）' }
       const job: HandoffJob = {
         id: idOf('handoff'),
         kind,

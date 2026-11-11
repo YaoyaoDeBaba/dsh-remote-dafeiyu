@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.53" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.54" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37919,8 +37919,8 @@ function createHandoffService(deps) {
         ...trimmedNote ? { note: trimmedNote } : {},
         ...String(boundary ?? "").trim() ? { boundary: String(boundary ?? "").trim() } : {}
       };
-      const injected = deps.inject(id, buildInjection(plan));
-      if (!injected.ok) return { ok: false, message: injected.message ?? "\u6CE8\u5165\u5199\u4F5C\u6307\u4EE4\u5931\u8D25\uFF08\u4F1A\u8BDD\u53EF\u80FD\u4E0D\u5728\u7EBF\uFF09" };
+      const injected = await deps.inject(id, buildInjection(plan));
+      if (!injected.ok) return { ok: false, message: injected.message ?? "\u6295\u9012\u5199\u4F5C\u6307\u4EE4\u5931\u8D25\uFF08\u4F1A\u8BDD\u53EF\u80FD\u4E0D\u5728\u7EBF\uFF09" };
       const job = {
         id: idOf("handoff"),
         kind,
@@ -41423,11 +41423,15 @@ function applyInner(ctx, injected, clock) {
       dshHome: resolveDshHome(process.env),
       log,
       /**
-       * 注入写作指令：必须走**当前会话那个 agent 的 inject**（只进它的下一步队列，不唤醒），
-       * 而且消息必须带唯一 id——缺 id 会让 `inbox/spliced` 与 `user/message` 对不上，
+       * 投递写作指令。两条路，差别很关键：
+       * - 会话**正在跑**：走 `agent.inject`（只进下一步队列，不打断当前回合）；
+       * - 会话**空闲/冷**：`inject` 只排队不唤醒，那条指令会一直躺到用户下次发言——
+       *   转生就会白等到超时。所以空闲时直接用 `sendPrompt` 开一轮，等于"替用户按下发送"。
+       *
+       * inject 那条路必须带唯一 id：缺 id 会让 `inbox/spliced` 与 `user/message` 对不上，
        * 把会话历史写坏（2026-11-10 真机事故）。
        */
-      inject: (sessionId, text) => {
+      inject: async (sessionId, text) => {
         let service;
         try {
           service = ctx.get?.("agents", true);
@@ -41438,17 +41442,25 @@ function applyInner(ctx, injected, clock) {
         const agent = (Array.isArray(list) ? list : []).find(
           (row) => !!row && typeof row.id === "string" && row.id === sessionId
         );
-        if (!agent || typeof agent.inject !== "function") {
-          return { ok: false, message: "\u8FD9\u4E2A\u4F1A\u8BDD\u73B0\u5728\u6CA1\u6709\u6D3B\u7740\u7684 agent\uFF08\u5148\u5728\u91CC\u9762\u53D1\u4E00\u6761\u6D88\u606F\uFF0C\u518D\u70B9\u8F6C\u751F/\u5206\u8EAB\uFF09" };
+        if (agent && typeof agent.inject === "function" && agent.status === "running") {
+          try {
+            agent.inject({
+              id: globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+              role: "user",
+              content: [{ type: "text", text }],
+              source: { kind: "user" }
+            });
+            return { ok: true };
+          } catch (error62) {
+            return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+          }
         }
+        const port = kernel;
+        const send = port?.sendPrompt;
+        if (!port || !send) return { ok: false, message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF08\u6CA1\u6709 sendPrompt\uFF09" };
         try {
-          agent.inject({
-            id: globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-            role: "user",
-            content: [{ type: "text", text }],
-            source: { kind: "user" }
-          });
-          return { ok: true };
+          const sent = await send.call(port, sessionId, text);
+          return sent.ok ? { ok: true } : { ok: false, message: sent.message ?? "\u8FD9\u4E2A\u4F1A\u8BDD\u73B0\u5728\u63A5\u4E0D\u4E86\u6307\u4EE4" };
         } catch (error62) {
           return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
         }

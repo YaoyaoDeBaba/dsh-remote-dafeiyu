@@ -78,7 +78,7 @@ function fakeDeps(over: Partial<HandoffDeps> = {}) {
     handoffDir: 'D:\\dafeiyu-market\\handoff',
     dshHome: 'C:\\Users\\x\\.dsh',
     log: () => {},
-    inject: (sessionId, text) => {
+    inject: async (sessionId, text) => {
       calls.injected.push({ sessionId, text })
       return { ok: true }
     },
@@ -191,12 +191,12 @@ test('作业：分身缺分支任务当场拒绝，不注入也不建作业', as
   service.stop()
 })
 
-test('作业：注入失败要说清楚（会话不在线），不留等待中的僵尸作业', async () => {
-  const { deps } = fakeDeps({ inject: () => ({ ok: false, message: '这个会话现在没有活着的 agent' }) })
+test('作业：投递失败要说清楚（会话不在线），不留等待中的僵尸作业', async () => {
+  const { deps } = fakeDeps({ inject: async () => ({ ok: false, message: '这个会话现在接不了指令' }) })
   const service = createHandoffService(deps)
   const started = await service.start('rebirth', 'session-abc')
   assert.equal(started.ok, false)
-  assert.match(String(started.message), /没有活着的 agent/)
+  assert.match(String(started.message), /接不了指令/)
   assert.equal(service.list().length, 0)
   service.stop()
 })

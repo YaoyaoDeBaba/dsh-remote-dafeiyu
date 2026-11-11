@@ -1492,11 +1492,15 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       dshHome: resolveDshHome(process.env),
       log,
       /**
-       * 注入写作指令：必须走**当前会话那个 agent 的 inject**（只进它的下一步队列，不唤醒），
-       * 而且消息必须带唯一 id——缺 id 会让 `inbox/spliced` 与 `user/message` 对不上，
+       * 投递写作指令。两条路，差别很关键：
+       * - 会话**正在跑**：走 `agent.inject`（只进下一步队列，不打断当前回合）；
+       * - 会话**空闲/冷**：`inject` 只排队不唤醒，那条指令会一直躺到用户下次发言——
+       *   转生就会白等到超时。所以空闲时直接用 `sendPrompt` 开一轮，等于"替用户按下发送"。
+       *
+       * inject 那条路必须带唯一 id：缺 id 会让 `inbox/spliced` 与 `user/message` 对不上，
        * 把会话历史写坏（2026-11-10 真机事故）。
        */
-      inject: (sessionId, text) => {
+      inject: async (sessionId, text) => {
         let service: unknown
         try {
           service = ctx.get?.('agents', true)
@@ -1508,19 +1512,27 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
           : []
         const agent = (Array.isArray(list) ? list : []).find(
           (row) => !!row && typeof (row as { id?: unknown }).id === 'string' && (row as { id: string }).id === sessionId,
-        ) as { inject?: (input: unknown) => unknown } | undefined
-        if (!agent || typeof agent.inject !== 'function') {
-          return { ok: false, message: '这个会话现在没有活着的 agent（先在里面发一条消息，再点转生/分身）' }
+        ) as { inject?: (input: unknown) => unknown; status?: unknown } | undefined
+        if (agent && typeof agent.inject === 'function' && agent.status === 'running') {
+          try {
+            agent.inject({
+              id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
+                ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+              role: 'user',
+              content: [{ type: 'text', text }],
+              source: { kind: 'user' },
+            })
+            return { ok: true }
+          } catch (error) {
+            return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+          }
         }
+        const port = kernel
+        const send = port?.sendPrompt
+        if (!port || !send) return { ok: false, message: '主机这一代不支持发消息（没有 sendPrompt）' }
         try {
-          agent.inject({
-            id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
-              ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-            role: 'user',
-            content: [{ type: 'text', text }],
-            source: { kind: 'user' },
-          })
-          return { ok: true }
+          const sent = await send.call(port, sessionId, text)
+          return sent.ok ? { ok: true } : { ok: false, message: sent.message ?? '这个会话现在接不了指令' }
         } catch (error) {
           return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
         }

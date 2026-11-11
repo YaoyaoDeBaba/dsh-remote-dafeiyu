@@ -47,7 +47,7 @@ export function startHandoff(
     dshHome: string
     log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
     /** 以下三个都**延后取**：路由可能在服务就绪之前就挂上了。 */
-    inject: (sessionId: string, text: string) => { ok: boolean; message?: string }
+    inject: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }> | { ok: boolean; message?: string }
     newSession: (args: { workspace?: string }) => Promise<{ ok: boolean; sessionId?: string; message?: string }>
     sendPrompt: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
     sessionCwd: (sessionId: string) => Promise<string | undefined>
