@@ -90,8 +90,8 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   const style = doc.createElement('style')
   style.textContent = `
     #dafeiyu-subagent-fab { position: fixed; right: 16px; top: 46%; z-index: 2147483000;
-      width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(#1f3b63);
-      background: var(#0d1117); color: #4b7bec; cursor: pointer;
+      width: 40px; height: 40px; border-radius: 12px; border: 1px solid #1f3b63;
+      background: #0d1117; color: #4b7bec; cursor: pointer;
       display: none; align-items: center; justify-content: center; font-size: 18px;
       box-shadow: 0 4px 14px rgba(0,0,0,.3); }
     #dafeiyu-subagent-fab.open, #dafeiyu-subagent-fab.has-items { display: flex; }
@@ -99,10 +99,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     #dafeiyu-subagent-fab:hover { border-color: #4b7bec; }
     #dafeiyu-subagent-fab .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
       padding: 0 4px; border-radius: 8px; background: #4b7bec; color: #fff; font-size: 10px; line-height: 16px; }
-    #dafeiyu-subagent-panel { position: fixed; right: 64px; top: 28%; width: 360px; max-height: 60vh;
-      overflow: auto; padding: 12px; border-radius: 12px; border: 1px solid var(#1f3b63);
-      background: var(#0d1117); color: var(#7fb0ff);
-      z-index: 2147483001; display: none; box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 12.5px; }
+    #dafeiyu-subagent-panel { position: fixed; right: 24px; top: 12vh; width: 480px; max-height: 76vh;
+      overflow: auto; padding: 16px; border-radius: 14px; border: 1px solid #1f3b63;
+      background: #0d1117; color: #7fb0ff;
+      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; }
     #dafeiyu-subagent-panel.open { display: block; }
     #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
     #dafeiyu-subagent-panel .head .tools { display: flex; gap: 6px; align-items: center; }
@@ -234,11 +234,18 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     saveLedger()
   }
 
+  // 从形象菜单点开时，打开面板那一次的 click 还会继续冒泡到 document；
+  // 冒泡结束后外部点击处理器会把刚打开的面板当成“点了外面”立刻关掉（闪退）。
+  // 记录打开时刻，250ms 内的 document click 一律忽略。
+  let openedAt = 0
   const setOpen = (next: boolean): void => {
     opened = next
     panel.classList.toggle('open', next)
     fab.classList.toggle('open', next)
-    if (next) void refresh()
+    if (next) {
+      openedAt = Date.now()
+      void refresh()
+    }
   }
   deps.expose?.({ open: () => setOpen(true), close: () => setOpen(false) })
 
@@ -489,6 +496,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   doc.addEventListener('keydown', onKey)
   const onClick = (event: MouseEvent): void => {
     if (!opened) return
+    if (Date.now() - openedAt < 250) return
     const target = event.target as Node | null
     if (target && (panel.contains(target) || fab.contains(target))) return
     setOpen(false)

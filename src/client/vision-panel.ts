@@ -224,19 +224,19 @@ export function mountVisionFab(deps: {
   const style = doc.createElement('style')
   style.textContent = `
     #dafeiyu-vision-fab { position: fixed; right: 20px; bottom: 88px; width: 44px; height: 44px; border-radius: 12px;
-      border: 1px solid var(#1f3b63); background: var(#0d1117);
+      border: 1px solid #1f3b63; background: #0d1117;
       color: #4b7bec; cursor: pointer; z-index: 2147483000; box-shadow: 0 4px 14px rgba(0,0,0,.3);
       display: flex; align-items: center; justify-content: center; font-size: 20px; }
     #dafeiyu-vision-fab:hover { border-color: #4b7bec; }
   #dafeiyu-vision-fab[hidden] { display: none !important; }
-    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 140px; width: 320px; max-height: 70vh; overflow: auto;
-      padding: 12px; border-radius: 12px; border: 1px solid var(#1f3b63);
-      background: var(#0d1117); color: var(#7fb0ff);
-      z-index: 2147483001; display: none; box-shadow: 0 8px 26px rgba(0,0,0,.4); font-size: 13px; }
+    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 24px; width: 480px; max-height: 80vh; overflow: auto;
+      padding: 16px; border-radius: 14px; border: 1px solid #1f3b63;
+      background: #0d1117; color: #7fb0ff;
+      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; }
     #dafeiyu-vision-panel.open { display: block; }
     #dafeiyu-vision-result { width: 100%; min-height: 120px; margin-top: 8px; box-sizing: border-box;
-      background: transparent; color: inherit; border: 1px solid var(#1f3b63); border-radius: 8px; padding: 8px; }
-    #dafeiyu-vision-note { color: var(#4b7bec); font-size: 12px; margin-top: 6px; word-break: break-word; }
+      background: transparent; color: inherit; border: 1px solid #1f3b63; border-radius: 8px; padding: 8px; }
+    #dafeiyu-vision-note { color: #4b7bec; font-size: 12px; margin-top: 6px; word-break: break-word; }
   
   /* 白底蓝字覆盖（0.31） */
   #dafeiyu-vision-panel { background: #ffffff !important; color: #1d4ed8 !important; border-color: #c7d9f7 !important; }
@@ -278,7 +278,7 @@ export function mountVisionFab(deps: {
   actions.style.cssText = 'display:flex; gap:8px; margin-top:8px; flex-wrap:wrap'
   const sendBtn = doc.createElement('button')
   sendBtn.textContent = '发送到当前会话'
-  sendBtn.style.cssText = 'padding:4px 10px; border-radius:6px; border:1px solid var(#1f3b63); background:transparent; color:inherit; cursor:pointer'
+  sendBtn.style.cssText = 'padding:4px 10px; border-radius:6px; border:1px solid #1f3b63; background:transparent; color:inherit; cursor:pointer'
   const copyBtn = doc.createElement('button')
   copyBtn.textContent = '复制'
   copyBtn.style.cssText = sendBtn.style.cssText
