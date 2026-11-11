@@ -834,13 +834,34 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     parentSessionId: string,
     listOptions?: { descendants?: boolean },
   ): Promise<KernelSubagent[]> {
-    const read = fn(services.sessionQuery, 'listSessions')
-    if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
-    const rows = (await withTimeout(
-      Promise.resolve(read.call(services.sessionQuery)),
-      options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
-    )) as SessionRecordLike[] | undefined
-    const records = (rows ?? []).filter((row) => typeof row?.header?.id === 'string')
+    // 优先用内存里的 live agents（秒级、不碰磁盘、不挤 sessionQuery 的冷读缓存）；
+    // 只有这一代宿主没给 sessions 时才退回 sessionQuery.listSessions（会读全部会话头，
+    // 2026-11-11 实测在大会话环境下会卡到 15s 超时，导致监视器读不到子代理）。
+    let records: SessionRecordLike[] = []
+    const live = fn(services.sessions, 'list')
+    if (live) {
+      try {
+        const list = (live.call(services.sessions) ?? []) as Array<{ id?: unknown; header?: { id?: unknown; parentSession?: unknown; createdAt?: unknown } }>
+        records = list
+          .map((entry) => {
+            const header = entry?.header ?? {}
+            const id = typeof header.id === 'string' ? header.id : typeof entry?.id === 'string' ? entry.id : ''
+            return id === '' ? undefined : ({ header: { ...header, id } } as SessionRecordLike)
+          })
+          .filter((row): row is SessionRecordLike => row !== undefined)
+      } catch {
+        records = []
+      }
+    }
+    if (records.length === 0) {
+      const read = fn(services.sessionQuery, 'listSessions')
+      if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
+      const rows = (await withTimeout(
+        Promise.resolve(read.call(services.sessionQuery)),
+        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
+      )) as SessionRecordLike[] | undefined
+      records = (rows ?? []).filter((row) => typeof row?.header?.id === 'string')
+    }
     const childrenOf = new Map<string, SessionRecordLike[]>()
     for (const row of records) {
       const parent = typeof row.header?.parentSession === 'string' ? row.header.parentSession : undefined

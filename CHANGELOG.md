@@ -1,3 +1,12 @@
+## 0.9.0-dafeiyu.40 —— 子代理列表改读 live 会话，修“读不到子代理”
+
+- 现场：`GET /subagents?sessionId=…` 在大会话/多会话环境下卡满 15s 超时，面板因此空白；
+  根因是列表走了 `sessionQuery.listSessions`（要读全部持久化会话头）。
+- 改为优先用内存里的 live sessions（`services.sessions.list()`）：秒级、不碰磁盘，
+  也完全不参与 sessionQuery 那 5 格 LRU；只有这一代宿主不给 sessions 时才退回旧路径。
+- 说明：派活助手本身**不是 agent 调用的工具**，agent 派活仍走内置 `subagent` 工具；
+  插件负责把「名称｜简述」规范注入 + 监视/验收展示。
+
 ## 0.9.0-dafeiyu.39 —— 修派活助手“推送后重开闪退”
 
 - 根因：面板刷新到「当前会话没有子代理」时会自动 `setOpen(false)`；推送本会话后注入消息会

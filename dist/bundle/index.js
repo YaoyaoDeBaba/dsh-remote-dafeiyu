@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.39" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.40" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32640,13 +32640,29 @@ function createServicesKernel(services, options) {
     return labels;
   }
   async function listSubagents(parentSessionId, listOptions) {
-    const read = fn(services.sessionQuery, "listSessions");
-    if (!read) throw new Error("\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u5217\u4F1A\u8BDD\uFF08sessionQuery \u6CA1\u6709 listSessions\uFF09");
-    const rows = await withTimeout(
-      Promise.resolve(read.call(services.sessionQuery)),
-      options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT
-    );
-    const records = (rows ?? []).filter((row) => typeof row?.header?.id === "string");
+    let records = [];
+    const live = fn(services.sessions, "list");
+    if (live) {
+      try {
+        const list = live.call(services.sessions) ?? [];
+        records = list.map((entry) => {
+          const header = entry?.header ?? {};
+          const id = typeof header.id === "string" ? header.id : typeof entry?.id === "string" ? entry.id : "";
+          return id === "" ? void 0 : { header: { ...header, id } };
+        }).filter((row) => row !== void 0);
+      } catch {
+        records = [];
+      }
+    }
+    if (records.length === 0) {
+      const read = fn(services.sessionQuery, "listSessions");
+      if (!read) throw new Error("\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u5217\u4F1A\u8BDD\uFF08sessionQuery \u6CA1\u6709 listSessions\uFF09");
+      const rows = await withTimeout(
+        Promise.resolve(read.call(services.sessionQuery)),
+        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT
+      );
+      records = (rows ?? []).filter((row) => typeof row?.header?.id === "string");
+    }
     const childrenOf = /* @__PURE__ */ new Map();
     for (const row of records) {
       const parent = typeof row.header?.parentSession === "string" ? row.header.parentSession : void 0;
