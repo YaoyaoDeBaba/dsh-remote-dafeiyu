@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.40" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.41" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32607,6 +32607,32 @@ function createServicesKernel(services, options) {
     }
     return void 0;
   }
+  async function subagentCatalog(parentSessionId, descendants) {
+    const out = /* @__PURE__ */ new Map();
+    const service = services.subagents;
+    if (!service) return out;
+    const call = (name2) => fn(service, name2);
+    const read = async (name2) => {
+      const list = call(name2);
+      if (!list) return;
+      const rows = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4e3);
+      for (const row of rows ?? []) {
+        if (typeof row?.id !== "string" || row.id === "") continue;
+        const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : void 0;
+        out.set(row.id, label === void 0 ? {} : { label });
+      }
+    };
+    try {
+      if (descendants) {
+        await read("listDescendants");
+        if (out.size > 0) return out;
+      }
+      await read("listChildren");
+    } catch (error62) {
+      log("subagent catalog unavailable", { message: messageOf(error62).slice(0, 120) });
+    }
+    return out;
+  }
   async function subagentLabels(parentSessionId, descendants) {
     const labels = /* @__PURE__ */ new Map();
     const service = services.subagents;
@@ -32640,27 +32666,21 @@ function createServicesKernel(services, options) {
     return labels;
   }
   async function listSubagents(parentSessionId, listOptions) {
+    const descendants = listOptions?.descendants === true;
+    const catalog = await subagentCatalog(parentSessionId, descendants);
     let records = [];
-    const live = fn(services.sessions, "list");
-    if (live) {
-      try {
-        const list = live.call(services.sessions) ?? [];
-        records = list.map((entry) => {
-          const header = entry?.header ?? {};
-          const id = typeof header.id === "string" ? header.id : typeof entry?.id === "string" ? entry.id : "";
-          return id === "" ? void 0 : { header: { ...header, id } };
-        }).filter((row) => row !== void 0);
-      } catch {
-        records = [];
+    if (catalog.size > 0) {
+      for (const id of catalog.keys()) {
+        const header = liveAgent(id)?.session?.header;
+        records.push({ header: { id, parentSession: parentSessionId, ...header ?? {} } });
       }
-    }
-    if (records.length === 0) {
+    } else {
       const read = fn(services.sessionQuery, "listSessions");
       if (!read) throw new Error("\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u5217\u4F1A\u8BDD\uFF08sessionQuery \u6CA1\u6709 listSessions\uFF09");
       const rows = await withTimeout(
         Promise.resolve(read.call(services.sessionQuery)),
-        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT
-      );
+        Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2e3)
+      ).catch(() => []);
       records = (rows ?? []).filter((row) => typeof row?.header?.id === "string");
     }
     const childrenOf = /* @__PURE__ */ new Map();
@@ -32680,7 +32700,12 @@ function createServicesKernel(services, options) {
     };
     collect(parentSessionId);
     if (targets.length === 0) return [];
-    const labels = await subagentLabels(parentSessionId, listOptions?.descendants === true);
+    const labels = /* @__PURE__ */ new Map();
+    if (catalog.size > 0) {
+      for (const [id, entry] of catalog) if (entry.label !== void 0) labels.set(id, entry.label);
+    } else {
+      for (const [id, label] of await subagentLabels(parentSessionId, descendants)) labels.set(id, label);
+    }
     const now = options.clock.now();
     const out = [];
     for (const row of targets) {

@@ -1,3 +1,11 @@
+## 0.9.0-dafeiyu.41 —— 子代理列表改读内存 catalog（不再碰会话头/日志）
+
+- 上一版用 `sessions.list()` 拿不到 `parentSession`（它是扁平行），而且旧路径仍会读全部会话头；
+- 现在优先问 `subagents` 投影 catalog 的 `listChildren/listDescendants`（纯内存、带 label），
+  成员 id 直接从 catalog 拿，创建时间/运行态再按需读活 agent 会话头；
+- 只有该代宿主没有 catalog 时才退回 `sessionQuery.listSessions`，且超时上限压到 2 秒；
+- 这样“碰过派活助手 → 切会话要载入历史”的连带效应应消失（面板刷新不再触发磁盘读）。
+
 ## 0.9.0-dafeiyu.40 —— 子代理列表改读 live 会话，修“读不到子代理”
 
 - 现场：`GET /subagents?sessionId=…` 在大会话/多会话环境下卡满 15s 超时，面板因此空白；

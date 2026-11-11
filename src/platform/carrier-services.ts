@@ -782,6 +782,43 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   }
 
   /** 读官方子代理目录的 label（拿不到就空表，退回标题/任务）。 */
+  /**
+   * 子代理成员表：优先问 subagents 的投影 catalog（纯内存，`listChildren/listDescendants`），
+   * 它直接给出 id + label，不需要读会话头或日志——这样监视器既快，也不碰 sessionQuery 的冷读缓存。
+   */
+  async function subagentCatalog(
+    parentSessionId: string,
+    descendants: boolean,
+  ): Promise<Map<string, { label?: string }>> {
+    const out = new Map<string, { label?: string }>()
+    const service = services.subagents
+    if (!service) return out
+    const call = (name: 'listDescendants' | 'listChildren'): ((...args: unknown[]) => unknown) | undefined =>
+      fn(service, name)
+    const read = async (name: 'listDescendants' | 'listChildren'): Promise<void> => {
+      const list = call(name)
+      if (!list) return
+      const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4_000)) as Array<
+        { id?: unknown; label?: unknown } | undefined
+      >
+      for (const row of rows ?? []) {
+        if (typeof row?.id !== 'string' || row.id === '') continue
+        const label = typeof row.label === 'string' && row.label.trim() !== '' ? row.label.trim() : undefined
+        out.set(row.id, label === undefined ? {} : { label })
+      }
+    }
+    try {
+      if (descendants) {
+        await read('listDescendants')
+        if (out.size > 0) return out
+      }
+      await read('listChildren')
+    } catch (error) {
+      log('subagent catalog unavailable', { message: messageOf(error).slice(0, 120) })
+    }
+    return out
+  }
+
   async function subagentLabels(
     parentSessionId: string,
     descendants: boolean,
@@ -834,32 +871,24 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     parentSessionId: string,
     listOptions?: { descendants?: boolean },
   ): Promise<KernelSubagent[]> {
-    // 优先用内存里的 live agents（秒级、不碰磁盘、不挤 sessionQuery 的冷读缓存）；
-    // 只有这一代宿主没给 sessions 时才退回 sessionQuery.listSessions（会读全部会话头，
-    // 2026-11-11 实测在大会话环境下会卡到 15s 超时，导致监视器读不到子代理）。
+    const descendants = listOptions?.descendants === true
+    const catalog = await subagentCatalog(parentSessionId, descendants)
     let records: SessionRecordLike[] = []
-    const live = fn(services.sessions, 'list')
-    if (live) {
-      try {
-        const list = (live.call(services.sessions) ?? []) as Array<{ id?: unknown; header?: { id?: unknown; parentSession?: unknown; createdAt?: unknown } }>
-        records = list
-          .map((entry) => {
-            const header = entry?.header ?? {}
-            const id = typeof header.id === 'string' ? header.id : typeof entry?.id === 'string' ? entry.id : ''
-            return id === '' ? undefined : ({ header: { ...header, id } } as SessionRecordLike)
-          })
-          .filter((row): row is SessionRecordLike => row !== undefined)
-      } catch {
-        records = []
+    if (catalog.size > 0) {
+      // catalog 给成员 id + label；创建时间/运行态再按需从活 agent 的会话头拿。
+      for (const id of catalog.keys()) {
+        const header = (liveAgent(id)?.session as { header?: { createdAt?: number | string; cwd?: string } } | undefined)?.header
+        records.push({ header: { id, parentSession: parentSessionId, ...(header ?? {}) } })
       }
-    }
-    if (records.length === 0) {
+    } else {
+      // 该代宿主没有 catalog（或投影还没出）：退回原来的“列全部会话头”路径。
+      // 用 2s 上限，绝不把面板拖成 15s 超时；也只在 catalog 缺失时发生。
       const read = fn(services.sessionQuery, 'listSessions')
       if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
       const rows = (await withTimeout(
         Promise.resolve(read.call(services.sessionQuery)),
-        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
-      )) as SessionRecordLike[] | undefined
+        Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
+      ).catch(() => [])) as SessionRecordLike[] | undefined
       records = (rows ?? []).filter((row) => typeof row?.header?.id === 'string')
     }
     const childrenOf = new Map<string, SessionRecordLike[]>()
@@ -882,7 +911,12 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     // 不再读标题快照：界面只显示 label 里的「名称｜简述」，标题既不下发也不显示，
     // 每轮列表都去读 52 条标题是纯浪费（还会放大宿主内存抖动）。
     // 官方 label（内置 subagent 工具的 description）：拿不到就退回标题/任务
-    const labels = await subagentLabels(parentSessionId, listOptions?.descendants === true)
+    const labels = new Map<string, string>()
+    if (catalog.size > 0) {
+      for (const [id, entry] of catalog) if (entry.label !== undefined) labels.set(id, entry.label)
+    } else {
+      for (const [id, label] of await subagentLabels(parentSessionId, descendants)) labels.set(id, label)
+    }
     const now = options.clock.now()
     const out: KernelSubagent[] = []
     for (const row of targets) {
