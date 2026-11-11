@@ -573,7 +573,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
           setFoot(`推送失败：${String(savedAnswer.error ?? '配置没保存')}`)
           return
         }
-        // ② 再推一份「包工头」到当前会话
+        // ② 勾了“推送通知”才推；不勾只改配置（提示段下一轮动态生效，不必写会话）
+        if (notifyToggle.checked === false) {
+          setFoot('已切换为包工头（仅改配置，未推送通知）')
+          return
+        }
         const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/guidance/push'), {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },

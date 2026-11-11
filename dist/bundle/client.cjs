@@ -3788,6 +3788,10 @@ function mountSubagentMonitor(deps) {
           setFoot(`\u63A8\u9001\u5931\u8D25\uFF1A${String(savedAnswer.error ?? "\u914D\u7F6E\u6CA1\u4FDD\u5B58")}`);
           return;
         }
+        if (notifyToggle.checked === false) {
+          setFoot("\u5DF2\u5207\u6362\u4E3A\u5305\u5DE5\u5934\uFF08\u4EC5\u6539\u914D\u7F6E\uFF0C\u672A\u63A8\u9001\u901A\u77E5\uFF09");
+          return;
+        }
         const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/guidance/push"), {
           method: "POST",
           headers: { "content-type": "application/json", "x-drc-pair": "1" },
