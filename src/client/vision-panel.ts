@@ -230,10 +230,10 @@ export function mountVisionFab(deps: {
       display: flex; align-items: center; justify-content: center; font-size: 20px; }
     #dafeiyu-vision-fab:hover { border-color: #4b7bec; }
   #dafeiyu-vision-fab[hidden] { display: none !important; }
-    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 24px; width: 480px; max-height: 80vh; overflow: auto;
-      padding: 16px; border-radius: 14px; border: 1px solid #1f3b63;
+    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 24px; width: min(620px, 92vw); max-height: 84vh; overflow: auto;
+      padding: 18px; border-radius: 16px; border: 1px solid #1f3b63;
       background: #0d1117; color: #7fb0ff;
-      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; }
+      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 14px; line-height: 1.6; }
     #dafeiyu-vision-panel.open { display: block; }
     #dafeiyu-vision-result { width: 100%; min-height: 120px; margin-top: 8px; box-sizing: border-box;
       background: transparent; color: inherit; border: 1px solid #1f3b63; border-radius: 8px; padding: 8px; }
@@ -257,7 +257,7 @@ export function mountVisionFab(deps: {
   const panel = doc.createElement('div')
   panel.id = 'dafeiyu-vision-panel'
   const head = doc.createElement('div')
-  head.style.cssText = 'display:flex; align-items:center; gap:8px;'
+  head.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; row-gap:6px; gap:10px;'
   const title = doc.createElement('div')
   title.textContent = '发一张图给大肥鱼看'
   title.style.cssText = 'flex:1; font-weight:600;'

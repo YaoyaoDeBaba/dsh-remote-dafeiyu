@@ -56,12 +56,12 @@ export function mountXyqQuick(): XyqQuickHandle {
   const style = doc.createElement('style')
   style.id = styleId
   style.textContent = `
-#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 10vh; width: 480px; max-height: 80vh; overflow: auto; padding: 16px;
+#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 10vh; width: min(620px, 92vw); max-height: 84vh; overflow: auto; padding: 18px;
   border-radius: 12px; border: 1px solid #1f3b63;
   background: #0d1117; color: #7fb0ff;
-  box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; z-index: 2147483001; display: none; }
+  box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 14px; line-height: 1.6; z-index: 2147483001; display: none; }
 #dafeiyu-xyq-quick.open { display: block; }
-#dafeiyu-xyq-quick .head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 600; }
+#dafeiyu-xyq-quick .head { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; gap: 8px; margin-bottom: 8px; font-weight: 600; }
 #dafeiyu-xyq-quick .head .grow { flex: 1; }
 #dafeiyu-xyq-quick .head button { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 14px; }
 #dafeiyu-xyq-quick textarea { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; padding: 8px;

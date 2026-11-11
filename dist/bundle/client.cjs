@@ -2260,10 +2260,10 @@ function mountVisionFab(deps) {
       display: flex; align-items: center; justify-content: center; font-size: 20px; }
     #dafeiyu-vision-fab:hover { border-color: #4b7bec; }
   #dafeiyu-vision-fab[hidden] { display: none !important; }
-    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 24px; width: 480px; max-height: 80vh; overflow: auto;
-      padding: 16px; border-radius: 14px; border: 1px solid #1f3b63;
+    #dafeiyu-vision-panel { position: fixed; right: 20px; bottom: 24px; width: min(620px, 92vw); max-height: 84vh; overflow: auto;
+      padding: 18px; border-radius: 16px; border: 1px solid #1f3b63;
       background: #0d1117; color: #7fb0ff;
-      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; }
+      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 14px; line-height: 1.6; }
     #dafeiyu-vision-panel.open { display: block; }
     #dafeiyu-vision-result { width: 100%; min-height: 120px; margin-top: 8px; box-sizing: border-box;
       background: transparent; color: inherit; border: 1px solid #1f3b63; border-radius: 8px; padding: 8px; }
@@ -2285,7 +2285,7 @@ function mountVisionFab(deps) {
   const panel = doc.createElement("div");
   panel.id = "dafeiyu-vision-panel";
   const head = doc.createElement("div");
-  head.style.cssText = "display:flex; align-items:center; gap:8px;";
+  head.style.cssText = "display:flex; align-items:center; flex-wrap:wrap; row-gap:6px; gap:10px;";
   const title = doc.createElement("div");
   title.textContent = "\u53D1\u4E00\u5F20\u56FE\u7ED9\u5927\u80A5\u9C7C\u770B";
   title.style.cssText = "flex:1; font-weight:600;";
@@ -3360,15 +3360,15 @@ function mountSubagentMonitor(deps) {
     #dafeiyu-subagent-fab:hover { border-color: #4b7bec; }
     #dafeiyu-subagent-fab .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
       padding: 0 4px; border-radius: 8px; background: #4b7bec; color: #fff; font-size: 10px; line-height: 16px; }
-    #dafeiyu-subagent-panel { position: fixed; right: 24px; top: 12vh; width: 480px; max-height: 76vh;
-      overflow: auto; padding: 16px; border-radius: 14px; border: 1px solid #1f3b63;
+    #dafeiyu-subagent-panel { position: fixed; right: 24px; top: 12vh; width: min(620px, 92vw); max-height: 84vh;
+      overflow: auto; padding: 18px; border-radius: 16px; border: 1px solid #1f3b63;
       background: #0d1117; color: #7fb0ff;
-      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; }
+      z-index: 2147483001; display: none; box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 14px; line-height: 1.6; }
     #dafeiyu-subagent-panel.open { display: block; }
-    #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
-    #dafeiyu-subagent-panel .head .tools { display: flex; gap: 6px; align-items: center; }
-    #dafeiyu-subagent-panel .head label.notify { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #1d4ed8; cursor: pointer; user-select: none; }
-    #dafeiyu-subagent-panel .head .ghost { background: #13233f; color: #8ab4ff; border: 0; border-radius: 7px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 400; }
+    #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 8px; margin-bottom: 8px; font-weight: 600; }
+    #dafeiyu-subagent-panel .head .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    #dafeiyu-subagent-panel .head label.notify { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #1d4ed8; cursor: pointer; user-select: none; }
+    #dafeiyu-subagent-panel .head .ghost { background: #13233f; color: #8ab4ff; border: 0; border-radius: 7px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-weight: 400; }
     #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
     #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
     #dafeiyu-subagent-panel .head button { background: transparent; color: #7fb0ff; border: 0; cursor: pointer; font-size: 14px; font-weight: 600; }
@@ -4304,12 +4304,12 @@ function mountXyqQuick() {
   const style = doc.createElement("style");
   style.id = styleId;
   style.textContent = `
-#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 10vh; width: 480px; max-height: 80vh; overflow: auto; padding: 16px;
+#dafeiyu-xyq-quick { position: fixed; right: 24px; top: 10vh; width: min(620px, 92vw); max-height: 84vh; overflow: auto; padding: 18px;
   border-radius: 12px; border: 1px solid #1f3b63;
   background: #0d1117; color: #7fb0ff;
-  box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 13.5px; line-height: 1.55; z-index: 2147483001; display: none; }
+  box-shadow: 0 12px 36px rgba(0,0,0,.45); font-size: 14px; line-height: 1.6; z-index: 2147483001; display: none; }
 #dafeiyu-xyq-quick.open { display: block; }
-#dafeiyu-xyq-quick .head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-weight: 600; }
+#dafeiyu-xyq-quick .head { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; gap: 8px; margin-bottom: 8px; font-weight: 600; }
 #dafeiyu-xyq-quick .head .grow { flex: 1; }
 #dafeiyu-xyq-quick .head button { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 14px; }
 #dafeiyu-xyq-quick textarea { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; padding: 8px;
