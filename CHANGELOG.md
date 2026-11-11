@@ -1,3 +1,37 @@
+## 0.9.0-dafeiyu.55 —— 序列帧精灵图工具：agent 能自己抠图了
+
+把 `E:\MonSlayer\序列帧精灵图工具.html`（单文件、纯前端）吸进插件，并且**给它一副手和一双眼睛**。
+
+**为什么不是"把网页塞进来"就完事**：那个工具的界面是给人设计的——按钮点击在无头环境下不可靠
+（取色按钮状态失步、重复设置同一文件不触发 change），而且"抠得好不好"没有数字，agent 只能靠猜。
+
+**做法**（照 `docs/序列帧工具_插件化方案.md` 的路线 B）：
+
+1. **页面内桥接层**（`assets/sprite/bridge.js`，补丁脚本 `scripts/patch-sprite-tool.mjs` 插进原工具
+   的 module 作用域里）→ 暴露 `window.__spriteAgent`：导视频/抽帧/取色/预览/全量/去水印/裁剪/
+   测高反推缩放/锚点/拼图，全是**函数调用**，一次点击都不模拟。
+2. **无头浏览器驱动**（`src/sprite/browser.ts`）：起 Edge/Chrome → CDP `Runtime.evaluate`。
+   只开一个标签页并自己导航（下载页会把 target 顶掉）；空闲 5 分钟自动关，停机必关。
+3. **质量分析器**（`src/sprite/analyze.ts` + `png.ts`）：把预览 PNG 解出来算
+   `bgResidual / subjectCoverage / edgeGreen / alphaHistogram` —— 这就是 agent 的"眼睛"。
+   > 顺手修了方案里一个数学缺陷：原口径"bbox 之外的 alpha 占比"恒等于 0（bbox 与阈值同源），
+   > 现在改成**边框带**（四边各 `max(4, 6%短边)` 宽的带）内的残留占比，才真的能反映"背景没抠干净"。
+4. **5 个 agent 工具**：`sprite_prepare` / `sprite_key_preview` / `sprite_key_apply` /
+   `sprite_cleanup` / `sprite_export`，外加一段写进系统提示的调参规则（迭代上限 6 轮）。
+   `sprite_export` 会把"想要 512 但工具缩放上限 300%、实际只有 X"如实报出来。
+5. **给人用的入口**：形象菜单「🎞 序列帧工具」→ 新标签页打开 `/plugins/dafeiyu-sprite/`
+   （宿主回环路由托管同一份打完补丁的工具页）。
+
+**验收（本机实测）**
+- 端到端：绿幕 webm（`scripts/make-sprite-fixture.mjs` 现场生成）→ 抽 19 帧 → 单帧抠图
+  `bgResidual 0 / subjectCoverage 1 / edgeGreen 0` → 全量 → 导出 PNG + meta.json；
+- 换一个**非绿幕** mp4（720×1254）：抽帧正常，指标如实报 `bgResidual 1` —— 也就是"背景不可抠"，
+  不会硬出一张烂图；
+- 驱动层单独冒烟：`node scripts/smoke-sprite-browser.mjs`（800ms 起浏览器并求值成功）。
+
+**新增测试** 19 项（17 单元 + 2 冒烟脚本另跑）：PNG 解码器的 filter 0~4 与不支持格式、
+四个指标的边界（全透明/全不透明/角落残渣/绿边/小图）、工具页路由守卫、缺工具页时不注册工具。
+
 ## 0.9.0-dafeiyu.54 —— 转生/分身能在**空闲会话**上跑起来了
 
 - `.53` 的缺陷：写作指令走 `agent.inject`，而 inject **只进下一步队列、不唤醒驱动器**。

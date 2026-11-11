@@ -172,6 +172,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
         else if (id === 'vision') openVision?.()
         else if (id === 'rebirth') handoffPanel?.open('rebirth')
         else if (id === 'branch') handoffPanel?.open('branch')
+        else if (id === 'sprite') (globalThis as { open?: (url: string, target?: string) => unknown }).open?.(resolveHostUrl('/plugins/dafeiyu-sprite/'), '_blank')
         else xyqQuick?.open()
       },
     })

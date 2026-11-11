@@ -4781,8 +4781,8 @@ var require_websocket = __commonJS({
     "use strict";
     var EventEmitter2 = __require("events");
     var https = __require("https");
-    var http = __require("http");
-    var net = __require("net");
+    var http2 = __require("http");
+    var net2 = __require("net");
     var tls = __require("tls");
     var { randomBytes: randomBytes5, createHash: createHash6 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
@@ -5336,7 +5336,7 @@ var require_websocket = __commonJS({
       }
       const defaultPort = isSecure ? 443 : 80;
       const key = randomBytes5(16).toString("base64");
-      const request = isSecure ? https.request : http.request;
+      const request = isSecure ? https.request : http2.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -5539,12 +5539,12 @@ var require_websocket = __commonJS({
     }
     function netConnect(options) {
       options.path = options.socketPath;
-      return net.connect(options);
+      return net2.connect(options);
     }
     function tlsConnect(options) {
       options.path = void 0;
       if (!options.servername && options.servername !== "") {
-        options.servername = net.isIP(options.host) ? "" : options.host;
+        options.servername = net2.isIP(options.host) ? "" : options.host;
       }
       return tls.connect(options);
     }
@@ -5832,7 +5832,7 @@ var require_websocket_server = __commonJS({
   "node_modules/.pnpm/ws@8.22.0/node_modules/ws/lib/websocket-server.js"(exports, module) {
     "use strict";
     var EventEmitter2 = __require("events");
-    var http = __require("http");
+    var http2 = __require("http");
     var { Duplex } = __require("stream");
     var { createHash: createHash6 } = __require("crypto");
     var extension2 = require_extension();
@@ -5913,8 +5913,8 @@ var require_websocket_server = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http.createServer((req, res) => {
-            const body = http.STATUS_CODES[426];
+          this._server = http2.createServer((req, res) => {
+            const body = http2.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -6203,7 +6203,7 @@ var require_websocket_server = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http.STATUS_CODES[code];
+      message = message || http2.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -6212,7 +6212,7 @@ var require_websocket_server = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http2.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path24 from "node:path";
+import path27 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path25) {
-  if (!path25)
+function getElementAtPath(obj, path28) {
+  if (!path28)
     return obj;
-  return path25.reduce((acc, key) => acc?.[key], obj);
+  return path28.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path25, issues) {
+function prefixIssues(path28, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path25);
+    iss.path.unshift(path28);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path25 = []) => {
+  const processError = (error63, path28 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path25, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path28, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path25, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path25, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else {
-        const fullpath = [...path25, ...issue2.path];
+        const fullpath = [...path28, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path25 = []) => {
+  const processError = (error63, path28 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path25, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path28, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path25, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path25, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else {
-        const fullpath = [...path25, ...issue2.path];
+        const fullpath = [...path28, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path25 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path25) {
+  const path28 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path28) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path25 = ref.slice(1).split("/").filter(Boolean);
-  if (path25.length === 0) {
+  const path28 = ref.slice(1).split("/").filter(Boolean);
+  if (path28.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path25[0] === defsKey) {
-    const key = path25[1] === void 0 ? void 0 : decodeJSONPointerSegment(path25[1]);
+  if (path28[0] === defsKey) {
+    const key = path28[1] === void 0 ? void 0 : decodeJSONPointerSegment(path28[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.54" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.55" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -30323,9 +30323,9 @@ function createPairFlow(deps) {
     log("client unpaired", { reissued: Boolean(code) });
   }
   function noteRateLimited(retryAfterMs) {
-    const wait = retryAfterMs ?? PAIR_RATE_LIMIT_BACKOFF_MS;
-    pairRateLimitedUntil = Math.max(pairRateLimitedUntil, clock.now() + wait);
-    log("relay rate limited us", { waitMs: wait });
+    const wait2 = retryAfterMs ?? PAIR_RATE_LIMIT_BACKOFF_MS;
+    pairRateLimitedUntil = Math.max(pairRateLimitedUntil, clock.now() + wait2);
+    log("relay rate limited us", { waitMs: wait2 });
   }
   function resetRateLimitAndRetryOwed() {
     pairRateLimitedUntil = 0;
@@ -32108,12 +32108,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path25 = __require("node:path");
+        const path28 = __require("node:path");
         const fs10 = __require("node:fs");
-        const dir = path25.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path28.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs10.mkdirSync(dir, { recursive: true, mode: 448 });
         fs10.writeFileSync(
-          path25.join(dir, "client-report.json"),
+          path28.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -36160,16 +36160,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path25) {
+function deepGet(value, path28) {
   let cursor = value;
-  for (const key of path25) {
+  for (const key of path28) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path25) {
-  return String(path25 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path28) {
+  return String(path28 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -38096,8 +38096,1050 @@ function startHandoff(ctx, input2) {
   };
 }
 
-// src/xyq/start.ts
+// src/sprite/start.ts
+import path20 from "node:path";
+import { existsSync as existsSync3 } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+// src/sprite/routes.ts
+import { readFileSync as readFileSync5 } from "node:fs";
+var SPRITE_PAGE_ROUTE = "/plugins/dafeiyu-sprite/";
+function spritePageHandler(deps) {
+  let cached2;
+  const load = () => {
+    if (cached2) return cached2;
+    const html = readFileSync5(deps.toolHtmlPath);
+    cached2 = { html, etag: `"${html.byteLength}"` };
+    return cached2;
+  };
+  return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    if (!hostIsLoopback(request.headers.host)) {
+      response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("host-not-loopback");
+      return;
+    }
+    if (!originIsLoopbackOrAbsent(request.headers.origin)) {
+      response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("origin-not-trusted");
+      return;
+    }
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      response.writeHead(405, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("\u53EA\u652F\u6301 GET");
+      return;
+    }
+    let page;
+    try {
+      page = load();
+    } catch (error62) {
+      deps.log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u8BFB\u4E0D\u51FA\u6765", { message: String(error62?.message ?? error62).slice(0, 160) });
+      response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end(`\u5DE5\u5177\u9875\u8BFB\u4E0D\u51FA\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 200)}`);
+      return;
+    }
+    response.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Length": page.html.byteLength,
+      "Cache-Control": "no-store",
+      ETag: page.etag
+    });
+    if (request.method === "HEAD") response.end();
+    else response.end(page.html);
+  };
+}
+
+// src/sprite/service.ts
+import { createServer } from "node:http";
+import { mkdirSync as mkdirSync6, readFileSync as readFileSync6, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
 import path19 from "node:path";
+
+// src/sprite/png.ts
+import { inflateSync } from "node:zlib";
+var SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+var MAX_RAW_BYTES = 256 * 1024 * 1024;
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
+}
+function decodePng(png) {
+  if (png.length < 8 || !png.subarray(0, 8).equals(SIGNATURE)) {
+    throw new Error("\u4E0D\u662F PNG \u6587\u4EF6\uFF1A\u6587\u4EF6\u5934\u7B7E\u540D\u4E0D\u5BF9");
+  }
+  let width = 0;
+  let height = 0;
+  let colorType = 0;
+  let sawHeader = false;
+  let sawEnd = false;
+  const idat = [];
+  let offset = 8;
+  while (offset + 12 <= png.length) {
+    const length = png.readUInt32BE(offset);
+    const type = png.toString("latin1", offset + 4, offset + 8);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    if (dataEnd + 4 > png.length) {
+      throw new Error(`PNG \u6570\u636E\u5757 ${type} \u8D8A\u754C\uFF1A\u58F0\u660E ${length} \u5B57\u8282\uFF0C\u6587\u4EF6\u91CC\u4E0D\u591F\uFF08\u6587\u4EF6\u88AB\u622A\u65AD\uFF1F\uFF09`);
+    }
+    const data = png.subarray(dataStart, dataEnd);
+    if (type === "IHDR") {
+      if (length !== 13) throw new Error(`PNG \u7684 IHDR \u957F\u5EA6\u5E94\u4E3A 13\uFF0C\u5B9E\u9645 ${length}`);
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      const bitDepth = data[8];
+      colorType = data[9];
+      const compression = data[10];
+      const filterMethod = data[11];
+      const interlace = data[12];
+      if (width === 0 || height === 0) throw new Error("PNG \u5BBD\u6216\u9AD8\u4E3A 0\uFF0C\u4E0D\u662F\u6709\u6548\u56FE\u7247");
+      if (compression !== 0) throw new Error(`\u4E0D\u652F\u6301 PNG \u538B\u7F29\u65B9\u5F0F ${compression}\uFF08\u53EA\u652F\u6301 0=deflate\uFF09`);
+      if (filterMethod !== 0) throw new Error(`\u4E0D\u652F\u6301 PNG \u8FC7\u6EE4\u65B9\u5F0F ${filterMethod}\uFF08\u53EA\u652F\u6301 0\uFF09`);
+      if (bitDepth !== 8) throw new Error(`\u4E0D\u652F\u6301 ${bitDepth}-bit \u7684 PNG\uFF08\u53EA\u652F\u6301 8-bit\uFF0C\u5148\u7528\u56FE\u50CF\u5DE5\u5177\u8F6C\u6210 8-bit\uFF09`);
+      if (colorType !== 6 && colorType !== 2) {
+        throw new Error(
+          `\u4E0D\u652F\u6301\u989C\u8272\u7C7B\u578B ${colorType} \u7684 PNG\uFF08\u53EA\u652F\u6301 6=RGBA / 2=RGB\uFF1B\u8C03\u8272\u677F\u56FE\u8BF7\u5148\u8F6C\u6210 RGBA\uFF09`
+        );
+      }
+      if (interlace !== 0) {
+        throw new Error(`\u4E0D\u652F\u6301\u9694\u884C\uFF08Adam7\uFF09PNG\uFF08\u9694\u884C=${interlace}\uFF09\uFF0C\u8BF7\u5148\u8F6C\u6210\u975E\u9694\u884C\u518D\u5206\u6790`);
+      }
+      sawHeader = true;
+    } else if (type === "IDAT") {
+      idat.push(data);
+    } else if (type === "IEND") {
+      sawEnd = true;
+      break;
+    }
+    offset = dataEnd + 4;
+  }
+  if (!sawHeader) throw new Error("PNG \u7F3A\u5C11 IHDR \u6570\u636E\u5757\uFF1A\u4E0D\u662F\u5B8C\u6574\u7684 PNG");
+  if (!sawEnd) throw new Error("PNG \u7F3A\u5C11 IEND \u6570\u636E\u5757\uFF1A\u6587\u4EF6\u4E0D\u5B8C\u6574");
+  if (idat.length === 0) throw new Error("PNG \u7F3A\u5C11 IDAT \u6570\u636E\u5757\uFF1A\u6CA1\u6709\u50CF\u7D20\u6570\u636E");
+  const channels = colorType === 6 ? 4 : 3;
+  const stride = width * channels;
+  const expected = height * (stride + 1);
+  if (!Number.isSafeInteger(expected) || expected > MAX_RAW_BYTES) {
+    throw new Error(`PNG \u89E3\u538B\u540E\u6570\u636E\u8FC7\u5927\uFF08\u671F\u671B ${expected} \u5B57\u8282\uFF09\uFF0C\u8D85\u8FC7\u4E0A\u9650 ${MAX_RAW_BYTES} \u5B57\u8282`);
+  }
+  let raw;
+  try {
+    raw = inflateSync(Buffer.concat(idat));
+  } catch (error62) {
+    throw new Error(`PNG \u50CF\u7D20\u6570\u636E\u89E3\u538B\u5931\u8D25\uFF1A${String(error62?.message ?? error62)}`);
+  }
+  if (raw.length !== expected) {
+    throw new Error(`PNG \u50CF\u7D20\u6570\u636E\u957F\u5EA6\u4E0D\u5BF9\uFF1A\u671F\u671B ${expected} \u5B57\u8282\uFF0C\u5B9E\u9645 ${raw.length} \u5B57\u8282\uFF08\u4F4D\u6DF1\u6216\u9694\u884C\u58F0\u660E\u4E0E\u5B9E\u9645\u4E0D\u7B26\uFF1F\uFF09`);
+  }
+  const rgba = new Uint8Array(width * height * 4);
+  let prev = new Uint8Array(stride);
+  for (let y = 0; y < height; y++) {
+    const lineStart = y * (stride + 1);
+    const filter = raw[lineStart];
+    if (filter > 4) throw new Error(`\u4E0D\u652F\u6301 PNG \u884C\u8FC7\u6EE4\u7C7B\u578B ${filter}\uFF08\u7B2C ${y} \u884C\uFF1B\u5408\u6CD5\u503C 0~4\uFF09`);
+    const line = raw.subarray(lineStart + 1, lineStart + 1 + stride);
+    const cur = new Uint8Array(stride);
+    for (let i = 0; i < stride; i++) {
+      const x = line[i];
+      const a = i >= channels ? cur[i - channels] : 0;
+      const b = prev[i];
+      const c = i >= channels ? prev[i - channels] : 0;
+      let value;
+      switch (filter) {
+        case 0:
+          value = x;
+          break;
+        case 1:
+          value = x + a;
+          break;
+        case 2:
+          value = x + b;
+          break;
+        case 3:
+          value = x + (a + b >> 1);
+          break;
+        default:
+          value = x + paeth(a, b, c);
+          break;
+      }
+      cur[i] = value & 255;
+    }
+    const outBase = y * width * 4;
+    if (channels === 4) {
+      rgba.set(cur, outBase);
+    } else {
+      for (let x = 0; x < width; x++) {
+        const src = x * 3;
+        const dst = outBase + x * 4;
+        rgba[dst] = cur[src];
+        rgba[dst + 1] = cur[src + 1];
+        rgba[dst + 2] = cur[src + 2];
+        rgba[dst + 3] = 255;
+      }
+    }
+    prev = cur;
+  }
+  return { width, height, rgba };
+}
+
+// src/sprite/analyze.ts
+var DEFAULT_ALPHA_CUT = 32;
+var GREEN_MARGIN = 12;
+var EDGE_RING = 2;
+var MIN_BAND = 4;
+var BAND_RATIO = 0.06;
+function bandWidth(width, height) {
+  return Math.max(MIN_BAND, Math.round(Math.min(width, height) * BAND_RATIO));
+}
+function analyzeSpritePng(png, options) {
+  const alphaCut = options?.alphaCut ?? DEFAULT_ALPHA_CUT;
+  if (!Number.isInteger(alphaCut) || alphaCut < 0 || alphaCut > 255) {
+    throw new Error(`alphaCut \u5FC5\u987B\u662F 0~255 \u7684\u6574\u6570\uFF0C\u5B9E\u9645\u6536\u5230 ${String(alphaCut)}`);
+  }
+  const { width, height, rgba } = decodePng(png);
+  const total = width * height;
+  const band = bandWidth(width, height);
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  let bandPixels = 0;
+  let bandOpaque = 0;
+  let bin0 = 0;
+  let bin1 = 0;
+  let bin2 = 0;
+  let bin3 = 0;
+  for (let y = 0; y < height; y++) {
+    const inBandRow = y < band || y >= height - band;
+    for (let x = 0; x < width; x++) {
+      const alpha = rgba[(y * width + x) * 4 + 3];
+      if (alpha <= 32) bin0++;
+      else if (alpha <= 128) bin1++;
+      else if (alpha <= 192) bin2++;
+      else bin3++;
+      if (inBandRow || x < band || x >= width - band) {
+        bandPixels++;
+        if (alpha > alphaCut) bandOpaque++;
+      }
+      if (alpha > alphaCut) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  const bbox = maxX >= 0 ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } : null;
+  let insideOpaque = 0;
+  if (bbox !== null) {
+    for (let y = bbox.y; y < bbox.y + bbox.h; y++) {
+      for (let x = bbox.x; x < bbox.x + bbox.w; x++) {
+        if (rgba[(y * width + x) * 4 + 3] > alphaCut) insideOpaque++;
+      }
+    }
+  }
+  const bgResidual = bandPixels === 0 ? 0 : bandOpaque / bandPixels;
+  const subjectCoverage = bbox === null ? 0 : insideOpaque / (bbox.w * bbox.h);
+  let edgeGreen = 0;
+  if (bbox !== null) {
+    const x0 = Math.max(0, bbox.x - EDGE_RING);
+    const x1 = Math.min(width - 1, bbox.x + bbox.w - 1 + EDGE_RING);
+    const y0 = Math.max(0, bbox.y - EDGE_RING);
+    const y1 = Math.min(height - 1, bbox.y + bbox.h - 1 + EDGE_RING);
+    let ring = 0;
+    let green = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const inBox = x >= bbox.x && x < bbox.x + bbox.w && y >= bbox.y && y < bbox.y + bbox.h;
+        if (inBox) continue;
+        ring++;
+        const i = (y * width + x) * 4;
+        const r = rgba[i];
+        const g = rgba[i + 1];
+        const b = rgba[i + 2];
+        if (g > r + GREEN_MARGIN && g > b + GREEN_MARGIN) green++;
+      }
+    }
+    edgeGreen = ring === 0 ? 0 : green / ring;
+  }
+  return {
+    width,
+    height,
+    bbox,
+    bgResidual,
+    subjectCoverage,
+    edgeGreen,
+    alphaHistogram: [bin0 / total, bin1 / total, bin2 / total, bin3 / total]
+  };
+}
+
+// src/sprite/browser.ts
+import { spawn as spawn2 } from "node:child_process";
+import http from "node:http";
+import net from "node:net";
+import os3 from "node:os";
+import path18 from "node:path";
+import { existsSync as existsSync2, mkdtempSync, rmSync } from "node:fs";
+function findBrowser(explicit) {
+  if (explicit) return existsSync2(explicit) ? explicit : void 0;
+  const env = (process.env.DAFEIYU_SPRITE_BROWSER ?? "").trim();
+  if (env !== "") return existsSync2(env) ? env : void 0;
+  const candidates = [
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+  ];
+  return candidates.find((candidate) => existsSync2(candidate));
+}
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close(() => port > 0 ? resolve(port) : reject(new Error("\u62FF\u4E0D\u5230\u7A7A\u95F2\u7AEF\u53E3")));
+    });
+  });
+}
+function getJson(url2, timeoutMs = 2e3) {
+  return new Promise((resolve, reject) => {
+    const request = http.get(url2, { timeout: timeoutMs }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => {
+        try {
+          resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+        } catch (error62) {
+          reject(error62);
+        }
+      });
+    });
+    request.on("timeout", () => request.destroy(new Error("CDP \u63A2\u6D4B\u8D85\u65F6")));
+    request.on("error", reject);
+  });
+}
+var wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function launchBrowser(options) {
+  const log = options.log ?? (() => void 0);
+  const executable = findBrowser(options.executable);
+  if (!executable) {
+    throw new Error("\u627E\u4E0D\u5230 Edge/Chrome\uFF1A\u53EF\u4EE5\u7528\u73AF\u5883\u53D8\u91CF DAFEIYU_SPRITE_BROWSER \u6307\u5B9A\u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84");
+  }
+  const port = await freePort();
+  const profileDir = mkdtempSync(path18.join(os3.tmpdir(), "drc-sprite-"));
+  const args = [
+    "--headless=new",
+    "--disable-gpu",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--mute-audio",
+    "--hide-scrollbars",
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${profileDir}`,
+    "about:blank"
+  ];
+  const child = spawn2(executable, args, { stdio: "ignore", windowsHide: true });
+  let closed = false;
+  const cleanup = async () => {
+    if (closed) return;
+    closed = true;
+    try {
+      child.kill();
+    } catch {
+    }
+    await wait(120);
+    try {
+      rmSync(profileDir, { recursive: true, force: true });
+    } catch {
+    }
+  };
+  const readyTimeout = options.readyTimeoutMs ?? 2e4;
+  const deadline = Date.now() + readyTimeout;
+  let target;
+  while (Date.now() < deadline) {
+    try {
+      const list = await getJson(`http://127.0.0.1:${port}/json/list`);
+      target = list.find((row) => row.type === "page" && typeof row.webSocketDebuggerUrl === "string");
+      if (target) break;
+    } catch {
+    }
+    await wait(200);
+  }
+  if (!target?.webSocketDebuggerUrl) {
+    await cleanup();
+    throw new Error(`\u6D4F\u89C8\u5668\u8D77\u6765\u4E86\u4F46\u6CA1\u6709\u53EF\u7528\u7684\u9875\u9762\uFF08\u7AEF\u53E3 ${port}\uFF0C\u7B49\u4E86 ${Math.round(readyTimeout / 1e3)} \u79D2\uFF09`);
+  }
+  const socket = new import_websocket.default(target.webSocketDebuggerUrl, { perMessageDeflate: false });
+  let nextId = 1;
+  const pending2 = /* @__PURE__ */ new Map();
+  const send = (method, params) => {
+    const id = nextId++;
+    socket.send(JSON.stringify({ id, method, ...params === void 0 ? {} : { params } }));
+    return id;
+  };
+  const call = (method, params, timeoutMs = 15e3) => {
+    const id = send(method, params);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pending2.delete(id);
+        reject(new Error(`CDP ${method} \u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      }, timeoutMs);
+      pending2.set(id, { resolve, reject, timer });
+    });
+  };
+  socket.on("message", (raw) => {
+    let message;
+    try {
+      message = JSON.parse(raw.toString("utf8"));
+    } catch {
+      return;
+    }
+    if (typeof message.id !== "number") return;
+    const waiter = pending2.get(message.id);
+    if (!waiter) return;
+    pending2.delete(message.id);
+    clearTimeout(waiter.timer);
+    if (message.error) waiter.reject(new Error(message.error.message ?? "CDP \u9519\u8BEF"));
+    else waiter.resolve(message.result);
+  });
+  socket.on("close", () => {
+    for (const [id, waiter] of pending2) {
+      pending2.delete(id);
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("CDP \u8FDE\u63A5\u65AD\u4E86\uFF08\u6D4F\u89C8\u5668\u88AB\u5173\u6389\uFF1F\uFF09"));
+    }
+  });
+  await new Promise((resolve, reject) => {
+    socket.once("open", () => resolve());
+    socket.once("error", (error62) => reject(error62));
+    setTimeout(() => reject(new Error("\u8FDE\u4E0D\u4E0A CDP WebSocket")), 1e4);
+  });
+  try {
+    await call("Page.enable");
+    await call("Runtime.enable");
+    await call("Page.navigate", { url: options.toolUrl }, 2e4);
+  } catch (error62) {
+    try {
+      socket.close();
+    } catch {
+    }
+    await cleanup();
+    throw error62;
+  }
+  const evaluate = async (expression, timeoutMs = 3e4) => {
+    const result2 = await call(
+      "Runtime.evaluate",
+      { expression, awaitPromise: true, returnByValue: true, userGesture: false },
+      timeoutMs
+    );
+    if (result2.exceptionDetails) {
+      const detail = result2.exceptionDetails.exception?.description ?? result2.exceptionDetails.text ?? "\u9875\u9762\u6267\u884C\u51FA\u9519";
+      throw new Error(detail.slice(0, 400));
+    }
+    return result2.result?.value;
+  };
+  const pageDeadline = Date.now() + readyTimeout;
+  const readyExpression = options.readyExpression ?? "document.readyState === 'complete' && !!(window.__spriteAgent && window.__spriteAgent.ready)";
+  let bridged = false;
+  while (Date.now() < pageDeadline) {
+    try {
+      bridged = await evaluate(readyExpression, 5e3);
+      if (bridged) break;
+    } catch {
+    }
+    await wait(300);
+  }
+  if (!bridged) {
+    const state = await evaluate('String(document.readyState) + " @" + location.href', 5e3).catch(() => "\u8BFB\u53D6\u5931\u8D25");
+    log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u6CA1\u5C31\u7EEA", { url: options.toolUrl, state });
+    try {
+      socket.close();
+    } catch {
+    }
+    await cleanup();
+    throw new Error(`\u5DE5\u5177\u9875\u6CA1\u5C31\u7EEA\uFF08${state}\uFF09\u3002\u68C0\u67E5\u9759\u6001\u8DEF\u7531 /plugins/dafeiyu-sprite/ \u4E0E\u8865\u4E01\u662F\u5426\u6253\u597D`);
+  }
+  return {
+    pageUrl: options.toolUrl,
+    evaluate,
+    async close() {
+      try {
+        socket.close();
+      } catch {
+      }
+      await cleanup();
+    }
+  };
+}
+
+// src/sprite/service.ts
+function dataUrlToBuffer(dataUrl) {
+  const text = typeof dataUrl === "string" ? dataUrl : "";
+  const comma = text.indexOf(",");
+  if (!text.startsWith("data:") || comma < 0) return void 0;
+  const head = text.slice(0, comma);
+  if (!head.includes("base64")) return void 0;
+  try {
+    return Buffer.from(text.slice(comma + 1), "base64");
+  } catch {
+    return void 0;
+  }
+}
+var PAGE_ROUTE = "/";
+function startToolServer(toolHtmlPath) {
+  return new Promise((resolve, reject) => {
+    const html = readFileSync6(toolHtmlPath);
+    const etag = `"${html.byteLength}-${html.length}"`;
+    const server = createServer((request, response) => {
+      const url2 = request.url ?? "/";
+      if (!url2.startsWith(PAGE_ROUTE)) {
+        response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("not found");
+        return;
+      }
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": html.byteLength,
+        "Cache-Control": "no-store",
+        ETag: etag
+      });
+      response.end(html);
+    });
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      if (!port) {
+        reject(new Error("\u5DE5\u5177\u9875\u670D\u52A1\u6CA1\u62FF\u5230\u7AEF\u53E3"));
+        return;
+      }
+      resolve({ origin: `http://127.0.0.1:${port}`, server });
+    });
+  });
+}
+function createSpriteService(options) {
+  const log = options.log;
+  const idleMs = options.idleMs ?? 5 * 60 * 1e3;
+  let session;
+  let toolServer;
+  let toolOrigin = "";
+  let idleTimer;
+  let launching;
+  let stopped = false;
+  const touch = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      idleTimer = void 0;
+      void recycle("\u7A7A\u95F2\u8D85\u65F6");
+    }, idleMs);
+    if (typeof idleTimer === "object" && idleTimer !== null && "unref" in idleTimer) {
+      ;
+      idleTimer.unref?.();
+    }
+  };
+  const recycle = async (why) => {
+    const current = session;
+    session = void 0;
+    if (current) {
+      log("\u5173\u6389\u5E8F\u5217\u5E27\u6D4F\u89C8\u5668", { why });
+      await current.close().catch(() => void 0);
+    }
+  };
+  const ensureSession = async () => {
+    if (stopped) throw new Error("\u5E8F\u5217\u5E27\u670D\u52A1\u5DF2\u505C\u673A");
+    if (session) {
+      touch();
+      return session;
+    }
+    if (launching) return launching;
+    launching = (async () => {
+      if (!toolServer) {
+        const started = await startToolServer(options.toolHtmlPath);
+        toolServer = started.server;
+        toolOrigin = started.origin;
+      }
+      const created = await launchBrowser({
+        toolUrl: `${toolOrigin}${PAGE_ROUTE}`,
+        ...options.browserPath ? { executable: options.browserPath } : {},
+        log
+      });
+      session = created;
+      touch();
+      return created;
+    })();
+    try {
+      return await launching;
+    } finally {
+      launching = void 0;
+    }
+  };
+  const bridge = async (name2, ...args) => {
+    const active = await ensureSession();
+    touch();
+    const expression = `(async () => {
+      const api = window.__spriteAgent
+      if (!api || !api.${name2}) return { ok: false, error: '\u9875\u9762\u6CA1\u6709 __spriteAgent.${name2}' }
+      try { return await api.${name2}(${args.map((arg) => JSON.stringify(arg ?? null)).join(", ")}) }
+      catch (error) { return { ok: false, error: String(error && error.message || error) } }
+    })()`;
+    const answer = await active.evaluate(expression, 12e4);
+    if (!answer || answer.ok !== true) {
+      throw new Error(String(answer?.error ?? `${name2} \u5931\u8D25\uFF08\u9875\u9762\u6CA1\u6709\u8FD4\u56DE ok\uFF09`));
+    }
+    return answer;
+  };
+  const outDir = (override) => {
+    const dir = override && override.trim() !== "" ? override.trim() : options.outDir;
+    mkdirSync6(dir, { recursive: true });
+    return dir;
+  };
+  return {
+    get busy() {
+      return session !== void 0;
+    },
+    async prepare(args) {
+      const videoPath = String(args.videoPath ?? "").trim();
+      if (videoPath === "") throw new Error("\u9700\u8981\u89C6\u9891\u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF08videoPath\uFF09");
+      const stat3 = statSync3(videoPath);
+      if (stat3.size === 0) throw new Error(`\u89C6\u9891\u6587\u4EF6\u662F\u7A7A\u7684\uFF1A${videoPath}`);
+      if (stat3.size > 100 * 1024 * 1024) throw new Error(`\u89C6\u9891\u592A\u5927\uFF08>100MB\uFF09\uFF0C\u5148\u88C1\u4E00\u6BB5\u518D\u6765\uFF1A${videoPath}`);
+      const base643 = readFileSync6(videoPath).toString("base64");
+      const loaded = await bridge(
+        "loadVideoBase64",
+        base643,
+        path19.basename(videoPath)
+      );
+      await bridge("setRange", args.start ?? 0, args.end ?? 4, args.fps ?? 12);
+      const extracted = await bridge("extract");
+      return {
+        ok: true,
+        frames: Number(extracted.count ?? 0),
+        width: Number(extracted.width ?? 0),
+        height: Number(extracted.height ?? 0),
+        video: String(loaded.name ?? path19.basename(videoPath))
+      };
+    },
+    async keyPreview(args) {
+      const frame = Math.max(0, Math.floor(args.frame ?? 0));
+      const params = { ...args };
+      delete params.frame;
+      await bridge("setKeyParams", params);
+      const preview = await bridge("keyPreview", frame);
+      const previewBuffer = dataUrlToBuffer(preview.dataURL);
+      if (!previewBuffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u9884\u89C8\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
+      const dir = outDir();
+      const previewPath = path19.join(dir, `preview-${frame}.png`);
+      writeFileSync2(previewPath, previewBuffer);
+      let maskPath;
+      try {
+        const mask = await bridge("maskDataURL", frame);
+        const maskBuffer = dataUrlToBuffer(mask.dataURL);
+        if (maskBuffer) {
+          maskPath = path19.join(dir, `mask-${frame}.png`);
+          writeFileSync2(maskPath, maskBuffer);
+        }
+      } catch {
+      }
+      return {
+        ok: true,
+        frame,
+        stats: analyzeSpritePng(previewBuffer),
+        previewPath,
+        ...maskPath ? { maskPath } : {}
+      };
+    },
+    async keyApply(args) {
+      const params = { ...args };
+      delete params.indices;
+      await bridge("setKeyParams", params);
+      const applied = await bridge(
+        "keyApply",
+        args.indices ?? null
+      );
+      let stats;
+      try {
+        const check2 = await bridge("keyPreview", 0);
+        const buffer = dataUrlToBuffer(check2.dataURL);
+        if (buffer) stats = analyzeSpritePng(buffer);
+      } catch {
+      }
+      return {
+        ok: true,
+        frames: Number(applied.frames ?? 0),
+        plateApplied: applied.plateApplied === true,
+        ...stats ? { stats } : {}
+      };
+    },
+    async cleanup(args) {
+      if (args.maskRect !== void 0) {
+        await bridge("setMaskRect", args.maskRect ?? null);
+        await bridge("applyMask");
+      }
+      const trimmed = await bridge("computeTrim");
+      await bridge("applyTrim");
+      return { ok: true, trimBox: trimmed.box ?? null };
+    },
+    async exportSheet(args) {
+      const dir = outDir(args.outDir);
+      const scaled = await bridge("measureScale", 0, 0, args.targetHeight ?? 512);
+      await bridge("setAnchor", args.anchorX ?? 0.5, args.anchorY ?? 0.04);
+      const built = await bridge(
+        "buildSheet",
+        args.cols ?? 7,
+        args.rows ?? 7
+      );
+      const buffer = dataUrlToBuffer(built.dataURL);
+      if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u7CBE\u7075\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
+      const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+      const pngPath = path19.join(dir, `sheet-${stamp}.png`);
+      writeFileSync2(pngPath, buffer);
+      const meta3 = built.meta ?? await bridge("sheetMeta").catch(() => ({}));
+      const metaPath = path19.join(dir, `sheet-${stamp}.json`);
+      writeFileSync2(metaPath, JSON.stringify(meta3, null, 2), "utf8");
+      const stats = analyzeSpritePng(buffer);
+      return {
+        ok: true,
+        pngPath,
+        metaPath,
+        sheet: { width: stats.width, height: stats.height },
+        ...typeof scaled.scale === "number" ? { scale: scaled.scale } : {},
+        ...typeof scaled.achievedPx === "number" ? { achievedPx: scaled.achievedPx } : {},
+        ...scaled.scaleClamped === true ? {
+          scaleClamped: true,
+          note: `\u60F3\u8981 ${Number(args.targetHeight ?? 512)}px\uFF0C\u4F46\u5DE5\u5177\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u5B9E\u9645\u53EA\u6709 ${scaled.achievedPx ?? "?"}px\uFF1B\u628A targetHeight \u8C03\u5C0F\u6216\u88C1\u6389\u591A\u4F59\u753B\u9762\u518D\u6765`
+        } : {}
+      };
+    },
+    async stop() {
+      if (stopped) return;
+      stopped = true;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = void 0;
+      await recycle("\u505C\u673A");
+      const server = toolServer;
+      toolServer = void 0;
+      if (server) await new Promise((resolve) => server.close(() => resolve()));
+    }
+  };
+}
+
+// src/sprite/start.ts
+var SPRITE_GUIDANCE = `\u4F60\u6709\u300C\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u300D\u80FD\u529B\uFF1A\u628A\u5E26\u7EFF\u5E55\u80CC\u666F\u7684\u89C6\u9891\u8F6C\u6210\u900F\u660E\u5E95\u7CBE\u7075\u56FE\uFF08\u62BD\u5E27 \u2192 \u62A0\u80CC\u666F \u2192 \u53BB\u6C34\u5370/\u88C1\u526A \u2192 \u62FC\u56FE\u5BFC\u51FA\uFF09\u3002
+\u6807\u51C6\u6D41\u7A0B\uFF1Asprite_prepare \u2192 \u8C03\u53C2\u5FAA\u73AF\uFF08sprite_key_preview \u770B stats \u2192 \u6539\u53C2\u6570\uFF09\u2192 sprite_key_apply \u2192 sprite_cleanup \u2192 sprite_export\u3002
+\u8C03\u53C2\u89C4\u5219\uFF1A
+- bgResidual > 0.02 \u4E14 subjectCoverage > 0.98 \u2192 \u52A0 intensity\uFF08+10\uFF0C\u4E0A\u9650 90\uFF09
+- bgResidual \u9AD8\u4F46 subjectCoverage \u6389\u5230 0.98 \u4EE5\u4E0B \u2192 \u52A0 softness \u6216\u964D intensity\uFF08\u522B\u628A\u4E3B\u4F53\u62A0\u6389\uFF09
+- edgeGreen > 0.10 \u2192 \u5F00 aggressive\uFF0CgreenToAlpha +10
+- \u80CC\u666F\u6591\u9A73\uFF08\u53C2\u6570\u591F\u4E86\u4F46\u4ECD\u6709\u6B8B\u7559\uFF09\u2192 \u5F00 autoPlate \u518D apply\uFF08\u6CE8\u610F\uFF1AautoPlate \u53EA\u5728 apply \u751F\u6548\uFF0C\u5355\u5E27\u9884\u89C8\u770B\u4E0D\u51FA\u6765\uFF09
+\u6700\u591A\u8FED\u4EE3 6 \u8F6E\uFF0C\u6BCF\u8F6E\u8BB0\u4E0B\u53C2\u6570\u4E0E stats\uFF1B\u6536\u655B\u540E\u624D apply\u3002apply \u4E4B\u540E stats \u4F1A\u518D\u7ED9\u4E00\u6B21\uFF08\u90A3\u662F\u542B\u81EA\u52A8\u80CC\u666F\u677F\u7684\u7ED3\u679C\uFF09\u3002
+\u5982\u679C\u8FED\u4EE3\u5230\u4E0A\u9650\u4ECD\u4E0D\u6536\u655B\uFF0C\u5C31\u660E\u786E\u544A\u8BC9\u7528\u6237"\u80CC\u666F\u4E0D\u53EF\u62A0/\u9700\u8981\u91CD\u62CD"\uFF0C\u4E0D\u8981\u786C\u585E\u4E00\u5F20\u70C2\u56FE\u3002`;
+function packageRoot() {
+  try {
+    return path20.resolve(path20.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  } catch {
+    return process.cwd();
+  }
+}
+function startSprite(ctx, deps) {
+  const probe = {};
+  const toolHtmlPath = deps.toolHtmlPath ?? path20.join(packageRoot(), "assets", "sprite", "sprite-tool.html");
+  const outDir = deps.outDir ?? path20.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "sprite-out");
+  let service;
+  if (deps.enabled === false) {
+    probe.service = "disabled";
+  } else if (!existsSync3(toolHtmlPath)) {
+    probe.service = `missing-tool-html: ${toolHtmlPath}`;
+    deps.log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u4E0D\u5B58\u5728\uFF08\u5DE5\u5177\u4E0D\u4F1A\u6CE8\u518C\uFF09", { path: toolHtmlPath });
+  } else {
+    try {
+      service = createSpriteService({ toolHtmlPath, outDir, log: deps.log });
+      probe.service = "ready";
+    } catch (error62) {
+      service = void 0;
+      probe.service = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
+    }
+  }
+  if (service) {
+    try {
+      const tools = ctx.get?.("tools", true);
+      if (tools && typeof tools.register === "function") {
+        for (const definition of buildTools(service)) tools.register(definition);
+        probe.tools = "registered";
+      } else {
+        probe.tools = "no-tools";
+      }
+    } catch (error62) {
+      probe.tools = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
+    }
+  } else {
+    probe.tools = "skipped";
+  }
+  try {
+    const systemPrompt = ctx.get?.("systemPrompt", true);
+    if (service && systemPrompt && typeof systemPrompt.section === "function") {
+      systemPrompt.section({ name: "dafeiyu:sprite", order: 10091, text: SPRITE_GUIDANCE });
+      probe.section = "registered";
+    } else {
+      probe.section = service ? "no-systemPrompt" : "skipped";
+    }
+  } catch (error62) {
+    probe.section = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
+  }
+  let web;
+  let unregister;
+  let started = false;
+  let stopped = false;
+  const tryStart = () => {
+    if (started || stopped || !web || !service) return;
+    started = true;
+    try {
+      unregister = web.register({
+        kind: "exact",
+        path: SPRITE_PAGE_ROUTE,
+        handler: spritePageHandler({ toolHtmlPath, log: deps.log })
+      });
+      probe.routes = "registered";
+    } catch (error62) {
+      probe.routes = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+      started = false;
+    }
+  };
+  const acceptWeb = (value, via) => {
+    if (!value || typeof value !== "object") return false;
+    if (typeof value.register !== "function") {
+      probe.webServer = "object without register()";
+      return false;
+    }
+    web = value;
+    probe.webServer = via;
+    tryStart();
+    return true;
+  };
+  const pickFrom = (source) => {
+    if (!source || typeof source !== "object") return void 0;
+    const asContext = source;
+    if (typeof asContext.get === "function") {
+      try {
+        const got = asContext.get("webServer", true);
+        if (got) return got;
+      } catch {
+      }
+    }
+    try {
+      return source["webServer"];
+    } catch {
+      return void 0;
+    }
+  };
+  try {
+    const found = ctx.get?.("webServer", true);
+    if (found) acceptWeb(found, "via get");
+    else probe.webServer = "none";
+  } catch (error62) {
+    probe.webServer = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+  }
+  try {
+    ctx.inject?.(["webServer"], ((...args) => {
+      try {
+        for (const candidate of [args[0], ...args, ctx]) {
+          if (acceptWeb(pickFrom(candidate), "via inject")) return;
+        }
+      } catch (error62) {
+        probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
+      }
+    }));
+  } catch (error62) {
+    probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
+  }
+  return {
+    probe,
+    stop() {
+      if (stopped) return;
+      stopped = true;
+      try {
+        unregister?.();
+      } catch {
+      }
+      void service?.stop().catch(() => void 0);
+    }
+  };
+}
+function buildTools(service) {
+  const json11 = (value) => JSON.stringify(value);
+  const fail2 = (error62) => {
+    throw new Error(String(error62?.message ?? error62).slice(0, 400));
+  };
+  return [
+    {
+      name: "sprite_prepare",
+      description: "\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u7B2C\u4E00\u6B65\uFF1A\u5BFC\u5165\u89C6\u9891\u5E76\u62BD\u5E27\u3002\u8FD4\u56DE\u5E27\u6570\u4E0E\u50CF\u7D20\u5C3A\u5BF8\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          videoPath: { type: "string", description: "\u89C6\u9891\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84\uFF08mp4/webm/mov\uFF09" },
+          start: { type: "number", description: "\u8D77\u59CB\u79D2\uFF0C\u9ED8\u8BA4 0" },
+          end: { type: "number", description: "\u7ED3\u675F\u79D2\uFF0C\u9ED8\u8BA4 4" },
+          fps: { type: "number", description: "\u62BD\u5E27\u5E27\u7387\uFF0C\u9ED8\u8BA4 12" }
+        },
+        required: ["videoPath"]
+      },
+      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
+      timeoutMs: 18e4,
+      async execute(args) {
+        const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
+        if (videoPath === "") return fail2("\u9700\u8981 videoPath\uFF08\u89C6\u9891\u7EDD\u5BF9\u8DEF\u5F84\uFF09");
+        try {
+          const result2 = await service.prepare({
+            videoPath,
+            ...typeof args.start === "number" ? { start: args.start } : {},
+            ...typeof args.end === "number" ? { end: args.end } : {},
+            ...typeof args.fps === "number" ? { fps: args.fps } : {}
+          });
+          return json11(result2);
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_key_preview",
+      description: "\u6309\u53C2\u6570\u62A0\u4E00\u5E27\u5E76\u8FD4\u56DE\u91CF\u5316\u6307\u6807\uFF08bgResidual/subjectCoverage/edgeGreen/alphaHistogram\uFF09\u3002\u7528\u5B83\u8FED\u4EE3\u53C2\u6570\uFF0C\u5FEB\uFF08\u79D2\u7EA7\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" },
+          colorHex: { type: "string", description: "\u952E\u8272\uFF0C\u5982 #00FF00" },
+          intensity: { type: "number", description: "\u62A0\u8272\u529B\u5EA6\uFF0C\u5173\u952E\u53C2\u6570\uFF0C10~90" },
+          softness: { type: "number", description: "\u67D4\u548C\u5EA6 0~100" },
+          despill: { type: "number", description: "\u53BB\u7EFF\u8FB9 0~100" },
+          greenToAlpha: { type: "number", description: "\u6B8B\u7EFF\u8F6C\u900F\u660E 0~300" },
+          aggressive: { type: "boolean", description: "\u53BB\u7EFF\u8FB9\uFF08\u7BA1\u4E3B\u4F53\u8F6E\u5ED3\uFF09" },
+          autoPlate: { type: "boolean", description: "\u81EA\u52A8\u80CC\u666F\u677F\uFF08\u9884\u89C8\u4E0D\u751F\u6548\uFF0C\u53EA\u5728 apply \u751F\u6548\uFF09" }
+        }
+      },
+      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
+      timeoutMs: 12e4,
+      async execute(args) {
+        try {
+          const result2 = await service.keyPreview(keyParamsOf(args));
+          return json11(result2);
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_key_apply",
+      description: "\u628A\u5F53\u524D\u53C2\u6570\u5E94\u7528\u5230\u5168\u90E8\u5E27\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u4F1A\u518D\u7B97\u4E00\u6B21\u6307\u6807\u3002\u6162\uFF0C30~90 \u79D2\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          colorHex: { type: "string" },
+          intensity: { type: "number" },
+          softness: { type: "number" },
+          despill: { type: "number" },
+          greenToAlpha: { type: "number" },
+          aggressive: { type: "boolean" },
+          autoPlate: { type: "boolean" }
+        }
+      },
+      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
+      timeoutMs: 3e5,
+      async execute(args) {
+        try {
+          return json11(await service.keyApply(keyParamsOf(args)));
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_cleanup",
+      description: "\u53BB\u6C34\u5370\uFF08\u53EF\u9009\u77E9\u5F62\uFF09\u5E76\u505A\u5C3A\u5BF8\u6700\u5C0F\u5316\u88C1\u526A\u3002\u5FC5\u987B\u5728\u62A0\u56FE\u5408\u683C\u4E4B\u540E\u8C03\u7528\uFF08\u80CC\u666F\u6B8B\u7559\u4F1A\u8BA9\u88C1\u526A\u5931\u6548\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          maskRect: {
+            type: "object",
+            description: "\u53BB\u6C34\u5370\u77E9\u5F62 {x,y,w,h}\uFF08\u50CF\u7D20\uFF0C\u57FA\u4E8E\u5E27\u539F\u59CB\u5C3A\u5BF8\uFF09",
+            properties: {
+              x: { type: "number" },
+              y: { type: "number" },
+              w: { type: "number" },
+              h: { type: "number" }
+            }
+          }
+        }
+      },
+      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
+      timeoutMs: 12e4,
+      async execute(args) {
+        try {
+          const rect = args.maskRect;
+          const maskRect = rect && typeof rect === "object" && [rect.x, rect.y, rect.w, rect.h].every((n) => typeof n === "number") ? { x: Number(rect.x), y: Number(rect.y), w: Number(rect.w), h: Number(rect.h) } : null;
+          return json11(await service.cleanup({ maskRect }));
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_export",
+      description: "\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA PNG + meta.json\uFF08\u542B\u951A\u70B9\uFF09\u3002\u9ED8\u8BA4 7\xD77\u3001\u76EE\u6807\u9AD8\u5EA6 512\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          cols: { type: "number", description: "\u5217\u6570\uFF0C\u9ED8\u8BA4 7" },
+          rows: { type: "number", description: "\u884C\u6570\uFF0C\u9ED8\u8BA4 7" },
+          targetHeight: { type: "number", description: "\u5355\u683C\u76EE\u6807\u9AD8\u5EA6\uFF08\u50CF\u7D20\uFF09\uFF0C\u9ED8\u8BA4 512\uFF0C\u5EFA\u8BAE\u4E0D\u8D85\u8FC7 512" },
+          anchorX: { type: "number", description: "\u951A\u70B9 X\uFF080~1\uFF09\uFF0C\u9ED8\u8BA4 0.5" },
+          anchorY: { type: "number", description: "\u951A\u70B9 Y\uFF080~1\uFF09\uFF0C\u9ED8\u8BA4 0.04" }
+        }
+      },
+      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
+      timeoutMs: 3e5,
+      async execute(args) {
+        try {
+          return json11(
+            await service.exportSheet({
+              ...typeof args.cols === "number" ? { cols: args.cols } : {},
+              ...typeof args.rows === "number" ? { rows: args.rows } : {},
+              ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {},
+              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    }
+  ];
+}
+function keyParamsOf(args) {
+  const out = {};
+  if (typeof args.colorHex === "string" && args.colorHex.trim() !== "") out.colorHex = args.colorHex.trim();
+  for (const key of ["intensity", "softness", "despill", "greenToAlpha", "frame"]) {
+    if (typeof args[key] === "number" && Number.isFinite(args[key])) out[key] = args[key];
+  }
+  for (const key of ["aggressive", "autoPlate"]) {
+    if (typeof args[key] === "boolean") out[key] = args[key];
+  }
+  return out;
+}
+
+// src/xyq/start.ts
+import path22 from "node:path";
 
 // src/xyq/service.ts
 function parseJson(text) {
@@ -38511,8 +39553,8 @@ function xyqGenerateHandler(deps) {
       const model2 = typeof body.model === "string" ? body.model.trim() : "";
       if (prompt === "" || model2 === "") return json9(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
       try {
-        const { mkdirSync: mkdirSync8 } = await import("node:fs");
-        mkdirSync8(deps.outDir, { recursive: true });
+        const { mkdirSync: mkdirSync9 } = await import("node:fs");
+        mkdirSync9(deps.outDir, { recursive: true });
       } catch {
       }
       const sessionKey2 = typeof body.sessionKey === "string" && body.sessionKey !== "" ? body.sessionKey : "xyq-panel";
@@ -38565,14 +39607,14 @@ function xyqFileHandler(deps) {
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const target = (url2.searchParams.get("path") ?? "").trim();
     if (target === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
-    const path25 = await import("node:path");
+    const path28 = await import("node:path");
     const fs10 = await import("node:fs");
-    const resolved = path25.resolve(target);
-    const root = path25.resolve(deps.outDir);
-    if (!resolved.startsWith(root + path25.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
+    const resolved = path28.resolve(target);
+    const root = path28.resolve(deps.outDir);
+    if (!resolved.startsWith(root + path28.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
     try {
       const data = fs10.readFileSync(resolved);
-      const ext = path25.extname(resolved).toLowerCase();
+      const ext = path28.extname(resolved).toLowerCase();
       const mime = ext === ".mp4" ? "video/mp4" : ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "application/octet-stream";
       response.writeHead(200, { "Content-Type": mime, "Content-Length": data.byteLength });
       if (request.method === "HEAD") response.end();
@@ -38703,10 +39745,10 @@ function xyqTools(service) {
 }
 
 // src/xyq/cli.ts
-import { spawn as spawn2 } from "node:child_process";
+import { spawn as spawn3 } from "node:child_process";
 import fs9 from "node:fs";
-import os3 from "node:os";
-import path18 from "node:path";
+import os4 from "node:os";
+import path21 from "node:path";
 function platformDir() {
   const arch = process.arch === "arm64" ? "arm64" : "x64";
   if (process.platform === "win32") return `win32-${arch}`;
@@ -38716,18 +39758,18 @@ function platformDir() {
 function binaryName() {
   return process.platform === "win32" ? "pippit-tool-cli.exe" : "pippit-tool-cli";
 }
-function cachedCliCandidates(home = os3.homedir()) {
-  const base = path18.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
+function cachedCliCandidates(home = os4.homedir()) {
+  const base = path21.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
   return [
-    path18.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
-    path18.join(base, "node_modules", ".bin", binaryName())
+    path21.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
+    path21.join(base, "node_modules", ".bin", binaryName())
   ];
 }
-function ensureCliScript(home = os3.homedir()) {
-  return path18.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
+function ensureCliScript(home = os4.homedir()) {
+  return path21.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
 }
 var defaultCliRunner = (args, options) => new Promise((resolve) => {
-  const child = spawn2(cliPathForRun(args), args.slice(1), {
+  const child = spawn3(cliPathForRun(args), args.slice(1), {
     env: { ...process.env, ...options.env },
     windowsHide: true
   });
@@ -38760,7 +39802,7 @@ function cliPathForRun(args) {
   return args[0] ?? "";
 }
 async function installCli(run, options = {}) {
-  const home = options.home ?? os3.homedir();
+  const home = options.home ?? os4.homedir();
   const script = ensureCliScript(home);
   if (!fs9.existsSync(script)) return void 0;
   const result2 = await run([process.execPath, script], { env: {}, timeoutMs: options.timeoutMs ?? 3e5 });
@@ -38775,13 +39817,13 @@ async function installCli(run, options = {}) {
   return void 0;
 }
 async function resolveCliPath(run, options = {}) {
-  const home = options.home ?? os3.homedir();
+  const home = options.home ?? os4.homedir();
   for (const candidate of cachedCliCandidates(home)) {
     if (fs9.existsSync(candidate)) return candidate;
   }
   const installed = await installCli(run, { home });
   if (installed !== void 0 && fs9.existsSync(installed)) {
-    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path18.basename(installed) });
+    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path21.basename(installed) });
     return installed;
   }
   return void 0;
@@ -38798,7 +39840,7 @@ function startXyq(ctx, deps) {
   let unregister;
   let started = false;
   let stopped = false;
-  const outDir = path19.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "xyq-output");
+  const outDir = path22.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "xyq-output");
   const routeDeps = { service, outDir, log: deps.log };
   const tryStart = () => {
     if (started || stopped) return;
@@ -38814,7 +39856,7 @@ function startXyq(ctx, deps) {
         [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
         [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)]
       ];
-      for (const [path25, handler] of registers) disposers.push(web.register({ kind: "exact", path: path25, handler }));
+      for (const [path28, handler] of registers) disposers.push(web.register({ kind: "exact", path: path28, handler }));
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -39349,12 +40391,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync7, readdirSync as readdirSync3, readFileSync as readFileSync7, renameSync as renameSync2, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync3 } from "node:fs";
-import path22 from "node:path";
+import { existsSync as existsSync6, mkdirSync as mkdirSync8, readdirSync as readdirSync3, readFileSync as readFileSync9, renameSync as renameSync2, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
+import path25 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync2, readFileSync as readFileSync5 } from "node:fs";
-import path20 from "node:path";
+import { existsSync as existsSync4, readFileSync as readFileSync7 } from "node:fs";
+import path23 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -39366,26 +40408,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path20.join(dshHome, "dsh-backup-git");
+  return path23.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path20.join(backupDir(dshHome), "config.json");
+  return path23.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path20.join(backupDir(dshHome), "credential.json");
+  return path23.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path20.join(backupDir(dshHome), "status.json");
+  return path23.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path20.join(backupDir(dshHome), "work");
+  return path23.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync2(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync4(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync5(file2, "utf8"));
+    parsed = JSON.parse(readFileSync7(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -39498,9 +40540,9 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync2(file2)) return "";
+  if (!existsSync4(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync5(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync7(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -39523,7 +40565,7 @@ function redactToken(token) {
 }
 
 // src/backup/git.ts
-import { spawn as spawn3, spawnSync } from "node:child_process";
+import { spawn as spawn4, spawnSync } from "node:child_process";
 var DEFAULT_TIMEOUT_MS = 12e4;
 var MAX_BUFFER = 32 * 1024 * 1024;
 function baseEnv(extra) {
@@ -39583,7 +40625,7 @@ function runGitAsync(args, options) {
     };
     let timer = setTimeout(() => void 0, 0);
     try {
-      const child = spawn3("git", args, {
+      const child = spawn4("git", args, {
         cwd: options.cwd,
         env: baseEnv(options.env),
         windowsHide: true,
@@ -39612,22 +40654,22 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync3, readdirSync as readdirSync2, readFileSync as readFileSync6, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync5, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path21 from "node:path";
+import path24 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path21.join(sessionsRoot, slug);
+    const slugDir = path24.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path21.join(slugDir, dirName);
+      const sessionDir = path24.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path21.join(sessionDir, fileName);
+        const file2 = path24.join(sessionDir, fileName);
         let stat3;
         try {
-          stat3 = statSync3(file2);
+          stat3 = statSync4(file2);
         } catch {
           continue;
         }
@@ -39636,7 +40678,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path21.posix.join(slug, dirName, fileName),
+          relPath: path24.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -39685,11 +40727,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path21.join(input2.stagingDir, "latest");
+  const staging = path24.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path21.join(staging, "sessions", entry.relPath);
+    const target = path24.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -39698,20 +40740,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path21.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path24.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path21.join(staging, "profiles", path21.basename(input2.profileDir));
+    const target = path24.join(staging, "profiles", path24.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path21.join(input2.profileDir, name2);
-      if (!existsSync3(source)) continue;
-      await copyFileFresh(source, path21.join(target, name2));
+      const source = path24.join(input2.profileDir, name2);
+      if (!existsSync5(source)) continue;
+      await copyFileFresh(source, path24.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path21.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path24.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -39727,18 +40769,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path21.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path24.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path21.join(stagingDir, "archive");
+  const root = path24.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path21.join(root, entry.relPath);
-    if (existsSync3(target)) continue;
+    const target = path24.join(root, entry.relPath);
+    if (existsSync5(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -39751,7 +40793,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync3(dir)) return;
+  if (!existsSync5(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -39783,7 +40825,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path21.join(dir, entry.name);
+    const full = path24.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -39794,8 +40836,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path21.dirname(target), { recursive: true });
-  if (existsSync3(target)) {
+  await mkdir(path24.dirname(target), { recursive: true });
+  if (existsSync5(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -39803,25 +40845,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync3(sourceDir)) return [];
+  if (!existsSync5(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path21.join(sourceDir, name2), path21.join(targetDir, name2));
+    await copyFileFresh(path24.join(sourceDir, name2), path24.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync3(sourceDir)) return total;
+  if (!existsSync5(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path21.join(sourceDir, entry.name);
-    const target = path21.join(targetDir, entry.name);
+    const source = path24.join(sourceDir, entry.name);
+    const target = path24.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -39853,17 +40895,17 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync3(profilesRoot)) return "";
+  if (!existsSync5(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path21.join(profilesRoot, name2);
-    const manifest = path21.join(dir, "package.json");
-    if (!existsSync3(manifest)) continue;
+    const dir = path24.join(profilesRoot, name2);
+    const manifest = path24.join(dir, "package.json");
+    if (!existsSync5(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync6(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync8(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
-      const mtimeMs = statSync3(manifest).mtimeMs;
+      const mtimeMs = statSync4(manifest).mtimeMs;
       if (mtimeMs > best.mtimeMs) best = { dir, mtimeMs };
     } catch {
       continue;
@@ -40022,7 +41064,7 @@ var BackupService = class {
     this.status.running = true;
     try {
       const dirs = this.layout();
-      mkdirSync7(dirs.base, { recursive: true });
+      mkdirSync8(dirs.base, { recursive: true });
       const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
@@ -40109,13 +41151,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path22.join(base, "staging"),
-      hotRepo: path22.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path22.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path22.join(this.deps.dshHome, "sessions"),
-      storagesDir: path22.join(this.deps.dshHome, "storages"),
-      profilesRoot: path22.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path22.join(this.deps.dshHome, "attachments")
+      staging: path25.join(base, "staging"),
+      hotRepo: path25.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path25.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path25.join(this.deps.dshHome, "sessions"),
+      storagesDir: path25.join(this.deps.dshHome, "storages"),
+      profilesRoot: path25.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path25.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -40137,8 +41179,8 @@ var BackupService = class {
     return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
   async prepareRepo(repo) {
-    mkdirSync7(repo, { recursive: true });
-    if (!existsSync4(path22.join(repo, ".git"))) {
+    mkdirSync8(repo, { recursive: true });
+    if (!existsSync6(path25.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -40158,8 +41200,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path22.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync4(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path25.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync6(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -40202,15 +41244,15 @@ var BackupService = class {
   }
   askpassScript() {
     const base = backupDir(this.deps.dshHome);
-    mkdirSync7(base, { recursive: true });
+    mkdirSync8(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path22.join(base, "askpass.cmd");
-      if (!existsSync4(file3)) writeFileSync3(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path25.join(base, "askpass.cmd");
+      if (!existsSync6(file3)) writeFileSync4(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path22.join(base, "askpass.sh");
-    if (!existsSync4(file2)) {
-      writeFileSync3(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+    const file2 = path25.join(base, "askpass.sh");
+    if (!existsSync6(file2)) {
+      writeFileSync4(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
   }
@@ -40232,32 +41274,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path22.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path25.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path22.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path22.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path25.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path25.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path22.join(staging, "latest");
-      const restoredHot = existsSync4(path22.join(restoreLatest, "sessions")) ? countSessionFiles(path22.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path25.join(staging, "latest");
+      const restoredHot = existsSync6(path25.join(restoreLatest, "sessions")) ? countSessionFiles(path25.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path22.join(this.deps.dshHome, name2);
-        if (existsSync4(target)) {
+        const target = path25.join(this.deps.dshHome, name2);
+        if (existsSync6(target)) {
           renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path22.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path22.join(restoreLatest, "storages"), path22.join(this.deps.dshHome, "storages"));
-      if (existsSync4(path22.join(restoreLatest, "attachments"))) {
-        await mergeTree(path22.join(restoreLatest, "attachments"), path22.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path25.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path25.join(restoreLatest, "storages"), path25.join(this.deps.dshHome, "storages"));
+      if (existsSync6(path25.join(restoreLatest, "attachments"))) {
+        await mergeTree(path25.join(restoreLatest, "attachments"), path25.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path22.join(staging, "archive"), sessionsRoot);
-      const profiles = path22.join(restoreLatest, "profiles");
-      if (existsSync4(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path25.join(staging, "archive"), sessionsRoot);
+      const profiles = path25.join(restoreLatest, "profiles");
+      if (existsSync6(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -40293,36 +41335,36 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync3(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path22.join(repo, entry.name);
-    rmSync2(target, { recursive: true, force: true });
+    const target = path25.join(repo, entry.name);
+    rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync4(source)) return;
+  if (!existsSync6(source)) return;
   for (const entry of readdirSync3(source, { withFileTypes: true })) {
-    const from = path22.join(source, entry.name);
-    const to = path22.join(target, entry.name);
+    const from = path25.join(source, entry.name);
+    const to = path25.join(target, entry.name);
     if (entry.isDirectory()) {
-      mkdirSync7(to, { recursive: true });
+      mkdirSync8(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync4(to)) continue;
-    mkdirSync7(target, { recursive: true });
+    if (existsSync6(to)) continue;
+    mkdirSync8(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync4(profilesRoot)) return;
+  if (!existsSync6(profilesRoot)) return;
   for (const entry of readdirSync3(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path22.join(source, entry.name);
-    const to = path22.join(profilesRoot, entry.name);
-    if (!existsSync4(to)) continue;
+    const from = path25.join(source, entry.name);
+    const to = path25.join(profilesRoot, entry.name);
+    if (!existsSync6(to)) continue;
     for (const file2 of readdirSync3(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path22.join(from, file2.name), path22.join(to, file2.name));
+      await copyFileFresh(path25.join(from, file2.name), path25.join(to, file2.name));
     }
   }
 }
@@ -40336,12 +41378,12 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path22.join(dir, entry.name);
+      const full = path25.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync4(root)) walk2(root);
+  if (existsSync6(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -40351,8 +41393,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync8 } from "node:fs";
-import path23 from "node:path";
+import { readFileSync as readFileSync10 } from "node:fs";
+import path26 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -40382,14 +41424,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path23.dirname(statusFile2) : dataDir();
-  return path23.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path26.dirname(statusFile2) : dataDir();
+  return path26.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync8(file2, "utf8");
+    raw = readFileSync10(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -40397,12 +41439,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path23.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path26.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path23.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path26.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -40441,7 +41483,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path23.dirname(file2));
+    ensureSecureDir(path26.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -40624,7 +41666,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path24.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path27.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -40647,7 +41689,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path24.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path27.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -41196,7 +42238,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path24.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path27.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -41378,7 +42420,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path24.dirname(path24.dirname(config2.statusFile)) : path24.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path27.dirname(path27.dirname(config2.statusFile)) : path27.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -41497,6 +42539,15 @@ function applyInner(ctx, injected, clock) {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
+  let spriteHandle;
+  try {
+    spriteHandle = startSprite(ctx, { dshHome: resolveDshHome(process.env), log });
+  } catch (error62) {
+    spriteHandle = void 0;
+    log("\u5E8F\u5217\u5E27\u5DE5\u5177\u8D77\u4E0D\u6765\uFF08\u5176\u5B83\u529F\u80FD\u4E0D\u53D7\u5F71\u54CD\uFF09", {
+      message: String(error62?.message ?? error62).slice(0, 200)
+    });
+  }
   let avatarHandle;
   try {
     avatarHandle = startAvatar(ctx, { dshHome: resolveDshHome(process.env), log });
@@ -41592,6 +42643,10 @@ function applyInner(ctx, injected, clock) {
       }
       try {
         handoffHandle?.stop();
+      } catch {
+      }
+      try {
+        spriteHandle?.stop();
       } catch {
       }
       try {

@@ -40,6 +40,12 @@ import { statusText, waitingText } from '../src/copy/zh.js'
 const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
 /** 会话备份那张卡那条路由（2026-10-28 加）。同上：字面量，由产物那条判据对齐。 */
 const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
+/**
+ * 序列帧工具页（0.55）：形象菜单「🎞 序列帧工具」的跳转目标。
+ * 与 `src/sprite/routes.ts` 的 `SPRITE_PAGE_ROUTE` 逐字一致——拼错一个字符就是 404，
+ * 而 404 在这条路上表现为「点了没反应」，日志里全是绿的。
+ */
+const SPRITE_PAGE_ROUTE = '/plugins/dafeiyu-sprite/'
 import {
   PAIR_IMAGE_ROUTE,
   PAIR_MARKER_HEADER,
@@ -1643,6 +1649,13 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
     'utf8',
   )
   assert.ok(hostRoutes.includes(PAIR_APPROVE_ROUTE), '宿主侧那条放行路由必须还在：自动放行没赶上时它是唯一的兜底')
+  // 序列帧工具页：浏览器这一半跳转的那条路径，宿主侧必须真的注册了（否则点菜单就是 404）。
+  assert.ok(
+    readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../src/sprite/routes.ts'), 'utf8').includes(
+      SPRITE_PAGE_ROUTE,
+    ),
+    '宿主侧没注册序列帧工具页路由：点「🎞 序列帧工具」会 404',
+  )
   // 出现一条宿主侧没有的 /plugins 路径就是两边分叉了。
   // ⚠️ `PAIR_PAGE_ROUTE`（`/pair`）**不在**这个集合里，这是对的：那一页由宿主自己渲染，
   // 浏览器这一半从不请求它。而 `PAIR_MINIPROGRAM_ROUTE` 必须在——设置页那个 `<img>` 的
@@ -1664,6 +1677,8 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
       CLIENT_REPORT_ROUTE,
       // 2026-10-28 加：设置页「会话备份（git）」那张卡（字面量与宿主侧逐字一致）。
       BACKUP_ROUTE,
+      // 2026-11-11 加：序列帧工具（形象菜单里那一项）。
+      SPRITE_PAGE_ROUTE,
     ].sort(),
   )
 })

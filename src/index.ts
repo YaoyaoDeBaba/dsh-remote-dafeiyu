@@ -59,6 +59,8 @@ import { startVision, type VisionHandle } from './vision/start.js'
 import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 一键转生 / 一键分身（0.9.0.53）：三条回环路由 + 一个作业管理器。
 import { startHandoff, type HandoffHandle } from './handoff/start.js'
+// 序列帧精灵图（0.9.0.55）：托管工具页 + 5 个 agent 工具（无头 Edge + CDP 驱动）。
+import { startSprite, type SpriteHandle } from './sprite/start.js'
 // 小云雀（CLI 工具）：生图/生视频/余额，设置页一栏。
 import { startXyq, type XyqHandle } from './xyq/start.js'
 import { startAvatar, type AvatarHandle } from './avatar/start.js'
@@ -1570,6 +1572,16 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
+  let spriteHandle: SpriteHandle | undefined
+  try {
+    spriteHandle = startSprite(ctx as never, { dshHome: resolveDshHome(process.env), log })
+  } catch (error) {
+    spriteHandle = undefined
+    log('序列帧工具起不来（其它功能不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   let avatarHandle: AvatarHandle | undefined
   try {
     avatarHandle = startAvatar(ctx as never, { dshHome: resolveDshHome(process.env), log })
@@ -1680,6 +1692,12 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         handoffHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      // 序列帧工具会起子进程（无头 Edge）：停机时必须收，否则留下孤儿进程。
+      try {
+        spriteHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }

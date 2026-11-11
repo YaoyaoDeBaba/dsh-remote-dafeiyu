@@ -1,0 +1,4729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>序列帧精灵图工具</title>
+<style>
+:root{
+  --bg:#0a0a10;
+  --bg2:#101018;
+  --panel:#16161f;
+  --panel2:#1c1c28;
+  --line:#2a2a3a;
+  --line2:#3a3a4e;
+  --text:#e8e6df;
+  --muted:#8a8896;
+  --gold:#d4a94c;
+  --gold2:#e6c15c;
+  --red:#b3362e;
+  --red2:#d4553f;
+  --ok:#4caf7d;
+  --warn:#c98a2e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(212,169,76,.06), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(179,54,46,.07), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  font-size:14px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--gold2)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2c2c3c;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a4e}
+::-webkit-scrollbar-track{background:transparent}
+
+header{
+  padding:18px 26px 12px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(22,22,31,.9), rgba(22,22,31,.4));
+  position:sticky;top:0;z-index:50;backdrop-filter:blur(6px);
+}
+header h1{font-size:20px;font-weight:700;letter-spacing:.5px}
+header h1 .accent{color:var(--gold2)}
+header .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+
+/* tabs */
+nav.tabs{display:flex;gap:6px;padding:12px 26px 0;flex-wrap:wrap}
+nav.tabs .tab{
+  padding:9px 18px;border:1px solid var(--line);border-bottom:none;
+  border-radius:9px 9px 0 0;background:var(--panel);color:var(--muted);
+  cursor:pointer;user-select:none;font-weight:600;transition:.15s;
+  display:flex;align-items:center;gap:8px;
+}
+nav.tabs .tab .no{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;background:#262634;font-size:11px;color:var(--muted);
+}
+nav.tabs .tab.active{background:var(--panel2);color:var(--gold2);border-color:var(--line2);box-shadow:inset 0 2px 0 var(--gold)}
+nav.tabs .tab.active .no{background:var(--gold);color:#1a1405}
+nav.tabs .tab.done .no{background:var(--ok);color:#04130b}
+nav.tabs .tab:disabled{opacity:.4;cursor:not-allowed}
+
+main{padding:18px 26px 40px;max-width:1400px;margin:0 auto}
+section.panel{display:none}
+section.panel.active{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:18px;margin-bottom:16px;
+}
+.card h2{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--gold2);display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:4px;height:16px;background:var(--gold);border-radius:2px}
+.card h3{font-size:13.5px;font-weight:600;margin:12px 0 8px;color:var(--text)}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.col{display:flex;flex-direction:column;gap:6px}
+label.lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+input[type=number],input[type=text],select{
+  background:var(--bg2);border:1px solid var(--line2);color:var(--text);
+  border-radius:8px;padding:8px 10px;font-size:14px;min-width:80px;outline:none;
+}
+input[type=number]:focus,input[type=text]:focus,select:focus{border-color:var(--gold)}
+input[type=number].w80{width:96px}
+input[type=number].w60{width:64px}
+input[type=text]{min-width:200px}
+select{min-width:120px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:4px;background:#262634;outline:none;width:100%;min-width:140px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold2);border:2px solid #8a6c22;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--gold2);border:2px solid #8a6c22;cursor:pointer}
+button{
+  background:var(--panel2);border:1px solid var(--line2);color:var(--text);
+  border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:.15s;user-select:none;
+}
+button:hover:not(:disabled){border-color:var(--gold);color:var(--gold2)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#1a1405;border-color:#b8933a}
+button.primary:hover:not(:disabled){filter:brightness(1.08);color:#1a1405}
+button.danger{background:linear-gradient(180deg,var(--red2),var(--red));color:#fff;border-color:#7d231d}
+button.ghost{background:transparent}
+button.small{padding:5px 11px;font-size:12.5px}
+
+.hint{font-size:12px;color:var(--muted)}
+.warn{color:var(--warn)}
+.err{color:var(--red2)}
+.ok{color:var(--ok)}
+.mono{font-family:"Cascadia Code",Consolas,monospace;font-size:12.5px}
+
+/* drop zone */
+.dropzone{
+  border:2px dashed var(--line2);border-radius:14px;padding:34px 20px;text-align:center;
+  color:var(--muted);cursor:pointer;transition:.18s;background:var(--bg2);
+}
+.dropzone:hover,.dropzone.drag{border-color:var(--gold);color:var(--gold2);background:#15151f}
+.dropzone .big{font-size:30px;margin-bottom:8px}
+
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.info-item{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.info-item .k{font-size:11px;color:var(--muted)}
+.info-item .v{font-size:15px;font-weight:700;margin-top:2px;word-break:break-all}
+
+/* preview */
+.preview-box{background:#050508;border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:center;min-height:180px;position:relative;overflow:auto}
+.preview-box video,.preview-box img,.preview-box canvas{max-width:100%;max-height:420px;display:block}
+.checker{background-image:conic-gradient(#c9c9c9 0 25%,#e9e9e9 0 50%,#c9c9c9 0 75%,#e9e9e9 0);background-size:16px 16px}
+
+/* thumbnails grid */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.thumb{
+  position:relative;border:2px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;
+  background:#050508;transition:.12s;aspect-ratio:1;
+}
+.thumb canvas{width:100%;height:100%;display:block}
+.thumb:hover{border-color:var(--line2)}
+.thumb.sel{border-color:var(--gold);box-shadow:0 0 0 2px rgba(212,169,76,.25)}
+.thumb .tick{
+  position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:6px;
+  background:rgba(0,0,0,.55);border:1px solid var(--line2);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:13px;opacity:0;
+}
+.thumb.sel .tick{opacity:1;background:var(--gold);color:#1a1405;border-color:#b8933a}
+.thumb .idx{position:absolute;bottom:4px;right:6px;font-size:10.5px;color:#fff;text-shadow:0 1px 2px #000}
+
+/* rulers */
+.ruler-wrap{overflow:auto;max-height:640px;border:1px solid var(--line);border-radius:10px;background:#050508}
+.ruler-canvas{display:block}
+
+/* status bar */
+#statusbar{
+  position:fixed;left:0;right:0;bottom:0;padding:8px 18px;font-size:12px;color:var(--muted);
+  background:rgba(16,16,24,.92);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;z-index:60;
+  backdrop-filter:blur(6px);
+}
+#statusbar .dot{width:8px;height:8px;border-radius:50%;background:#3a3a4e;display:inline-block;margin-right:6px}
+#statusbar .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+
+/* busy overlay */
+#overlay{
+  position:fixed;inset:0;background:rgba(5,5,10,.82);z-index:200;display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;
+}
+#overlay.show{display:flex}
+#overlay .spinner{width:46px;height:46px;border:3px solid #2a2a3a;border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay .msg{color:var(--text);font-size:14px;text-align:center;max-width:520px}
+#overlay .bar{width:320px;max-width:80vw;height:8px;background:#1c1c28;border-radius:6px;overflow:hidden}
+#overlay .bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .1s}
+
+/* toast */
+#toast{
+  position:fixed;top:18px;right:18px;z-index:300;display:flex;flex-direction:column;gap:8px;
+}
+#toast .t{background:var(--panel2);border:1px solid var(--line2);border-left:3px solid var(--gold);
+  color:var(--text);padding:11px 16px;border-radius:8px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.4);
+  animation:slidein .2s ease;max-width:380px}
+#toast .t.err{border-left-color:var(--red2)}
+#toast .t.ok{border-left-color:var(--ok)}
+@keyframes slidein{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+
+.kv{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600}
+.tag.gold{background:rgba(212,169,76,.14);color:var(--gold2);border:1px solid rgba(212,169,76,.35)}
+.tag.red{background:rgba(179,54,46,.16);color:var(--red2);border:1px solid rgba(179,54,46,.4)}
+.tag.green{background:rgba(76,175,125,.14);color:var(--ok);border:1px solid rgba(76,175,125,.35)}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0}
+legend{font-size:12px;color:var(--muted);padding:0 8px;font-weight:600}
+.checkline{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;user-select:none}
+.checkline input{width:16px;height:16px;accent-color:var(--gold);cursor:pointer}
+.note-box{background:rgba(212,169,76,.06);border:1px solid rgba(212,169,76,.25);border-radius:9px;padding:10px 13px;font-size:12.5px;color:var(--text)}
+  /* 抠图卡片：区块 + 参数格（统一排版） */
+  .kset{border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-top:10px;background:rgba(255,255,255,.015)}
+  .kset-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;font-weight:700;letter-spacing:.4px;color:var(--gold);margin-bottom:9px}
+  .krow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .kswatch{display:inline-block;width:34px;height:22px;border-radius:6px;border:1px solid var(--line2)}
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .kfield{display:flex;flex-direction:column;gap:5px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:rgba(0,0,0,.18)}
+  .kf-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .kf-label{font-size:12.5px;color:var(--text);font-weight:600}
+  input[type=number].kf-num{width:66px;padding:3px 6px;font-size:12.5px}
+  .kfield input[type=range]{width:100%;margin:0}
+details summary{cursor:pointer;color:var(--gold2);font-size:12.5px}
+</style>
+</head>
+<body>
+<div id="offlineBanner" style="background:#0f1a2b;border-bottom:1px solid #2a3a5a;color:#bfe3ff;padding:8px 16px;font-size:13px;text-align:center;font-family:system-ui,-apple-system,'Microsoft YaHei',sans-serif">
+  离线单文件版 · 所有处理都在本机浏览器完成，不依赖 Unity · 点「保存」会写 PNG + meta.json（选文件夹，或打成一个 ZIP） · 想在 Unity 内用：Window → 序列帧精灵图生成器 → 打开网页版
+</div>
+
+<header>
+  <h1>序列帧精灵图工具 <span class="accent">Sprite Sheet Studio</span></h1>
+  <div class="sub">MOV(含 Alpha) / GIF → 转帧 → 抽帧裁切 → 输出序列帧精灵图 · 全程本地处理</div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-tab="import" id="tab-import"><span class="no">1</span>导入素材</button>
+  <button class="tab" data-tab="convert" id="tab-convert" disabled><span class="no">2</span>转帧输出</button>
+  <button class="tab" data-tab="edit" id="tab-edit" disabled><span class="no">3</span>抽帧裁切</button>
+  <button class="tab" data-tab="output" id="tab-output" disabled><span class="no">4</span>输出精灵图</button>
+</nav>
+
+<main>
+
+  <!-- ============ 模块1：导入素材 ============ -->
+  <section class="panel active" id="panel-import">
+    <div class="card">
+      <h2>导入素材</h2>
+      <div class="dropzone" id="dropzone">
+        <div class="big">📂</div>
+        <div>点击选择 或 拖拽文件到此处</div>
+        <div class="hint" style="margin-top:6px">支持 .mov（含 Alpha 通道）/ .gif（亦兼容 .mp4 / .webm）</div>
+        <input type="file" id="fileInput" accept=".mov,.mp4,.webm,.gif,image/gif,video/quicktime,video/mp4,video/webm" style="display:none">
+      </div>
+    </div>
+
+    <div class="card" id="infoCard" style="display:none">
+      <h2>素材信息</h2>
+      <div class="info-grid">
+        <div class="info-item"><div class="k">文件名</div><div class="v" id="info-name">-</div></div>
+        <div class="info-item"><div class="k">类型</div><div class="v" id="info-type">-</div></div>
+        <div class="info-item"><div class="k">容量大小</div><div class="v" id="info-size">-</div></div>
+        <div class="info-item"><div class="k" id="info-durKey">时长 / 帧数</div><div class="v" id="info-dur">-</div></div>
+        <div class="info-item"><div class="k">分辨率</div><div class="v" id="info-res">-</div></div>
+      </div>
+      <div class="divider"></div>
+      <h3>原始素材预览</h3>
+      <div class="preview-box" id="srcPreviewBox">
+        <div class="hint">导入后显示预览</div>
+      </div>
+      <div id="srcPreviewNote" class="hint" style="margin-top:8px"></div>
+      <div class="divider"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="primary" id="btnToConvert" disabled>下一步：转帧输出 →</button>
+        <button class="ghost" id="btnReImport">重新导入</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 模块2：转帧输出 ============ -->
+  <section class="panel" id="panel-convert">
+    <div class="card">
+      <h2>转帧参数</h2>
+      <div class="row">
+        <div class="col"><label class="lbl" id="lblStart">起始位置（秒）</label>
+          <input type="number" id="convStart" step="0.01" min="0" class="w80" value="0">
+        </div>
+        <div class="col"><label class="lbl" id="lblEnd">结束位置（秒）</label>
+          <input type="number" id="convEnd" step="0.01" min="0" class="w80" value="1">
+        </div>
+        <div class="col"><label class="lbl">每秒采样帧数</label>
+          <select id="convFps">
+            <option value="8">8 fps</option>
+            <option value="12" selected>12 fps</option>
+            <option value="16">16 fps</option>
+            <option value="20">20 fps</option>
+            <option value="24">24 fps</option>
+            <option value="30">30 fps</option>
+          </select>
+        </div>
+        <div class="col"><span class="hint" id="convHint"></span></div>
+      </div>
+      <div class="hint" style="margin-top:8px" id="convRangeInfo"></div>
+    </div>
+
+    <div class="card">
+      <h2>选区预览（将要输出的片段）</h2>
+      <div class="preview-box checker" id="convPreviewBox">
+        <div class="hint">设置参数后点击预览</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
+        <button id="btnConvPreview">▶ 预览选区</button>
+        <button id="btnConvPreviewStop" class="ghost" disabled>■ 停止</button>
+        <span class="hint" id="convPreviewNote"></span>
+      </div>
+      <div class="divider"></div>
+      <button class="primary" id="btnGenerate">⚙ 生成帧图片</button>
+      <span class="tag gold" id="genFrameCount">-</span>
+      <span class="hint" id="genStatus"></span>
+    </div>
+
+    <div class="card" id="framesCard" style="display:none">
+      <h2>输出帧 · 网格平铺 <span class="tag gold" id="frameCountTag">0 帧</span> <span class="tag green" id="convSelTag">选择 0 帧</span></h2>
+      <div class="hint" style="margin-bottom:10px">每张 150×150 缩略图，区域自动适应数量；点击可进入下一步编辑</div>
+      <div class="thumbs" id="thumbGrid"></div>
+      <div class="divider"></div>
+      <button class="primary" id="btnToEdit">下一步：抽帧裁切 →</button>
+    </div>
+  </section>
+
+  <!-- ============ 模块3：抽帧裁切 ============ -->
+  <section class="panel" id="panel-edit">
+    <div class="card">
+      <h2>抽帧（勾选保留帧）</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <button class="small" id="btnSelectAll">全选</button>
+        <button class="small" id="btnInvert">反选</button>
+        <span class="hint"><span id="selCount">0</span> / <span id="totalCount">0</span> 帧已选</span>
+      </div>
+      <div class="thumbs" id="editThumbGrid"></div>
+      <div class="divider"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <label class="lbl">预览速度</label>
+        <select id="playbackHz">
+          <option value="8">8 hz</option>
+          <option value="12" selected>12 hz</option>
+          <option value="16">16 hz</option>
+          <option value="20">20 hz</option>
+          <option value="24">24 hz</option>
+          <option value="30">30 hz</option>
+          <option value="60">60 hz</option>
+        </select>
+        <label class="checkline"><input type="checkbox" id="loopChk" checked>循环播放</label>
+        <button id="btnPlaySel">▶ 播放选中帧</button>
+        <button id="btnStopSel" class="ghost" disabled>■ 停止</button>
+      </div>
+      <div class="preview-box checker" id="editPreviewBox" style="margin-top:12px">
+        <div class="hint">点击「播放选中帧」预览</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>色度抠图（去背景）</h2>
+      <div class="note-box">适用于<b>纯色/近纯色背景</b>（绿幕/蓝幕/白底/黑底等）。流程：取背景色 → 调参 → 「应用到全部选中帧」。</div>
+
+      <div class="krow" style="margin-top:12px">
+        <label class="checkline"><input type="checkbox" id="keyEnabled">启用抠图</label>
+        <label class="checkline"><input type="checkbox" id="keyShowMask">调试：显示 Alpha 蒙版</label>
+      </div>
+
+      <div class="kset">
+        <div class="kset-title">背景色</div>
+        <div class="krow">
+          <button id="btnPickColor">🎯 取色</button>
+          <span id="keyColorSwatch" class="kswatch" style="background:#00ff00"></span>
+          <input type="text" id="keyColorHex" value="#00FF00" style="width:104px">
+          <span class="hint" id="keyPickHint">点「取色」后，在下方左侧原图上点背景色</span>
+        </div>
+      </div>
+
+      <div class="kset">
+        <div class="kset-title">
+          档位
+          <select id="keyMode" style="width:180px">
+            <option value="classic">经典（旧算法）</option>
+            <option value="advanced">智能</option>
+          </select>
+          <span class="hint">经典＝强度/羽化/清除；智能＝力度/柔和/去绿边（与 Unity 面板同一份算法）</span>
+        </div>
+      </div>
+
+      <div class="kset" id="keyClassicRow">
+        <div class="kset-title">经典档参数</div>
+        <div class="kgrid">
+          <div class="kfield">
+            <div class="kf-head"><span class="kf-label">强度（容差）</span><input type="number" id="keyIntensityNum" min="0" max="100" value="50" class="kf-num"><span class="hint" id="keyIntensityVal" style="display:none">50</span></div>
+            <input type="range" id="keyIntensity" min="0" max="100" value="50">
+          </div>
+          <div class="kfield">
+            <div class="kf-head"><span class="kf-label">边缘羽化</span><input type="number" id="keyFeatherNum" min="0" max="100" value="20" class="kf-num"><span class="hint" id="keyFeatherVal" style="display:none">20</span></div>
+            <input type="range" id="keyFeather" min="0" max="100" value="20">
+          </div>
+          <div class="kfield">
+            <div class="kf-head"><span class="kf-label">边缘清除</span><input type="number" id="keyCleanupNum" min="0" max="100" value="30" class="kf-num"><span class="hint" id="keyCleanupVal" style="display:none">30</span></div>
+            <input type="range" id="keyCleanup" min="0" max="100" value="30">
+          </div>
+        </div>
+      </div>
+
+      <div id="keyAdvBox" style="display:none">
+        <div class="kset">
+          <div class="kset-title">智能档参数</div>
+          <div class="kgrid">
+            <div class="kfield">
+              <div class="kf-head"><span class="kf-label">力度（扣绿）</span><input type="number" id="advIntensityNum" min="0" max="100" value="10" class="kf-num"><span class="hint" id="advIntensityVal" style="display:none">10</span></div>
+              <input type="range" id="advIntensity" min="0" max="100" value="10">
+            </div>
+            <div class="kfield">
+              <div class="kf-head"><span class="kf-label">柔和（过渡带）</span><input type="number" id="advSoftnessNum" min="0" max="100" value="100" class="kf-num"><span class="hint" id="advSoftnessVal" style="display:none">100</span></div>
+              <input type="range" id="advSoftness" min="0" max="100" value="100">
+            </div>
+            <div class="kfield">
+              <div class="kf-head"><span class="kf-label">去绿边</span><input type="number" id="advDespillNum" min="0" max="100" value="70" class="kf-num"><span class="hint" id="advDespillVal" style="display:none">70</span></div>
+              <input type="range" id="advDespill" min="0" max="100" value="70">
+            </div>
+            <div class="kfield">
+              <div class="kf-head"><span class="kf-label">羽化</span><input type="number" id="advFeatherNum" min="0" max="100" value="0" class="kf-num"><span class="hint" id="advFeatherVal" style="display:none">0</span></div>
+              <input type="range" id="advFeather" min="0" max="100" value="0">
+            </div>
+            <div class="kfield">
+              <div class="kf-head"><span class="kf-label">残绿转透明</span><input type="number" id="advGreenNum" min="0" max="300" value="0" class="kf-num"><span class="hint" id="advGreenVal" style="display:none">0</span></div>
+              <input type="range" id="advGreenToAlpha" min="0" max="300" value="0">
+            </div>
+          </div>
+          <div class="krow" style="margin-top:10px">
+            <label class="checkline"><input type="checkbox" id="advDespillAggr">去绿边激进（边缘更干净）</label>
+            <label class="checkline"><input type="checkbox" id="advAutoPlate">自动背景板（整段素材估计背景色，较慢）</label>
+          </div>
+          <div class="hint" id="advPlateInfo" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <h3>取色原图 / 抠图结果（首帧预览）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="hint" style="margin-bottom:4px">原图（点击取色）</div>
+          <div class="preview-box checker" id="keySourceBox"><div class="hint">-</div></div>
+        </div>
+        <div>
+          <div class="hint" style="margin-bottom:4px">抠图结果</div>
+          <div class="preview-box checker" id="keyResultBox"><div class="hint">-</div></div>
+        </div>
+      </div>
+      <div class="krow" style="margin-top:10px">
+        <button class="primary" id="btnApplyKey">应用到全部选中帧</button>
+        <span class="hint" id="keyApplyStatus"></span>
+        <span class="hint" id="keyAppliedHint"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>框选去水印（矩形透明化）</h2>
+      <div class="note-box">处理位置尴尬、四角裁切无法去除的水印：在首帧上<b>拖拽框选</b>一个矩形，该区域像素转为<b>透明</b>，应用到全部帧。</div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <label class="checkline"><input type="checkbox" id="maskEnabled">启用框选去水印</label>
+        <button id="btnClearMask" class="ghost">清除框选</button>
+      </div>
+      <h3>框选区域（首帧，拖拽绘制）</h3>
+      <div class="preview-box checker" id="maskPreviewBox"><div class="hint">启用后在下图拖拽框选</div></div>
+      <div class="hint" id="maskInfo" style="margin-top:6px">未框选</div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <button class="primary" id="btnApplyMask">应用到全部选中帧</button>
+        <span class="hint" id="maskApplyStatus"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>裁切（去四角水印）</h2>
+      <div class="row">
+        <div class="col"><label class="lbl">顶部裁切 %</label><input type="number" id="cropTop" min="0" max="99" step="0.1" value="0" class="w80"></div>
+        <div class="col"><label class="lbl">底部裁切 %</label><input type="number" id="cropBottom" min="0" max="99" step="0.1" value="0" class="w80"></div>
+        <div class="col"><label class="lbl">左侧裁切 %</label><input type="number" id="cropLeft" min="0" max="99" step="0.1" value="0" class="w80"></div>
+        <div class="col"><label class="lbl">右侧裁切 %</label><input type="number" id="cropRight" min="0" max="99" step="0.1" value="0" class="w80"></div>
+        <label class="checkline"><input type="checkbox" id="cropEnabled">启用四边裁切</label>
+      </div>
+      <h3>首帧裁切预览（抽帧后首帧）</h3>
+      <div class="preview-box checker" id="cropPreviewBox"><div class="hint">-</div></div>
+    </div>
+
+    <div class="card">
+      <h2>尺寸最小化（裁掉透明背景）</h2>
+      <div class="note-box">对<b>所有选中帧</b>取非透明像素上/下/左/右边缘的极值，裁掉多余的透明区域，帧间尺寸保持一致。</div>
+      <div class="row" style="margin-top:10px">
+        <label class="checkline"><input type="checkbox" id="trimEnabled">启用透明边缘最小化</label>
+        <button id="btnTrimCompute">重新计算边缘</button>
+      </div>
+      <div class="row" style="margin-top:8px;align-items:center;flex-wrap:wrap;gap:8px">
+        <span class="hint">四边预留像素（向外保留透明边，默认 2，防 Unity 自动切片粘连）：</span>
+        <label class="lbl">上</label><input type="number" id="trimPadTop" min="0" max="200" step="1" value="2" class="w60">
+        <label class="lbl">下</label><input type="number" id="trimPadBottom" min="0" max="200" step="1" value="2" class="w60">
+        <label class="lbl">左</label><input type="number" id="trimPadLeft" min="0" max="200" step="1" value="2" class="w60">
+        <label class="lbl">右</label><input type="number" id="trimPadRight" min="0" max="200" step="1" value="2" class="w60">
+      </div>
+      <div class="row" style="margin-top:8px;align-items:center;flex-wrap:wrap;gap:8px">
+        <label class="lbl">极淡像素阈值 α≤</label>
+        <input type="range" id="trimAlpha" min="0" max="64" step="1" value="8" style="width:200px">
+        <input type="number" id="trimAlphaNum" min="0" max="64" step="1" value="8" style="width:70px">
+        <span class="hint">α ≤ 该值的像素当透明：既让最小化真正贴边，也在输出时把杂点清干净；调 0 关闭（默认 8 ≈3%）</span>
+      </div>
+      <div class="hint" id="trimInfo" style="margin-top:8px">尚未计算</div>
+      <h3>最终首帧预览（裁切 + 最小化）</h3>
+      <div class="preview-box checker" id="finalPreviewBox"><div class="hint">-</div></div>
+      <div class="divider"></div>
+      <button class="primary" id="btnToOutput">下一步：输出精灵图 →</button>
+    </div>
+  </section>
+
+  <!-- ============ 模块4：输出精灵图 ============ -->
+  <section class="panel" id="panel-output">
+    <div class="card">
+      <h2>输出参数</h2>
+      <div class="row">
+        <div class="col"><label class="lbl">精灵图列数</label><input type="number" id="outCols" min="1" max="100" value="4" class="w80"></div>
+        <div class="col"><label class="lbl">精灵图行数</label><input type="number" id="outRows" min="1" max="100" value="4" class="w80"></div>
+        <div class="col"><label class="lbl">命名（目录名）</label><input type="text" id="outName" value="sprite_sheet" placeholder="如 Slime_Green"></div>
+        <div class="col"><label class="lbl">标签 Tag</label>
+          <select id="outTag">
+            <option value="Character">角色</option>
+            <option value="Effect">特效</option>
+            <option value="Environment">环境</option>
+            <option value="Misc">其他</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint" id="outCapacity" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>缩放预览（身高尺 + 测高）</h2>
+      <div class="note-box">以<b>1:1 真实像素</b>显示缩放后的首帧，叠加<b>身高尺刻度（左下角 0 点，向右 / 向上增大）</b>；<b>金色虚线框</b>为非透明内容物范围。可滚动查看。</div>
+      <div class="row" style="margin-top:12px;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div class="col" style="min-width:240px">
+          <label class="lbl">每帧缩放 %（1.00 ~ 300.00）<span class="hint" id="outScaleVal"> 100.00</span></label>
+          <input type="range" id="outScaleRange" min="1" max="300" step="0.01" value="100">
+          <input type="number" id="outScale" min="1" max="300" step="0.01" value="100" class="w80">
+        </div>
+        <div class="col">
+          <label class="lbl">内容物测高</label>
+          <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+            <button id="btnMarkBottom">⌐ 标记底部</button>
+            <button id="btnMarkTop">⌈ 标记顶部</button>
+            <button id="btnClearMeasure" class="ghost">清除标记</button>
+            <input type="number" id="targetHeight" min="1" step="1" placeholder="目标高度 px" class="w80">
+            <button id="btnReverseScale">⇄ 反推比例</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint" id="measureHint" style="margin-top:6px">点击按钮后，在下方刻度图上点取内容物底部 / 顶部；标记后输入「目标高度 px」点「⇄ 反推比例」自动求缩放</div>
+      <div class="hint" id="measureInfo" style="margin-top:6px"></div>
+      <div class="ruler-wrap" id="rulerWrap" style="margin-top:10px">
+        <canvas class="ruler-canvas" id="rulerCanvas"></canvas>
+      </div>
+      <div class="kv" style="margin-top:10px;gap:14px" id="scaleStats"></div>
+    </div>
+
+    <div class="card">
+      <h2>锚点对齐预览（人中 × 脚底）</h2>
+      <div class="note-box">青色竖线 = <b>人中轴 anchorX</b>（0=帧左边缘，1=帧右边缘）；橙色横线 = <b>脚底 anchorY</b>（0=帧底边缘，1=帧顶边缘）。在右栏直接拖线，确认后保存到项目时会写进 meta.json —— 角色动画编辑器和游戏里的角色卡就是靠这两个值对齐的。</div>
+      <div class="grid2" style="margin-top:12px">
+        <div class="col">
+          <label class="lbl">人中 anchorX<span class="hint" id="anchorXVal"> 0.500</span></label>
+          <input type="range" id="anchorXRange" min="0" max="1" step="0.001" value="0.5">
+          <input type="number" id="anchorXNum" min="0" max="1" step="0.001" value="0.500" class="w80">
+        </div>
+        <div class="col">
+          <label class="lbl">脚底 anchorY<span class="hint" id="anchorYVal"> 0.000</span></label>
+          <input type="range" id="anchorYRange" min="0" max="1" step="0.001" value="0">
+          <input type="number" id="anchorYNum" min="0" max="1" step="0.001" value="0.000" class="w80">
+        </div>
+      </div>
+            <div class="row" style="margin-top:8px;align-items:center;flex-wrap:wrap;gap:10px">
+        <input type="file" id="idleFile" multiple accept=".png,.json,image/png,application/json" style="display:none">
+        <button id="btnImportIdle">⇪ 导入 Idle 参照</button>
+        <button id="btnClearIdle">清除参照</button>
+        <button id="btnIdlePrev" disabled>‹ Idle 上一帧</button>
+        <span class="hint" id="idleFrameInfo">-</span>
+        <button id="btnIdleNext" disabled>Idle 下一帧 ›</button>
+        <span class="hint" id="idleInfo">未导入 Idle 参照（PNG 与同名 .meta.json 一起选中）</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+        <div>
+          <div class="hint" style="margin-bottom:4px">Idle 参照（滚轮同步缩放）</div>
+          <canvas id="idleAnchorCanvas" width="320" height="360" style="width:100%;border-radius:8px;border:1px solid var(--line2)"></canvas>
+        </div>
+        <div>
+          <div class="hint" style="margin-bottom:4px">当前帧（拖青线调 anchorX，拖橙线调 anchorY；滚轮缩放）</div>
+          <canvas id="anchorCanvas" width="320" height="360" style="width:100%;border-radius:8px;border:1px solid var(--line2);cursor:crosshair"></canvas>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <button id="btnAnchorPrev">‹ 上一帧</button>
+        <button id="btnAnchorNext">下一帧 ›</button>
+        <button class="primary" id="btnConfirmAnchor">✓ 确认锚点</button>
+        <span class="hint" id="anchorHint">青色竖线＝人中 橙色横线＝脚底</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>整张精灵图预览</h2>
+      <div class="info-grid">
+        <div class="info-item"><div class="k">总宽</div><div class="v" id="sheetW">-</div></div>
+        <div class="info-item"><div class="k">总高</div><div class="v" id="sheetH">-</div></div>
+        <div class="info-item"><div class="k">单帧尺寸</div><div class="v" id="cellSize">-</div></div>
+        <div class="info-item"><div class="k">帧数 / 容量</div><div class="v" id="sheetFrames">-</div></div>
+        <div class="info-item"><div class="k">文件体积(PNG)</div><div class="v" id="sheetBytes">-</div></div>
+      </div>
+      <div class="preview-box checker" id="sheetPreviewBox" style="margin-top:10px"><div class="hint">-</div></div>
+      <div class="divider"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="primary" id="btnSaveToProject">📦 保存（PNG + meta.json）</button>
+        <button class="primary" id="btnSave">💾 输出到文件夹（含 meta.json）</button>
+        <button id="btnDownload" class="ghost">⬇ 直接下载 PNG</button>
+      </div>
+      <div class="hint" id="saveHint" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+</main>
+
+<div id="statusbar">
+  <span><span class="dot" id="dotEngine"></span><span id="engineStatus">ffmpeg 引擎：未加载（仅影响 MOV，GIF 完全离线）</span></span>
+  <span id="statusText" style="margin-left:auto"></span>
+</div>
+
+<div id="overlay">
+  <div class="spinner"></div>
+  <div class="msg" id="overlayMsg">处理中…</div>
+  <div class="bar"><div id="overlayBarFill"></div></div>
+</div>
+<div id="toast"></div>
+
+<!-- ===== 离线版注入：本地抠图算法（与 Unity C# 等价） ===== -->
+<script>
+/* =====================================================================
+   keying.js —— 序列帧精灵图生成器 · 离线版抠图算法
+   与 Unity C# 端逐像素等价：
+     SpriteSheetPixelOps.ApplyChromaKey      → applyChromaKey（经典档）
+     SpriteSheetKeyAdvanced.Apply            → applyAdvanced（智能档）
+     SpriteSheetKeyAdvanced.ApplyTwoStep     → applyTwoStep（残绿转透明）
+     SpriteSheetKeyAdvanced.BuildAutoPlate   → buildAutoPlate（自动背景板）
+     SpriteSheetPixelOps.FeatherAlpha        → featherAlpha（羽化）
+
+   数值约定（为了和 C# 的 float 结果对得上）：
+     · alpha/中间量一律放 Float32Array —— 赋值即按 float32 舍入
+     · 累加器在每一步用 Math.fround() 模拟 C# 的 float 累加
+     · 取整用 Mathf.RoundToInt 的等价实现（银行家舍入，.5 取偶）
+   输入输出：Uint8ClampedArray，RGBA，长度 = w*h*4，行序自上而下（Canvas 约定）
+   ===================================================================== */
+(function (root) {
+  'use strict';
+
+  /* ---------------- 基础运算（对齐 C#） ---------------- */
+
+  function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+  function clampI(x, a, b) { return x < a ? a : (x > b ? b : x); }
+  function ch(r, g, b, idx) { return idx === 0 ? r : (idx === 1 ? g : b); }
+
+  // Mathf.RoundToInt：默认 MidpointRounding.ToEven（.5 取偶）
+  function roundInt(x) {
+    var f = Math.floor(x), d = x - f;
+    if (d > 0.5) return f + 1;
+    if (d < 0.5) return f;
+    return (f % 2 === 0) ? f : f + 1;
+  }
+
+  // PixelOps.Smoothstep（经典档用，e1 > e0）；逐算子模拟 C# 的 float 运算
+  function smoothstep(e0, e1, x) {
+    var t = clamp01(Math.fround(Math.fround((x - e0)) / Math.fround((e1 - e0))));
+    var p = Math.fround(t * t);
+    var q = Math.fround(3 - Math.fround(2 * t));
+    return Math.fround(p * q);
+  }
+
+  // KeyAdvanced.Smoothstep（允许 e1 < e0 的反向语义；退化时按反向阈值处理）
+  function smoothstepRev(e0, e1, x) {
+    var den = Math.fround(e1 - e0);
+    if (Math.abs(den) < 1e-6) return x < e0 ? 1 : 0;
+    var t = clamp01(Math.fround(Math.fround(x - e0) / den));
+    var p = Math.fround(t * t);
+    var q = Math.fround(3 - Math.fround(2 * t));
+    return Math.fround(p * q);
+  }
+
+  function rgbToHsv(r, g, b) {
+    var max = Math.max(r, Math.max(g, b)), min = Math.min(r, Math.min(g, b));
+    var d = max - min, h = 0;
+    if (d > 1e-6) {
+      if (max === r) h = 60 * (((g - b) / d) % 6);
+      else if (max === g) h = 60 * ((b - r) / d + 2);
+      else h = 60 * ((r - g) / d + 4);
+    }
+    if (h < 0) h += 360;
+    var s = max < 1e-6 ? 0 : d / max;
+    return [h, s, max];
+  }
+
+  /* ---------------- 羽化（与 C# FeatherAlpha 同款：6 次可分离 box blur） ---------------- */
+
+  function boxBlur1D(src, w, h, r, horizontal, dst) {
+    var win = r * 2 + 1;
+    if (win <= 1) { dst.set(src); return; }
+    var x, y;
+    if (horizontal) {
+      for (y = 0; y < h; y++) {
+        var row = y * w, acc = 0;
+        for (x = -r; x <= r; x++) acc = Math.fround(acc + src[row + clampI(x, 0, w - 1)]);
+        for (x = 0; x < w; x++) {
+          dst[row + x] = acc / win;
+          acc = Math.fround(acc + src[row + clampI(x + r + 1, 0, w - 1)] - src[row + clampI(x - r, 0, w - 1)]);
+        }
+      }
+    } else {
+      for (x = 0; x < w; x++) {
+        var acc2 = 0;
+        for (y = -r; y <= r; y++) acc2 = Math.fround(acc2 + src[clampI(y, 0, h - 1) * w + x]);
+        for (y = 0; y < h; y++) {
+          dst[y * w + x] = acc2 / win;
+          acc2 = Math.fround(acc2 + src[clampI(y + r + 1, 0, h - 1) * w + x] - src[clampI(y - r, 0, h - 1) * w + x]);
+        }
+      }
+    }
+  }
+
+  function featherAlpha(alpha, w, h, radius) {
+    if (radius < 1) return;
+    var r = Math.max(1, roundInt(radius));
+    var tmp = new Float32Array(w * h);
+    boxBlur1D(alpha, w, h, r, true, tmp);
+    boxBlur1D(tmp, w, h, r, false, alpha);
+    boxBlur1D(alpha, w, h, r, true, tmp);
+    boxBlur1D(tmp, w, h, r, false, alpha);
+    boxBlur1D(alpha, w, h, r, true, tmp);
+    boxBlur1D(tmp, w, h, r, false, alpha);
+  }
+
+  /* ---------------- 经典档：ApplyChromaKey ---------------- */
+
+  function applyChromaKey(px, w, h, p) {
+    var n = w * h;
+    var kr = p.color.r / 255, kg = p.color.g / 255, kb = p.color.b / 255;
+    var hsv = rgbToHsv(kr, kg, kb);
+    var kh = hsv[0], ks = hsv[1], kv = hsv[2];
+    var lowSat = ks < 0.15;
+
+    var I = p.intensity / 100;
+    var T = 0.04 + I * 0.5;
+    var tLo = T * 0.4, tHi = Math.max(tLo + 1e-4, T);
+
+    var alpha = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var o = i * 4;
+      var r = px[o] / 255, g = px[o + 1] / 255, b = px[o + 2] / 255;
+      var hv = rgbToHsv(r, g, b);
+      var dh = Math.abs(hv[0] - kh); if (dh > 180) dh = 360 - dh; dh /= 180;
+      var ds = Math.abs(hv[1] - ks), dv = Math.abs(hv[2] - kv);
+      var chroma = lowSat ? dv : Math.sqrt(dh * dh + 0.6 * ds * ds + 0.25 * dv * dv);
+      alpha[i] = smoothstep(tLo, tHi, chroma);
+    }
+
+    if (p.feather > 0) {
+      var radius = (p.feather / 100) * Math.max(0.5, Math.min(w, h) * 0.02);
+      featherAlpha(alpha, w, h, radius);
+    }
+
+    var C = p.cleanup / 100;
+    var e = C * 0.5, e1 = e + 0.15;
+    var mIdx = 0;
+    if (kg > kr) mIdx = 1;
+    if (kb > (mIdx === 1 ? kg : kr)) mIdx = 2;
+    var spill = C;
+
+    var out = new Uint8ClampedArray(n * 4);
+    for (var j = 0; j < n; j++) {
+      var a = alpha[j];
+      if (e > 0) a = smoothstep(e, e1, a);
+      a = clamp01(a);
+      var q = j * 4;
+      var rr = px[q] / 255, gg = px[q + 1] / 255, bb = px[q + 2] / 255;
+      if (a > 0.5 && spill > 0) {
+        if (mIdx === 0) { var avg0 = (gg + bb) / 2; if (rr > avg0) rr -= (rr - avg0) * spill; }
+        else if (mIdx === 1) { var avg1 = (rr + bb) / 2; if (gg > avg1) gg -= (gg - avg1) * spill; }
+        else { var avg2 = (rr + gg) / 2; if (bb > avg2) bb -= (bb - avg2) * spill; }
+      }
+      out[q] = roundInt(clamp01(rr) * 255);
+      out[q + 1] = roundInt(clamp01(gg) * 255);
+      out[q + 2] = roundInt(clamp01(bb) * 255);
+      out[q + 3] = roundInt(a * 255);
+    }
+    return out;
+  }
+
+  /* ---------------- 智能档：Apply ---------------- */
+
+  function despill(c, lr, lg, lb, sp, keepRatio) {
+    if (sp <= 0) return;
+    var cr = c[0], cg = c[1], cb = c[2];
+    var lC = 0.299 * cr + 0.587 * cg + 0.114 * cb;
+    var lB = 0.299 * lr + 0.587 * lg + 0.114 * lb;
+    var bcr = lr - lB, bcg = lg - lB, bcb = lb - lB;
+    var den = bcr * bcr + bcg * bcg + bcb * bcb;
+    if (den <= 1e-4) return;
+    var ccr = cr - lC, ccg = cg - lC, ccb = cb - lC;
+    var k = (ccr * bcr + ccg * bcg + ccb * bcb) / den;
+    if (k <= 0) return;
+    var kC = clamp01(k * sp * (1 - keepRatio));
+    c[0] = cr - Math.max(0, bcr) * kC;
+    c[1] = cg - Math.max(0, bcg) * kC;
+    c[2] = cb - Math.max(0, bcb) * kC;
+  }
+
+  // 背景主色通道：绿幕→G，蓝幕→B，红幕→R
+  function mainChannel(br, bg, bb) {
+    var m = 0, mv = br;
+    if (bg > mv) { m = 1; mv = bg; }
+    if (bb > mv) { m = 2; mv = bb; }
+    return m;
+  }
+
+  function applyAdvanced(px, w, h, p) {
+    var n = w * h;
+    var br = p.color.r / 255, bg = p.color.g / 255, bb = p.color.b / 255;
+    var m = mainChannel(br, bg, bb);
+    var o1 = (m === 0) ? 1 : 0;
+    var o2 = (m === 2) ? 1 : 2;
+
+    var I = clamp01(p.advIntensity / 100);
+    var S = clamp01(p.advSoftness / 100);
+    var rKill = 1 - 0.02 - 0.83 * I;
+    var rKeep = rKill * (1 - S);
+    var sp = clamp01(p.advDespill / 100);
+    var keepRatio = p.advDespillAggr ? 0 : 0.45;
+
+    var field = (p.plate && p.plate.length === n) ? p.plate : null;
+
+    var alpha = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var o = i * 4;
+      var cr = px[o] / 255, cg = px[o + 1] / 255, cb = px[o + 2] / 255;
+
+      var lr, lg, lb;
+      if (field) { var fo = i * 4; lr = field[fo] / 255; lg = field[fo + 1] / 255; lb = field[fo + 2] / 255; }
+      else { lr = br; lg = bg; lb = bb; }
+
+      var lm = ch(lr, lg, lb, m);
+      var lo = Math.max(ch(lr, lg, lb, o1), ch(lr, lg, lb, o2));
+      var gBl = lm - lo;
+
+      var ratio;
+      if (gBl > 0.02) {
+        var gC = ch(cr, cg, cb, m) - Math.max(ch(cr, cg, cb, o1), ch(cr, cg, cb, o2));
+        ratio = clamp01(gC / gBl);
+      } else {
+        var vB = Math.max(lr, Math.max(lg, lb));
+        var vNorm = Math.max(vB, 1 - vB);
+        var v = Math.max(cr, Math.max(cg, cb));
+        ratio = clamp01(1 - Math.abs(v - vB) / vNorm);
+      }
+      alpha[i] = smoothstepRev(rKill, rKeep, ratio);
+    }
+
+    if (p.advFeather > 0) {
+      var radius = (p.advFeather / 100) * Math.max(0.5, Math.min(w, h) * 0.02);
+      featherAlpha(alpha, w, h, radius);
+    }
+
+    var out = new Uint8ClampedArray(n * 4);
+    for (var j = 0; j < n; j++) {
+      var q = j * 4;
+      var a = clamp01(alpha[j]);
+      if (a <= 0.0005) { out[q] = 0; out[q + 1] = 0; out[q + 2] = 0; out[q + 3] = 0; continue; }
+
+      var c2 = [px[q] / 255, px[q + 1] / 255, px[q + 2] / 255];
+      var b2 = field ? [field[q] / 255, field[q + 1] / 255, field[q + 2] / 255] : [br, bg, bb];
+
+      despill(c2, b2[0], b2[1], b2[2], sp, keepRatio);
+
+      var fr, fg, fb;
+      if (a >= 0.9995) { fr = c2[0]; fg = c2[1]; fb = c2[2]; }
+      else {
+        var inv = 1 - a;
+        fr = (c2[0] - inv * b2[0]) / a;
+        fg = (c2[1] - inv * b2[1]) / a;
+        fb = (c2[2] - inv * b2[2]) / a;
+        var mx = Math.max(fr, Math.max(fg, fb));
+        if (mx > 1) { fr /= mx; fg /= mx; fb /= mx; }
+        fr = clamp01(fr); fg = clamp01(fg); fb = clamp01(fb);
+      }
+      out[q] = roundInt(clamp01(fr) * 255);
+      out[q + 1] = roundInt(clamp01(fg) * 255);
+      out[q + 2] = roundInt(clamp01(fb) * 255);
+      out[q + 3] = roundInt(a * 255);
+    }
+    return out;
+  }
+
+  /* ---------------- 两步法：ApplyTwoStep ---------------- */
+
+  function applyTwoStep(px, w, h, p) {
+    var n = w * h;
+    var br = p.color.r / 255, bg = p.color.g / 255, bb = p.color.b / 255;
+    var m = mainChannel(br, bg, bb);
+    var o1 = (m === 0) ? 1 : 0;
+    var o2 = (m === 2) ? 1 : 2;
+
+    var I = clamp01(p.advIntensity / 100);
+    var S = clamp01(p.advSoftness / 100);
+    var rKill = 1 - 0.02 - 0.83 * I;
+    var rKeep = rKill * (1 - S);
+    var strength = Math.min(Math.max(p.greenToAlpha / 100, 0), 3);
+    var sp = clamp01(p.advDespill / 100);
+    var keepRatio = p.advDespillAggr ? 0 : 0.45;
+
+    var field = (p.plate && p.plate.length === n) ? p.plate : null;
+    var alpha = new Float32Array(n);
+
+    for (var i = 0; i < n; i++) {
+      var o = i * 4;
+      var cr = px[o] / 255, cg = px[o + 1] / 255, cb = px[o + 2] / 255;
+      var lr, lg, lb;
+      if (field) { lr = field[o] / 255; lg = field[o + 1] / 255; lb = field[o + 2] / 255; }
+      else { lr = br; lg = bg; lb = bb; }
+
+      var gBl = ch(lr, lg, lb, m) - Math.max(ch(lr, lg, lb, o1), ch(lr, lg, lb, o2));
+      var ratio;
+      if (gBl > 0.02) {
+        var gCl = ch(cr, cg, cb, m) - Math.max(ch(cr, cg, cb, o1), ch(cr, cg, cb, o2));
+        ratio = clamp01(gCl / gBl);
+      } else {
+        var vB = Math.max(lr, Math.max(lg, lb));
+        var vNorm = Math.max(vB, 1 - vB);
+        var v = Math.max(cr, Math.max(cg, cb));
+        ratio = clamp01(1 - Math.abs(v - vB) / Math.max(vNorm, 0.001));
+      }
+      alpha[i] = smoothstepRev(rKill, rKeep, ratio);
+    }
+
+    var out = new Uint8ClampedArray(n * 4);
+    for (var j = 0; j < n; j++) {
+      var q = j * 4;
+      var cr2 = px[q] / 255, cg2 = px[q + 1] / 255, cb2 = px[q + 2] / 255;
+      var lr2, lg2, lb2;
+      if (field) { lr2 = field[q] / 255; lg2 = field[q + 1] / 255; lb2 = field[q + 2] / 255; }
+      else { lr2 = br; lg2 = bg; lb2 = bb; }
+
+      var gBl2 = ch(lr2, lg2, lb2, m) - Math.max(ch(lr2, lg2, lb2, o1), ch(lr2, lg2, lb2, o2));
+      var gC2 = ch(cr2, cg2, cb2, m) - Math.max(ch(cr2, cg2, cb2, o1), ch(cr2, cg2, cb2, o2));
+
+      var lC0 = 0.299 * cr2 + 0.587 * cg2 + 0.114 * cb2;
+      var lB0 = 0.299 * lr2 + 0.587 * lg2 + 0.114 * lb2;
+      var kc0 = cr2 - lC0, kc1 = cg2 - lC0, kc2 = cb2 - lC0;
+      var kb0 = lr2 - lB0, kb1 = lg2 - lB0, kb2 = lb2 - lB0;
+      var kden = kb0 * kb0 + kb1 * kb1 + kb2 * kb2;
+      var k = kden > 1e-4
+        ? clamp01((kc0 * kb0 + kc1 * kb1 + kc2 * kb2) / kden)
+        : (gBl2 > 0.02 ? clamp01(gC2 / gBl2) : 0);
+
+      var kA = clamp01(k * strength);
+      var kC = clamp01(k * Math.min(strength, 1));
+      var desat = clamp01((strength - 1) * k);
+
+      var nr = cr2, ng = cg2, nb = cb2;
+      if (kA > 0.0005 || kC > 0.0005 || desat > 0.0005) {
+        alpha[j] = clamp01(alpha[j] * (1 - kA));
+
+        var lC = 0.299 * cr2 + 0.587 * cg2 + 0.114 * cb2;
+        var lB = 0.299 * lr2 + 0.587 * lg2 + 0.114 * lb2;
+
+        nr = lC + ((cr2 - lC) - kC * (lr2 - lB));
+        ng = lC + ((cg2 - lC) - kC * (lg2 - lB));
+        nb = lC + ((cb2 - lC) - kC * (lb2 - lB));
+
+        if (desat > 0.0005) {
+          var keepChroma = 1 - desat;
+          nr = lC + (nr - lC) * keepChroma;
+          ng = lC + (ng - lC) * keepChroma;
+          nb = lC + (nb - lC) * keepChroma;
+        }
+
+        var mx = Math.max(nr, Math.max(ng, nb));
+        if (mx > 1) { var s1 = 1 / mx; nr *= s1; ng *= s1; nb *= s1; }
+        var mn = Math.min(nr, Math.min(ng, nb));
+        if (mn < 0) { var s2 = 1 - mn; nr = (nr - mn) / s2; ng = (ng - mn) / s2; nb = (nb - mn) / s2; }
+      }
+
+      var dd = [nr, ng, nb];
+      despill(dd, lr2, lg2, lb2, sp, keepRatio);
+
+      out[q] = clampI(roundInt(dd[0] * 255), 0, 255);
+      out[q + 1] = clampI(roundInt(dd[1] * 255), 0, 255);
+      out[q + 2] = clampI(roundInt(dd[2] * 255), 0, 255);
+      out[q + 3] = 255;
+    }
+
+    if (p.advFeather > 0) {
+      var radius = (p.advFeather / 100) * Math.max(0.5, Math.min(w, h) * 0.02);
+      featherAlpha(alpha, w, h, radius);
+    }
+
+    for (var t = 0; t < n; t++) {
+      var a = clamp01(alpha[t]);
+      var oq = t * 4;
+      if (a <= 0.0005) { out[oq] = 0; out[oq + 1] = 0; out[oq + 2] = 0; out[oq + 3] = 0; continue; }
+      out[oq + 3] = roundInt(a * 255);
+    }
+    return out;
+  }
+
+  /* ---------------- 自动背景板：BuildAutoPlate ---------------- */
+
+  function buildAutoPlate(frames, w, h, color) {
+    var n = w * h;
+    var bcR = color.r / 255, bcG = color.g / 255, bcB = color.b / 255;
+    var m = mainChannel(bcR, bcG, bcB);
+    var o1 = (m === 0) ? 1 : 0;
+    var o2 = (m === 2) ? 1 : 2;
+    var gGlobal = ch(bcR, bcG, bcB, m) - Math.max(ch(bcR, bcG, bcB, o1), ch(bcR, bcG, bcB, o2));
+
+    var best = new Uint8ClampedArray(n * 4);
+    var bestG = new Float32Array(n);
+    var sumM = new Float32Array(n);
+    var sqM = new Float32Array(n);
+    var masked = new Uint8Array(n);
+    var pr = new Float32Array(n), pg = new Float32Array(n), pb = new Float32Array(n);
+
+    for (var i = 0; i < n; i++) { bestG[i] = -1; sumM[i] = 0; sqM[i] = 0; masked[i] = 0; }
+
+    var used = 0;
+    for (var f = 0; f < frames.length; f++) {
+      var fr = frames[f];
+      if (!fr || fr.length !== n * 4) continue;
+      used++;
+      for (var p = 0; p < n; p++) {
+        var o = p * 4;
+        var cr = fr[o] / 255, cg = fr[o + 1] / 255, cb = fr[o + 2] / 255;
+        var cm = ch(cr, cg, cb, m);
+        var g = cm - Math.max(ch(cr, cg, cb, o1), ch(cr, cg, cb, o2));
+        if (g > bestG[p]) {
+          bestG[p] = g;
+          best[o] = fr[o]; best[o + 1] = fr[o + 1]; best[o + 2] = fr[o + 2]; best[o + 3] = 255;
+        }
+        sumM[p] = Math.fround(sumM[p] + cm);
+        sqM[p] = Math.fround(sqM[p] + Math.fround(cm * cm));
+      }
+    }
+    if (used === 0) return null;
+
+    var floor = gGlobal * 0.30;
+    var known = 0;
+    for (var q = 0; q < n; q++) {
+      var mean = Math.fround(sumM[q] / used);
+      var varr = Math.max(0, Math.fround(Math.fround(sqM[q] / used) - Math.fround(mean * mean)));
+      var sd = Math.fround(Math.sqrt(varr));
+      if (bestG[q] < floor || sd > 0.02) {
+        masked[q] = 1;
+        var qo = q * 4;
+        best[qo] = color.r; best[qo + 1] = color.g; best[qo + 2] = color.b; best[qo + 3] = 255;
+      } else known++;
+    }
+
+    var repaired = 0;
+    var nBad = n - known;
+    if (nBad > 0 && known > 0) {
+      var ar = 0, ag = 0, ab = 0;
+      for (var r1 = 0; r1 < n; r1++) {
+        if (masked[r1]) continue;
+        ar += best[r1 * 4]; ag += best[r1 * 4 + 1]; ab += best[r1 * 4 + 2];
+      }
+      var initR = (ar / known) / 255, initG = (ag / known) / 255, initB = (ab / known) / 255;
+
+      for (var r2 = 0; r2 < n; r2++) {
+        if (masked[r2]) { pr[r2] = initR; pg[r2] = initG; pb[r2] = initB; }
+        else {
+          pr[r2] = best[r2 * 4] / 255;
+          pg[r2] = best[r2 * 4 + 1] / 255;
+          pb[r2] = best[r2 * 4 + 2] / 255;
+        }
+      }
+
+      // Gauss-Seidel 就地迭代（与 C# 同序同步数）
+      for (var it = 0; it < 300; it++) {
+        var maxd = 0;
+        for (var y = 0; y < h; y++) {
+          var row = y * w;
+          var up = (y > 0 ? y - 1 : y) * w;
+          var dn = (y < h - 1 ? y + 1 : y) * w;
+          for (var x = 0; x < w; x++) {
+            var idx = row + x;
+            if (masked[idx] === 0) continue;
+            var lf = (x > 0 ? x - 1 : x);
+            var rt = (x < w - 1 ? x + 1 : x);
+
+            // 8 邻域平均：与 C# 一样逐次按 float 舍入，保证迭代次数与收敛结果一致
+            var s1 = pr[up + lf];
+            s1 = Math.fround(s1 + pr[up + x]);
+            s1 = Math.fround(s1 + pr[up + rt]);
+            s1 = Math.fround(s1 + pr[row + lf]);
+            s1 = Math.fround(s1 + pr[row + rt]);
+            s1 = Math.fround(s1 + pr[dn + lf]);
+            s1 = Math.fround(s1 + pr[dn + x]);
+            s1 = Math.fround(s1 + pr[dn + rt]);
+            var nr = Math.fround(s1 * 0.125);
+
+            var s2 = pg[up + lf];
+            s2 = Math.fround(s2 + pg[up + x]);
+            s2 = Math.fround(s2 + pg[up + rt]);
+            s2 = Math.fround(s2 + pg[row + lf]);
+            s2 = Math.fround(s2 + pg[row + rt]);
+            s2 = Math.fround(s2 + pg[dn + lf]);
+            s2 = Math.fround(s2 + pg[dn + x]);
+            s2 = Math.fround(s2 + pg[dn + rt]);
+            var ng = Math.fround(s2 * 0.125);
+
+            var s3 = pb[up + lf];
+            s3 = Math.fround(s3 + pb[up + x]);
+            s3 = Math.fround(s3 + pb[up + rt]);
+            s3 = Math.fround(s3 + pb[row + lf]);
+            s3 = Math.fround(s3 + pb[row + rt]);
+            s3 = Math.fround(s3 + pb[dn + lf]);
+            s3 = Math.fround(s3 + pb[dn + x]);
+            s3 = Math.fround(s3 + pb[dn + rt]);
+            var nb = Math.fround(s3 * 0.125);
+
+            var d = Math.fround(Math.fround(Math.abs(Math.fround(nr - pr[idx])) + Math.abs(Math.fround(ng - pg[idx]))) + Math.abs(Math.fround(nb - pb[idx])));
+            pr[idx] = nr; pg[idx] = ng; pb[idx] = nb;
+            if (d > maxd) maxd = d;
+          }
+        }
+        if (maxd < 0.003) break;
+      }
+
+      for (var r3 = 0; r3 < n; r3++) {
+        if (masked[r3] === 0) continue;
+        var ro = r3 * 4;
+        best[ro] = clampI(roundInt(pr[r3] * 255), 0, 255);
+        best[ro + 1] = clampI(roundInt(pg[r3] * 255), 0, 255);
+        best[ro + 2] = clampI(roundInt(pb[r3] * 255), 0, 255);
+        best[ro + 3] = 255;
+      }
+      repaired = nBad;
+    }
+
+    // 3x3 平滑两遍
+    var smooth = new Uint8ClampedArray(n * 4);
+    for (var pass = 0; pass < 2; pass++) {
+      var src = (pass === 0) ? best : smooth;
+      var dst = (pass === 0) ? smooth : best;
+      for (var sy = 0; sy < h; sy++) {
+        var y0 = Math.max(0, sy - 1), y1 = Math.min(h - 1, sy + 1);
+        for (var sx = 0; sx < w; sx++) {
+          var x0 = Math.max(0, sx - 1), x1 = Math.min(w - 1, sx + 1);
+          var sr = 0, sg2 = 0, sb = 0, cnt = 0;
+          for (var yy = y0; yy <= y1; yy++) {
+            var row2 = yy * w;
+            for (var xx = x0; xx <= x1; xx++) {
+              var so = (row2 + xx) * 4;
+              sr += src[so]; sg2 += src[so + 1]; sb += src[so + 2]; cnt++;
+            }
+          }
+          var do2 = (sy * w + sx) * 4;
+          dst[do2] = (sr / cnt) | 0;
+          dst[do2 + 1] = (sg2 / cnt) | 0;
+          dst[do2 + 2] = (sb / cnt) | 0;
+          dst[do2 + 3] = 255;
+        }
+      }
+    }
+    return { plate: best, known: known, repaired: repaired };
+  }
+
+  /* ---------------- 对外：有效帧路由（与 EffectivePixels 同构） ---------------- */
+
+  // p: { mode:'classic'|'advanced', color:{r,g,b}, intensity, classicFeather, cleanup,
+  //      advIntensity, advSoftness, advDespill, advDespillAggr, advFeather, greenToAlpha, plate }
+  function effectivePixels(rgba, w, h, p) {
+    if (!p || !p.enabled) return rgba;
+    if (p.mode === 'classic') {
+      return applyChromaKey(rgba, w, h, {
+        color: p.color,
+        intensity: p.intensity,
+        feather: p.classicFeather,
+        cleanup: p.cleanup,
+      });
+    }
+    if (p.greenToAlpha > 0.01) return applyTwoStep(rgba, w, h, p);
+    return applyAdvanced(rgba, w, h, p);
+  }
+
+  root.SheetKey = {
+    effectivePixels: effectivePixels,
+    applyChromaKey: applyChromaKey,
+    applyAdvanced: applyAdvanced,
+    applyTwoStep: applyTwoStep,
+    buildAutoPlate: buildAutoPlate,
+    featherAlpha: featherAlpha,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<!-- ===== 离线版注入：接口垫片（/api/key、/api/save-sheet 本地实现） ===== -->
+<script>
+/* =====================================================================
+   shim.js —— 离线版接口垫片
+   页面本身只依赖两个后端接口：/api/key（抠图）和 /api/save-sheet（保存到项目）。
+   这里用本地 JS 实现顶替它们，页面代码一行都不改：
+     /api/key        → SheetKey 本地算法（keying.js，与 Unity C# 同一套数学）
+     /api/save-sheet → 浏览器直接下载 PNG + meta.json（离线没有 Unity 工程可写）
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  var origFetch = window.fetch ? window.fetch.bind(window) : null;
+
+  function jsonResponse(obj) {
+    return {
+      ok: true,
+      json: function () { return Promise.resolve(obj); },
+      text: function () { return Promise.resolve(JSON.stringify(obj)); }
+    };
+  }
+
+  function parseHex(hex) {
+    if (hex && typeof hex === 'object') {
+      return { r: hex.r | 0, g: hex.g | 0, b: hex.b | 0 };
+    }
+    var s = String(hex || '#00ff00').trim().replace('#', '');
+    if (s.length === 3) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+    var n = parseInt(s, 16) || 0;
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function loadImage(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('图片解码失败')); };
+      img.src = url;
+    });
+  }
+
+  function toImageData(url) {
+    return loadImage(url).then(function (img) {
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      return ctx.getImageData(0, 0, c.width, c.height);
+    });
+  }
+
+  function rgbaToDataUrl(rgba, w, h) {
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').putImageData(new ImageData(rgba, w, h), 0, 0);
+    return c.toDataURL('image/png');
+  }
+
+  function downloadUrl(url, filename) {
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 2000);
+  }
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ---------------- /api/key ---------------- */
+
+  async function localKey(body) {
+    if (!window.SheetKey) throw new Error('本地抠图模块未加载');
+    if (!body || !body.frames || !body.frames.length) throw new Error('没有可处理的帧');
+
+    var imgs = [];
+    for (var i = 0; i < body.frames.length; i++) {
+      try {
+        imgs.push(await toImageData(body.frames[i]));
+      } catch (e) {
+        return { error: '第 ' + (i + 1) + ' 帧图片解码失败' };
+      }
+    }
+
+    var w = imgs[0].width, h = imgs[0].height;
+    var color = parseHex(body.color);
+    var params = {
+      enabled: true,
+      mode: body.mode === 'advanced' ? 'advanced' : 'classic',
+      color: color,
+      intensity: body.intensity,
+      classicFeather: body.classicFeather,
+      cleanup: body.cleanup,
+      advIntensity: body.advIntensity,
+      advSoftness: body.advSoftness,
+      advDespill: body.advDespill,
+      advDespillAggr: !!body.advDespillAggr,
+      advFeather: body.advFeather,
+      greenToAlpha: body.greenToAlpha,
+      plate: null
+    };
+
+    var plateInfo = '';
+    if (body.autoPlate && params.mode === 'advanced') {
+      var list = [];
+      for (var k = 0; k < imgs.length; k++) {
+        if (imgs[k].width === w && imgs[k].height === h) list.push(new Uint8ClampedArray(imgs[k].data));
+      }
+      if (list.length) {
+        var pl = window.SheetKey.buildAutoPlate(list, w, h, color);
+        if (!pl) {
+          plateInfo = '背景板：估计失败（没有可用帧）';
+        } else {
+          params.plate = pl.plate;
+          var total = w * h;
+          var pct = total ? Math.round(pl.known * 100 / total) : 0;
+          var rpct = total ? Math.round(pl.repaired * 100 / total) : 0;
+          plateInfo = '背景板：' + list.length + ' 帧 ' + w + '×' + h + '，' + pct + '% 有样本'
+            + (pl.repaired > 0 ? '，' + rpct + '% 由周围补出' : '')
+            + (list.length < imgs.length ? '（部分帧尺寸不同已跳过）' : '');
+        }
+        await sleep(0);   // 让状态栏刷新一下
+      }
+    }
+
+    var outs = [];
+    for (var j = 0; j < imgs.length; j++) {
+      var img = imgs[j];
+      var out = window.SheetKey.effectivePixels(new Uint8ClampedArray(img.data), img.width, img.height, params);
+      outs.push(rgbaToDataUrl(out, img.width, img.height));
+      if (imgs.length > 1 && (j % 8) === 7) await sleep(0);
+    }
+    return { frames: outs, count: outs.length, plateInfo: plateInfo };
+  }
+
+  /* ---------------- /api/save-sheet ---------------- */
+  /* Unity 的 SavePng 会同时写两个文件：
+       SpriteSheets/<分类>/<名字>/<名字>_<列>x<行>.png
+       SpriteSheets/<分类>/<名字>/<名字>_<列>x<行>.meta.json
+     离线版没有工程目录，所以：
+       ① 有目录选择器（Chrome/Edge）→ 选一个文件夹，两个文件一起写进去（与 Unity 一致）
+       ② 没有 → 打成一个 ZIP 下载（解压得到同两个文件）
+     不能再"连续触发两次下载"：浏览器会把第二次当自动下载拦掉，用户只拿到 PNG —— 这就是之前 meta.json 消失的原因。 */
+
+  function crc32(bytes) {
+    if (!crc32.table) {
+      crc32.table = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        crc32.table[n] = c >>> 0;
+      }
+    }
+    var t = crc32.table, crc = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) crc = t[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // 最小 ZIP（store 不压缩）：把 PNG 与 meta.json 打成一个文件
+  function buildZip(entries) {
+    var enc = new TextEncoder();
+    var parts = [], central = [], offset = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var en = entries[i];
+      var nameBytes = enc.encode(en.name);
+      var size = en.data.length;
+      var crc = crc32(en.data);
+      var local = new Uint8Array(30 + nameBytes.length);
+      var dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);      // 文件名 UTF-8
+      dv.setUint16(8, 0, true);           // store（不压缩）
+      dv.setUint16(10, 0, true);
+      dv.setUint16(12, 0x21, true);       // 1980-01-01
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, size, true);
+      dv.setUint32(22, size, true);
+      dv.setUint16(26, nameBytes.length, true);
+      dv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      parts.push(local, en.data);
+
+      var cd = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(cd.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, 0x21, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint32(42, offset, true);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+      offset += local.length + size;
+    }
+    var centralSize = 0;
+    for (var c2 = 0; c2 < central.length; c2++) centralSize += central[c2].length;
+    var end = new Uint8Array(22);
+    var ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+
+  function dataUrlToBytes(url) {
+    var comma = url.indexOf(',');
+    var b64 = comma >= 0 ? url.slice(comma + 1) : url;
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  async function localSaveSheet(body) {
+    if (!body || !body.meta) return { error: '请求数据无效' };
+    if (!body.data) return { error: '文件内容为空' };
+
+    var meta = body.meta;
+    var name = (meta.name || 'Unnamed');
+    var cols = meta.cols || 1, rows = meta.rows || 1;
+    var base = name + '_' + cols + 'x' + rows;   // 与 Unity 的 SheetPath / MetaPath 同规则
+
+    var url = String(body.data);
+    if (url.indexOf('data:') !== 0) url = 'data:image/png;base64,' + url;
+
+    var pngBytes, metaBytes;
+    try { pngBytes = dataUrlToBytes(url); } catch (e) { return { error: '图片数据无效' }; }
+    // 与 Unity 的 Write() 对齐：补 tagLabel / created（否则导回 Unity 时缺这两字段）
+    var tagNames = { Characters: '角色', Effects: '特效', Environment: '环境', Misc: '其他' };
+    if (!meta.tagLabel) meta.tagLabel = tagNames[meta.tag] || meta.tag || '' ;
+    var dt = new Date();
+    function p2(n) { return (n < 10 ? '0' : '') + n; }
+    meta.created = dt.getFullYear() + '-' + p2(dt.getMonth() + 1) + '-' + p2(dt.getDate()) + ' ' +
+      p2(dt.getHours()) + ':' + p2(dt.getMinutes()) + ':' + p2(dt.getSeconds());
+    metaBytes = new TextEncoder().encode(JSON.stringify(meta, null, 2));
+
+    // ① 目录选择器（Chrome / Edge 桌面版）：选一个文件夹，两个文件直接落盘
+    if (typeof window.showDirectoryPicker === 'function') {
+      try {
+        var dir = await window.showDirectoryPicker({ id: 'sprite-out', mode: 'readwrite' });
+        var pngH = await dir.getFileHandle(base + '.png', { create: true });
+        var pngW = await pngH.createWritable();
+        await pngW.write(new Blob([pngBytes], { type: 'image/png' }));
+        await pngW.close();
+
+        var metaH = await dir.getFileHandle(base + '.meta.json', { create: true });
+        var metaW = await metaH.createWritable();
+        await metaW.write(new Blob([metaBytes], { type: 'application/json' }));
+        await metaW.close();
+
+        return { path: base + '.png + ' + base + '.meta.json（已写入所选文件夹）' };
+      } catch (e) {
+        if (e && (e.name === 'AbortError' || e.code === 20)) return { error: '已取消保存' };
+        // 其它错误（浏览器禁用该 API 等）→ 落到 ZIP 方案
+      }
+    }
+
+    // ② 退路：打成一个 ZIP，解压即得到两个文件
+    var zip = buildZip([
+      { name: base + '.png', data: pngBytes },
+      { name: base + '.meta.json', data: metaBytes }
+    ]);
+    var zurl = URL.createObjectURL(zip);
+    downloadUrl(zurl, base + '.zip');
+    setTimeout(function () { URL.revokeObjectURL(zurl); }, 10000);
+    return { path: '浏览器下载目录 / ' + base + '.zip（解压得到 PNG + meta.json）' };
+  }
+  /* ---------------- 拦截 fetch ---------------- */
+
+  window.fetch = function (url, opts) {
+    var u = String(url);
+    if (u.indexOf('/api/key') >= 0 && opts && opts.body) {
+      var body;
+      try { body = JSON.parse(opts.body); } catch (e) { return Promise.resolve(jsonResponse({ error: '参数解析失败' })); }
+      return localKey(body)
+        .then(jsonResponse)
+        .catch(function (e) { return jsonResponse({ error: String(e && e.message || e) }); });
+    }
+    if (u.indexOf('/api/save-sheet') >= 0 && opts && opts.body) {
+      var sbody;
+      try { sbody = JSON.parse(opts.body); } catch (e) { return Promise.resolve(jsonResponse({ error: '参数解析失败' })); }
+      return localSaveSheet(sbody)
+        .then(jsonResponse)
+        .catch(function (e) { return jsonResponse({ error: String(e && e.message || e) }); });
+    }
+    return origFetch ? origFetch(url, opts) : Promise.reject(new Error('离线版无网络请求'));
+  };
+
+  window.__OFFLINE_STANDALONE__ = true;
+  window.__SHEET_OFFLINE__ = { buildZip: buildZip, localSaveSheet: localSaveSheet, crc32: crc32 };
+})();
+
+</script>
+<script type="module">
+/* ============================================================
+   序列帧精灵图工具 —— 单文件实现
+   GIF：自包含纯 JS 解码（LZW + 帧合成），完全离线
+   MOV：ffmpeg.wasm 按需 CDN 加载（首次约 31MB，含 HEVC/QTRLE-alpha 解码器）
+   ============================================================ */
+
+'use strict';
+
+/* ---------------- 工具函数 ---------------- */
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const fmtBytes = (n) => {
+  if (n == null || isNaN(n)) return '-';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+};
+const fmtMB = (n) => (n / 1024 / 1024).toFixed(2) + ' MB';
+
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 't' + (type ? ' ' + type : '');
+  t.textContent = msg;
+  $('toast').appendChild(t);
+  setTimeout(() => t.remove(), 4200);
+}
+
+function setBusy(msg, on) {
+  const o = $('overlay');
+  $('overlayMsg').textContent = msg || '处理中…';
+  $('overlayBarFill').style.width = '0%';
+  o.classList.toggle('show', !!on);
+}
+function setProgress(p) {
+  const f = $('overlayBarFill');
+  f.style.width = (clamp(p, 0, 1) * 100).toFixed(1) + '%';
+}
+
+/* ---------------- 全局状态 ---------------- */
+const state = {
+  source: null,           // { kind:'video'|'gif', file, name, size, duration, frameCount, width, height, url, gif }
+  conv: { start: 0, end: 1, fps: 12 },
+  frames: [],             // HTMLCanvasElement[]（始终为原始帧，抠图结果另存 keyed）
+  selected: new Set(),    // 索引集合
+  crop: { top: 0, bottom: 0, left: 0, right: 0, enabled: false },
+  trim: { enabled: false, bbox: null, content: null, pad: { top: 2, bottom: 2, left: 2, right: 2 }, alphaThreshold: 8 },
+  out: { rows: 4, cols: 4, scale: 100, filename: 'sprite_sheet.png' },
+  playback: { timer: null, running: false },
+  previewTimer: null,
+  key: {
+    enabled: false,
+    color: { r: 0, g: 255, b: 0 },   // Key 色（背景色）0~255
+    mode: 'classic',                 // classic | advanced（与 Unity 面板两档一致）
+    intensity: 50, feather: 20, cleanup: 30,            // 经典档
+    adv: { intensity: 10, softness: 100, despill: 70, despillAggr: false, feather: 0, greenToAlpha: 0 }, // 智能档
+    autoPlate: false,                // 自动背景板
+  },
+  keyed: new Map(),       // index -> 色度抠图后的 canvas
+  anchor: {               // 锚点对齐预览（写进 meta.json）
+    x: 0.5, y: 0,         // 人中轴 / 脚底（0~1）
+    idx: 0,               // 当前预览帧（绝对帧号）
+    idle: null,           // Idle 参照：当前显示的那一帧（canvas cw×ch）
+    idleSheet: null,      // Idle 参照整张精灵图（canvas）
+    idleMeta: null,       // { cols, rows, cw, ch, count }
+    idleIdx: 0,           // Idle 当前帧号
+    idleAnchor: { x: 0.5, y: 0.025 },  // Idle 自己的锚点（读自它的 meta.json）
+    idleName: '',
+    zoom: 1,              // 滚轮缩放（左右两栏共用，与 Unity 的 _anchorZoom 一致）
+    drag: null,           // 正在拖的线：'x' | 'y' | null
+    layout: null,         // 当前帧在画布上的布局 {left, top, dw, dh}
+    confirmed: false,
+  },
+  picking: false,         // 是否处于色度取色模式
+  mask: {
+    enabled: false,
+    rect: null,           // 框选去水印区域 {x,y,w,h}（相对原始帧，未裁切）
+  },
+  masked: new Map(),      // index -> 框选去水印后的 canvas
+  previewVideo: null,     // 选区预览用的 video 元素
+  measure: {              // 输出页内容物高度测量
+    marking: null,        // 'bottom' | 'top' | null
+    bottom: null, top: null,   // 原始像素坐标 {x,y}
+  },
+};
+
+/* ============================================================
+   GIF 解码器（自包含，纯 JS）
+   ============================================================ */
+function lzwDecode(minCodeSize, data) {
+  const clearCode = 1 << minCodeSize;
+  const eoiCode = clearCode + 1;
+  let codeSize = minCodeSize + 1;
+  let dict = [];
+  let nextCode = eoiCode + 1;
+  function reset() {
+    dict = [];
+    for (let i = 0; i < clearCode; i++) dict.push([i]);
+    nextCode = eoiCode + 1;
+    codeSize = minCodeSize + 1;
+  }
+  reset();
+  let bitPos = 0;
+  const readCode = (size) => {
+    let code = 0;
+    for (let i = 0; i < size; i++) {
+      const byteIdx = bitPos >> 3;
+      if (byteIdx >= data.length) return -1;
+      if (data[byteIdx] & (1 << (bitPos & 7))) code |= (1 << i);
+      bitPos++;
+    }
+    return code;
+  };
+  const output = [];
+  let prevCode = -1;
+  while (true) {
+    const code = readCode(codeSize);
+    if (code < 0) break;
+    if (code === clearCode) { reset(); prevCode = -1; continue; }
+    if (code === eoiCode) break;
+    let entry;
+    if (code < dict.length) {
+      entry = dict[code];
+    } else if (code === nextCode && prevCode >= 0) {
+      entry = dict[prevCode].concat([dict[prevCode][0]]);
+    } else {
+      throw new Error('GIF LZW 解码失败：code=' + code + ' nextCode=' + nextCode);
+    }
+    for (let i = 0; i < entry.length; i++) output.push(entry[i]);
+    if (prevCode >= 0) {
+      dict[nextCode++] = dict[prevCode].concat([entry[0]]);
+      if (nextCode === (1 << codeSize) && codeSize < 12) codeSize++;
+    }
+    prevCode = code;
+  }
+  return new Uint8Array(output);
+}
+
+function decodeGIF(arrayBuffer) {
+  const data = new Uint8Array(arrayBuffer);
+  const dv = new DataView(arrayBuffer);
+  let p = 0;
+  const readStr = (n) => { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(data[p++]); return s; };
+  const readU16 = () => { const v = dv.getUint16(p, true); p += 2; return v; };
+  const readByte = () => data[p++];
+  const readColorTable = (size) => {
+    const t = [];
+    for (let i = 0; i < size; i++) { t.push([data[p], data[p + 1], data[p + 2]]); p += 3; }
+    return t;
+  };
+  const readSubBlocks = () => {
+    const chunks = [];
+    while (true) {
+      const size = data[p++];
+      if (size === 0) break;
+      chunks.push(data.subarray(p, p + size)); p += size;
+    }
+    const total = chunks.reduce((s, c) => s + c.length, 0);
+    const out = new Uint8Array(total);
+    let o = 0; for (const c of chunks) { out.set(c, o); o += c.length; }
+    return out;
+  };
+  const skipSubBlocks = () => { while (true) { const size = data[p++]; if (size === 0) break; p += size; } };
+  const interlaceRows = (h) => {
+    const rows = [];
+    for (let y = 0; y < h; y += 8) rows.push(y);
+    for (let y = 4; y < h; y += 8) rows.push(y);
+    for (let y = 2; y < h; y += 4) rows.push(y);
+    for (let y = 1; y < h; y += 2) rows.push(y);
+    return rows;
+  };
+
+  const header = readStr(6);
+  if (header !== 'GIF87a' && header !== 'GIF89a') throw new Error('不是有效的 GIF 文件');
+  const width = readU16();
+  const height = readU16();
+  const packed = readByte();
+  const gctFlag = (packed >> 7) & 1;
+  const gctSize = 1 << ((packed & 7) + 1);
+  const bgIndex = readByte();
+  readByte(); // pixel aspect ratio
+
+  let gct = null;
+  if (gctFlag) gct = readColorTable(gctSize);
+
+  const frames = [];
+  let gce = { disposal: 0, delay: 0, transparent: false, transparentIndex: 0 };
+  let hasTransparency = false;
+  // 逻辑屏幕缓冲（初始透明；这是精灵图场景下最友好的行为）
+  let screen = new Uint8ClampedArray(width * height * 4);
+
+  while (p < data.length) {
+    const blockType = readByte();
+    if (blockType === 0x3B) break; // trailer
+    if (blockType === 0x21) { // extension
+      const label = readByte();
+      if (label === 0xF9) { // Graphic Control Extension
+        const size = readByte();
+        const gcePacked = readByte();
+        const disposal = (gcePacked >> 2) & 7;
+        const transparent = gcePacked & 1;
+        const delay = readU16();
+        const transparentIndex = readByte();
+        readByte(); // terminator
+        gce = { disposal, delay, transparent, transparentIndex };
+        if (transparent) hasTransparency = true;
+      } else {
+        skipSubBlocks();
+      }
+    } else if (blockType === 0x2C) { // Image Descriptor
+      const left = readU16();
+      const top = readU16();
+      const w = readU16();
+      const h = readU16();
+      const imgPacked = readByte();
+      const lctFlag = (imgPacked >> 7) & 1;
+      const interlace = (imgPacked >> 6) & 1;
+      const lctSize = 1 << ((imgPacked & 7) + 1);
+      let lct = null;
+      if (lctFlag) lct = readColorTable(lctSize);
+      const colorTable = lct || gct;
+      const minCodeSize = readByte();
+      const compressed = readSubBlocks();
+      const indices = lzwDecode(minCodeSize, compressed);
+
+      // 构建子图 RGBA（透明像素 alpha=0）
+      const sub = new Uint8ClampedArray(w * h * 4);
+      const rows = interlace ? interlaceRows(h) : Array.from({ length: h }, (_, i) => i);
+      let idx = 0;
+      for (let r = 0; r < rows.length; r++) {
+        const y = rows[r];
+        for (let x = 0; x < w; x++) {
+          const ci = indices[idx++];
+          if (gce.transparent && ci === gce.transparentIndex) {
+            sub[(y * w + x) * 4 + 3] = 0;
+          } else {
+            const c = colorTable ? colorTable[ci] : [0, 0, 0];
+            sub[(y * w + x) * 4 + 0] = c[0];
+            sub[(y * w + x) * 4 + 1] = c[1];
+            sub[(y * w + x) * 4 + 2] = c[2];
+            sub[(y * w + x) * 4 + 3] = 255;
+          }
+        }
+      }
+
+      // 合成前快照（用于 disposal=3 还原）
+      const beforeDraw = new Uint8ClampedArray(screen);
+
+      // 覆盖合成到逻辑屏幕（透明像素不覆盖）
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const sx = left + x, sy = top + y;
+          if (sx < 0 || sy < 0 || sx >= width || sy >= height) continue;
+          const a = sub[(y * w + x) * 4 + 3];
+          if (a === 0) continue;
+          const si = (sy * width + sx) * 4;
+          const di = (y * w + x) * 4;
+          screen[si] = sub[di]; screen[si + 1] = sub[di + 1]; screen[si + 2] = sub[di + 2]; screen[si + 3] = 255;
+        }
+      }
+
+      // 记录该帧（完整逻辑屏幕）
+      frames.push({
+        data: new Uint8ClampedArray(screen),
+        width, height, delayMs: gce.delay * 10, left, top, w, h,
+        disposal: gce.disposal,
+      });
+
+      // 应用 disposal
+      if (gce.disposal === 2) { // 还原为背景（透明）
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const sx = left + x, sy = top + y;
+            if (sx < 0 || sy < 0 || sx >= width || sy >= height) continue;
+            const si = (sy * width + sx) * 4;
+            screen[si] = 0; screen[si + 1] = 0; screen[si + 2] = 0; screen[si + 3] = 0;
+          }
+        }
+      } else if (gce.disposal === 3) { // 还原为上一帧
+        screen = new Uint8ClampedArray(beforeDraw);
+      }
+      // disposal 0/1：保留
+    } else {
+      // 未知块：按子块跳过
+      p--;
+      skipSubBlocks();
+    }
+  }
+
+  const totalDelay = frames.reduce((s, f) => s + f.delayMs, 0);
+  return { width, height, frames, totalDelay, hasTransparency };
+}
+
+function rgbaToCanvas(rgba, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const id = new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.length), w, h);
+  ctx.putImageData(id, 0, 0);
+  return c;
+}
+
+/* ============================================================
+   ffmpeg.wasm 加载（CDN + 进度）
+   ============================================================ */
+const FFMPEG_CDNS = ['https://cdn.jsdelivr.net/npm', 'https://unpkg.com'];
+const FFMPEG_API = '@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+const FFMPEG_CORE_JS = '@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js';
+const FFMPEG_CORE_WASM = '@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm';
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => res();
+    s.onerror = () => rej(new Error('脚本加载失败: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+let ffmpeg = null;
+let ffmpegLoadPromise = null;
+let ffmpegProgressCb = null;
+
+async function fetchToBlobURL(url, mime, onProgress) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const total = Number(resp.headers.get('content-length')) || 0;
+  if (!resp.body) throw new Error('无响应体');
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (onProgress && total) onProgress(received / total);
+  }
+  return URL.createObjectURL(new Blob(chunks, { type: mime || 'application/octet-stream' }));
+}
+
+async function ensureFFmpeg(onCoreProgress) {
+  if (ffmpeg) return ffmpeg;
+  if (ffmpegLoadPromise) return ffmpegLoadPromise;
+  ffmpegLoadPromise = (async () => {
+    let FFmpegClass = null, err = null;
+    for (const base of FFMPEG_CDNS) {
+      try {
+        await loadScript(base + '/' + FFMPEG_API);
+        FFmpegClass = window.FFmpegWASM ? window.FFmpegWASM.FFmpeg : null;
+        if (FFmpegClass) break;
+      } catch (e) { err = e; }
+    }
+    if (!FFmpegClass) throw new Error('无法加载 ffmpeg 模块：' + (err ? err.message : '未知'));
+
+    const inst = new FFmpegClass();
+    let coreURL = null, wasmURL = null; err = null;
+    for (const base of FFMPEG_CDNS) {
+      try {
+        coreURL = await fetchToBlobURL(base + '/' + FFMPEG_CORE_JS, 'text/javascript', null);
+        wasmURL = await fetchToBlobURL(base + '/' + FFMPEG_CORE_WASM, 'application/wasm', onCoreProgress);
+        break;
+      } catch (e) { err = e; coreURL = null; wasmURL = null; }
+    }
+    if (!coreURL || !wasmURL) throw new Error('无法加载 ffmpeg core（约 31MB）：' + (err ? err.message : '未知'));
+
+    inst.on('log', ({ message }) => { /* 可在此调试 */ });
+    inst.on('progress', ({ progress }) => {
+      if (ffmpegProgressCb) ffmpegProgressCb(clamp(Number(progress) > 1 ? Number(progress) / 100 : Number(progress), 0, 1));
+    });
+    await inst.load({ coreURL, wasmURL });
+    ffmpeg = inst;
+    $('dotEngine').classList.add('on');
+    $('engineStatus').textContent = 'ffmpeg 引擎：已就绪（MOV 可用）';
+    return inst;
+  })();
+  return ffmpegLoadPromise;
+}
+
+/* ---------------- 图像 / 画布助手 ---------------- */
+function drawChecker(ctx, x, y, w, h, cell) {
+  cell = cell || 8;
+  for (let cy = 0; cy < h; cy += cell) {
+    for (let cx = 0; cx < w; cx += cell) {
+      ctx.fillStyle = ((cx / cell + cy / cell) % 2 === 0) ? '#c9c9c9' : '#e9e9e9';
+      ctx.fillRect(x + cx, y + cy, Math.min(cell, w - cx), Math.min(cell, h - cy));
+    }
+  }
+}
+
+function fitDraw(canvas, frame, pad) {
+  pad = pad || 0;
+  const cw = canvas.width, ch = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, cw, ch);
+  drawChecker(ctx, 0, 0, cw, ch);
+  const availW = cw - pad * 2, availH = ch - pad * 2;
+  const scale = Math.min(availW / frame.width, availH / frame.height);
+  const w = frame.width * scale, h = frame.height * scale;
+  ctx.drawImage(frame, (cw - w) / 2, (ch - h) / 2, w, h);
+}
+
+function canvasToBlob(c, type) {
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('编码失败')), type || 'image/png'));
+}
+
+// thr：α ≤ thr 视为透明（只影响"哪里算内容"；传 0 = 与原行为一致）
+function alphaBBox(c, thr) {
+  const lim = thr | 0;
+  const ctx = c.getContext('2d');
+  const id = ctx.getImageData(0, 0, c.width, c.height);
+  const d = id.data, w = c.width, h = c.height;
+  let minX = w, maxX = -1, minY = h, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (d[(y * w + x) * 4 + 3] > lim) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return null;
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+/* ---------------- 色度抠图（Chroma Key） ---------------- */
+function rgbToHsv(r, g, b) {
+  // r,g,b ∈ [0,1]
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d > 1e-6) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+  }
+  if (h < 0) h += 360;
+  const s = max < 1e-6 ? 0 : d / max;
+  return [h, s, max];
+}
+
+function smoothstep(e0, e1, x) {
+  const t = clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/* 可分离 box blur（滑动窗口 O(n)），src 与 dst 不可同一缓冲 */
+function boxBlur1D(src, w, h, r, horizontal, dst) {
+  const n = w * h;
+  const win = r * 2 + 1;
+  if (win <= 1) { for (let i = 0; i < n; i++) dst[i] = src[i]; return; }
+  if (horizontal) {
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      let acc = 0;
+      for (let x = -r; x <= r; x++) acc += src[row + clamp(x, 0, w - 1)];
+      for (let x = 0; x < w; x++) {
+        dst[row + x] = acc / win;
+        acc += src[row + clamp(x + r + 1, 0, w - 1)] - src[row + clamp(x - r, 0, w - 1)];
+      }
+    }
+  } else {
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let y = -r; y <= r; y++) acc += src[clamp(y, 0, h - 1) * w + x];
+      for (let y = 0; y < h; y++) {
+        dst[y * w + x] = acc / win;
+        acc += src[clamp(y + r + 1, 0, h - 1) * w + x] - src[clamp(y - r, 0, h - 1) * w + x];
+      }
+    }
+  }
+}
+
+/* 3 次 box blur ≈ 高斯模糊，作用于 alpha 通道 */
+function featherAlpha(alpha, w, h, radius) {
+  if (radius < 1) return alpha;
+  const r = Math.max(1, Math.round(radius));
+  const a = new Float32Array(w * h);
+  const b = new Float32Array(w * h);
+  const c = new Float32Array(w * h);
+  boxBlur1D(alpha, w, h, r, true, a);
+  boxBlur1D(a, w, h, r, false, b);
+  boxBlur1D(b, w, h, r, true, a);
+  boxBlur1D(a, w, h, r, false, c);
+  boxBlur1D(c, w, h, r, true, a);
+  boxBlur1D(a, w, h, r, false, b);
+  return b;
+}
+
+/* 对单帧应用色度抠图，返回带 Alpha 的新 canvas */
+  /* 已停用：Web 端抠图改由 Unity /api/key 处理（C# 单一来源，见 SpriteSheetKeyAdvanced）。
+     保留本函数仅作算法对照，不要再被调用 —— 否则又会变成两份实现。 */
+function applyChromaKey(frame, key) {
+  const w = frame.width, h = frame.height;
+  const srcCtx = frame.getContext('2d');
+  const img = srcCtx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const kr = key.color.r / 255, kg = key.color.g / 255, kb = key.color.b / 255;
+  const khsv = rgbToHsv(kr, kg, kb);
+  const kh = khsv[0], ks = khsv[1], kv = khsv[2];
+  const lowSat = ks < 0.15;
+  const I = key.intensity / 100, S = key.shadow / 100;
+  const T = 0.04 + I * 0.5;
+  const t_lo = T * 0.4, t_hi = Math.max(t_lo + 1e-4, T);
+  const shadowK = S * 0.85;
+
+  const n = w * h;
+  const alpha = new Float32Array(n);
+
+  for (let i = 0; i < n; i++) {
+    const p = i * 4;
+    const r = d[p] / 255, g = d[p + 1] / 255, b = d[p + 2] / 255;
+    const hsv = rgbToHsv(r, g, b);
+    let dh = Math.abs(hsv[0] - kh); if (dh > 180) dh = 360 - dh; dh /= 180;
+    const ds = Math.abs(hsv[1] - ks);
+    const dv = Math.abs(hsv[2] - kv);
+    const dark = clamp((kv - hsv[2]) / Math.max(kv, 1e-3), 0, 1);
+    const dvEff = dv * (1 - shadowK * dark);
+    let chroma;
+    if (lowSat) chroma = dvEff;
+    else chroma = Math.sqrt(dh * dh + 0.6 * ds * ds + 0.25 * dvEff * dvEff);
+    alpha[i] = smoothstep(t_lo, t_hi, chroma);
+  }
+
+  // 边缘羽化
+  if (key.feather > 0) {
+    const radius = (key.feather / 100) * Math.max(0.5, Math.min(w, h) * 0.02);
+    alpha.set(featherAlpha(alpha, w, h, radius));
+  }
+
+  // 边缘清除：擦边 + 去色溢
+  const C = key.cleanup / 100;
+  const e = C * 0.5, e1 = e + 0.15;
+  const kc = [kr, kg, kb];
+  let mIdx = 0; if (kc[1] > kc[mIdx]) mIdx = 1; if (kc[2] > kc[mIdx]) mIdx = 2;
+  const spill = C;
+
+  for (let i = 0; i < n; i++) {
+    let a = alpha[i];
+    if (e > 0) a = smoothstep(e, e1, a);
+    a = clamp(a, 0, 1);
+    const p = i * 4;
+    let r = d[p] / 255, g = d[p + 1] / 255, b = d[p + 2] / 255;
+    if (a > 0.5 && spill > 0) {
+      const px = [r, g, b];
+      const o0 = mIdx === 0 ? 1 : 0, o1 = mIdx === 2 ? 1 : 2;
+      const avg = (px[o0] + px[o1]) / 2;
+      if (px[mIdx] > avg) px[mIdx] -= (px[mIdx] - avg) * spill;
+      r = px[0]; g = px[1]; b = px[2];
+    }
+    d[p] = Math.round(clamp(r, 0, 1) * 255);
+    d[p + 1] = Math.round(clamp(g, 0, 1) * 255);
+    d[p + 2] = Math.round(clamp(b, 0, 1) * 255);
+    d[p + 3] = Math.round(a * 255);
+  }
+
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  out.getContext('2d').putImageData(img, 0, 0);
+  return out;
+}
+
+/* ---------------- 裁切/最小化 几何 ---------------- */
+function getCropRect(w, h) {
+  const s = state.crop;
+  if (!s.enabled) return { x: 0, y: 0, w, h };
+  const L = clamp(Number(s.left) || 0, 0, 99) / 100;
+  const T = clamp(Number(s.top) || 0, 0, 99) / 100;
+  const R = clamp(Number(s.right) || 0, 0, 99) / 100;
+  const B = clamp(Number(s.bottom) || 0, 0, 99) / 100;
+  const x = Math.round(w * L), y = Math.round(h * T);
+  const cw = Math.max(1, w - Math.round(w * L) - Math.round(w * R));
+  const ch = Math.max(1, h - Math.round(h * T) - Math.round(h * B));
+  return { x, y, w: cw, h: ch };
+}
+
+function getTrimBBox() { return state.trim.enabled ? state.trim.bbox : null; }
+
+function buildProcessedFrame(frame, scale) {
+  const crop = getCropRect(frame.width, frame.height);
+  const trim = getTrimBBox();
+  let sx = crop.x, sy = crop.y, sw = crop.w, sh = crop.h;
+  if (trim) { sx = crop.x + trim.x; sy = crop.y + trim.y; sw = trim.w; sh = trim.h; }
+  const w = Math.max(1, Math.round(sw * scale / 100));
+  const h = Math.max(1, Math.round(sh * scale / 100));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  // 放大时用最近邻保持像素清晰；缩小时用平滑抗锯齿
+  ctx.imageSmoothingEnabled = (scale < 100);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(frame, sx, sy, sw, sh, 0, 0, w, h);
+  // 缩放之后再清极淡像素：缩放插值会在边缘重新生成 α=1~7 的尾巴，
+  // 放在缩放前清等于白清（与 Unity 的 BuildProcessed 同序）
+  const alphaThr = state.trim.alphaThreshold | 0;
+  if (alphaThr > 0) cleanFaintAlpha(ctx, w, h, alphaThr);
+  return c;
+}
+
+// 与 C# CleanupFaintAlpha 等价：α ≤ 阈值一律清成全透明（颜色一起清零）
+function cleanFaintAlpha(ctx, w, h, thr) {
+  const id = ctx.getImageData(0, 0, w, h);
+  const d = id.data;
+  let any = false;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] <= thr) {
+      if (d[i + 3] !== 0 || d[i] || d[i + 1] || d[i + 2]) any = true;
+      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 0;
+    }
+  }
+  if (any) ctx.putImageData(id, 0, 0);
+}
+
+function getSelectedIndices() {
+  const arr = [];
+  for (let i = 0; i < state.frames.length; i++) if (state.selected.has(i)) arr.push(i);
+  return arr;
+}
+
+/* 管线有效帧：色度抠图 → 框选去水印，结果优先 */
+function effectiveFrame(i) {
+  let f = state.frames[i];
+  if (state.key.enabled && state.keyed.has(i)) f = state.keyed.get(i);
+  if (state.mask.enabled && state.masked.has(i)) f = state.masked.get(i);
+  return f;
+}
+
+function getSelectedFrames() {
+  return getSelectedIndices().map(i => effectiveFrame(i));
+}
+
+/* ---------------- 模块1：导入 ---------------- */
+function detectKind(file) {
+  const name = (file.name || '').toLowerCase();
+  if (name.endsWith('.gif')) return 'gif';
+  return 'video';
+}
+
+async function handleFile(file) {
+  stopPreview();
+  stopSelectedPlayback();
+  const kind = detectKind(file);
+  if (kind === 'gif') {
+    try {
+      const buf = await file.arrayBuffer();
+      const gif = decodeGIF(buf);
+      state.source = {
+        kind, file, name: file.name, size: file.size,
+        duration: gif.totalDelay / 1000, frameCount: gif.frames.length,
+        width: gif.width, height: gif.height,
+        url: URL.createObjectURL(file), gif,
+      };
+      renderImportInfo();
+      renderGIFPreview();
+      toast('GIF 解析成功：' + gif.frames.length + ' 帧', 'ok');
+    } catch (e) {
+      toast('GIF 解析失败：' + e.message, 'err');
+      return;
+    }
+  } else {
+    state.source = {
+      kind, file, name: file.name, size: file.size,
+      duration: null, frameCount: null, width: null, height: null,
+      url: URL.createObjectURL(file), gif: null,
+    };
+    renderImportInfo();
+    renderVideoPreview();
+    // 尝试原生读取时长/分辨率
+    const v = $('srcVideo');
+    const onMeta = () => {
+      if (v.duration && isFinite(v.duration)) {
+        state.source.duration = v.duration;
+        state.source.width = v.videoWidth;
+        state.source.height = v.videoHeight;
+        renderImportInfo();
+        $('srcPreviewNote').textContent = '原生预览可用（浏览器可解码该视频）';
+        if (Number($('convEnd').value) === 1) $('convEnd').value = Math.round(v.duration * 100) / 100;
+        updateConvUI();
+      }
+    };
+    const onErr = () => {
+      $('srcPreviewNote').innerHTML = '<span class="warn">⚠ 浏览器无法原生解码该视频（常见于带 Alpha 的 HEVC/QTRLE MOV）。</span> 仍可通过 ffmpeg 引擎抽帧，请到「转帧输出」直接生成帧。';
+    };
+    v.addEventListener('loadedmetadata', onMeta, { once: true });
+    v.addEventListener('error', onErr, { once: true });
+  }
+  updateTabs();
+  $('btnToConvert').disabled = false;
+}
+
+function renderImportInfo() {
+  const s = state.source;
+  $('infoCard').style.display = 'block';
+  $('info-name').textContent = s.name;
+  $('info-type').textContent = s.kind === 'gif' ? 'GIF 动画' : '视频 (MOV/MP4/WebM)';
+  $('info-size').textContent = fmtMB(s.size);
+  if (s.kind === 'gif') {
+    $('info-durKey').textContent = '总帧数';
+    $('info-dur').textContent = s.frameCount + ' 帧';
+    $('info-res').textContent = s.width + ' × ' + s.height;
+  } else {
+    $('info-durKey').textContent = '总时长';
+    $('info-dur').textContent = s.duration != null ? s.duration.toFixed(2) + ' 秒' : '探测中…';
+    $('info-res').textContent = s.width ? s.width + ' × ' + s.height : '-';
+  }
+}
+
+function renderGIFPreview() {
+  const box = $('srcPreviewBox');
+  box.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = state.source.url;
+  img.alt = 'GIF 预览';
+  box.appendChild(img);
+  $('srcPreviewNote').textContent = '使用浏览器原生 GIF 播放（循环）';
+}
+
+function renderVideoPreview() {
+  const box = $('srcPreviewBox');
+  box.innerHTML = '';
+  const v = document.createElement('video');
+  v.id = 'srcVideo';
+  v.src = state.source.url;
+  v.controls = true;
+  v.loop = true;
+  v.muted = true;
+  v.playsInline = true;
+  box.appendChild(v);
+  $('srcPreviewNote').textContent = '正在尝试原生解码…';
+}
+
+/* ---------------- 模块2：转帧 ---------------- */
+function updateConvUI() {
+  const s = state.source;
+  if (!s) return;
+  if (s.kind === 'gif') {
+    $('lblStart').textContent = '起始帧（从 0 开始）';
+    $('lblEnd').textContent = '结束帧';
+    $('convStart').step = '1';
+    $('convEnd').step = '1';
+    const st = clamp(Math.round(Number($('convStart').value) || 0), 0, s.frameCount - 1);
+    const en = clamp(Math.round(Number($('convEnd').value) || s.frameCount - 1), st, s.frameCount - 1);
+    $('convStart').value = st;
+    $('convEnd').value = en;
+    const fps = Number($('convFps').value) || 12;
+    const nativeFps = (s.frameCount > 0 && s.duration > 0) ? s.frameCount / s.duration : 10;
+    const step = clamp(Math.round(nativeFps / fps), 1, 999);
+    const cnt = Math.ceil((en - st + 1) / step);
+    $('convHint').textContent = '每 ' + step + ' 帧取 1 帧';
+    $('genFrameCount').textContent = '预计 ' + cnt + ' 帧';
+    $('convRangeInfo').textContent = `选区：第 ${st} 帧 → 第 ${en} 帧（共 ${en - st + 1} 帧），采样后约 ${cnt} 帧`;
+  } else {
+    $('lblStart').textContent = '起始位置（秒）';
+    $('lblEnd').textContent = '结束位置（秒）';
+    $('convStart').step = '0.01';
+    $('convEnd').step = '0.01';
+    const dur = s.duration != null ? s.duration : Infinity;
+    const st = clamp(Number($('convStart').value) || 0, 0, Math.max(0, dur));
+    const en = clamp(Number($('convEnd').value) || Math.min(dur, st + 1), st, Math.max(st, dur));
+    $('convStart').value = st;
+    $('convEnd').value = en;
+    const fps = Number($('convFps').value) || 12;
+    $('convHint').textContent = fps + ' 帧/秒均匀采样';
+    const est = Math.max(1, Math.round((en - st) * fps));
+    $('genFrameCount').textContent = '预计 ' + est + ' 帧';
+    $('convRangeInfo').textContent = `选区：${st.toFixed(2)}s → ${en.toFixed(2)}s（约 ${est} 帧）`;
+  }
+}
+
+function initConvDefaults() {
+  const s = state.source;
+  if (!s) return;
+  if (s.kind === 'gif') {
+    $('convStart').value = 0;
+    $('convEnd').value = s.frameCount - 1;
+  } else {
+    $('convStart').value = 0;
+    $('convEnd').value = s.duration != null ? Math.round(s.duration * 100) / 100 : 1;
+  }
+  updateConvUI();
+}
+
+function stopPreview() {
+  if (state.previewTimer) { clearTimeout(state.previewTimer); state.previewTimer = null; }
+  const v0 = $('srcVideo');
+  if (v0) { try { v0.pause(); } catch (_) {} }
+  if (state.previewVideo) { try { state.previewVideo.pause(); } catch (_) {} }
+  $('btnConvPreviewStop').disabled = true;
+}
+
+/* 视频选区预览：在选区预览框内创建独立 video，在 [start,end] 内循环 */
+function previewVideoRange() {
+  const s = state.source;
+  const box = $('convPreviewBox');
+  const start = Number($('convStart').value) || 0;
+  const end = Number($('convEnd').value) || 0;
+  if (end <= start) { toast('结束位置需大于起始位置', 'err'); return; }
+  stopPreview();
+  box.innerHTML = '';
+  const v = document.createElement('video');
+  v.src = s.url;
+  v.controls = true;
+  v.muted = true;
+  v.playsInline = true;
+  v.preload = 'auto';
+  box.appendChild(v);
+  state.previewVideo = v;
+  v.addEventListener('error', () => {
+    toast('该视频无法原生预览，请直接「生成帧图片」后在编辑区预览', 'err');
+  }, { once: true });
+  const startPlay = () => {
+    v.currentTime = start;
+    v.play().catch(() => toast('无法播放视频', 'err'));
+    $('btnConvPreviewStop').disabled = false;
+  };
+  if (v.readyState >= 2) startPlay();
+  else v.addEventListener('loadeddata', startPlay, { once: true });
+  const onTime = () => { if (v.currentTime >= end) v.currentTime = start; };
+  v.addEventListener('timeupdate', onTime);
+}
+
+/* GIF 选区预览：按帧延迟循环 */
+function previewGIFRange() {
+  const s = state.source;
+  const box = $('convPreviewBox');
+  box.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = s.width; canvas.height = s.height;
+  box.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const start = Math.round(Number($('convStart').value) || 0);
+  const end = Math.round(Number($('convEnd').value) || s.frameCount - 1);
+  const list = s.gif.frames.slice(start, end + 1);
+  if (!list.length) { toast('选区无帧', 'err'); return; }
+  let i = 0;
+  const draw = () => {
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(list[i].data), s.width, s.height), 0, 0);
+    i = (i + 1) % list.length;
+    state.previewTimer = setTimeout(draw, Math.max(10, list[i === 0 ? list.length - 1 : i - 1].delayMs));
+  };
+  stopPreview();
+  draw();
+  $('btnConvPreviewStop').disabled = false;
+}
+
+/* 原生抽帧：H.264 mp4/mov 走 <video> seek，快且免 ffmpeg 下载 */
+function seekTo(v, t) {
+  return new Promise((res) => {
+    if (v.readyState >= 2 && Math.abs(v.currentTime - t) < 0.01) { res(); return; }
+    let done = false, timer = null;
+    const finish = () => { if (done) return; done = true; clearTimeout(timer); v.removeEventListener('seeked', onSeeked); res(); };
+    const onSeeked = () => finish();
+    timer = setTimeout(finish, 5000);
+    v.addEventListener('seeked', onSeeked);
+    try { v.currentTime = t; } catch (_) { finish(); }
+  });
+}
+
+async function extractNativeVideoFrames(file, start, end, fps, onProgress) {
+  const url = URL.createObjectURL(file);
+  const v = document.createElement('video');
+  v.src = url; v.muted = true; v.playsInline = true; v.preload = 'auto';
+  try {
+    await new Promise((res, rej) => {
+      const timer = setTimeout(() => rej(new Error('解码超时')), 12000);
+      v.addEventListener('loadeddata', () => { clearTimeout(timer); res(); }, { once: true });
+      v.addEventListener('error', () => { clearTimeout(timer); rej(new Error('原生无法解码')); }, { once: true });
+    });
+    const w = v.videoWidth, h = v.videoHeight;
+    if (!w || !h) throw new Error('无法读取分辨率');
+    const total = Math.max(1, Math.round((end - start) * fps));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const step = 1 / fps;
+    const frames = [];
+    const max = 2000;
+    const cap = Math.min(total, max);
+    for (let i = 0; i < cap; i++) {
+      const t = Math.min(start + i * step, end);
+      await seekTo(v, t);
+      ctx.drawImage(v, 0, 0, w, h);
+      const fr = document.createElement('canvas');
+      fr.width = w; fr.height = h;
+      fr.getContext('2d').drawImage(canvas, 0, 0);
+      frames.push(fr);
+      if (onProgress) onProgress((i + 1) / cap);
+    }
+    return frames;
+  } finally {
+    v.removeAttribute('src'); v.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function generateFrames() {
+  const s = state.source;
+  if (!s) return;
+  stopPreview();
+  stopSelectedPlayback();
+  const start = Number($('convStart').value);
+  const end = Number($('convEnd').value);
+  const fps = Number($('convFps').value) || 12;
+  if (end <= start) { toast('结束位置需大于起始位置', 'err'); return; }
+
+  let frames = [];
+  try {
+    if (s.kind === 'gif') {
+      const nativeFps = (s.frameCount > 0 && s.duration > 0) ? s.frameCount / s.duration : 10;
+      const step = clamp(Math.round(nativeFps / fps), 1, 999);
+      const st = Math.round(start), en = Math.round(end);
+      setBusy('正在从 GIF 抽取帧…', true);
+      for (let i = st; i <= en; i += step) {
+        const f = s.gif.frames[i];
+        if (f) frames.push(rgbaToCanvas(f.data, f.width, f.height));
+      }
+      setBusy(null, false);
+    } else {
+      // 优先原生抽帧（H.264 mp4/mov，快、免 ffmpeg 下载）
+      let nativeOK = false;
+      setBusy('正在原生抽帧…', true);
+      try {
+        frames = await extractNativeVideoFrames(s.file, start, end, fps, p => setProgress(p));
+        nativeOK = frames.length > 0;
+      } catch (_) { frames = []; }
+      setBusy(null, false);
+
+      if (!nativeOK) {
+        // 回退 ffmpeg（Alpha MOV / 浏览器不可解码编码）
+        setBusy('正在加载 ffmpeg 引擎（首次约 31MB，请稍候）…', true);
+        try {
+          await ensureFFmpeg(p => { setProgress(p); });
+        } catch (e) {
+          setBusy(null, false);
+          toast('解码引擎加载失败：' + e.message, 'err');
+          return;
+        }
+        setBusy('正在写入文件…', true);
+        const data = new Uint8Array(await s.file.arrayBuffer());
+        await ffmpeg.writeFile('in.mov', data);
+        // 原生无法解码时，用 ffmpeg 探测总时长
+        if (s.duration == null) {
+          const logs = [];
+          const h = ({ message }) => logs.push(message);
+          ffmpeg.on('log', h);
+          try { await ffmpeg.exec(['-i', 'in.mov']); } catch (_) {}
+          if (typeof ffmpeg.off === 'function') ffmpeg.off('log', h);
+          for (const m of logs) {
+            const mm = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(m || '');
+            if (mm) { s.duration = (+mm[1]) * 3600 + (+mm[2]) * 60 + (+mm[3]); break; }
+          }
+          if (s.duration != null) {
+            renderImportInfo();
+            if (Number($('convEnd').value) === 1) $('convEnd').value = Math.round(s.duration * 100) / 100;
+            updateConvUI();
+            toast('已用 ffmpeg 探测时长：' + s.duration.toFixed(2) + ' 秒', 'ok');
+          }
+        }
+        ffmpegProgressCb = (p) => setProgress(p);
+        setBusy('正在抽帧（ffmpeg 解码）…', true);
+        const code = await ffmpeg.exec([
+          '-y', '-i', 'in.mov',
+          '-ss', start.toFixed(2),
+          '-to', end.toFixed(2),
+          '-vf', 'fps=' + fps,
+          '-pix_fmt', 'rgba',
+          '-f', 'image2',
+          'out_%04d.png',
+        ]);
+        ffmpegProgressCb = null;
+        if (code !== 0) throw new Error('ffmpeg 抽帧失败（code=' + code + '）');
+        const list = (await ffmpeg.listDir('.')).filter(e => !e.isDir && /^out_\d+\.png$/.test(e.name));
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        if (!list.length) throw new Error('未生成任何帧，请检查起止时间');
+        const maxFrames = 2000;
+        for (let i = 0; i < list.length; i++) {
+          const bytes = await ffmpeg.readFile(list[i].name);
+          const blob = new Blob([bytes], { type: 'image/png' });
+          let bmp;
+          try { bmp = await createImageBitmap(blob); }
+          catch (_) {
+            const img = new Image();
+            img.src = URL.createObjectURL(blob);
+            await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+            bmp = img;
+          }
+          const c = document.createElement('canvas');
+          c.width = bmp.width; c.height = bmp.height;
+          c.getContext('2d').drawImage(bmp, 0, 0);
+          if (bmp.close) bmp.close();
+          frames.push(c);
+          try { await ffmpeg.deleteFile(list[i].name); } catch (_) {}
+          if (frames.length >= maxFrames) { toast('已达上限 ' + maxFrames + ' 帧，已截断', 'warn'); break; }
+        }
+        try { await ffmpeg.deleteFile('in.mov'); } catch (_) {}
+        setBusy(null, false);
+      }
+    }
+  } catch (e) {
+    setBusy(null, false);
+    toast('生成帧失败：' + e.message, 'err');
+    return;
+  }
+
+  if (!frames.length) { toast('未生成任何帧', 'err'); return; }
+  state.frames = frames;
+  state.selected = new Set(frames.map((_, i) => i));
+  state.trim.bbox = null;
+  state.trim.content = null;
+  state.keyed.clear();
+  state.masked.clear();
+  $('keyApplyStatus').textContent = '';
+  $('keyAppliedHint').textContent = '';
+  $('maskApplyStatus').textContent = '';
+  renderThumbnails();
+  $('framesCard').style.display = 'block';
+  $('frameCountTag').textContent = frames.length + ' 帧';
+  $('genFrameCount').textContent = '已生成 ' + frames.length + ' 帧';
+  toast('已生成 ' + frames.length + ' 帧', 'ok');
+  updateTabs();
+}
+
+function renderThumbnails() {
+  const g1 = $('thumbGrid');
+  g1.innerHTML = '';
+  const g2 = $('editThumbGrid');
+  g2.innerHTML = '';
+  state.frames.forEach((_, i) => {
+    const f = effectiveFrame(i);
+    for (const g of [g1, g2]) {
+      const d = document.createElement('div');
+      d.className = 'thumb' + (state.selected.has(i) ? ' sel' : '');
+      d.dataset.idx = i;
+      const c = document.createElement('canvas');
+      c.width = 150; c.height = 150;
+      fitDraw(c, f);
+      d.appendChild(c);
+      const tick = document.createElement('div');
+      tick.className = 'tick'; tick.textContent = '✓';
+      d.appendChild(tick);
+      const idx = document.createElement('div');
+      idx.className = 'idx'; idx.textContent = i;
+      d.appendChild(idx);
+      d.addEventListener('click', () => toggleSelect(i));
+      g.appendChild(d);
+    }
+  });
+  updateSelCount();
+}
+
+function toggleSelect(i) {
+  if (state.selected.has(i)) state.selected.delete(i);
+  else state.selected.add(i);
+  const els = document.querySelectorAll('.thumb[data-idx="' + i + '"]');
+  els.forEach(e => e.classList.toggle('sel', state.selected.has(i)));
+  updateSelCount();
+  refreshEditPreviews();
+  renderKeyPreview();
+  renderMaskPreview();
+}
+
+function updateSelCount() {
+  $('selCount').textContent = state.selected.size;
+  $('totalCount').textContent = state.frames.length;
+  $('convSelTag').textContent = '选择 ' + state.selected.size + ' 帧';
+}
+
+/* ---------------- 模块3：编辑 ---------------- */
+function selectAll() { state.selected = new Set(state.frames.map((_, i) => i)); syncThumbSel(); }
+function invertSel() {
+  const n = new Set();
+  for (let i = 0; i < state.frames.length; i++) if (!state.selected.has(i)) n.add(i);
+  state.selected = n;
+  syncThumbSel();
+}
+function syncThumbSel() {
+  document.querySelectorAll('.thumb').forEach(e => {
+    const i = Number(e.dataset.idx);
+    e.classList.toggle('sel', state.selected.has(i));
+  });
+  updateSelCount();
+  refreshEditPreviews();
+  renderKeyPreview();
+  renderMaskPreview();
+}
+
+function refreshEditPreviews() {
+  const sel = getSelectedFrames();
+  if (!sel.length) {
+    $('cropPreviewBox').innerHTML = '<div class="hint">-</div>';
+    $('finalPreviewBox').innerHTML = '<div class="hint">-</div>';
+    renderAnchorPreview();
+    return;
+  }
+  // 裁切首帧
+  const crop = getCropRect(sel[0].width, sel[0].height);
+  const c1 = document.createElement('canvas');
+  c1.width = crop.w; c1.height = crop.h;
+  const ctx1 = c1.getContext('2d');
+  ctx1.drawImage(sel[0], crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+  showPreviewBox('cropPreviewBox', c1);
+
+  // 最终首帧（裁切+最小化）
+  const fin = buildProcessedFrame(sel[0], 100);
+  showPreviewBox('finalPreviewBox', fin);
+  renderAnchorPreview();
+}
+
+function showPreviewBox(id, canvas) {
+  const box = $(id);
+  box.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;';
+  const c = document.createElement('canvas');
+  c.width = canvas.width; c.height = canvas.height;
+  const ctx = c.getContext('2d');
+  drawChecker(ctx, 0, 0, c.width, c.height);
+  ctx.drawImage(canvas, 0, 0);
+  const maxDim = 420;
+  const sc = Math.min(1, maxDim / Math.max(c.width, c.height));
+  c.style.width = (c.width * sc) + 'px';
+  c.style.height = (c.height * sc) + 'px';
+  c.style.imageRendering = 'auto';
+  wrap.appendChild(c);
+  box.appendChild(wrap);
+}
+
+/* ---------------- 色度抠图 UI ---------------- */
+function updateKeyColorUI() {
+  const c = state.key.color;
+  const hex = '#' + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+  $('keyColorSwatch').style.background = hex;
+  $('keyColorHex').value = hex;
+}
+
+function renderKeySource() {
+  const sel = getSelectedIndices();
+  const box = $('keySourceBox');
+  box.innerHTML = '';
+  if (!sel.length) { box.innerHTML = '<div class="hint">-</div>'; return; }
+  const src = state.frames[sel[0]];
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.getContext('2d').drawImage(src, 0, 0);
+  const maxDim = 420;
+  const sc = Math.min(1, maxDim / Math.max(c.width, c.height));
+  c.style.width = (c.width * sc) + 'px';
+  c.style.height = (c.height * sc) + 'px';
+  c.style.cursor = 'crosshair';
+  box.appendChild(c);
+  c.addEventListener('click', (e) => pickColorFromEvent(e, src, sc));
+}
+
+function pickColorFromEvent(e, src, sc) {
+  if (!state.picking) return;
+  const rect = e.target.getBoundingClientRect();
+  const px = Math.floor((e.clientX - rect.left) / sc);
+  const py = Math.floor((e.clientY - rect.top) / sc);
+  if (px < 0 || py < 0 || px >= src.width || py >= src.height) return;
+  const d = src.getContext('2d').getImageData(px, py, 1, 1).data;
+  state.key.color = { r: d[0], g: d[1], b: d[2] };
+  updateKeyColorUI();
+  state.picking = false;
+  $('btnPickColor').textContent = '🎯 取色';
+  $('keyPickHint').textContent = '点击「取色」后，在左侧原图上点取背景色';
+  renderKeyResult();
+}
+
+function showMaskInto(id, canvas) {
+  const box = $(id);
+  box.innerHTML = '';
+  const c = document.createElement('canvas');
+  c.width = canvas.width; c.height = canvas.height;
+  const ctx = c.getContext('2d');
+  const idata = canvas.getContext('2d').getImageData(0, 0, c.width, c.height);
+  const d = idata.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+    d[i] = a; d[i + 1] = a; d[i + 2] = a; d[i + 3] = 255;
+  }
+  ctx.putImageData(idata, 0, 0);
+  const maxDim = 420;
+  const sc = Math.min(1, maxDim / Math.max(c.width, c.height));
+  c.style.width = (c.width * sc) + 'px';
+  c.style.height = (c.height * sc) + 'px';
+  box.appendChild(c);
+}
+
+/* ---------------- 抠图：统一交给 Unity 服务端（C# 单一来源） ----------------
+   Web 端不再自己实现抠图算法：把「参数 + 原始帧」POST 到 /api/key，
+   C# 侧用 SpriteSheetKeyAdvanced / SpriteSheetPixelOps 算完回传 PNG。
+   Unity 窗口与 Web 面板从此共用同一份抠图代码，改算法只改一处。 */
+
+function keyHex() {
+  const c = state.key.color;
+  return '#' + [c.r, c.g, c.b].map(function (v) { return (v | 0).toString(16).padStart(2, '0'); }).join('');
+}
+
+function canvasToPng(canvas) { return canvas.toDataURL('image/png'); }
+
+function loadCanvasFromDataUrl(url) {
+  return new Promise(function (resolve, reject) {
+    const img = new Image();
+    img.onload = function () {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      resolve(c);
+    };
+    img.onerror = function () { reject(new Error('结果图片加载失败')); };
+    img.src = url;
+  });
+}
+
+function keyRequestParams() {
+  const k = state.key, a = k.adv;
+  return {
+    mode: k.mode === 'advanced' ? 'advanced' : 'classic',
+    color: keyHex(),
+    intensity: k.intensity,
+    classicFeather: k.feather,
+    cleanup: k.cleanup,
+    advIntensity: a.intensity,
+    advSoftness: a.softness,
+    advDespill: a.despill,
+    advDespillAggr: !!a.despillAggr,
+    advFeather: a.feather,
+    greenToAlpha: a.greenToAlpha,
+    autoPlate: !!k.autoPlate,
+    maskEnabled: false,
+  };
+}
+
+async function requestKey(frames, autoPlate) {
+  const body = keyRequestParams();
+  body.autoPlate = !!autoPlate;
+  body.frames = frames.map(canvasToPng);
+  const res = await fetch('/api/key', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json();
+  if (!json || json.error) throw new Error((json && json.error) || '抠图接口无响应');
+  return json;
+}
+
+function updateKeyModeVisibility() {
+  const classic = state.key.mode !== 'advanced';
+  $('keyClassicRow').style.display = classic ? '' : 'none';
+  $('keyAdvBox').style.display = classic ? 'none' : '';
+}
+
+function bindAdvSlider(rangeId, numId, valId, prop, max) {
+  const r = $(rangeId), n = $(numId), cap = max || 100;
+  const apply = (v) => {
+    v = clamp(v, 0, cap);
+    state.key.adv[prop] = v;
+    if (valId) $(valId).textContent = ' ' + v;
+    r.value = v; n.value = v;
+    onKeyParamChange();
+  };
+  r.addEventListener('input', () => apply(Number(r.value) || 0));
+  n.addEventListener('change', () => apply(Number(n.value) || 0));   // 数字框：提交后再生效
+}
+
+let keyPreviewToken = 0;
+let keyPreviewTimer = null;
+
+function scheduleKeyPreview() {
+  if (keyPreviewTimer) clearTimeout(keyPreviewTimer);
+  keyPreviewTimer = setTimeout(function () { keyPreviewTimer = null; renderKeyResult(); }, 220);
+}
+
+async function renderKeyResult() {
+  const sel = getSelectedIndices();
+  const box = $('keyResultBox');
+  if (!sel.length) { box.innerHTML = '<div class="hint">-</div>'; return; }
+  const src = state.frames[sel[0]];
+  if (!state.key.enabled) {
+    // 与 Unity 的 RefreshKeyPreview 一致：勾了「显示 Alpha 蒙版」时，即使没启用抠图
+    // 也要显示 alpha（此时就是原帧/去水印后帧的 alpha），否则勾了看起来没反应
+    if ($('keyShowMask').checked) showMaskInto('keyResultBox', effectiveFrame(sel[0]));
+    else showPreviewBox('keyResultBox', src);
+    return;
+  }
+
+  const token = ++keyPreviewToken;
+  try {
+    const r = await requestKey([src], false);   // 预览不跑自动背景板，避免每次拖动都全帧重算
+    if (token !== keyPreviewToken) return;
+    const c = await loadCanvasFromDataUrl(r.frames[0]);
+    if (token !== keyPreviewToken) return;
+    if ($('keyShowMask').checked) showMaskInto('keyResultBox', c);
+    else showPreviewBox('keyResultBox', c);
+  } catch (e) {
+    if (token !== keyPreviewToken) return;
+    box.innerHTML = '<div class="hint">抠图失败：' + esc(String(e.message || e)) + '</div>';
+  }
+}
+
+function renderKeyPreview() {
+  renderKeySource();
+  renderKeyResult();
+}
+
+function onKeyParamChange() {
+  if (state.keyed.size || state.masked.size) {
+    state.keyed.clear();
+    state.masked.clear();
+    $('keyApplyStatus').innerHTML = '<span class="warn">参数已修改，需重新应用</span>';
+    renderThumbnails();
+    updateSelCount();
+  }
+  scheduleKeyPreview();
+  refreshEditPreviews();
+}
+
+async function applyKeyToAll() {
+  if (!state.key.enabled) { toast('请先启用抠图', 'err'); return; }
+  const indices = getSelectedIndices();
+  if (!indices.length) { toast('请先勾选帧', 'err'); return; }
+  setBusy('正在把 ' + indices.length + ' 帧本地抠图（离线版）…', true);
+  try {
+    const r = await requestKey(indices.map(function (i) { return state.frames[i]; }), state.key.autoPlate);
+    state.keyed.clear();
+    for (let i = 0; i < indices.length; i++) {
+      state.keyed.set(indices[i], await loadCanvasFromDataUrl(r.frames[i]));
+      setProgress((i + 1) / indices.length);
+    }
+    setBusy(null, false);
+    if (r.plateInfo) $('advPlateInfo').textContent = r.plateInfo;
+    $('keyApplyStatus').innerHTML = '<span class="ok">✓ 已应用到 ' + indices.length + ' 帧</span>';
+    $('keyAppliedHint').textContent = '';
+    // 若框选去水印已启用，基于新 keyed 结果重算 masked（矩形透明化仍在本地做）
+    if (state.mask.enabled && state.mask.rect) {
+      state.masked.clear();
+      for (let i = 0; i < indices.length; i++) {
+        const idx = indices[i];
+        state.masked.set(idx, applyRectMask(state.keyed.get(idx), state.mask.rect));
+      }
+    }
+    renderThumbnails();
+    updateSelCount();
+    // 顺序：抠图 → 裁切 → 尺寸最小化；抠图改变透明边缘，应用后自动重算最小化
+    if (state.trim.enabled) {
+      const eff = getSelectedFrames();               // 已是抠图后的有效帧
+      applyTrimResult(computeTrimCore(eff), eff[0], true);
+      toast('抠图完成，已自动重算尺寸最小化', 'ok');
+    } else {
+      refreshEditPreviews();
+      toast('抠图完成', 'ok');
+    }
+  } catch (e) {
+    setBusy(null, false);
+    toast('抠图失败：' + (e.message || e), 'err');
+  }
+}
+
+/* ---------------- 框选去水印（矩形透明化） ---------------- */
+function applyRectMask(frame, rect) {
+  const w = frame.width, h = frame.height;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const ctx = out.getContext('2d');
+  ctx.drawImage(frame, 0, 0);
+  ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
+  return out;
+}
+
+function drawMaskOverlay(ov, rect) {
+  const ctx = ov.getContext('2d');
+  ctx.clearRect(0, 0, ov.width, ov.height);
+  if (!rect) return;
+  ctx.fillStyle = 'rgba(255,64,64,0.35)';
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  ctx.strokeStyle = '#ff4040';
+  ctx.lineWidth = Math.max(1, ov.width / 200);
+  ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, Math.max(1, rect.w - 1), Math.max(1, rect.h - 1));
+}
+
+function updateMaskInfo() {
+  const r = state.mask.rect;
+  $('maskInfo').textContent = r ? ('框选区域：x ' + r.x + ' · y ' + r.y + ' · 宽 ' + r.w + ' · 高 ' + r.h + ' px') : '未框选';
+}
+
+function attachMaskDrag(ov, src, sc) {
+  let dragging = false, sx = 0, sy = 0, pid = null;
+
+  function pos(e) {
+    const r = ov.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / sc, y: (e.clientY - r.top) / sc };
+  }
+
+  function apply(e) {
+    const p = pos(e);
+    const x = Math.max(0, Math.min(sx, p.x));
+    const y = Math.max(0, Math.min(sy, p.y));
+    const w = Math.min(src.width - x, Math.abs(p.x - sx));
+    const h = Math.min(src.height - y, Math.abs(p.y - sy));
+    state.mask.rect = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+    drawMaskOverlay(ov, state.mask.rect);
+    updateMaskInfo();
+  }
+
+  ov.style.touchAction = 'none';   // 触屏拖拽不要被滚动抢走
+
+  ov.addEventListener('pointerdown', (e) => {
+    if (!state.mask.enabled) { toast('请先启用框选去水印', 'err'); return; }
+    if (e.button !== undefined && e.button !== 0) return;   // 只响应左键/单指
+    const p = pos(e);
+    sx = Math.max(0, Math.min(src.width, p.x));
+    sy = Math.max(0, Math.min(src.height, p.y));
+    dragging = true;
+    pid = e.pointerId;
+    // 关键：捕获指针后，鼠标/手指移出画布也会继续收到 move/up，不会被 mouseleave 打断
+    try { ov.setPointerCapture(pid); } catch (err) { /* 老浏览器忽略 */ }
+    state.mask.rect = { x: Math.round(sx), y: Math.round(sy), w: 0, h: 0 };
+    e.preventDefault();
+  });
+
+  ov.addEventListener('pointermove', (e) => {
+    if (!dragging || (pid !== null && e.pointerId !== pid)) return;
+    apply(e);
+    e.preventDefault();
+  });
+
+  function end(e) {
+    if (!dragging) return;
+    if (pid !== null && e && e.pointerId !== undefined && e.pointerId !== pid) return;
+    dragging = false;
+    try { if (pid !== null) ov.releasePointerCapture(pid); } catch (err) { /* ignore */ }
+    pid = null;
+    const r = state.mask.rect;
+    if (!r || r.w < 2 || r.h < 2) {
+      state.mask.rect = null;
+      drawMaskOverlay(ov, null);
+      updateMaskInfo();
+    } else {
+      onMaskRectChange();
+    }
+  }
+
+  ov.addEventListener('pointerup', end);
+  ov.addEventListener('pointercancel', end);
+  // 指针被系统抢走（切窗口等）时收尾，避免卡在拖拽状态
+  ov.addEventListener('lostpointercapture', () => { if (dragging) end(null); });
+}
+function renderMaskPreview() {
+  const sel = getSelectedIndices();
+  const box = $('maskPreviewBox');
+  box.innerHTML = '';
+  if (!sel.length) { box.innerHTML = '<div class="hint">-</div>'; return; }
+  const src = state.frames[sel[0]];   // 原始帧（含水印位置）
+  const maxDim = 420;
+  const sc = Math.min(1, maxDim / Math.max(src.width, src.height));
+  const w = Math.round(src.width * sc), h = Math.round(src.height * sc);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;line-height:0';
+  const base = document.createElement('canvas');
+  base.width = src.width; base.height = src.height;
+  base.style.width = w + 'px'; base.style.height = h + 'px';
+  base.getContext('2d').drawImage(src, 0, 0);
+  const ov = document.createElement('canvas');
+  ov.width = src.width; ov.height = src.height;
+  ov.style.cssText = 'position:absolute;left:0;top:0;width:' + w + 'px;height:' + h + 'px;cursor:crosshair';
+  wrap.appendChild(base);
+  wrap.appendChild(ov);
+  box.appendChild(wrap);
+  drawMaskOverlay(ov, state.mask.rect);
+  updateMaskInfo();
+  attachMaskDrag(ov, src, sc);
+}
+
+function onMaskRectChange() {
+  if (state.masked.size) {
+    state.masked.clear();
+    $('maskApplyStatus').innerHTML = '<span class="warn">框选已修改，需重新应用</span>';
+    renderThumbnails();
+    updateSelCount();
+  }
+  refreshEditPreviews();
+}
+
+async function applyMaskToAll() {
+  if (!state.mask.enabled) { toast('请先启用框选去水印', 'err'); return; }
+  if (!state.mask.rect) { toast('请先框选区域', 'err'); return; }
+  const indices = getSelectedIndices();
+  if (!indices.length) { toast('请先勾选帧', 'err'); return; }
+  setBusy('正在对 ' + indices.length + ' 帧去水印…', true);
+  await new Promise(r => setTimeout(r, 30));
+  state.masked.clear();
+  for (let i = 0; i < indices.length; i++) {
+    const idx = indices[i];
+    const base = state.keyed.get(idx) || state.frames[idx];   // 基于色度抠图结果或原始帧
+    state.masked.set(idx, applyRectMask(base, state.mask.rect));
+    setProgress((i + 1) / indices.length);
+    if (i % 8 === 7) await new Promise(r => setTimeout(r, 0));
+  }
+  setBusy(null, false);
+  $('maskApplyStatus').innerHTML = '<span class="ok">✓ 已应用到 ' + indices.length + ' 帧</span>';
+  renderThumbnails();
+  refreshEditPreviews();
+  updateSelCount();
+  if (state.trim.enabled) {
+    const eff = getSelectedFrames();
+    applyTrimResult(computeTrimCore(eff), eff[0], true);
+  }
+  toast('框选去水印完成', 'ok');
+}
+
+function clearMask() {
+  state.mask.rect = null;
+  state.masked.clear();
+  $('maskApplyStatus').textContent = '';
+  renderMaskPreview();
+  renderThumbnails();
+  refreshEditPreviews();
+  updateSelCount();
+}
+
+function bindKeySlider(rangeId, numId, valId, prop) {
+  const r = $(rangeId), n = $(numId);
+  const apply = (v) => {
+    state.key[prop] = v;
+    if (valId) $(valId).textContent = ' ' + v;
+    r.value = v; n.value = v;
+    onKeyParamChange();
+  };
+  r.addEventListener('input', () => apply(clamp(Number(r.value) || 0, 0, 100)));
+  n.addEventListener('change', () => apply(clamp(Number(n.value) || 0, 0, 100)));   // 数字框：提交后再生效
+}
+
+/* 对一组帧（已裁切、已抠图）计算非透明像素极值并集（不含留边） */
+function computeTrimCore(frames) {
+  let u = null;
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    const crop = getCropRect(f.width, f.height);
+    const c = document.createElement('canvas');
+    c.width = crop.w; c.height = crop.h;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(f, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+    const b = alphaBBox(c, state.trim.alphaThreshold);
+    if (!b) continue;
+    if (!u) u = { x: b.x, y: b.y, x2: b.x + b.w - 1, y2: b.y + b.h - 1 };
+    else {
+      u.x = Math.min(u.x, b.x); u.y = Math.min(u.y, b.y);
+      u.x2 = Math.max(u.x2, b.x + b.w - 1); u.y2 = Math.max(u.y2, b.y + b.h - 1);
+    }
+  }
+  return u;
+}
+
+/* 应用极值并集到 state.trim.bbox（含 PAD 留边），并刷新 UI */
+function applyTrimResult(u, refFrame, silent) {
+  if (!u) {
+    state.trim.bbox = null;
+    state.trim.content = null;
+    $('trimInfo').textContent = '未检测到 α > ' + state.trim.alphaThreshold + ' 的像素（阈值调低试试，或检查抠图结果）';
+    if (!silent) toast('未检测到非透明像素', 'warn');
+    refreshEditPreviews();
+    return;
+  }
+  // 缓存内容物 bbox（不含留边），供修改预留像素时快速重算
+  state.trim.content = u;
+  const pad = state.trim.pad;
+  const cr = getCropRect(refFrame.width, refFrame.height);
+  const nx = Math.max(0, u.x - pad.left);
+  const ny = Math.max(0, u.y - pad.top);
+  const nx2 = Math.min(cr.w - 1, u.x2 + pad.right);
+  const ny2 = Math.min(cr.h - 1, u.y2 + pad.bottom);
+  state.trim.bbox = { x: nx, y: ny, w: nx2 - nx + 1, h: ny2 - ny + 1 };
+  const b = state.trim.bbox;
+  const cropRight = cr.w - (b.x + b.w);
+  const cropBottom = cr.h - (b.y + b.h);
+  $('trimInfo').innerHTML =
+    '内容物范围（α > ' + state.trim.alphaThreshold + '）：x [' + u.x + ', ' + u.x2 + '] · y [' + u.y + ', ' + u.y2 + '] · ' +
+    '四周保留 上' + pad.top + '/下' + pad.bottom + '/左' + pad.left + '/右' + pad.right + 'px 透明边后尺寸 <b>' + b.w + ' × ' + b.h + '</b> px（裁掉上' + b.y + ' / 下' + cropBottom + ' / 左' + b.x + ' / 右' + cropRight + ' px）';
+  refreshEditPreviews();
+  if (!silent) toast('最小化边缘计算完成（已保留 上' + pad.top + '/下' + pad.bottom + '/左' + pad.left + '/右' + pad.right + 'px 透明边）', 'ok');
+}
+
+/* 四边预留像素变化：更新参数，若已计算过则用缓存内容物 bbox 快速重算 */
+function onTrimPadChange() {
+  const pad = state.trim.pad;
+  pad.top = clamp(Math.round(Number($('trimPadTop').value) || 0), 0, 200);
+  pad.bottom = clamp(Math.round(Number($('trimPadBottom').value) || 0), 0, 200);
+  pad.left = clamp(Math.round(Number($('trimPadLeft').value) || 0), 0, 200);
+  pad.right = clamp(Math.round(Number($('trimPadRight').value) || 0), 0, 200);
+  if (state.trim.enabled && state.trim.content && state.frames.length) {
+    applyTrimResult(state.trim.content, state.frames[0], true);
+  }
+}
+
+/* 极淡像素阈值变化：会改变「内容 bbox」本身，必须整段重算（不是只重套留边）。
+   拖滑块时每一帧都重算会卡，所以参数立即生效、重算做 260ms 防抖。 */
+let trimAlphaTimer = null;
+function onTrimAlphaChange() {
+  const v = clamp(Math.round(Number($('trimAlpha').value) || 0), 0, 64);
+  state.trim.alphaThreshold = v;
+  $('trimAlpha').value = v;
+  $('trimAlphaNum').value = v;
+  if (trimAlphaTimer) clearTimeout(trimAlphaTimer);
+  trimAlphaTimer = setTimeout(function () {
+    trimAlphaTimer = null;
+    if (state.trim.enabled && getSelectedIndices().length) computeTrim();
+    else refreshEditPreviews();
+  }, 260);
+}
+async function computeTrim() {
+  const sel = getSelectedFrames();
+  if (!sel.length) { toast('请先勾选帧', 'err'); return; }
+  setBusy('正在扫描透明边缘…', true);
+  // 让 UI 有时间渲染 overlay
+  await new Promise(r => setTimeout(r, 30));
+  const u = computeTrimCore(sel);
+  setBusy(null, false);
+  applyTrimResult(u, sel[0]);
+}
+
+/* 选中帧变速播放 */
+function startSelectedPlayback() {
+  stopSelectedPlayback();
+  const sel = getSelectedFrames();
+  if (!sel.length) { toast('请先勾选帧', 'err'); return; }
+  const hz = Number($('playbackHz').value) || 12;
+  const loop = $('loopChk').checked;
+  const box = $('editPreviewBox');
+  box.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  const first = sel[0];
+  canvas.width = first.width; canvas.height = first.height;
+  box.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  let i = 0;
+  state.playback.running = true;
+  const tick = () => {
+    if (!state.playback.running) return;
+    const f = sel[i];
+    canvas.width = f.width; canvas.height = f.height;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(f, 0, 0);
+    i++;
+    if (i >= sel.length) {
+      if (loop) i = 0;
+      else { stopSelectedPlayback(); return; }
+    }
+    state.playback.timer = setTimeout(tick, Math.max(8, 1000 / hz));
+  };
+  tick();
+  $('btnPlaySel').disabled = true;
+  $('btnStopSel').disabled = false;
+}
+
+function stopSelectedPlayback() {
+  state.playback.running = false;
+  if (state.playback.timer) { clearTimeout(state.playback.timer); state.playback.timer = null; }
+  $('btnPlaySel').disabled = false;
+  $('btnStopSel').disabled = true;
+}
+
+/* ---------------- 模块4：输出 ---------------- */
+function computeCell() {
+  const sel = getSelectedFrames();
+  if (!sel.length) return null;
+  const fin = buildProcessedFrame(sel[0], Number($('outScale').value) || 100);
+  return { w: fin.width, h: fin.height, first: fin };
+}
+
+function buildSheet() {
+  const sel = getSelectedFrames();
+  const rows = Math.max(1, Math.round(Number($('outRows').value) || 1));
+  const cols = Math.max(1, Math.round(Number($('outCols').value) || 1));
+  const scale = Number($('outScale').value) || 100;
+  const cell = computeCell();
+  if (!cell) return null;
+  const sheet = document.createElement('canvas');
+  sheet.width = cols * cell.w;
+  sheet.height = rows * cell.h;
+  const ctx = sheet.getContext('2d');
+  ctx.clearRect(0, 0, sheet.width, sheet.height);
+  sel.forEach((f, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    if (row >= rows) return;
+    const p = buildProcessedFrame(f, scale);
+    ctx.drawImage(p, col * cell.w, row * cell.h);
+  });
+  return { sheet, rows, cols, cellW: cell.w, cellH: cell.h, count: Math.min(sel.length, rows * cols), total: sel.length };
+}
+
+const RULER_PAD = 46;
+
+function renderRuler() {
+  const cell = computeCell();
+  const cv = $('rulerCanvas');
+  if (!cell) { cv.width = 0; cv.height = 0; return; }
+  const pad = RULER_PAD;
+  const w = cell.w, h = cell.h;
+  cv.width = w + pad + 16;
+  cv.height = h + pad + 16;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#050508';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  const fx = pad, fyTop = cv.height - pad - h;   // 帧左下角 (pad, cv.height-pad)，左上 (fx, fyTop)
+  ctx.drawImage(cell.first, fx, fyTop);
+
+  const step = w > 400 ? 50 : w > 150 ? 25 : 10;
+  ctx.font = '10px Consolas, monospace';
+  ctx.fillStyle = '#8a8896';
+  ctx.strokeStyle = '#3a3a4e';
+  // X 轴（底部，向右增大）
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let x = 0; x <= w; x += step) {
+    const px = fx + x, py = cv.height - pad;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + 8); ctx.stroke();
+    if (x % (step * 2) === 0 || x === 0) ctx.fillText(String(x), px, py + 10);
+  }
+  // Y 轴（左侧，向上增大）
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let y = 0; y <= h; y += step) {
+    const px = fx, py = cv.height - pad - y;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 8, py); ctx.stroke();
+    if (y % (step * 2) === 0 || y === 0) ctx.fillText(String(y), px - 10, py);
+  }
+  // 内容物 bbox（金色虚线）
+  const b = alphaBBox(cell.first);
+  if (b) {
+    ctx.strokeStyle = 'rgba(230,193,92,.9)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(fx + b.x, fyTop + b.y, b.w, b.h);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#e6c15c';
+    ctx.font = '11px Consolas, monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText(b.w + '×' + b.h, fx + b.x + 2, fyTop + b.y + b.h - 4);
+  }
+  // 标记线 + 测高
+  const m = state.measure;
+  if (m.bottom != null && m.top != null) {
+    const yB = fyTop + m.bottom * h;
+    const yT = fyTop + m.top * h;
+    ctx.strokeStyle = '#e6c15c';
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(fx, yB); ctx.lineTo(fx + w, yB); ctx.stroke();
+    ctx.strokeStyle = '#6fd26f';
+    ctx.beginPath(); ctx.moveTo(fx, yT); ctx.lineTo(fx + w, yT); ctx.stroke();
+    ctx.setLineDash([]);
+    const heightPx = Math.round(Math.abs(m.bottom - m.top) * h);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(fx + w + 6, yT); ctx.lineTo(fx + w + 6, yB); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px Consolas, monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(heightPx + 'px', fx + w + 10, (yT + yB) / 2);
+  }
+  const stats = $('scaleStats');
+  stats.innerHTML =
+    '<span class="tag gold">单帧(含透明) ' + w + ' × ' + h + ' px</span>' +
+    (b ? '<span class="tag green">内容物 ' + b.w + ' × ' + b.h + ' px</span>' : '') +
+    '<span class="tag red">缩放 ' + (Number($('outScale').value) || 100).toFixed(2) + '%</span>';
+  updateMeasureInfo();
+}
+
+function updateMeasureInfo() {
+  const m = state.measure;
+  const el = $('measureInfo');
+  if (m.bottom == null || m.top == null) {
+    el.innerHTML = '<span class="hint">内容物高度：未标记（点「标记底部」「标记顶部」后在图上点取对应位置）</span>';
+    return;
+  }
+  const cell = computeCell();
+  if (!cell) return;
+  const h = cell.h;
+  const norm = Math.abs(m.bottom - m.top);
+  const px = Math.round(norm * h);
+  el.innerHTML =
+    '<span class="tag gold">内容物高度 <b>' + px + ' px</b></span>' +
+    '<span class="hint">（相对缩放后帧高 ' + h + ' px，占 ' + (norm * 100).toFixed(1) + '%，随缩放%实时刷新）</span>';
+}
+
+function updateMeasureButtons() {
+  const mm = state.measure.marking;
+  $('btnMarkBottom').textContent = mm === 'bottom' ? '🖱 点击图上底部…' : '⌐ 标记底部';
+  $('btnMarkTop').textContent = mm === 'top' ? '🖱 点击图上顶部…' : '⌈ 标记顶部';
+  $('measureHint').textContent = mm ? (mm === 'bottom' ? '请在图上点击内容物底部' : '请在图上点击内容物顶部') : '点击按钮后，在刻度图上点取内容物底部 / 顶部；标记后输入「目标高度 px」点「⇄ 反推比例」';
+}
+
+function clearMeasure() {
+  state.measure.bottom = null;
+  state.measure.top = null;
+  state.measure.marking = null;
+  updateMeasureButtons();
+  renderRuler();
+}
+
+/* 缩放应用（滑块/数字/反推共用）：保留 2 位小数，范围 1~300 */
+/* 输出重排 / 刻度渲染的节流：
+   数字框提交（回车、失焦、点上下箭头）可能连续触发，合并成一次重排；
+   拖滑块只重画刻度，用 rAF 合并到每帧一次。 */
+let outRefreshTimer = null;
+function scheduleRefreshOutput(delay) {
+  if (outRefreshTimer) clearTimeout(outRefreshTimer);
+  outRefreshTimer = setTimeout(function () {
+    outRefreshTimer = null;
+    refreshOutput();
+  }, delay == null ? 300 : delay);
+}
+
+let rulerRaf = 0;
+function scheduleRuler() {
+  if (rulerRaf) return;
+  rulerRaf = requestAnimationFrame(function () {
+    rulerRaf = 0;
+    renderRuler();
+  });
+}
+function applyOutScale(v, full) {
+  v = clamp(Math.round(Number(v) * 100) / 100, 1, 300);
+  // 与 Unity 的 FloatField 一致：整数就显示整数（100 而不是 100.00），有小数才保留两位
+  const disp = (v === Math.round(v)) ? String(Math.round(v)) : v.toFixed(2);
+  $('outScaleRange').value = v; $('outScale').value = disp;
+  $('outScaleVal').textContent = ' ' + disp;
+  state.out.scale = v;
+  if (!state.frames.length) return;
+  if (full) scheduleRefreshOutput(300); else scheduleRuler();
+}
+
+/* 反推比例：使内容物高度达到目标高度（px），偏差最小化 */
+function reverseScale() {
+  const m = state.measure;
+  if (m.bottom == null || m.top == null) { toast('请先标记底部与顶部', 'err'); return; }
+  const norm = Math.abs(m.bottom - m.top);
+  if (norm <= 0) { toast('底部与顶部重合，无法测高', 'err'); return; }
+  const target = Number($('targetHeight').value);
+  if (!target || target <= 0) { toast('请输入有效目标高度(px)', 'err'); return; }
+  const sel = getSelectedFrames();
+  if (!sel.length) { toast('无可计算帧', 'err'); return; }
+  const frame = sel[0];
+  const crop = getCropRect(frame.width, frame.height);
+  const trim = getTrimBBox();
+  const sh = trim ? trim.h : crop.h;          // crop+trim 后、未缩放的源高度
+  const sourceH = norm * sh;                   // 内容物源高度（未缩放）
+  let newScale = target * 100 / sourceH;
+  newScale = clamp(Math.round(newScale * 100) / 100, 1, 300);
+  applyOutScale(newScale, true);
+  const achieved = Math.round(norm * (Math.round(sh * newScale / 100)));
+  toast('反推比例完成：缩放 ' + newScale.toFixed(2) + '% → 内容物约 ' + achieved + ' px（目标 ' + target + ' px）', 'ok');
+}
+
+async function renderSheetPreview() {
+  const r = buildSheet();
+  if (!r) return;
+  const blob = await canvasToBlob(r.sheet, 'image/png');
+  $('sheetW').textContent = r.sheet.width + ' px';
+  $('sheetH').textContent = r.sheet.height + ' px';
+  $('cellSize').textContent = r.cellW + ' × ' + r.cellH + ' px';
+  $('sheetFrames').textContent = r.count + ' / ' + r.total + ' 帧';
+  $('sheetBytes').textContent = fmtBytes(blob.size);
+  const capacity = r.rows * r.cols;
+  if (r.total > capacity) {
+    $('outCapacity').innerHTML = '<span class="err">⚠ 帧数(' + r.total + ')超过网格容量(' + capacity + ')，超出部分将被丢弃。</span>';
+  } else if (r.total < capacity) {
+    $('outCapacity').innerHTML = '<span class="hint">帧数(' + r.total + ')少于网格容量(' + capacity + ')，剩余格子为透明。</span>';
+  } else {
+    $('outCapacity').innerHTML = '<span class="ok">✓ 帧数(' + r.total + ')与网格容量(' + capacity + ')匹配。</span>';
+  }
+  const box = $('sheetPreviewBox');
+  box.innerHTML = '';
+  const c = document.createElement('canvas');
+  c.width = r.sheet.width; c.height = r.sheet.height;
+  const ctx = c.getContext('2d');
+  drawChecker(ctx, 0, 0, c.width, c.height);
+  ctx.drawImage(r.sheet, 0, 0);
+  const maxDim = 520;
+  const sc = Math.min(1, maxDim / Math.max(c.width, c.height));
+  c.style.width = (c.width * sc) + 'px';
+  c.style.height = (c.height * sc) + 'px';
+  c.style.imageRendering = sc < 0.5 ? 'pixelated' : 'auto';
+  box.appendChild(c);
+  return r;
+}
+
+function sanitizeName(s) {
+  const v = (s || '').trim().replace(/[^A-Za-z0-9_\u4e00-\u9fa5-]/g, '_');
+  return v || 'sprite_sheet';
+}
+function finalFilename() {
+  const name = sanitizeName($('outName').value);
+  const cols = Math.max(1, Math.round(Number($('outCols').value) || 1));
+  const rows = Math.max(1, Math.round(Number($('outRows').value) || 1));
+  return name + '_' + cols + 'x' + rows + '.png';
+}
+/* ============================================================
+   锚点对齐预览（人中 × 脚底）—— 与 Unity 面板同一套语义：
+   青色竖线 = 人中轴 anchorX（0=帧左, 1=帧右）
+   橙色横线 = 脚底 anchorY（0=帧底, 1=帧顶）
+   确认后写进 meta.json，角色卡/角色动画编辑器据此对齐。
+   ============================================================ */
+
+function anchorList() { return getSelectedIndices(); }
+
+function anchorCurrent() {
+  const sel = anchorList();
+  if (!sel.length) return -1;
+  return sel.indexOf(state.anchor.idx) >= 0 ? state.anchor.idx : sel[0];
+}
+
+function drawAnchorCanvas(id, frame, ax, ay, showLines, zoom) {
+  const cv = $(id);
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  // 棋盘底：用 16×16 的 pattern 一次填满（原来逐格 fillRect 要画十万次，滚轮缩放会卡）
+  if (!drawAnchorCanvas._pat) {
+    const p = document.createElement('canvas');
+    p.width = 16; p.height = 16;
+    const pc = p.getContext('2d');
+    pc.fillStyle = '#2a2a2e'; pc.fillRect(0, 0, 16, 16);
+    pc.fillStyle = '#36363a'; pc.fillRect(0, 0, 8, 8); pc.fillRect(8, 8, 8, 8);
+    drawAnchorCanvas._pat = p;
+  }
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = ctx.createPattern(drawAnchorCanvas._pat, 'repeat');
+  ctx.fillRect(0, 0, W, H);
+  if (!frame) {
+    ctx.fillStyle = 'rgba(150,150,170,0.9)';
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(showLines ? '没有可预览的帧' : '未导入 Idle 参照', W / 2, H / 2);
+    return null;
+  }
+  const z = zoom || 1;
+  const fit = Math.min(W / frame.width, H / frame.height) * 0.8 * z;
+  const dw = Math.max(1, frame.width * fit), dh = Math.max(1, frame.height * fit);
+  const left = (W - dw) / 2, top = (H - dh) / 2;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(frame, left, top, dw, dh);
+  const layout = { left: left, top: top, dw: dw, dh: dh };
+  if (!showLines) return layout;
+
+  const cx = left + ax * dw;
+  const cy = top + (1 - ay) * dh;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(0,210,210,0.95)';
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,160,40,0.95)';
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+  return layout;
+}
+
+/* ---------------- Idle 参照：精灵图 + meta.json 切片（与 Unity OnImportIdle 同规则） ---------------- */
+function readFileAsDataUrl(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(new Error('读取文件失败'));
+    fr.readAsDataURL(file);
+  });
+}
+
+function sliceSheetFrame(sheet, meta, idx) {
+  const cols = Math.max(1, meta.cols | 0), rows = Math.max(1, meta.rows | 0);
+  const cw = Math.max(1, meta.cw | 0), ch = Math.max(1, meta.ch | 0);
+  const count = cols * rows;
+  const i = clamp(idx, 0, count - 1);
+  const col = i % cols, row = Math.floor(i / cols);
+  const c = document.createElement('canvas');
+  c.width = cw; c.height = ch;
+  c.getContext('2d').drawImage(sheet, col * cw, row * ch, cw, ch, 0, 0, cw, ch);
+  return c;
+}
+
+async function importIdleFiles(fileList) {
+  const files = Array.from(fileList || []);
+  const imgFile = files.find(f => /\.png$/i.test(f.name) || (f.type || '').startsWith('image/'));
+  if (!imgFile) { toast('请选择 PNG 精灵图', 'err'); return; }
+  const base = imgFile.name.replace(/\.[^.]+$/, '');
+  const metaFile = files.find(f => f.name === base + '.meta.json') || files.find(f => /\.json$/i.test(f.name));
+  if (!metaFile) {
+    idleInfo.textContent = '导入失败：缺少配套 meta.json（' + base + '.meta.json，含列/行/单帧尺寸）';
+    toast('缺少配套 meta.json：请把 PNG 和同名 .meta.json 一起选中', 'err');
+    return;
+  }
+  let meta;
+  try { meta = JSON.parse(await metaFile.text()); }
+  catch (err) { idleInfo.textContent = '导入失败：meta.json 解析失败（' + err.message + '）'; return; }
+
+  const cols = meta.cols | 0, rows = meta.rows | 0, cw = meta.cellWidth | 0, ch = meta.cellHeight | 0;
+  if (!cols || !rows || !cw || !ch) {
+    idleInfo.textContent = '导入失败：meta 缺 列/行/单帧尺寸';
+    return;
+  }
+
+  const sheet = await loadCanvasFromDataUrl(await readFileAsDataUrl(imgFile));
+  if (cw * cols > sheet.width || ch * rows > sheet.height) {
+    idleInfo.textContent = '导入失败：meta 尺寸与图片不匹配（图 ' + sheet.width + '×' + sheet.height +
+      '，需要 ' + (cw * cols) + '×' + (ch * rows) + '）';
+    return;
+  }
+
+  state.anchor.idleSheet = sheet;
+  state.anchor.idleMeta = { cols, rows, cw, ch, count: cols * rows };
+  state.anchor.idleName = base;
+  state.anchor.idleIdx = 0;
+  state.anchor.idleAnchor = {
+    x: (typeof meta.anchorX === 'number') ? clamp(meta.anchorX, 0, 1) : 0.5,
+    y: (typeof meta.anchorY === 'number') ? clamp(meta.anchorY, 0, 1) : 0.025,
+  };
+  state.anchor.idle = sliceSheetFrame(state.anchor.idleSheet, state.anchor.idleMeta, 0);
+  renderAnchorPreview();
+  toast('已导入 Idle 参照：' + base + '（' + cols + '×' + rows + ' 帧，显示首帧）', 'ok');
+}
+
+function stepIdleFrame(delta) {
+  const m = state.anchor.idleMeta;
+  if (!m || !state.anchor.idleSheet) return;
+  const next = clamp(state.anchor.idleIdx + delta, 0, m.count - 1);
+  if (next === state.anchor.idleIdx) return;
+  state.anchor.idleIdx = next;
+  state.anchor.idle = sliceSheetFrame(state.anchor.idleSheet, m, next);
+  renderAnchorPreview();
+}
+
+/* 取「最终输出格」并缓存：滚轮缩放/拖线时不必每次重做 裁切+最小化+缩放+清杂点 */
+function anchorProcessedFrame(idx, raw) {
+  if (!raw) { state.anchor.procKey = null; state.anchor.procFrame = null; return null; }
+  const scale = Number($('outScale').value) || 100;
+  const tb = state.trim.enabled ? state.trim.bbox : null;
+  const c = state.crop;
+  const key = [
+    idx, c.enabled ? 1 : 0, c.top, c.bottom, c.left, c.right,
+    tb ? [tb.x, tb.y, tb.w, tb.h].join(',') : '-',
+    scale, state.trim.alphaThreshold
+  ].join('|');
+  if (state.anchor.procKey === key && state.anchor.procFrame) return state.anchor.procFrame;
+  const frame = buildProcessedFrame(raw, scale);
+  state.anchor.procKey = key;
+  state.anchor.procFrame = frame;
+  return frame;
+}
+function renderAnchorPreview() {
+  const idx = anchorCurrent();
+  const raw = idx >= 0 ? effectiveFrame(idx) : null;
+  // 与 Unity 的 RefreshAnchorPreview 一致：锚点量的是「裁切+最小化+缩放之后的最终格」，
+  // 不是原始帧 —— 否则 meta 里的比例会指向裁掉的那一圈，游戏里对不齐。
+  const frame = anchorProcessedFrame(idx, raw);
+  state.anchor.layout = drawAnchorCanvas('anchorCanvas', frame, state.anchor.x, state.anchor.y, true, state.anchor.zoom);
+  const ia = state.anchor.idleAnchor || { x: 0.5, y: 0.025 };
+  drawAnchorCanvas('idleAnchorCanvas', state.anchor.idle, ia.x, ia.y, !!state.anchor.idle, state.anchor.zoom);
+
+  const xs = state.anchor.x.toFixed(3), ys = state.anchor.y.toFixed(3);
+  $('anchorXVal').textContent = ' ' + xs;
+  $('anchorYVal').textContent = ' ' + ys;
+  const xNum = $('anchorXNum'), yNum = $('anchorYNum');
+  if (document.activeElement !== xNum) xNum.value = xs;
+  if (document.activeElement !== yNum) yNum.value = ys;
+  $('anchorXRange').value = state.anchor.x;
+  $('anchorYRange').value = state.anchor.y;
+  const im = state.anchor.idleMeta;
+  if (im) {
+    $('idleFrameInfo').textContent = 'Idle 帧 ' + (state.anchor.idleIdx + 1) + ' / ' + im.count;
+    $('btnIdlePrev').disabled = state.anchor.idleIdx <= 0;
+    $('btnIdleNext').disabled = state.anchor.idleIdx >= im.count - 1;
+    $('idleInfo').textContent = 'Idle 参照：' + state.anchor.idleName +
+      '（' + im.cols + '×' + im.rows + '，锚点 ' + ia.x.toFixed(3) + ', ' + ia.y.toFixed(3) + '）';
+  } else {
+    $('idleFrameInfo').textContent = '-';
+    $('btnIdlePrev').disabled = true;
+    $('btnIdleNext').disabled = true;
+    $('idleInfo').textContent = '未导入 Idle 参照（PNG 与同名 .meta.json 一起选中）';
+  }
+  $('anchorHint').textContent = frame
+    ? ('当前帧 ' + (idx + 1) + ' / ' + state.frames.length + ' · 拖青线调 anchorX，拖橙线调 anchorY')
+    : '先勾选帧（滚轮可缩放预览）';
+}
+
+function setAnchorValue(which, v) {
+  v = clamp(Number(v) || 0, 0, 1);
+  if (which === 'x') state.anchor.x = v; else state.anchor.y = v;
+  renderAnchorPreview();
+  markDirty();
+}
+
+function stepAnchorFrame(delta) {
+  const sel = anchorList();
+  if (!sel.length) return;
+  let i = sel.indexOf(state.anchor.idx);
+  if (i < 0) i = 0;
+  i = clamp(i + delta, 0, sel.length - 1);
+  state.anchor.idx = sel[i];
+  renderAnchorPreview();
+}
+
+function anchorPointerPos(e) {
+  const cv = $('anchorCanvas');
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (cv.width / r.width),
+    y: (e.clientY - r.top) * (cv.height / r.height)
+  };
+}
+
+function onAnchorDown(e) {
+  const L = state.anchor.layout;
+  if (!L) return;
+  const p = anchorPointerPos(e);
+  const cx = L.left + state.anchor.x * L.dw;
+  const cy = L.top + (1 - state.anchor.y) * L.dh;
+  state.anchor.drag = Math.abs(p.x - cx) <= Math.abs(p.y - cy) ? 'x' : 'y';
+  if ($('anchorCanvas').setPointerCapture) $('anchorCanvas').setPointerCapture(e.pointerId);
+  onAnchorMove(e);
+}
+
+function onAnchorMove(e) {
+  const L = state.anchor.layout;
+  if (!L || !state.anchor.drag) return;
+  const p = anchorPointerPos(e);
+  if (state.anchor.drag === 'x') state.anchor.x = clamp((p.x - L.left) / L.dw, 0, 1);
+  else state.anchor.y = clamp(1 - (p.y - L.top) / L.dh, 0, 1);
+  renderAnchorPreview();
+  markDirty();
+  e.preventDefault();
+}
+
+function onAnchorUp(e) {
+  state.anchor.drag = null;
+  try { $('anchorCanvas').releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+}
+/* 滚轮缩放锚点预览：0.4x ~ 8x，左右两栏共用；用 rAF 合并，滚动时不卡 */
+let anchorWheelRaf = 0;
+function onAnchorWheel(e) {
+  e.preventDefault();
+  const step = e.deltaY < 0 ? 1.12 : (1 / 1.12);
+  state.anchor.zoom = clamp(state.anchor.zoom * step, 0.4, 8);
+  if (anchorWheelRaf) return;
+  anchorWheelRaf = requestAnimationFrame(function () {
+    anchorWheelRaf = 0;
+    renderAnchorPreview();
+  });
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(new Error('读取文件失败'));
+    fr.readAsDataURL(blob);
+  });
+}
+/* 输出元数据：两条保存路径（写工程 / 写文件夹）共用同一份，保证 meta.json 字段与 Unity 的 SpriteSheetMeta 完全一致 */
+function currentMeta(r) {
+  const tag = $('outTag').value || 'Misc';
+  const tagNames = { Characters: '角色', Effects: '特效', Environment: '环境', Misc: '其他' };
+  const d = new Date();
+  const p2 = (n) => (n < 10 ? '0' : '') + n;
+  return {
+    name: sanitizeName($('outName').value),
+    tag: tag,
+    tagLabel: tagNames[tag] || tag,
+    cols: r.cols,
+    rows: r.rows,
+    frameCount: r.count,
+    cellWidth: r.cellW,
+    cellHeight: r.cellH,
+    scale: Number($('outScale').value) || 100,
+    anchorX: state.anchor.x,
+    anchorY: state.anchor.y,
+    sourceName: state.source ? state.source.name : '',
+    sourceKind: state.source ? state.source.kind : '',
+    created: d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' +
+      p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds())
+  };
+}
+
+async function saveToProject() {
+  const r = buildSheet();
+  if (!r) { toast('无可输出帧', 'err'); return; }
+  if (location.protocol === 'file:' && !window.__OFFLINE_STANDALONE__) { toast('此功能需在 Unity 编辑器内通过「打开网页」按钮使用', 'err'); return; }
+  const blob = await canvasToBlob(r.sheet, 'image/png');
+  const meta = currentMeta(r);
+
+  setBusy('保存到项目…', true);
+  try {
+    const b64 = await blobToBase64(blob);
+    const resp = await fetch('/api/save-sheet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, meta: meta })
+    });
+    const j = await resp.json();
+    if (j && j.error) throw new Error(j.error);
+    toast('已保存：' + (j.path || ''), 'ok');
+    $('saveHint').innerHTML = '<span class="ok">✓ 已保存：' + escapeHtml(j.path || '') + '（' + fmtBytes(blob.size) + '）</span>';
+  } catch (e) {
+    toast('保存失败：' + e.message, 'err');
+    $('saveHint').innerHTML = '<span class="err">保存失败：' + escapeHtml(e.message) + '</span>';
+  } finally {
+    setBusy(null, false);
+  }
+}
+
+async function saveSheet() {
+  const r = buildSheet();
+  if (!r) { toast('无可输出帧', 'err'); return; }
+  const blob = await canvasToBlob(r.sheet, 'image/png');
+  const meta = currentMeta(r);
+  const finalName = finalFilename();
+  const metaName = finalName.replace(/\.png$/i, '.meta.json');   // 与 Unity 的 MetaPath 同规则
+
+  if ('showDirectoryPicker' in window) {
+    try {
+      const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const fh = await dir.getFileHandle(finalName, { create: true });
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+
+      const mh = await dir.getFileHandle(metaName, { create: true });
+      const mw = await mh.createWritable();
+      await mw.write(new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' }));
+      await mw.close();
+
+      toast('已写入：' + dir.name + '/' + finalName + ' + ' + metaName, 'ok');
+      $('saveHint').innerHTML = '<span class="ok">✓ 已输出到 ' + dir.name + '/' + finalName + ' 与 ' + metaName +
+        '（' + fmtBytes(blob.size) + '）</span>';
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      if (e && e.name === 'SecurityError') {
+        $('saveHint').innerHTML = '<span class="warn">当前环境不支持目录选择，改走「保存到项目」链路（离线版会打成一个 ZIP）。</span>';
+      }
+    }
+  }
+
+  // 退路：交给 saveToProject —— 服务版由 Unity 写两个文件；离线版由垫片写文件夹或打成 ZIP
+  await saveToProject();
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast('已触发下载：' + name, 'ok');
+  $('saveHint').innerHTML = '<span class="ok">✓ 已下载 ' + name + '（' + fmtBytes(blob.size) + '）</span>';
+}
+
+/* ---------------- 标签页 ---------------- */
+function updateTabs() {
+  $('tab-convert').disabled = !state.source;
+  $('tab-edit').disabled = !(state.frames.length > 0);
+  $('tab-output').disabled = !(state.frames.length > 0 && state.selected.size > 0);
+  const done1 = !!state.source;
+  const done2 = state.frames.length > 0;
+  $('tab-import').classList.toggle('done', done1);
+  $('tab-convert').classList.toggle('done', done2);
+  $('tab-edit').classList.toggle('done', state.frames.length > 0 && state.selected.size > 0);
+}
+
+function showTab(name) {
+  document.querySelectorAll('nav.tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('section.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'convert' && state.source) { initConvDefaults(); }
+  if (name === 'edit' && state.frames.length) { updateSelCount(); refreshEditPreviews(); renderKeyPreview(); renderMaskPreview(); }
+  if (name === 'output' && state.frames.length) { refreshOutput(); }
+}
+
+async function refreshOutput() {
+  renderRuler();
+  renderAnchorPreview();   // 输出格尺寸变了，锚点预览要跟着重画
+  await renderSheetPreview();
+}
+
+/* ---------------- 事件绑定 ---------------- */
+function bindEvents() {
+  const dz = $('dropzone');
+  dz.addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  // 锚点对齐预览（人中 × 脚底）
+  $('btnImportIdle').addEventListener('click', () => $('idleFile').click());
+  $('idleFile').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length) importIdleFiles(files);
+  });
+  $('btnClearIdle').addEventListener('click', () => {
+    state.anchor.idle = null;
+    state.anchor.idleSheet = null;
+    state.anchor.idleMeta = null;
+    state.anchor.idleIdx = 0;
+    state.anchor.idleAnchor = { x: 0.5, y: 0.025 };
+    state.anchor.idleName = '';
+    renderAnchorPreview();
+  });
+  $('btnIdlePrev').addEventListener('click', () => stepIdleFrame(-1));
+  $('btnIdleNext').addEventListener('click', () => stepIdleFrame(1));
+  $('btnAnchorPrev').addEventListener('click', () => stepAnchorFrame(-1));
+  $('btnAnchorNext').addEventListener('click', () => stepAnchorFrame(1));
+  $('btnConfirmAnchor').addEventListener('click', () => {
+    state.anchor.confirmed = true;
+    markDirty();
+    $('anchorHint').textContent = '✓ 已确认：保存到项目时写入 meta.json（anchorX ' +
+      state.anchor.x.toFixed(3) + ' / anchorY ' + state.anchor.y.toFixed(3) + '）';
+    toast('锚点已确认', 'ok');
+  });
+  [['anchorX', 'x'], ['anchorY', 'y']].forEach(function (pair) {
+    const k = pair[0], which = pair[1];
+    $(k + 'Range').addEventListener('input', () => setAnchorValue(which, $(k + 'Range').value));
+    $(k + 'Num').addEventListener('change', () => setAnchorValue(which, $(k + 'Num').value));   // 数字框：提交后再生效
+  });
+  const anchorCv = $('anchorCanvas');
+  anchorCv.addEventListener('pointerdown', onAnchorDown);
+  anchorCv.addEventListener('pointermove', onAnchorMove);
+  anchorCv.addEventListener('pointerup', onAnchorUp);
+  anchorCv.addEventListener('pointercancel', onAnchorUp);
+  // 滚轮缩放（与 Unity 的 _anchorZoom 一致，左右两栏共用同一个缩放）
+  anchorCv.addEventListener('wheel', onAnchorWheel, { passive: false });
+  $('idleAnchorCanvas').addEventListener('wheel', onAnchorWheel, { passive: false });
+  ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+
+  $('btnReImport').addEventListener('click', () => { stopPreview(); state.source = null; state.frames = []; state.selected.clear(); state.keyed.clear(); state.masked.clear(); $('infoCard').style.display = 'none'; $('framesCard').style.display = 'none'; $('btnToConvert').disabled = true; updateTabs(); showTab('import'); });
+  $('btnToConvert').addEventListener('click', () => showTab('convert'));
+  $('btnToEdit').addEventListener('click', () => showTab('edit'));
+  $('btnToOutput').addEventListener('click', () => showTab('output'));
+
+  ['convStart', 'convEnd'].forEach(id => $(id).addEventListener('input', updateConvUI));
+  $('convFps').addEventListener('change', updateConvUI);   // 数字框：提交后再生效
+
+  $('btnConvPreview').addEventListener('click', () => {
+    stopPreview();
+    if (!state.source) return;
+    if (state.source.kind === 'gif') previewGIFRange();
+    else previewVideoRange();
+  });
+  $('btnConvPreviewStop').addEventListener('click', () => { stopPreview(); $('btnConvPreviewStop').disabled = true; });
+  $('btnGenerate').addEventListener('click', generateFrames);
+
+  $('btnSelectAll').addEventListener('click', selectAll);
+  $('btnInvert').addEventListener('click', invertSel);
+  $('btnPlaySel').addEventListener('click', startSelectedPlayback);
+  $('btnStopSel').addEventListener('click', stopSelectedPlayback);
+
+  ['cropTop', 'cropBottom', 'cropLeft', 'cropRight'].forEach(id => $(id).addEventListener('change', () => {   // 数字框：提交后再生效
+    state.crop.top = Number($('cropTop').value) || 0;
+    state.crop.bottom = Number($('cropBottom').value) || 0;
+    state.crop.left = Number($('cropLeft').value) || 0;
+    state.crop.right = Number($('cropRight').value) || 0;
+    refreshEditPreviews();
+  }));
+  $('cropEnabled').addEventListener('change', (e) => { state.crop.enabled = e.target.checked; refreshEditPreviews(); });
+  $('trimEnabled').addEventListener('change', (e) => { state.trim.enabled = e.target.checked; refreshEditPreviews(); });
+  $('btnTrimCompute').addEventListener('click', computeTrim);
+  ['trimPadTop', 'trimPadBottom', 'trimPadLeft', 'trimPadRight'].forEach(id => $(id).addEventListener('change', onTrimPadChange));   // 数字框：提交后再生效
+  // 极淡像素阈值（α≤）：拖动滑块或改数字都走同一个入口
+  $('trimAlpha').addEventListener('input', onTrimAlphaChange);
+  $('trimAlphaNum').addEventListener('change', () => { $('trimAlpha').value = $('trimAlphaNum').value; onTrimAlphaChange(); });   // 数字框：提交后再生效
+
+  // 色度抠图
+  $('keyEnabled').addEventListener('change', (e) => { state.key.enabled = e.target.checked; renderKeyResult(); refreshEditPreviews(); });
+  $('btnPickColor').addEventListener('click', () => {
+    state.picking = !state.picking;
+    $('btnPickColor').textContent = state.picking ? '🖱 点击原图取色…' : '🎯 取色';
+    $('keyPickHint').textContent = state.picking ? '请点击左侧原图上的背景区域' : '点击「取色」后，在左侧原图上点取背景色';
+  });
+  $('keyColorHex').addEventListener('change', (e) => {
+    const m = /^#?([0-9a-fA-F]{6})$/.exec(e.target.value.trim());
+    if (m) {
+      const v = m[1];
+      state.key.color = { r: parseInt(v.slice(0, 2), 16), g: parseInt(v.slice(2, 4), 16), b: parseInt(v.slice(4, 6), 16) };
+      updateKeyColorUI();
+      renderKeyResult();
+    } else {
+      updateKeyColorUI();
+    }
+  });
+  $('keyShowMask').addEventListener('change', () => renderKeyResult());
+  $('btnApplyKey').addEventListener('click', applyKeyToAll);
+  bindKeySlider('keyIntensity', 'keyIntensityNum', 'keyIntensityVal', 'intensity');
+  bindKeySlider('keyFeather', 'keyFeatherNum', 'keyFeatherVal', 'feather');
+  bindKeySlider('keyCleanup', 'keyCleanupNum', 'keyCleanupVal', 'cleanup');
+  bindAdvSlider('advIntensity', 'advIntensityNum', 'advIntensityVal', 'intensity');
+  bindAdvSlider('advSoftness', 'advSoftnessNum', 'advSoftnessVal', 'softness');
+  bindAdvSlider('advDespill', 'advDespillNum', 'advDespillVal', 'despill');
+  bindAdvSlider('advFeather', 'advFeatherNum', 'advFeatherVal', 'feather');
+  bindAdvSlider('advGreenToAlpha', 'advGreenNum', 'advGreenVal', 'greenToAlpha', 300);
+  $('advDespillAggr').addEventListener('change', (e) => { state.key.adv.despillAggr = e.target.checked; onKeyParamChange(); });
+  $('advAutoPlate').addEventListener('change', (e) => {
+    state.key.autoPlate = e.target.checked;
+    $('advPlateInfo').textContent = e.target.checked ? '勾选后在「应用到全部选中帧」时计算背景板' : '';
+    onKeyParamChange();
+  });
+  $('keyMode').addEventListener('change', (e) => {
+    state.key.mode = e.target.value === 'advanced' ? 'advanced' : 'classic';
+    updateKeyModeVisibility();
+    onKeyParamChange();
+  });
+  updateKeyModeVisibility();
+
+  // 框选去水印
+  $('maskEnabled').addEventListener('change', (e) => {
+    state.mask.enabled = e.target.checked;
+    renderMaskPreview();
+    renderThumbnails();
+    refreshEditPreviews();
+    updateSelCount();
+  });
+  $('btnClearMask').addEventListener('click', clearMask);
+  $('btnApplyMask').addEventListener('click', applyMaskToAll);
+
+  ['outRows', 'outCols'].forEach(id => $(id).addEventListener('change', () => { if (state.frames.length) scheduleRefreshOutput(300); }));   // 数字框：提交后再生效 + 重排节流
+
+  // 缩放滑块 + 数字输入双向同步（拖动滑块实时刷新身高尺，松手再刷整图/体积）
+  $('outScaleRange').addEventListener('input', () => applyOutScale($('outScaleRange').value, false));
+  $('outScaleRange').addEventListener('change', () => scheduleRefreshOutput(300));
+  $('outScale').addEventListener('change', () => applyOutScale($('outScale').value, true));   // 数字框：提交后再生效
+  $('btnReverseScale').addEventListener('click', reverseScale);
+
+  // 标记底部 / 顶部测高
+  $('btnMarkBottom').addEventListener('click', () => { state.measure.marking = state.measure.marking === 'bottom' ? null : 'bottom'; updateMeasureButtons(); });
+  $('btnMarkTop').addEventListener('click', () => { state.measure.marking = state.measure.marking === 'top' ? null : 'top'; updateMeasureButtons(); });
+  $('btnClearMeasure').addEventListener('click', clearMeasure);
+  $('rulerCanvas').addEventListener('click', (e) => {
+    if (!state.measure.marking) return;
+    const cv = $('rulerCanvas');
+    const cell = computeCell();
+    if (!cell || !cv.width) return;
+    const rect = cv.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (cv.width / rect.width);
+    const cy = (e.clientY - rect.top) * (cv.height / rect.height);
+    const pad = RULER_PAD;
+    const w = cell.w, h = cell.h;
+    const fx = pad, fyTop = cv.height - pad - h;
+    if (cx < fx || cx > fx + w || cy < fyTop || cy > fyTop + h) return;
+    state.measure[state.measure.marking] = clamp((cy - fyTop) / h, 0, 1);
+    state.measure.marking = null;
+    updateMeasureButtons();
+    renderRuler();
+  });
+  $('btnSaveToProject').addEventListener('click', saveToProject);
+  $('btnSave').addEventListener('click', saveSheet);
+  $('btnDownload').addEventListener('click', async () => {
+    const r = buildSheet();
+    if (!r) { toast('无可输出帧', 'err'); return; }
+    const blob = await canvasToBlob(r.sheet, 'image/png');
+    downloadBlob(blob, finalFilename());
+  });
+
+  document.querySelectorAll('nav.tabs .tab').forEach(b => b.addEventListener('click', () => {
+    if (!b.disabled) showTab(b.dataset.tab);
+  }));
+}
+
+/* ---------------- 初始化 ---------------- */
+updateKeyColorUI();
+bindEvents();
+  renderAnchorPreview();
+updateTabs();
+$('statusText').textContent = '就绪 — 导入素材开始';
+
+/* ==== SPRITE-AGENT-BRIDGE v1 ==== */
+/* =====================================================================
+   页面内 agent 桥接层（bridge.js）—— 给外部程序（CDP Runtime.evaluate）用
+   的函数调用接口，替代「模拟点击」。
+
+   插在哪：
+     由 scripts/patch-sprite-tool.mjs 插进「序列帧精灵图工具.html」里
+     script[type=module] 那个块的内部末尾、闭合标签之前
+     （即 `$('statusText').textContent = '就绪 …'` 那一行之后）。
+     该模块没有 IIFE 包裹，但这是 module 作用域：顶层 const/function
+     同样不挂在 window 上，所以桥接必须插在块内才能看见内部符号。
+
+   依赖的内部符号（同一模块作用域，缺一个就会在对应函数里报错）：
+     状态   state{source,conv,frames,selected,key,keyed,mask,masked,trim,measure,anchor,out}
+     工具   $  clamp  toast  setBusy  setProgress  canvasToPng
+     导入   handleFile  detectKind  updateConvUI  updateTabs
+     抽帧   generateFrames  renderThumbnails  updateSelCount  getSelectedIndices
+     帧图   effectiveFrame  getSelectedFrames  getCropRect  getTrimBBox
+            buildProcessedFrame  alphaBBox  refreshEditPreviews  showPreviewBox
+     抠图   keyHex  keyRequestParams  requestKey  loadCanvasFromDataUrl
+            updateKeyColorUI  updateKeyModeVisibility  onKeyParamChange
+            renderKeyResult  renderKeySource  showMaskInto  syncThumbSel
+     去水印 applyRectMask  renderMaskPreview  onMaskRectChange  updateMaskInfo  clearMask
+     裁剪   computeTrimCore  applyTrimResult
+     输出   computeCell  buildSheet  currentMeta  renderSheetPreview  renderRuler
+            applyOutScale  updateMeasureInfo  updateMeasureButtons  refreshOutput
+     锚点   renderAnchorPreview
+     接缝   window.SheetKey（页面自带的离线垫片把 /api/key 接管成纯本地计算，
+            所以 requestKey 不依赖 Unity 宿主）
+
+   约定：
+     · 每个函数都是 async，只返回可 JSON 序列化的普通对象；
+     · 出错不 throw，一律 {ok:false, error:'...'}；
+     · 每个函数都会把状态写回 UI（调用内部渲染函数），人打开页面看到的是同一份结果；
+     · 不点任何按钮：文件靠 File + change、取色靠 getImageData、参数直接改 state。
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  const MARK = 'SPRITE-AGENT-BRIDGE v1';
+
+  /* ---------------- 小工具 ---------------- */
+  const fail = (error) => ({ ok: false, error: String((error && error.message) || error || '未知错误') });
+  const num = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const clampv = (v, a, b) => Math.min(b, Math.max(a, v));
+  const rectOf = (r) => (r ? { x: r.x, y: r.y, w: r.w, h: r.h } : null);
+  const has = (o, k) => !!o && o[k] !== undefined && o[k] !== null;
+
+  const el = (id) => (typeof $ === 'function' ? $(id) : document.getElementById(id));
+  const setChecked = (id, v) => { const e = el(id); if (e) e.checked = !!v; };
+  const setText = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+  const setHtml = (id, v) => { const e = el(id); if (e) e.innerHTML = v; };
+
+  /* 没选帧时兜底全选：内部大量函数只看 state.selected */
+  function ensureSelection() {
+    if (getSelectedIndices().length) return getSelectedIndices();
+    state.selected = new Set(state.frames.map((_, i) => i));
+    if (typeof syncThumbSel === 'function') syncThumbSel();
+    if (typeof updateSelCount === 'function') updateSelCount();
+    return getSelectedIndices();
+  }
+
+  function frameIndex(v) {
+    if (!state.frames.length) return -1;
+    return clampv(Math.round(num(v, 0)), 0, state.frames.length - 1);
+  }
+
+  /* 把 state.key 里的参数同步到控件上（不触发 change，避免重复渲染） */
+  function syncKeyUI() {
+    const k = state.key, a = k.adv;
+    setChecked('keyEnabled', k.enabled);
+    setChecked('advAutoPlate', k.autoPlate);
+    setChecked('advDespillAggr', a.despillAggr);
+    const sel = el('keyMode');
+    if (sel) sel.value = k.mode === 'advanced' ? 'advanced' : 'classic';
+    const slider = (rangeId, numId, valId, v) => {
+      const r = el(rangeId), n = el(numId), t = el(valId);
+      if (r) r.value = v;
+      if (n) n.value = v;
+      if (t) t.textContent = ' ' + v;
+    };
+    slider('keyIntensity', 'keyIntensityNum', 'keyIntensityVal', k.intensity);
+    slider('keyFeather', 'keyFeatherNum', 'keyFeatherVal', k.feather);
+    slider('keyCleanup', 'keyCleanupNum', 'keyCleanupVal', k.cleanup);
+    slider('advIntensity', 'advIntensityNum', 'advIntensityVal', a.intensity);
+    slider('advSoftness', 'advSoftnessNum', 'advSoftnessVal', a.softness);
+    slider('advDespill', 'advDespillNum', 'advDespillVal', a.despill);
+    slider('advFeather', 'advFeatherNum', 'advFeatherVal', a.feather);
+    slider('advGreenToAlpha', 'advGreenNum', 'advGreenVal', a.greenToAlpha);
+    if (typeof updateKeyColorUI === 'function') updateKeyColorUI();
+    if (typeof updateKeyModeVisibility === 'function') updateKeyModeVisibility();
+  }
+
+  function keyParamsObject() {
+    const k = state.key, a = k.adv;
+    return {
+      enabled: !!k.enabled,
+      mode: k.mode === 'advanced' ? 'advanced' : 'classic',
+      colorHex: typeof keyHex === 'function' ? keyHex() : '#00ff00',
+      intensity: k.intensity,
+      feather: k.feather,
+      cleanup: k.cleanup,
+      softness: a.softness,
+      despill: a.despill,
+      greenToAlpha: a.greenToAlpha,
+      aggressive: !!a.despillAggr,
+      autoPlate: !!k.autoPlate,
+      advIntensity: a.intensity,
+      advFeather: a.feather,
+      /* 真正发给 /api/key 的请求体，排查参数映射用 */
+      request: typeof keyRequestParams === 'function' ? keyRequestParams() : null,
+    };
+  }
+
+  function mimeOf(name) {
+    const s = String(name).toLowerCase();
+    if (s.endsWith('.gif')) return 'image/gif';
+    if (s.endsWith('.webm')) return 'video/webm';
+    if (s.endsWith('.mp4')) return 'video/mp4';
+    if (s.endsWith('.mov')) return 'video/quicktime';
+    return 'application/octet-stream';
+  }
+
+  /* ---------------- 1. 导入 ---------------- */
+  async function loadVideoBase64(b64, name) {
+    try {
+      const raw = String(b64 || '').trim();
+      if (!raw) return fail('base64 为空');
+      const cut = raw.indexOf('base64,');
+      const payload = cut >= 0 ? raw.slice(cut + 7) : raw;
+      let bin;
+      try { bin = atob(payload); } catch (e) { return fail('base64 解码失败：' + (e.message || e)); }
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      if (!bytes.length) return fail('base64 解出来是空文件');
+
+      const filename = String(name || 'clip.mov');
+      const file = new File([bytes], filename, { type: mimeOf(filename) });
+
+      /* 塞进文件输入框，然后走真实的 change 事件（与用户手动选文件同一条路） */
+      const input = el('fileInput');
+      let injected = false;
+      if (input) {
+        try {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          input.files = dt.files;
+          injected = !!input.files && input.files.length === 1;
+        } catch (_) { injected = false; }
+        try { input.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) { /* ignore */ }
+      }
+
+      /* change 是同步派发、handleFile 是 async：等 state.source 落位；
+         万一监听没生效（例如输入框被换掉），直接调 handleFile 兜底。 */
+      const waitUntil = async (test, timeout) => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < timeout) {
+          if (test()) return true;
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        return test();
+      };
+      const landedByEvent = injected && await waitUntil(() => !!state.source && state.source.file === file, 400);
+      if (!landedByEvent) await handleFile(file);
+
+      const landed = await waitUntil(() => !!state.source && state.source.file === file, 2000);
+      if (!landed) return fail('文件没有进入页面（handleFile 没接住）');
+
+      /* 视频时长/分辨率要等 loadedmetadata，超时不影响后续（setRange 是显式给的） */
+      const src = state.source;
+      let metaReady = true;
+      if (src.kind !== 'gif' && (src.width == null || src.duration == null)) {
+        metaReady = await waitUntil(() => src.width != null || (src.duration != null), 6000);
+      }
+      if (typeof updateTabs === 'function') updateTabs();
+      return {
+        ok: true,
+        name: src.name,
+        bytes: bytes.length,
+        kind: src.kind,
+        duration: src.duration,
+        width: src.width,
+        height: src.height,
+        metaReady,
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 2. 抽帧参数 ---------------- */
+  async function setRange(start, end, fps) {
+    try {
+      if (!state.source) return fail('还没有导入素材');
+      const st = num(start, 0);
+      let en = num(end, st + 1);
+      const f = num(fps, 12);
+      if (en <= st) en = st + Math.max(1, 1 / Math.max(f, 1));
+
+      const startEl = el('convStart'), endEl = el('convEnd'), fpsEl = el('convFps');
+      if (startEl) startEl.value = st;
+      if (endEl) endEl.value = en;
+      if (fpsEl) {
+        const v = String(f);
+        const exists = Array.prototype.some.call(fpsEl.options || [], (o) => o.value === v);
+        if (!exists) {
+          const o = document.createElement('option');
+          o.value = v;
+          o.textContent = v + ' fps';
+          fpsEl.appendChild(o);
+        }
+        fpsEl.value = v;
+      }
+      if (typeof updateConvUI === 'function') updateConvUI();   /* 内部会按素材类型夹取范围 */
+      return {
+        ok: true,
+        start: num(startEl && startEl.value, st),
+        end: num(endEl && endEl.value, en),
+        fps: num(fpsEl && fpsEl.value, f),
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 3. 抽帧 ---------------- */
+  async function extract() {
+    try {
+      if (!state.source) return fail('还没有导入素材');
+      const before = state.frames;
+      await generateFrames();             /* 失败只会 toast，这里靠「数组是否换新」判定 */
+      if (!state.frames.length) return fail('没生成任何帧（检查起止时间/编码）');
+      if (state.frames === before) return fail('抽帧没有真正执行（预览占用或参数无效，可重试一次）');
+      const f0 = state.frames[0];
+      if (typeof updateTabs === 'function') updateTabs();
+      if (typeof renderThumbnails === 'function') renderThumbnails();
+      return { ok: true, count: state.frames.length, width: f0.width, height: f0.height };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 4. 取色（按坐标读像素，不点取色按钮） ---------------- */
+  async function pickBgColor(frameIdx, x, y) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      const i = frameIndex(frameIdx);
+      if (i < 0) return fail('帧号无效');
+      const src = state.frames[i];
+      const xx = Number(x), yy = Number(y);
+      if (!Number.isFinite(xx) || !Number.isFinite(yy)) return fail('x / y 需要是数字');
+      const px = clampv(Math.round(xx), 0, src.width - 1);
+      const py = clampv(Math.round(yy), 0, src.height - 1);
+      const d = src.getContext('2d').getImageData(px, py, 1, 1).data;
+      state.key.color = { r: d[0], g: d[1], b: d[2] };
+      state.picking = false;
+      setText('btnPickColor', '🎯 取色');
+      setText('keyPickHint', '点击「取色」后，在左侧原图上点取背景色');
+      if (typeof updateKeyColorUI === 'function') updateKeyColorUI();
+      if (state.key.enabled) { await renderKeyResult(); }
+      else if (typeof renderKeySource === 'function') { renderKeySource(); }
+      return {
+        ok: true,
+        hex: typeof keyHex === 'function' ? keyHex() : '#000000',
+        frame: i,
+        x: px,
+        y: py,
+        rgb: { r: d[0], g: d[1], b: d[2] },
+        alpha: d[3],
+        clamped: (px !== Math.round(xx)) || (py !== Math.round(yy)),
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 5. 抠图参数 ---------------- */
+  async function keyParams() {
+    try {
+      return Object.assign({ ok: true }, keyParamsObject());
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  async function setKeyParams(patch) {
+    try {
+      const p = (patch && typeof patch === 'object') ? patch : {};
+      const k = state.key, a = k.adv;
+      const clampInt = (v, lo, hi, d) => clampv(Math.round(num(v, d)), lo, hi);
+
+      if (has(p, 'mode')) k.mode = String(p.mode) === 'advanced' ? 'advanced' : 'classic';
+      if (has(p, 'enabled')) k.enabled = !!p.enabled;
+      if (has(p, 'autoPlate')) k.autoPlate = !!p.autoPlate;
+      if (has(p, 'aggressive')) a.despillAggr = !!p.aggressive;
+
+      const hex = has(p, 'colorHex') ? p.colorHex : (has(p, 'color') ? p.color : null);
+      if (hex != null) {
+        const m = /^#?([0-9a-fA-F]{6})$/.exec(String(hex).trim());
+        if (!m) return fail('colorHex 需要 6 位十六进制，例如 #00FF00');
+        const v = m[1];
+        k.color = {
+          r: parseInt(v.slice(0, 2), 16),
+          g: parseInt(v.slice(2, 4), 16),
+          b: parseInt(v.slice(4, 6), 16),
+        };
+      }
+      /* intensity 同时写经典档与智能档，免得切模式时参数「丢了」 */
+      if (has(p, 'intensity')) { const v = clampInt(p.intensity, 0, 100, k.intensity); k.intensity = v; a.intensity = v; }
+      if (has(p, 'feather')) { const v = clampInt(p.feather, 0, 100, k.feather); k.feather = v; a.feather = v; }
+      if (has(p, 'cleanup')) k.cleanup = clampInt(p.cleanup, 0, 100, k.cleanup);
+      if (has(p, 'softness')) a.softness = clampInt(p.softness, 0, 100, a.softness);
+      if (has(p, 'despill')) a.despill = clampInt(p.despill, 0, 100, a.despill);
+      if (has(p, 'greenToAlpha')) a.greenToAlpha = clampInt(p.greenToAlpha, 0, 300, a.greenToAlpha);
+      if (has(p, 'advIntensity')) a.intensity = clampInt(p.advIntensity, 0, 100, a.intensity);
+      if (has(p, 'advFeather')) a.feather = clampInt(p.advFeather, 0, 100, a.feather);
+
+      syncKeyUI();
+      if (typeof onKeyParamChange === 'function') onKeyParamChange();   /* 清缓存 + 防抖预览 + 刷新编辑页 */
+      return Object.assign({ ok: true }, keyParamsObject());
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 6. 单帧抠图预览 ---------------- */
+  async function keyPreview(frameIdx) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      const i = frameIndex(frameIdx);
+      const src = state.frames[i];
+      const r = await requestKey([src], false);   /* 预览不跑自动背景板（与内部一致） */
+      const url = r && r.frames && r.frames[0];
+      if (!url) return fail('抠图接口没返回帧');
+      try {
+        const c = await loadCanvasFromDataUrl(url);
+        const maskChk = el('keyShowMask');
+        if (maskChk && maskChk.checked) showMaskInto('keyResultBox', c);
+        else if (typeof showPreviewBox === 'function') showPreviewBox('keyResultBox', c);
+      } catch (_) { /* UI 同步失败不影响返回值 */ }
+      return { ok: true, dataURL: url, frame: i, width: src.width, height: src.height, applied: false, clamped: Math.round(num(frameIdx, 0)) !== i };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 7. 应用抠图 ---------------- */
+  async function keyApply(indices) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      let list;
+      if (Array.isArray(indices) && indices.length) {
+        const seen = new Set();
+        list = indices
+          .map((v) => frameIndex(v))
+          .filter((v) => v >= 0 && !seen.has(v) && seen.add(v));
+        list.sort((x, y) => x - y);
+      } else {
+        list = ensureSelection();
+      }
+      if (!list.length) return fail('没有可应用的帧');
+
+      /* 不启用抠图的话 keyed 结果不会被 effectiveFrame 采用，页面看起来「没反应」 */
+      const autoEnabled = !state.key.enabled;
+      if (autoEnabled) { state.key.enabled = true; setChecked('keyEnabled', true); }
+
+      setBusy('正在把 ' + list.length + ' 帧抠图…', true);
+      let r;
+      try {
+        r = await requestKey(list.map((i) => state.frames[i]), !!state.key.autoPlate);
+      } finally {
+        setBusy(null, false);
+      }
+      state.keyed.clear();
+      for (let j = 0; j < list.length; j++) {
+        state.keyed.set(list[j], await loadCanvasFromDataUrl(r.frames[j]));
+        setProgress((j + 1) / list.length);
+      }
+      if (r.plateInfo) setText('advPlateInfo', r.plateInfo);
+      setHtml('keyApplyStatus', '<span class="ok">✓ 已应用到 ' + list.length + ' 帧</span>');
+      setText('keyAppliedHint', '');
+
+      /* 已启用框选去水印：基于新的 keyed 结果重算 masked（与内部顺序一致） */
+      if (state.mask.enabled && state.mask.rect) {
+        state.masked.clear();
+        list.forEach((i) => state.masked.set(i, applyRectMask(state.keyed.get(i), state.mask.rect)));
+      }
+      renderThumbnails();
+      updateSelCount();
+      refreshEditPreviews();
+      if (state.trim.enabled) {
+        const eff = getSelectedFrames();
+        if (eff.length) applyTrimResult(computeTrimCore(eff), eff[0], true);
+      }
+      if (typeof updateTabs === 'function') updateTabs();
+
+      const plateApplied = !!(state.key.autoPlate && r.plateInfo && r.plateInfo.indexOf('估计失败') < 0);
+      return {
+        ok: true,
+        frames: list.length,
+        indices: list,
+        plateApplied,
+        plateInfo: r.plateInfo || '',
+        plateNote: (state.key.autoPlate && state.key.mode !== 'advanced')
+          ? '自动背景板只在智能档（advanced）生效，当前是经典档，未计算背景板'
+          : '',
+        keyEnabled: !!state.key.enabled,
+        autoEnabled,
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 8. 蒙版可视化 ---------------- */
+  async function maskDataURL(frameIdx) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      const i = frameIndex(frameIdx);
+      const src = effectiveFrame(i);          /* 抠图/去水印后的有效帧，没有就走原帧 */
+      const c = document.createElement('canvas');
+      c.width = src.width; c.height = src.height;
+      const ctx = c.getContext('2d');
+      const idata = src.getContext('2d').getImageData(0, 0, c.width, c.height);
+      const d = idata.data;
+      for (let p = 0; p < d.length; p += 4) {
+        const a = d[p + 3];
+        d[p] = a; d[p + 1] = a; d[p + 2] = a; d[p + 3] = 255;
+      }
+      ctx.putImageData(idata, 0, 0);
+      if (typeof showMaskInto === 'function') showMaskInto('keyResultBox', src);   /* UI 也切成看蒙版 */
+      return { ok: true, dataURL: c.toDataURL('image/png'), frame: i, width: c.width, height: c.height };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 9. 框选去水印 ---------------- */
+  async function setMaskRect(rect) {
+    try {
+      if (rect === null || rect === undefined) {
+        if (typeof clearMask === 'function') {
+          clearMask();
+        } else {
+          state.mask.rect = null;
+          state.mask.enabled = false;
+          state.masked.clear();
+          if (typeof renderMaskPreview === 'function') renderMaskPreview();
+        }
+        state.mask.enabled = false;
+        setChecked('maskEnabled', false);
+        renderThumbnails();
+        refreshEditPreviews();
+        updateSelCount();
+        return { ok: true, rect: null, enabled: false };
+      }
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      const f = state.frames[0];
+      const x = Math.round(num(rect.x, NaN)), y = Math.round(num(rect.y, NaN));
+      const w = Math.round(num(rect.w, NaN)), h = Math.round(num(rect.h, NaN));
+      if (![x, y, w, h].every(Number.isFinite)) return fail('rect 需要 {x,y,w,h} 四个数字');
+      if (w <= 0 || h <= 0) return fail('rect.w / rect.h 需要 > 0');
+      const rr = {
+        x: clampv(x, 0, f.width - 1),
+        y: clampv(y, 0, f.height - 1),
+        w: 0, h: 0,
+      };
+      rr.w = clampv(w, 1, f.width - rr.x);
+      rr.h = clampv(h, 1, f.height - rr.y);
+      state.mask.rect = rr;
+      state.mask.enabled = true;
+      setChecked('maskEnabled', true);
+      if (typeof onMaskRectChange === 'function') onMaskRectChange();
+      if (typeof renderMaskPreview === 'function') renderMaskPreview();
+      if (typeof updateMaskInfo === 'function') updateMaskInfo();
+      return { ok: true, rect: rectOf(rr), enabled: true, frameWidth: f.width, frameHeight: f.height };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  async function applyMask() {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.mask.rect) return fail('还没有框选区域，先 setMaskRect({x,y,w,h})');
+      if (!state.mask.enabled) { state.mask.enabled = true; setChecked('maskEnabled', true); }
+      const indices = ensureSelection();
+      setBusy('正在对 ' + indices.length + ' 帧去水印…', true);
+      await new Promise((r) => setTimeout(r, 24));
+      state.masked.clear();
+      for (let i = 0; i < indices.length; i++) {
+        const idx = indices[i];
+        const base = state.keyed.get(idx) || state.frames[idx];   /* 基于抠图结果或原帧 */
+        state.masked.set(idx, applyRectMask(base, state.mask.rect));
+        setProgress((i + 1) / indices.length);
+      }
+      setBusy(null, false);
+      setHtml('maskApplyStatus', '<span class="ok">✓ 已应用到 ' + indices.length + ' 帧</span>');
+      renderThumbnails();
+      refreshEditPreviews();
+      updateSelCount();
+      if (state.trim.enabled) {
+        const eff = getSelectedFrames();
+        if (eff.length) applyTrimResult(computeTrimCore(eff), eff[0], true);
+      }
+      if (typeof updateTabs === 'function') updateTabs();
+      return { ok: true, frames: indices.length, rect: rectOf(state.mask.rect) };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 10. 透明边缘最小化 ---------------- */
+  async function computeTrim() {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      ensureSelection();
+      const sel = getSelectedFrames();
+      if (!sel.length) return fail('没有可扫描的帧');
+      setBusy('正在扫描透明边缘…', true);
+      await new Promise((r) => setTimeout(r, 24));
+      let u;
+      try {
+        u = computeTrimCore(sel);
+      } finally {
+        setBusy(null, false);
+      }
+      applyTrimResult(u, sel[0], true);
+      updateSelCount();
+      return {
+        ok: true,
+        box: rectOf(state.trim.bbox),
+        content: u ? { x: u.x, y: u.y, x2: u.x2, y2: u.y2, w: u.x2 - u.x + 1, h: u.y2 - u.y + 1 } : null,
+        enabled: !!state.trim.enabled,
+        /* box 的坐标空间：裁切之后、缩放之前的像素（内部 applyTrimResult 就写这个空间） */
+        coordSpace: 'crop',
+        alphaThreshold: state.trim.alphaThreshold,
+        pad: { top: state.trim.pad.top, bottom: state.trim.pad.bottom, left: state.trim.pad.left, right: state.trim.pad.right },
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  async function applyTrim() {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.trim.bbox) {
+        const r = await computeTrim();
+        if (!r.ok) return r;
+      }
+      state.trim.enabled = true;
+      setChecked('trimEnabled', true);
+      refreshEditPreviews();
+      if (typeof updateSelCount === 'function') updateSelCount();
+      try { await refreshOutput(); } catch (_) { /* 输出页刷新不是硬要求 */ }
+      if (typeof updateTabs === 'function') updateTabs();
+      return { ok: true, enabled: true, box: rectOf(state.trim.bbox) };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 11. 测高反推缩放 ---------------- */
+  async function measureScale(bottomY, topY, targetPx) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      ensureSelection();
+      const f = getSelectedFrames()[0];
+      if (!f) return fail('没有可测量的帧');
+
+      /* 与 buildProcessedFrame 同一切法：裁切 → 最小化，得到「最终格」的源图 */
+      const crop = getCropRect(f.width, f.height);
+      const tb = getTrimBBox();
+      const sx = crop.x + (tb ? tb.x : 0);
+      const sy = crop.y + (tb ? tb.y : 0);
+      const sw = tb ? tb.w : crop.w;
+      const sh = tb ? tb.h : crop.h;
+      if (sh <= 0) return fail('源帧高度为 0');
+
+      const probe = document.createElement('canvas');
+      probe.width = sw; probe.height = sh;
+      probe.getContext('2d').drawImage(f, sx, sy, sw, sh, 0, 0, sw, sh);
+
+      /* 参数是归一化 0~1（和刻度图上一样）；>1 当成像素，除以源高 */
+      const norm = (v) => {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return null;
+        return n > 1 ? clampv(n / sh, 0, 1) : clampv(n, 0, 1);
+      };
+      let bottom = norm(bottomY), top = norm(topY);
+      let sourcePx = 0, auto = false;
+      if (bottom == null || top == null || Math.abs(bottom - top) < 1e-4) {
+        /* (0,0) 或缺失 → 自动用内容物 alpha bbox 测高（等同最小化看到的范围） */
+        const bb = alphaBBox(probe, state.trim.alphaThreshold);
+        if (!bb) return fail('没找到非透明内容，无法自动测高（先抠图或调低极淡像素阈值）');
+        top = clampv(bb.y / sh, 0, 1);
+        bottom = clampv((bb.y + bb.h) / sh, 0, 1);
+        sourcePx = bb.h;
+        auto = true;
+      } else {
+        sourcePx = Math.abs(bottom - top) * sh;
+      }
+      state.measure.top = top;
+      state.measure.bottom = bottom;
+      state.measure.marking = null;
+      if (typeof updateMeasureButtons === 'function') updateMeasureButtons();
+
+      const target = num(targetPx, 0);
+      let scale = num(el('outScale') && el('outScale').value, state.out.scale || 100);
+      let wanted = null, clamped = false;
+      if (target > 0) {
+        if (sourcePx <= 0) return fail('内容物高度为 0，无法反推比例');
+        wanted = Math.round((target * 100 / sourcePx) * 100) / 100;
+        scale = clampv(wanted, 1, 300);          /* 工具自身的缩放上限就是 1~300% */
+        clamped = Math.abs(scale - wanted) > 0.01;
+        applyOutScale(scale, true);              /* 会顺手 scheduleRefreshOutput(300) 重排输出 */
+      }
+      if (typeof renderRuler === 'function') renderRuler();
+      if (typeof updateMeasureInfo === 'function') updateMeasureInfo();
+      const applied = num(el('outScale') && el('outScale').value, scale);
+      return {
+        ok: true,
+        scale: applied,
+        wantedScale: wanted,
+        scaleClamped: clamped,
+        sourcePx: Math.round(sourcePx),
+        achievedPx: Math.round(sourcePx * applied / 100),
+        targetPx: target > 0 ? target : null,
+        bottomNorm: bottom,
+        topNorm: top,
+        auto,
+        sourceHeight: sh,
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 12. 锚点 ---------------- */
+  async function setAnchor(x, y) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      const nx = clampv(num(x, state.anchor.x), 0, 1);
+      const ny = clampv(num(y, state.anchor.y), 0, 1);
+      /* 不调内部 setAnchorValue：它最后会调 markDirty()，而本工具里没有这个函数，
+         一调就 ReferenceError（上游遗留）。这里直接写 state + 渲染。 */
+      state.anchor.x = nx;
+      state.anchor.y = ny;
+      state.anchor.confirmed = true;
+      renderAnchorPreview();
+      if (typeof markDirty === 'function') { try { markDirty(); } catch (_) { /* ignore */ } }
+      return { ok: true, x: state.anchor.x, y: state.anchor.y };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 13. 拼图 ---------------- */
+  async function buildSheetOp(cols, rows) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      ensureSelection();
+      const cEl = el('outCols'), rEl = el('outRows');
+      if (cols != null && cEl) cEl.value = clampv(Math.round(num(cols, 4)), 1, 100);
+      if (rows != null && rEl) rEl.value = clampv(Math.round(num(rows, 4)), 1, 100);
+      const r = buildSheet();
+      if (!r) return fail('拼图失败（没有可输出帧）');
+      const url = r.sheet.toDataURL('image/png');
+      const meta = currentMeta(r);
+      /* UI：把输出页的尺寸/网格/预览一起刷新，人看到的是同一张 */
+      try {
+        if (typeof renderRuler === 'function') renderRuler();
+        if (typeof renderAnchorPreview === 'function') renderAnchorPreview();
+        await renderSheetPreview();
+      } catch (_) { /* ignore */ }
+      if (typeof updateTabs === 'function') updateTabs();
+      return {
+        ok: true,
+        dataURL: url,
+        meta,
+        width: r.sheet.width,
+        height: r.sheet.height,
+        cols: r.cols,
+        rows: r.rows,
+        cellW: r.cellW,
+        cellH: r.cellH,
+        count: r.count,
+        total: r.total,
+      };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  async function sheetMeta() {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      ensureSelection();
+      const r = buildSheet();
+      if (!r) return fail('拼图失败（没有可输出帧）');
+      const meta = currentMeta(r);
+      return Object.assign({ ok: true }, meta, {
+        sheetWidth: r.sheet.width,
+        sheetHeight: r.sheet.height,
+        cellW: r.cellW,
+        cellH: r.cellH,
+        total: r.total,
+        trimmed: !!state.trim.enabled,
+        keyed: !!state.key.enabled,
+        masked: !!state.mask.enabled,
+      });
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 14. 原图 ---------------- */
+  async function frameDataURL(frameIdx) {
+    try {
+      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      const i = frameIndex(frameIdx);
+      const f = state.frames[i];
+      return { ok: true, dataURL: f.toDataURL('image/png'), frame: i, width: f.width, height: f.height };
+    } catch (e) {
+      return fail(e);
+    }
+  }
+
+  /* ---------------- 挂到 window ---------------- */
+  window.__spriteAgent = Object.freeze({
+    ready: true,
+    bridge: MARK,
+    loadVideoBase64,
+    setRange,
+    extract,
+    pickBgColor,
+    keyParams,
+    setKeyParams,
+    keyPreview,
+    keyApply,
+    maskDataURL,
+    setMaskRect,
+    applyMask,
+    computeTrim,
+    applyTrim,
+    measureScale,
+    setAnchor,
+    buildSheet: buildSheetOp,
+    sheetMeta,
+    frameDataURL,
+  });
+  console.log('[sprite-agent] bridge ready（' + MARK + '）');
+})();
+/* ==== /SPRITE-AGENT-BRIDGE ==== */
+</script>
+</body>
+</html>
