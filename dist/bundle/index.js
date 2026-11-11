@@ -4784,7 +4784,7 @@ var require_websocket = __commonJS({
     var http2 = __require("http");
     var net2 = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes5, createHash: createHash6 } = __require("crypto");
+    var { randomBytes: randomBytes6, createHash: createHash7 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -5335,7 +5335,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes5(16).toString("base64");
+      const key = randomBytes6(16).toString("base64");
       const request = isSecure ? https.request : http2.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -5465,7 +5465,7 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash6("sha1").update(key + GUID).digest("base64");
+        const digest = createHash7("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -5834,7 +5834,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter2 = __require("events");
     var http2 = __require("http");
     var { Duplex } = __require("stream");
-    var { createHash: createHash6 } = __require("crypto");
+    var { createHash: createHash7 } = __require("crypto");
     var extension2 = require_extension();
     var PerMessageDeflate2 = require_permessage_deflate();
     var subprotocol2 = require_subprotocol();
@@ -6141,7 +6141,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash6("sha1").update(key + GUID).digest("base64");
+        const digest = createHash7("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -22058,13 +22058,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json11, params, message) {
+function handleUnrepresentable(schema, ctx, json12, params, message) {
   const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result2 === "any")
     return false;
   if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json11, result2);
+  Object.assign(json12, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -22300,12 +22300,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json11) {
-  const allOf = json11.allOf;
+function foldIntersection(json12) {
+  const allOf = json12.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json11)
+    if (key in json12)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -22324,8 +22324,8 @@ function foldIntersection(json11) {
   }
   if (!folded)
     return;
-  delete json11.allOf;
-  assignProps(json11, folded);
+  delete json12.allOf;
+  assignProps(json12, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -22407,20 +22407,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json11 of [seen.schema, seen.def]) {
-          const allOf = json11?.allOf;
+        for (const json12 of [seen.schema, seen.def]) {
+          const allOf = json12?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json11);
+            existing.push(json12);
           else
-            carriers.set(allOf, [json11]);
+            carriers.set(allOf, [json12]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json11 of carriers.get(allOf) ?? [])
-          foldIntersection(json11);
+        for (const json12 of carriers.get(allOf) ?? [])
+          foldIntersection(json12);
       }
     }
   }
@@ -22655,29 +22655,29 @@ var exactPatterns = /* @__PURE__ */ new Map([
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
 var stringProcessor = (schema, ctx, _json, _params) => {
-  const json11 = _json;
-  json11.type = "string";
+  const json12 = _json;
+  json12.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json11.minLength = minimum;
+    json12.minLength = minimum;
   if (typeof maximum === "number")
-    json11.maxLength = maximum;
+    json12.maxLength = maximum;
   if (format) {
-    json11.format = formatMap[format] ?? format;
-    if (json11.format === "")
-      delete json11.format;
+    json12.format = formatMap[format] ?? format;
+    if (json12.format === "")
+      delete json12.format;
     if (format === "time" || laxFormat) {
-      delete json11.format;
+      delete json12.format;
     }
   }
   if (contentEncoding)
-    json11.contentEncoding = contentEncoding;
+    json12.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const patternList = [...patterns].map(exactPattern);
     if (patternList.length === 1)
-      json11.pattern = patternList[0].source;
+      json12.pattern = patternList[0].source;
     else if (patternList.length > 1) {
-      json11.allOf = [
+      json12.allOf = [
         ...patternList.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -22687,31 +22687,31 @@ var stringProcessor = (schema, ctx, _json, _params) => {
   }
 };
 var numberProcessor = (schema, ctx, _json, params) => {
-  const json11 = _json;
+  const json12 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-  json11.type = isInt ? "integer" : "number";
+  json12.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json11.minimum = exclusiveMinimum;
-      json11.exclusiveMinimum = true;
+      json12.minimum = exclusiveMinimum;
+      json12.exclusiveMinimum = true;
     } else {
-      json11.exclusiveMinimum = exclusiveMinimum;
+      json12.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json11.minimum = minimum;
+    json12.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json11.maximum = exclusiveMaximum;
-      json11.exclusiveMaximum = true;
+      json12.maximum = exclusiveMaximum;
+      json12.exclusiveMaximum = true;
     } else {
-      json11.exclusiveMaximum = exclusiveMaximum;
+      json12.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json11.maximum = maximum;
+    json12.maximum = maximum;
   }
   if (multipleOf) {
     const divisors = /* @__PURE__ */ new Set();
@@ -22719,75 +22719,75 @@ var numberProcessor = (schema, ctx, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema, ctx, json11, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema, ctx, json12, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
-      json11.multipleOf = first;
+      json12.multipleOf = first;
     if (rest.length)
-      json11.allOf = [...json11.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+      json12.allOf = [...json12.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
   }
 };
-var booleanProcessor = (_schema, _ctx, json11, _params) => {
-  json11.type = "boolean";
+var booleanProcessor = (_schema, _ctx, json12, _params) => {
+  json12.type = "boolean";
 };
-var bigintProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx, json11, _params) => {
+var nullProcessor = (_schema, ctx, json12, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json11.type = "string";
-    json11.nullable = true;
-    json11.enum = [null];
+    json12.type = "string";
+    json12.nullable = true;
+    json12.enum = [null];
   } else {
-    json11.type = "null";
+    json12.type = "null";
   }
 };
-var undefinedProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Void cannot be represented in JSON Schema");
 };
-var neverProcessor = (_schema, _ctx, json11, _params) => {
-  json11.not = {};
+var neverProcessor = (_schema, _ctx, json12, _params) => {
+  json12.not = {};
 };
 var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Date cannot be represented in JSON Schema");
 };
-var enumProcessor = (schema, _ctx, json11, _params) => {
+var enumProcessor = (schema, _ctx, json12, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.length === 0) {
-    json11.not = {};
+    json12.not = {};
     return;
   }
   if (values.every((v) => typeof v === "number"))
-    json11.type = "number";
+    json12.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json11.type = "string";
-  json11.enum = values;
+    json12.type = "string";
+  json12.enum = values;
 };
-var literalProcessor = (schema, ctx, json11, params) => {
+var literalProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   if (def.values.length === 0) {
-    json11.not = {};
+    json12.not = {};
     return;
   }
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema, ctx, json11, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json12, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema, ctx, json11, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json12, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -22797,37 +22797,37 @@ var literalProcessor = (schema, ctx, json11, params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json11.type = val === null ? "null" : typeof val;
+    json12.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json11.enum = [val];
+      json12.enum = [val];
     } else {
-      json11.const = val;
+      json12.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json11.type = "number";
+      json12.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json11.type = "string";
+      json12.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json11.type = "boolean";
+      json12.type = "boolean";
     if (vals.every((v) => v === null))
-      json11.type = "null";
-    json11.enum = vals;
+      json12.type = "null";
+    json12.enum = vals;
   }
 };
-var nanProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "NaN cannot be represented in JSON Schema");
 };
-var templateLiteralProcessor = (schema, _ctx, json11, _params) => {
-  const _json = json11;
+var templateLiteralProcessor = (schema, _ctx, json12, _params) => {
+  const _json = json12;
   const pattern = schema._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json11, _params) => {
-  const _json = json11;
+var fileProcessor = (schema, _ctx, json12, _params) => {
+  const _json = json12;
   _json.type = "string";
   _json.format = "binary";
   _json.contentEncoding = "binary";
@@ -22845,34 +22845,34 @@ var fileProcessor = (schema, _ctx, json11, _params) => {
   else
     _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
 };
-var successProcessor = (_schema, _ctx, json11, _params) => {
-  json11.type = "boolean";
+var successProcessor = (_schema, _ctx, json12, _params) => {
+  json12.type = "boolean";
 };
-var customProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema, ctx, json11, params) => {
-  handleUnrepresentable(schema, ctx, json11, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema, ctx, json12, params) => {
+  handleUnrepresentable(schema, ctx, json12, params, "Set cannot be represented in JSON Schema");
 };
 var arrayProcessor = (schema, ctx, _json, params) => {
-  const json11 = _json;
+  const json12 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json11.minItems = minimum;
+    json12.minItems = minimum;
   if (typeof maximum === "number")
-    json11.maxItems = maximum;
-  json11.type = "array";
-  json11.items = processSchema(def.element, ctx, {
+    json12.maxItems = maximum;
+  json12.type = "array";
+  json12.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -22888,17 +22888,17 @@ function inputOptin(schema) {
   return schema._zod.optin;
 }
 var objectProcessor = (schema, ctx, _json, params) => {
-  const json11 = _json;
+  const json12 = _json;
   const def = schema._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json11, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json12, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
-  json11.type = "object";
-  json11.properties = {};
+  json12.type = "object";
+  json12.properties = {};
   for (const key in shape) {
-    assignProp(json11.properties, key, processSchema(shape[key], ctx, {
+    assignProp(json12.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -22911,21 +22911,21 @@ var objectProcessor = (schema, ctx, _json, params) => {
     }
   }
   if (requiredKeys.length > 0) {
-    json11.required = requiredKeys;
+    json12.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
-    json11.additionalProperties = false;
+    json12.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json11.additionalProperties = false;
+      json12.additionalProperties = false;
   } else if (def.catchall) {
-    json11.additionalProperties = processSchema(def.catchall, ctx, {
+    json12.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema, ctx, json11, params) => {
+var unionProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -22933,12 +22933,12 @@ var unionProcessor = (schema, ctx, json11, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json11.oneOf = options;
+    json12.oneOf = options;
   } else {
-    json11.anyOf = options;
+    json12.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json11, params) => {
+var intersectionProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   const a = processSchema(def.left, ctx, {
     ...params,
@@ -22953,13 +22953,13 @@ var intersectionProcessor = (schema, ctx, json11, params) => {
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json11.allOf = allOf;
+  json12.allOf = allOf;
   ctx.intersections.push(allOf);
 };
 var tupleProcessor = (schema, ctx, _json, params) => {
-  const json11 = _json;
+  const json12 = _json;
   const def = schema._zod.def;
-  json11.type = "array";
+  json12.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
   const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -22981,70 +22981,70 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   const maxItems = def.items.length;
   const isClosed = !def.rest;
   if (ctx.target === "draft-2020-12") {
-    json11.prefixItems = prefixItems;
+    json12.prefixItems = prefixItems;
     if (isClosed) {
-      json11.items = false;
+      json12.items = false;
     } else if (rest) {
-      json11.items = rest;
+      json12.items = rest;
     }
     if (minItems > 0)
-      json11.minItems = minItems;
+      json12.minItems = minItems;
     if (isClosed)
-      json11.maxItems = maxItems;
+      json12.maxItems = maxItems;
   } else if (ctx.target === "openapi-3.0") {
-    json11.items = {
+    json12.items = {
       anyOf: prefixItems
     };
     if (rest) {
-      json11.items.anyOf.push(rest);
+      json12.items.anyOf.push(rest);
     }
     if (minItems > 0)
-      json11.minItems = minItems;
+      json12.minItems = minItems;
     if (isClosed)
-      json11.maxItems = maxItems;
+      json12.maxItems = maxItems;
   } else {
-    json11.items = prefixItems;
+    json12.items = prefixItems;
     if (isClosed) {
-      json11.additionalItems = false;
+      json12.additionalItems = false;
     } else if (rest) {
-      json11.additionalItems = rest;
+      json12.additionalItems = rest;
     }
     if (minItems > 0)
-      json11.minItems = minItems;
+      json12.minItems = minItems;
     if (isClosed)
-      json11.maxItems = maxItems;
+      json12.maxItems = maxItems;
   }
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json11.minItems = minimum;
+    json12.minItems = minimum;
   if (typeof maximum === "number")
-    json11.maxItems = maximum;
+    json12.maxItems = maximum;
 };
-function stringifyKeyNames(bySchema, json11, visited) {
-  if (json11.$ref) {
-    if (visited.has(json11))
-      return json11;
-    visited.add(json11);
-    const def = bySchema.get(json11)?.def;
+function stringifyKeyNames(bySchema, json12, visited) {
+  if (json12.$ref) {
+    if (visited.has(json12))
+      return json12;
+    visited.add(json12);
+    const def = bySchema.get(json12)?.def;
     if (!def)
-      return json11;
+      return json12;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json11 : inlined;
+    return inlined === def ? json12 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json11[keyword];
+    const branches = json12[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json11 = { ...json11, [keyword]: mapped };
+      json12 = { ...json12, [keyword]: mapped };
   }
-  const types = Array.isArray(json11.type) ? json11.type : [json11.type];
+  const types = Array.isArray(json12.type) ? json12.type : [json12.type];
   const numericType = !types.includes("string") && types.some((t) => t === "number" || t === "integer");
-  const values = json11.enum ?? (json11.const !== void 0 ? [json11.const] : void 0);
+  const values = json12.enum ?? (json12.const !== void 0 ? [json12.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json11;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json11;
+    return json12;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json12;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23084,9 +23084,9 @@ function rewriteKeyNames(ctx) {
   }
 }
 var recordProcessor = (schema, ctx, _json, params) => {
-  const json11 = _json;
+  const json12 = _json;
   const def = schema._zod.def;
-  json11.type = "object";
+  json12.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -23094,13 +23094,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json11.patternProperties = {};
+    json12.patternProperties = {};
     for (const pattern of patterns) {
-      assignProp(json11.patternProperties, exactPattern(pattern).source, valueSchema);
+      assignProp(json12.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json11.propertyNames = processSchema(def.keyType, ctx, {
+      json12.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
@@ -23112,7 +23112,7 @@ var recordProcessor = (schema, ctx, _json, params) => {
       }
       pending2.push(schema);
     }
-    json11.additionalProperties = processSchema(def.valueType, ctx, {
+    json12.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -23122,19 +23122,19 @@ var recordProcessor = (schema, ctx, _json, params) => {
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json11.required = validKeyValues.map(String);
+      json12.required = validKeyValues.map(String);
     }
   }
 };
-var nullableProcessor = (schema, ctx, json11, params) => {
+var nullableProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   const inner = processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json11.nullable = true;
+    json12.nullable = true;
   } else {
-    json11.anyOf = [inner, { type: "null" }];
+    json12.anyOf = [inner, { type: "null" }];
   }
 };
 var nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -23144,7 +23144,7 @@ var nonoptionalProcessor = (schema, ctx, _json, params) => {
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
-function serializeDefaultValue(value, schema, ctx, json11, params) {
+function serializeDefaultValue(value, schema, ctx, json12, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23154,30 +23154,30 @@ function serializeDefaultValue(value, schema, ctx, json11, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema, ctx, json11, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json12, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema, ctx, json11, params) => {
+var defaultProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json11, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json12, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json11.default = value;
+    json12.default = value;
 };
-var prefaultProcessor = (schema, ctx, json11, params) => {
+var prefaultProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json11, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json12, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json11._prefault = value;
+    json12._prefault = value;
 };
-var catchProcessor = (schema, ctx, json11, params) => {
+var catchProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -23186,10 +23186,10 @@ var catchProcessor = (schema, ctx, json11, params) => {
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema, ctx, json11, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema, ctx, json12, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
-  json11.default = catchValue;
+  json12.default = catchValue;
 };
 var pipeProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23199,12 +23199,12 @@ var pipeProcessor = (schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json11, params) => {
+var readonlyProcessor = (schema, ctx, json12, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json11.readOnly = true;
+  json12.readOnly = true;
 };
 var promiseProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23846,7 +23846,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json11, params) => stringProcessor(inst, ctx, json11, params);
+    inst._zod.processJSONSchema = (ctx, json12, params) => stringProcessor(inst, ctx, json12, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -24205,7 +24205,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json11, params) => numberProcessor(inst, ctx, json11, params);
+    inst._zod.processJSONSchema = (ctx, json12, params) => numberProcessor(inst, ctx, json12, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -24295,7 +24295,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => booleanProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => booleanProcessor(inst, ctx, json12, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -24305,7 +24305,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json11, params) => bigintProcessor(inst, ctx, json11, params);
+    inst._zod.processJSONSchema = (ctx, json12, params) => bigintProcessor(inst, ctx, json12, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -24363,7 +24363,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => symbolProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => symbolProcessor(inst, ctx, json12, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -24371,7 +24371,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => undefinedProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => undefinedProcessor(inst, ctx, json12, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -24379,7 +24379,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => nullProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => nullProcessor(inst, ctx, json12, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -24387,7 +24387,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => anyProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => anyProcessor(inst, ctx, json12, params);
 });
 function any() {
   return _any(ZodAny);
@@ -24395,7 +24395,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => unknownProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => unknownProcessor(inst, ctx, json12, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -24403,7 +24403,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => neverProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => neverProcessor(inst, ctx, json12, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -24411,7 +24411,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => voidProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => voidProcessor(inst, ctx, json12, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -24421,7 +24421,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json11, params) => dateProcessor(inst, ctx, json11, params);
+    inst._zod.processJSONSchema = (ctx, json12, params) => dateProcessor(inst, ctx, json12, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -24443,7 +24443,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => arrayProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => arrayProcessor(inst, ctx, json12, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -24473,7 +24473,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => objectProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => objectProcessor(inst, ctx, json12, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -24546,7 +24546,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => unionProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => unionProcessor(inst, ctx, json12, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -24559,7 +24559,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => unionProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => unionProcessor(inst, ctx, json12, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -24585,7 +24585,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => intersectionProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => intersectionProcessor(inst, ctx, json12, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -24598,7 +24598,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => tupleProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => tupleProcessor(inst, ctx, json12, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -24631,7 +24631,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => recordProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => recordProcessor(inst, ctx, json12, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -24673,7 +24673,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => mapProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => mapProcessor(inst, ctx, json12, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -24693,7 +24693,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => setProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => setProcessor(inst, ctx, json12, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -24709,7 +24709,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => enumProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => enumProcessor(inst, ctx, json12, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -24762,7 +24762,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => literalProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => literalProcessor(inst, ctx, json12, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -24783,7 +24783,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => fileProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => fileProcessor(inst, ctx, json12, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -24795,7 +24795,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => transformProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => transformProcessor(inst, ctx, json12, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -24834,7 +24834,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => optionalProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => optionalProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -24846,7 +24846,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => optionalProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => optionalProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -24858,7 +24858,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => nullableProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => nullableProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -24873,7 +24873,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => defaultProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => defaultProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -24889,7 +24889,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => prefaultProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => prefaultProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -24904,7 +24904,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => nonoptionalProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => nonoptionalProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -24917,7 +24917,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => successProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => successProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -24929,7 +24929,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => catchProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => catchProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -24943,7 +24943,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => nanProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => nanProcessor(inst, ctx, json12, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -24951,7 +24951,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => pipeProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => pipeProcessor(inst, ctx, json12, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -24993,7 +24993,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => readonlyProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => readonlyProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -25005,7 +25005,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => templateLiteralProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => templateLiteralProcessor(inst, ctx, json12, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -25017,7 +25017,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => lazyProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => lazyProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -25029,7 +25029,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => promiseProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => promiseProcessor(inst, ctx, json12, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -25041,7 +25041,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => functionProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => functionProcessor(inst, ctx, json12, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -25053,7 +25053,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json11, params) => customProcessor(inst, ctx, json11, params);
+  inst._zod.processJSONSchema = (ctx, json12, params) => customProcessor(inst, ctx, json12, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -25678,8 +25678,8 @@ function convertBaseSchema(schema, ctx) {
         const looseRecords = [];
         for (const pattern of patternKeys) {
           const patternValue = convertSchema(patternProps[pattern], ctx);
-          const keySchema = z.string().regex(new RegExp(pattern));
-          looseRecords.push(z.looseRecord(keySchema, patternValue));
+          const keySchema2 = z.string().regex(new RegExp(pattern));
+          looseRecords.push(z.looseRecord(keySchema2, patternValue));
         }
         const schemasToIntersect = [];
         if (Object.keys(shape).length > 0) {
@@ -25736,12 +25736,12 @@ function convertBaseSchema(schema, ctx) {
       const minProperties = typeof schema.minProperties === "number" ? schema.minProperties : void 0;
       const maxProperties = typeof schema.maxProperties === "number" ? schema.maxProperties : void 0;
       if (hasKeyGuard || minProperties !== void 0 || maxProperties !== void 0) {
-        let keySchema;
+        let keySchema2;
         if (hasKeyGuard) {
           const keyJSONSchema = typeof schema.propertyNames === "object" && schema.propertyNames.type === void 0 ? { type: "string", ...schema.propertyNames } : schema.propertyNames;
-          keySchema = convertSchema(keyJSONSchema, ctx);
+          keySchema2 = convertSchema(keyJSONSchema, ctx);
         }
-        zodSchema = checkObjectGuards(zodSchema, { keySchema, minProperties, maxProperties });
+        zodSchema = checkObjectGuards(zodSchema, { keySchema: keySchema2, minProperties, maxProperties });
       }
       break;
     }
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.57" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.58" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36205,13 +36205,13 @@ function openAiChatBody(config2, image) {
 function buildRequest(config2, image) {
   const base = trimBase(config2.apiBase);
   const protocol = resolveProtocol(config2);
-  const json11 = { "content-type": "application/json" };
-  if (config2.apiKey) json11.Authorization = `Bearer ${config2.apiKey}`;
+  const json12 = { "content-type": "application/json" };
+  if (config2.apiKey) json12.Authorization = `Bearer ${config2.apiKey}`;
   if (protocol === "openai-chat") {
     return {
       url: `${base}/chat/completions`,
       method: "POST",
-      headers: json11,
+      headers: json12,
       body: openAiChatBody(config2, image),
       extract: (body2) => {
         const content = deepGet(body2, ["choices", "0", "message", "content"]);
@@ -36225,7 +36225,7 @@ function buildRequest(config2, image) {
     return {
       url: `${base}/responses`,
       method: "POST",
-      headers: json11,
+      headers: json12,
       body: JSON.stringify({
         model: config2.model,
         input: [
@@ -36311,7 +36311,7 @@ function buildRequest(config2, image) {
   return {
     url: base,
     method: "POST",
-    headers: json11,
+    headers: json12,
     body,
     extract: (raw) => {
       const text = textFrom(deepGet(raw, splitPath(responsePath)));
@@ -36561,13 +36561,13 @@ async function recognize(config2, image) {
   if (!response.ok) {
     throw new VisionError(`\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE HTTP ${response.status}\uFF1A${errorSnippet(raw) || "\uFF08\u7A7A\u54CD\u5E94\uFF09"}`, response.status);
   }
-  let json11;
+  let json12;
   try {
-    json11 = raw === "" ? {} : JSON.parse(raw);
+    json12 = raw === "" ? {} : JSON.parse(raw);
   } catch {
     throw new VisionError(`\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u7684\u4E0D\u662F JSON\uFF1A${errorSnippet(raw)}`, response.status);
   }
-  const text = prepared.extract(json11);
+  const text = prepared.extract(json12);
   if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u63CF\u8FF0\uFF08\u6362\u4E00\u5F20\u56FE\u6216\u68C0\u67E5\u63D0\u793A\u8BCD\uFF09", response.status);
   return text;
 }
@@ -36587,8 +36587,8 @@ async function listModels(config2) {
   const raw = await response.text();
   if (!response.ok) throw new VisionError(`\u62C9\u6A21\u578B\u5217\u8868\u5931\u8D25 HTTP ${response.status}\uFF1A${errorSnippet(raw)}`, response.status);
   try {
-    const json11 = JSON.parse(raw);
-    const models = Array.isArray(json11.data) ? json11.data.map((item) => typeof item?.id === "string" ? item.id : "").filter((id) => id !== "") : [];
+    const json12 = JSON.parse(raw);
+    const models = Array.isArray(json12.data) ? json12.data.map((item) => typeof item?.id === "string" ? item.id : "").filter((id) => id !== "") : [];
     if (models.length === 0) throw new VisionError("\u6A21\u578B\u5217\u8868\u662F\u7A7A\u7684\uFF08\u8FD9\u4E2A\u63A5\u53E3\u53EF\u80FD\u4E0D\u652F\u6301 /models\uFF09", 0);
     return models;
   } catch (error62) {
@@ -38098,7 +38098,7 @@ function startHandoff(ctx, input2) {
 
 // src/sprite/start.ts
 import path20 from "node:path";
-import { existsSync as existsSync3 } from "node:fs";
+import { existsSync as existsSync4 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // src/sprite/routes.ts
@@ -38152,7 +38152,8 @@ function spritePageHandler(deps) {
 
 // src/sprite/service.ts
 import { createServer } from "node:http";
-import { mkdirSync as mkdirSync6, readFileSync as readFileSync6, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { createHash as createHash5, randomBytes as randomBytes5 } from "node:crypto";
+import { createReadStream, mkdirSync as mkdirSync6, readFileSync as readFileSync6, statSync as statSync3, writeFileSync as writeFileSync2, existsSync as existsSync3, renameSync as renameSync2 } from "node:fs";
 import path19 from "node:path";
 
 // src/sprite/png.ts
@@ -38378,6 +38379,50 @@ function analyzeSpritePng(png, options) {
   };
 }
 
+// src/sprite/guard.ts
+function assertKeyedPresent(keyedCount) {
+  if (keyedCount > 0) return;
+  if (keyedCount < 0) {
+    throw new Error(
+      "\u8BFB\u4E0D\u5230\u62A0\u56FE\u7F13\u5B58\u72B6\u6001\uFF08\u9875\u9762\u7684 keyState \u6CA1\u63A5\u901A\uFF09\u3002\u4E3A\u4E86\u4E0D\u7ED9\u4F60\u4E00\u5F20\u7EFF\u5E95\u56FE\uFF0C\u8FD9\u91CC\u76F4\u63A5\u505C\uFF1A\u8BF7\u91CD\u65B0 sprite_key_apply \u540E\u518D export\u3002"
+    );
+  }
+  throw new Error(
+    "\u62A0\u56FE\u7F13\u5B58\u662F\u7A7A\u7684\uFF08\u53EF\u80FD\u521A\u8DD1\u8FC7 sprite_key_preview / \u6539\u8FC7\u53C2\u6570\uFF09\u3002\u8BF7\u5148\u518D\u8DD1\u4E00\u6B21 sprite_key_apply\uFF0C\u7136\u540E\u7ACB\u523B export\u3002"
+  );
+}
+function assertNotOpaque(stats, threshold = 0.99) {
+  if (stats.alphaHistogram[3] <= threshold) return;
+  throw new Error(
+    "\u5BFC\u51FA\u7684\u56FE\u51E0\u4E4E\u5168\u4E0D\u900F\u660E\uFF08alpha \u5168 255\uFF09\uFF0C\u5927\u6982\u7387\u662F\u628A\u539F\u5E27\u62FC\u8FDB\u53BB\u4E86\uFF08\u7EFF\u5E95\uFF09\u3002\u5E38\u89C1\u539F\u56E0\uFF1A\u62A0\u56FE\u7F13\u5B58\u88AB\u6E05\u7A7A / \u952E\u8272\u4E0D\u5BF9\u3002\u8BF7\u91CD\u8DD1 sprite_key_apply \u540E\u518D\u5BFC\u51FA\u3002"
+  );
+}
+function pickWorst(candidates) {
+  let worst;
+  let bestScore = -1;
+  for (const candidate of candidates) {
+    const { stats } = candidate;
+    const score = stats.bgResidual + stats.edgeGreen + (1 - stats.subjectCoverage);
+    if (score > bestScore) {
+      bestScore = score;
+      worst = {
+        frame: candidate.frame,
+        bgResidual: stats.bgResidual,
+        edgeGreen: stats.edgeGreen,
+        subjectCoverage: stats.subjectCoverage
+      };
+    }
+  }
+  return worst;
+}
+function defaultFileNames(args) {
+  const safeName = (args.name || "sheet").replace(/[\\/:*?"<>|]/g, "_");
+  const base = args.fileName ?? `${safeName}_${args.cols}x${args.rows}`;
+  const file2 = base.toLowerCase().endsWith(`.${args.format}`) ? base : `${base}.${args.format}`;
+  const meta3 = args.metaName ?? `${file2.replace(new RegExp(`\\.${args.format}$`, "i"), "")}.meta.json`;
+  return { file: file2, meta: meta3 };
+}
+
 // src/sprite/browser.ts
 import { spawn as spawn2 } from "node:child_process";
 import http from "node:http";
@@ -38587,8 +38632,7 @@ function dataUrlToBuffer(dataUrl) {
   const text = typeof dataUrl === "string" ? dataUrl : "";
   const comma = text.indexOf(",");
   if (!text.startsWith("data:") || comma < 0) return void 0;
-  const head = text.slice(0, comma);
-  if (!head.includes("base64")) return void 0;
+  if (!text.slice(0, comma).includes("base64")) return void 0;
   try {
     return Buffer.from(text.slice(comma + 1), "base64");
   } catch {
@@ -38596,12 +38640,34 @@ function dataUrlToBuffer(dataUrl) {
   }
 }
 var PAGE_ROUTE = "/";
-function startToolServer(toolHtmlPath) {
+var VIDEO_ROUTE = "/__video/";
+var MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+function startToolServer(toolHtmlPath, videos) {
   return new Promise((resolve, reject) => {
     const html = readFileSync6(toolHtmlPath);
-    const etag = `"${html.byteLength}-${html.length}"`;
     const server = createServer((request, response) => {
       const url2 = request.url ?? "/";
+      if (url2.startsWith(VIDEO_ROUTE)) {
+        const token = url2.slice(VIDEO_ROUTE.length).split("?")[0] ?? "";
+        const file2 = videos.get(token);
+        if (!file2 || !existsSync3(file2)) {
+          response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+          response.end("video not found");
+          return;
+        }
+        const stat3 = statSync3(file2);
+        response.writeHead(200, {
+          "Content-Type": "application/octet-stream",
+          "Content-Length": stat3.size,
+          "Cache-Control": "no-store"
+        });
+        if (request.method === "HEAD") {
+          response.end();
+          return;
+        }
+        createReadStream(file2).pipe(response);
+        return;
+      }
       if (!url2.startsWith(PAGE_ROUTE)) {
         response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         response.end("not found");
@@ -38610,8 +38676,7 @@ function startToolServer(toolHtmlPath) {
       response.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Length": html.byteLength,
-        "Cache-Control": "no-store",
-        ETag: etag
+        "Cache-Control": "no-store"
       });
       response.end(html);
     });
@@ -38630,12 +38695,14 @@ function startToolServer(toolHtmlPath) {
 function createSpriteService(options) {
   const log = options.log;
   const idleMs = options.idleMs ?? 5 * 60 * 1e3;
+  const videos = /* @__PURE__ */ new Map();
   let session;
   let toolServer;
   let toolOrigin = "";
   let idleTimer;
   let launching;
   let stopped = false;
+  let lastPrepare;
   const touch = () => {
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
@@ -38650,6 +38717,7 @@ function createSpriteService(options) {
   const recycle = async (why) => {
     const current = session;
     session = void 0;
+    lastPrepare = void 0;
     if (current) {
       log("\u5173\u6389\u5E8F\u5217\u5E27\u6D4F\u89C8\u5668", { why });
       await current.close().catch(() => void 0);
@@ -38664,7 +38732,7 @@ function createSpriteService(options) {
     if (launching) return launching;
     launching = (async () => {
       if (!toolServer) {
-        const started = await startToolServer(options.toolHtmlPath);
+        const started = await startToolServer(options.toolHtmlPath, videos);
         toolServer = started.server;
         toolOrigin = started.origin;
       }
@@ -38688,20 +38756,68 @@ function createSpriteService(options) {
     touch();
     const expression = `(async () => {
       const api = window.__spriteAgent
-      if (!api || !api.${name2}) return { ok: false, error: '\u9875\u9762\u6CA1\u6709 __spriteAgent.${name2}' }
+      if (!api || !api.${name2}) return { ok: false, error: '\u9875\u9762\u6CA1\u6709 __spriteAgent.${name2}\uFF08\u6865\u63A5\u7248\u672C\u8FC7\u65E7\uFF1F\uFF09' }
       try { return await api.${name2}(${args.map((arg) => JSON.stringify(arg ?? null)).join(", ")}) }
       catch (error) { return { ok: false, error: String(error && error.message || error) } }
     })()`;
-    const answer = await active.evaluate(expression, 12e4);
+    const answer = await active.evaluate(expression, 6e5);
     if (!answer || answer.ok !== true) {
       throw new Error(String(answer?.error ?? `${name2} \u5931\u8D25\uFF08\u9875\u9762\u6CA1\u6709\u8FD4\u56DE ok\uFF09`));
     }
     return answer;
   };
-  const outDir = (override) => {
+  const hasBridge = async (name2) => {
+    const active = await ensureSession();
+    touch();
+    return active.evaluate(`!!(window.__spriteAgent && window.__spriteAgent.${name2})`, 1e4);
+  };
+  const outDirOf = (override) => {
     const dir = override && override.trim() !== "" ? override.trim() : options.outDir;
     mkdirSync6(dir, { recursive: true });
     return dir;
+  };
+  const debugDirOf = (override) => {
+    const dir = path19.join(outDirOf(override), "_debug");
+    mkdirSync6(dir, { recursive: true });
+    return dir;
+  };
+  const writeDataUrl = (dataUrl, target) => {
+    const buffer = dataUrlToBuffer(dataUrl);
+    if (!buffer) throw new Error("\u9875\u9762\u8FD4\u56DE\u7684\u56FE\u7247\u4E0D\u662F base64 dataURL");
+    mkdirSync6(path19.dirname(target), { recursive: true });
+    writeFileSync2(target, buffer);
+    return buffer.byteLength;
+  };
+  const worstOf = async (frames, sampleLimit = 8) => {
+    const total = Math.max(1, frames);
+    const picks = /* @__PURE__ */ new Set([0]);
+    const step = Math.max(1, Math.floor(total / sampleLimit));
+    for (let i = 0; i < total; i += step) picks.add(i);
+    picks.add(total - 1);
+    const bucket = [];
+    let firstStats;
+    for (const frame of [...picks].slice(0, sampleLimit + 1)) {
+      try {
+        const one = await bridge("keyedDataURL", frame);
+        const buffer = dataUrlToBuffer(one.dataURL);
+        if (!buffer) continue;
+        const stats = analyzeSpritePng(buffer);
+        if (!firstStats) firstStats = stats;
+        bucket.push({ frame, stats });
+      } catch {
+      }
+    }
+    const worst = pickWorst(bucket);
+    return { ...worst ? { worst } : {}, ...firstStats ? { stats: firstStats } : {} };
+  };
+  const keytedParamsOf = async () => {
+    try {
+      const state = await bridge("keyState");
+      const params = state.params ? { ...state.params, ...state.mode ? { mode: state.mode } : {} } : void 0;
+      return { ...params ? { params } : {}, keyedCount: Number(state.keyedCount ?? 0) };
+    } catch {
+      return { keyedCount: -1 };
+    }
   };
   return {
     get busy() {
@@ -38712,22 +38828,50 @@ function createSpriteService(options) {
       if (videoPath === "") throw new Error("\u9700\u8981\u89C6\u9891\u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF08videoPath\uFF09");
       const stat3 = statSync3(videoPath);
       if (stat3.size === 0) throw new Error(`\u89C6\u9891\u6587\u4EF6\u662F\u7A7A\u7684\uFF1A${videoPath}`);
-      if (stat3.size > 100 * 1024 * 1024) throw new Error(`\u89C6\u9891\u592A\u5927\uFF08>100MB\uFF09\uFF0C\u5148\u88C1\u4E00\u6BB5\u518D\u6765\uFF1A${videoPath}`);
-      const base643 = readFileSync6(videoPath).toString("base64");
-      const loaded = await bridge(
-        "loadVideoBase64",
-        base643,
-        path19.basename(videoPath)
-      );
+      if (stat3.size > MAX_VIDEO_BYTES) throw new Error(`\u89C6\u9891\u592A\u5927\uFF08>200MB\uFF09\uFF0C\u5148\u88C1\u4E00\u6BB5\u518D\u6765\uFF1A${videoPath}`);
+      await ensureSession();
+      let loaded;
+      let transport = "http";
+      if (await hasBridge("loadVideoUrl")) {
+        const token = randomBytes5(9).toString("hex");
+        videos.set(token, videoPath);
+        try {
+          loaded = await bridge("loadVideoUrl", `${toolOrigin}${VIDEO_ROUTE}${token}`, path19.basename(videoPath));
+        } finally {
+          setTimeout(() => videos.delete(token), 5e3);
+        }
+        if (loaded.ok !== true) {
+          transport = "base64";
+          loaded = await bridge(
+            "loadVideoBase64",
+            readFileSync6(videoPath).toString("base64"),
+            path19.basename(videoPath)
+          );
+        }
+      } else {
+        transport = "base64";
+        loaded = await bridge(
+          "loadVideoBase64",
+          readFileSync6(videoPath).toString("base64"),
+          path19.basename(videoPath)
+        );
+      }
+      if (loaded.ok !== true) throw new Error(loaded.error ?? "\u89C6\u9891\u6CA1\u80FD\u8F7D\u5165\u9875\u9762");
       await bridge("setRange", args.start ?? 0, args.end ?? 4, args.fps ?? 12);
       const extracted = await bridge("extract");
-      return {
-        ok: true,
-        frames: Number(extracted.count ?? 0),
-        width: Number(extracted.width ?? 0),
-        height: Number(extracted.height ?? 0),
-        video: String(loaded.name ?? path19.basename(videoPath))
-      };
+      const frames = Number(extracted.count ?? 0);
+      const width = Number(extracted.width ?? 0);
+      const height = Number(extracted.height ?? 0);
+      if (frames <= 0) throw new Error("\u62BD\u5E27\u7ED3\u679C\u662F 0 \u5E27\uFF1A\u68C0\u67E5\u65F6\u95F4\u533A\u95F4\uFF08start/end\uFF09\u4E0E fps");
+      lastPrepare = { frames, width, height };
+      return { ok: true, frames, width, height, video: String(loaded.name ?? path19.basename(videoPath)), transport };
+    },
+    async probeColor(args) {
+      const answer = await bridge("probeColor", {
+        ...typeof args.frame === "number" ? { frame: args.frame } : {},
+        ...typeof args.bandPx === "number" ? { bandPx: args.bandPx } : {}
+      });
+      return answer;
     },
     async keyPreview(args) {
       const frame = Math.max(0, Math.floor(args.frame ?? 0));
@@ -38735,11 +38879,11 @@ function createSpriteService(options) {
       delete params.frame;
       await bridge("setKeyParams", params);
       const preview = await bridge("keyPreview", frame);
-      const previewBuffer = dataUrlToBuffer(preview.dataURL);
-      if (!previewBuffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u9884\u89C8\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
-      const dir = outDir();
+      const buffer = dataUrlToBuffer(preview.dataURL);
+      if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u9884\u89C8\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
+      const dir = outDirOf();
       const previewPath = path19.join(dir, `preview-${frame}.png`);
-      writeFileSync2(previewPath, previewBuffer);
+      writeFileSync2(previewPath, buffer);
       let maskPath;
       try {
         const mask = await bridge("maskDataURL", frame);
@@ -38750,75 +38894,397 @@ function createSpriteService(options) {
         }
       } catch {
       }
+      const after = await keytedParamsOf();
       return {
         ok: true,
         frame,
-        stats: analyzeSpritePng(previewBuffer),
+        stats: analyzeSpritePng(buffer),
         previewPath,
-        ...maskPath ? { maskPath } : {}
+        ...maskPath ? { maskPath } : {},
+        ...after.params ? { appliedParams: after.params } : {},
+        // preview 之后 keyed 缓存必然被清（P2），这里说清楚，免得调用方以为还能直接 export。
+        ignored: []
       };
     },
     async keyApply(args) {
       const params = { ...args };
       delete params.indices;
+      delete params.probeFrames;
       await bridge("setKeyParams", params);
       const applied = await bridge(
         "keyApply",
         args.indices ?? null
       );
-      let stats;
-      try {
-        const check2 = await bridge("keyPreview", 0);
-        const buffer = dataUrlToBuffer(check2.dataURL);
-        if (buffer) stats = analyzeSpritePng(buffer);
-      } catch {
+      const frames = Number(applied.frames ?? 0);
+      const state = await keytedParamsOf();
+      if (state.keyedCount === 0) {
+        throw new Error("keyApply \u8DD1\u5B8C\u4F46\u62A0\u56FE\u7F13\u5B58\u662F\u7A7A\u7684\u2014\u2014\u9875\u9762\u90A3\u8FB9\u51FA\u4E86\u95EE\u9898\uFF0C\u5148\u522B export");
       }
+      const sampled = await worstOf(frames, args.probeFrames ?? 8);
       return {
         ok: true,
-        frames: Number(applied.frames ?? 0),
+        frames,
         plateApplied: applied.plateApplied === true,
-        ...stats ? { stats } : {}
+        keyedCount: state.keyedCount,
+        ...sampled.stats ? { stats: sampled.stats } : {},
+        ...sampled.worst ? { worst: sampled.worst } : {},
+        ...state.params ? { appliedParams: state.params } : {},
+        ignored: [],
+        warnings: applied.autoEnabled === true ? ["\u62A0\u56FE\u539F\u672C\u6CA1\u542F\u7528\uFF0C\u5DF2\u81EA\u52A8\u542F\u7528\uFF08\u5426\u5219\u62FC\u56FE\u4F1A\u7528\u539F\u5E27\uFF09"] : []
       };
     },
-    async cleanup(args) {
-      if (args.maskRect !== void 0) {
-        await bridge("setMaskRect", args.maskRect ?? null);
-        await bridge("applyMask");
+    async measure(args) {
+      const frame = args.frame === "all" ? "all" : Math.max(0, Math.floor(args.frame ?? 0));
+      const answer = await bridge("measure", {
+        frame,
+        ...args.source ? { source: args.source } : {},
+        ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
+        ...Array.isArray(args.landmarks) ? { landmarks: args.landmarks } : {}
+      });
+      let overlayPath;
+      if (args.overlay !== false) {
+        try {
+          const lines = [];
+          const box = answer.alphaBBox;
+          if (box) {
+            lines.push(
+              { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y0, color: "#ff0000", label: "top" },
+              { x0: box.x0, y0: box.y1 - 1, x1: box.x1, y1: box.y1 - 1, color: "#00aaff", label: "sole" },
+              { x0: box.x0, y0: box.y0, x1: box.x0, y1: box.y1, color: "#00ff88" },
+              { x0: box.x1 - 1, y0: box.y0, x1: box.x1 - 1, y1: box.y1, color: "#00ff88" }
+            );
+          }
+          for (const mark of answer.landmarks ?? []) {
+            if (mark.px === null || mark.py === null) continue;
+            lines.push({ x0: mark.px - 8, y0: mark.py, x1: mark.px + 8, y1: mark.py, color: "#ffcc00" });
+            lines.push({ x0: mark.px, y0: mark.py - 8, x1: mark.px, y1: mark.py + 8, color: "#ffcc00" });
+          }
+          const texts = [
+            {
+              x: 8,
+              y: 8,
+              text: box ? `bbox=${box.x0},${box.y0},${box.x1 - box.x0}x${box.y1 - box.y0} h=${answer.contentHeight}` : "bbox=null",
+              color: "#ffffff"
+            }
+          ];
+          const overlay = await bridge("overlay", {
+            frame: typeof frame === "number" ? frame : 0,
+            lines,
+            texts
+          });
+          const dir = debugDirOf();
+          overlayPath = path19.join(dir, `measure-${typeof frame === "number" ? frame : "all"}-${Date.now()}.png`);
+          writeDataUrl(overlay.dataURL, overlayPath);
+        } catch {
+        }
       }
-      const trimmed = await bridge("computeTrim");
-      await bridge("applyTrim");
-      return { ok: true, trimBox: trimmed.box ?? null };
+      return { ...answer, ...overlayPath ? { overlayPath } : {} };
+    },
+    async scaleTo(args) {
+      return bridge("scaleTo", {
+        ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
+        ...typeof args.targetCellHeight === "number" ? { targetCellHeight: args.targetCellHeight } : {},
+        ...args.span ? { span: args.span } : {}
+      });
+    },
+    async getAnchor() {
+      return bridge("getAnchor");
+    },
+    async setAnchorPx(args) {
+      return bridge("setAnchorPx", {
+        ...typeof args.x === "number" ? { x: args.x } : {},
+        ...typeof args.y === "number" ? { y: args.y } : {},
+        ...args.convention ? { convention: args.convention } : {}
+      });
+    },
+    async cleanup(args) {
+      const trim = args.trim ?? {};
+      let rect = null;
+      const warnings = [];
+      let watermarkCandidates;
+      if (args.maskRect === "auto") {
+        const detected = await bridge("detectWatermark");
+        watermarkCandidates = detected.rects ?? [];
+        const best = [...watermarkCandidates].filter((row) => (row.confidence ?? 0) >= 0.8).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+        if (best) rect = { x: best.x, y: best.y, w: best.w, h: best.h };
+        else warnings.push(detected.note || "\u6CA1\u68C0\u6D4B\u5230\u53EF\u4FE1\u7684\u6C34\u5370\u533A\u57DF\uFF0C\u8FD9\u6B21\u4E0D\u505A\u906E\u6321");
+      } else if (args.maskRect && typeof args.maskRect === "object") {
+        rect = args.maskRect;
+      }
+      await bridge("setMaskRect", rect);
+      if (rect) await bridge("applyMask");
+      const trimmed = await bridge("trim", trim);
+      if (trimmed.ok === true) await bridge("applyTrim");
+      return {
+        ok: true,
+        maskRect: rect,
+        ...watermarkCandidates ? { watermarkCandidates } : {},
+        trimBox: trimmed.box ?? null,
+        mode: trimmed.mode ?? (trim.mode ?? "union"),
+        pad: trimmed.pad ?? { top: 2, bottom: 2, left: 2, right: 2 },
+        alphaThreshold: trimmed.alphaThreshold ?? trim.alphaThreshold ?? 32,
+        unionFrames: trimmed.unionFrames ?? lastPrepare?.frames ?? 0,
+        ...warnings.length ? { warnings } : {}
+      };
     },
     async exportSheet(args) {
-      const dir = outDir(args.outDir);
-      const scaled = await bridge("measureScale", 0, 0, args.targetHeight ?? 512);
-      await bridge("setAnchor", args.anchorX ?? 0.5, args.anchorY ?? 0.04);
-      const built = await bridge(
-        "buildSheet",
-        args.cols ?? 7,
-        args.rows ?? 7
-      );
+      const dir = outDirOf(args.outDir);
+      const name2 = (args.name ?? "sheet").replace(/[\\/:*?"<>|]/g, "_");
+      const format = args.format === "webp" ? "webp" : "png";
+      const state = await keytedParamsOf();
+      assertKeyedPresent(state.keyedCount);
+      const scaled = await bridge("scaleTo", {
+        ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
+        ...typeof args.targetHeight === "number" ? { targetCellHeight: args.targetHeight } : {},
+        ...args.span ? { span: args.span } : {}
+      });
+      const anchor2 = typeof args.anchorX === "number" || typeof args.anchorY === "number" ? await bridge("setAnchor", {
+        ...typeof args.anchorX === "number" ? { x: args.anchorX } : {},
+        ...typeof args.anchorY === "number" ? { y: args.anchorY } : {}
+      }) : await bridge("getAnchor");
+      const names = defaultFileNames({
+        name: name2,
+        cols: args.cols ?? 8,
+        rows: args.rows ?? 6,
+        format,
+        ...args.fileName ? { fileName: args.fileName } : {},
+        ...args.metaName ? { metaName: args.metaName } : {}
+      });
+      const withExt = names.file;
+      const metaBase = names.meta;
+      const targetDir = args.dirPerAction === true ? path19.join(dir, name2) : dir;
+      mkdirSync6(targetDir, { recursive: true });
+      const pngPath = path19.join(targetDir, withExt);
+      const metaPath = path19.join(targetDir, metaBase);
+      if (args.overwrite === false) {
+        if (existsSync3(pngPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${pngPath}`);
+        if (existsSync3(metaPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${metaPath}`);
+      }
+      const built = await bridge("buildSheetDataURL", {
+        cols: args.cols ?? 8,
+        rows: args.rows ?? 6,
+        format,
+        ...typeof args.quality === "number" ? { quality: args.quality } : {}
+      });
       const buffer = dataUrlToBuffer(built.dataURL);
       if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u7CBE\u7075\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
-      const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-      const pngPath = path19.join(dir, `sheet-${stamp}.png`);
-      writeFileSync2(pngPath, buffer);
-      const meta3 = built.meta ?? await bridge("sheetMeta").catch(() => ({}));
-      const metaPath = path19.join(dir, `sheet-${stamp}.json`);
+      const warnings = [];
+      if (format === "png") assertNotOpaque(analyzeSpritePng(buffer));
+      const tmpPng = `${pngPath}.tmp-${process.pid}`;
+      writeFileSync2(tmpPng, buffer);
+      renameSync2(tmpPng, pngPath);
+      const meta3 = {
+        ...built.meta ?? {},
+        format,
+        width: built.width ?? null,
+        height: built.height ?? null,
+        cellWidth: null,
+        cellHeight: null,
+        anchorX: anchor2.anchorX,
+        anchorY: anchor2.anchorY,
+        anchorConvention: anchor2.convention,
+        scale: scaled.scale,
+        charHeightPx: scaled.achievedPx,
+        appliedParams: state.params ?? null,
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        engine: "dsh-remote-dafeiyu/sprite"
+      };
       writeFileSync2(metaPath, JSON.stringify(meta3, null, 2), "utf8");
-      const stats = analyzeSpritePng(buffer);
+      if (scaled.clamped) {
+        warnings.push(
+          `\u60F3\u8981 ${args.charHeightPx ?? args.targetHeight ?? "?"}px\uFF0C\u4F46\u5DE5\u5177\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u5B9E\u9645\u53EA\u6709 ${scaled.achievedPx}px`
+        );
+      }
+      let worst;
+      if (format === "png") {
+        const stats = analyzeSpritePng(buffer);
+        const sampled = await worstOf(lastPrepare?.frames ?? 1, 3);
+        worst = sampled.worst;
+        void stats;
+      }
       return {
         ok: true,
         pngPath,
         metaPath,
-        sheet: { width: stats.width, height: stats.height },
-        ...typeof scaled.scale === "number" ? { scale: scaled.scale } : {},
-        ...typeof scaled.achievedPx === "number" ? { achievedPx: scaled.achievedPx } : {},
-        ...scaled.scaleClamped === true ? {
-          scaleClamped: true,
-          note: `\u60F3\u8981 ${Number(args.targetHeight ?? 512)}px\uFF0C\u4F46\u5DE5\u5177\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u5B9E\u9645\u53EA\u6709 ${scaled.achievedPx ?? "?"}px\uFF1B\u628A targetHeight \u8C03\u5C0F\u6216\u88C1\u6389\u591A\u4F59\u753B\u9762\u518D\u6765`
-        } : {}
+        sheet: { width: built.width ?? 0, height: built.height ?? 0 },
+        cell: { width: scaled.cellW, height: scaled.cellH },
+        scale: scaled.scale,
+        achievedPx: scaled.achievedPx,
+        ...scaled.auto ? {} : { charHeightPx: scaled.achievedPx },
+        ...scaled.clamped ? { scaleClamped: true } : {},
+        format,
+        bytes: buffer.byteLength,
+        ...worst ? { stats: { worst } } : {},
+        reported: { meta: meta3 },
+        warnings
       };
+    },
+    async autotune(args) {
+      const goal = {
+        maxBgResidual: args.goal?.maxBgResidual ?? 5e-3,
+        minSubjectCoverage: args.goal?.minSubjectCoverage ?? 0.6,
+        maxEdgeGreen: args.goal?.maxEdgeGreen ?? 0.02
+      };
+      const iters = Math.max(1, Math.min(12, args.maxIters ?? 6));
+      const frame = Math.max(0, args.frame ?? 0);
+      let params = {
+        colorHex: (await this.probeColor({ frame })).keyColor,
+        mode: args.space?.mode?.[0] ?? "advanced",
+        intensity: args.space?.intensity?.[0] ?? 60,
+        softness: 60,
+        despill: 70,
+        greenToAlpha: 10,
+        aggressive: true,
+        autoPlate: false
+      };
+      const trace = [];
+      let stats;
+      for (let round = 0; round < iters; round++) {
+        const preview = await this.keyPreview({ ...params, frame });
+        stats = preview.stats;
+        if (!stats) break;
+        trace.push({
+          round,
+          params: { ...params },
+          bgResidual: stats.bgResidual,
+          subjectCoverage: stats.subjectCoverage,
+          edgeGreen: stats.edgeGreen
+        });
+        const bgOk = stats.bgResidual <= (goal.maxBgResidual ?? 5e-3);
+        const covOk = stats.subjectCoverage >= (goal.minSubjectCoverage ?? 0.6);
+        const edgeOk = stats.edgeGreen <= (goal.maxEdgeGreen ?? 0.02);
+        if (bgOk && covOk && edgeOk) return { ok: true, params, trace, reachedGoal: true, ...stats ? { stats } : {} };
+        if (!bgOk && covOk) {
+          params = { ...params, intensity: Math.min(args.space?.intensity?.[1] ?? 90, (params.intensity ?? 60) + 10) };
+        } else if (!bgOk && !covOk) {
+          params = { ...params, softness: Math.min(100, (params.softness ?? 60) + 10) };
+        }
+        if (!edgeOk) {
+          params = { ...params, aggressive: true, greenToAlpha: Math.min(300, (params.greenToAlpha ?? 10) + 10) };
+        }
+      }
+      return { ok: true, params, trace, reachedGoal: false, ...stats ? { stats } : {} };
+    },
+    async batch(args) {
+      const items = args.items ?? [];
+      const workers = Math.max(1, Math.min(4, Math.floor(args.concurrency ?? 1)));
+      if (workers > 1 && items.length > 1) {
+        const poolSize = Math.min(workers, items.length);
+        const pools = [];
+        try {
+          for (let i = 0; i < poolSize; i++) {
+            pools.push(createSpriteService({ ...options, idleMs }));
+          }
+          const buckets = pools.map(() => []);
+          items.forEach((item, index) => buckets[index % pools.length].push(item));
+          log("sprite_batch \u5E76\u53D1\u6267\u884C", { workers: poolSize, items: items.length });
+          const settled = await Promise.all(
+            pools.map(
+              (pool, index) => pool.batch({ outRoot: args.outRoot, items: buckets[index], ...args.overwrite === void 0 ? {} : { overwrite: args.overwrite } })
+            )
+          );
+          const results2 = settled.flatMap((one) => one.results);
+          const failures2 = settled.flatMap((one) => one.failures);
+          return { ok: failures2.length === 0, results: results2, failures: failures2 };
+        } finally {
+          await Promise.all(pools.map((pool) => pool.stop().catch(() => void 0)));
+        }
+      }
+      const results = [];
+      const failures = [];
+      for (const item of items) {
+        const name2 = item.name ?? item.action;
+        try {
+          const prepared = await this.prepare({
+            videoPath: item.videoPath,
+            start: item.start ?? 0,
+            end: item.end ?? 4,
+            fps: item.fps ?? 12
+          });
+          const keyColor = item.keyColor ?? (await this.probeColor({ frame: 0 })).keyColor;
+          const params = {
+            mode: item.mode ?? "advanced",
+            colorHex: keyColor,
+            intensity: item.intensity ?? 85,
+            softness: 100,
+            despill: 70,
+            greenToAlpha: 25,
+            aggressive: true,
+            autoPlate: false
+          };
+          const applied = await this.keyApply(params);
+          const measured = await this.measure({ frame: 0, overlay: true });
+          const cleaned = await this.cleanup({
+            maskRect: item.maskRect ?? null,
+            trim: { mode: item.trimMode ?? "union" }
+          });
+          const span = measured.alphaBBox ? { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 } : void 0;
+          const exported = await this.exportSheet({
+            cols: item.cols ?? 8,
+            rows: item.rows ?? 6,
+            ...item.targetCharHeight ? { charHeightPx: item.targetCharHeight, ...span ? { span } : {} } : {},
+            format: item.format ?? "png",
+            outDir: args.outRoot,
+            name: name2,
+            dirPerAction: true,
+            overwrite: args.overwrite ?? true
+          });
+          results.push({
+            action: item.action,
+            name: name2,
+            ok: true,
+            ...exported.pngPath ? { pngPath: exported.pngPath } : {},
+            ...exported.metaPath ? { metaPath: exported.metaPath } : {},
+            ...exported.cell ? { cellW: exported.cell.width, cellH: exported.cell.height } : {},
+            ...typeof exported.scale === "number" ? { scale: exported.scale } : {},
+            ...typeof exported.achievedPx === "number" ? { charHeightPx: exported.achievedPx } : {},
+            ...applied.stats || applied.worst ? { stats: { ...applied.worst ? { worst: applied.worst } : {}, ...applied.stats ? { first: applied.stats } : {} } } : {},
+            ...measured.overlayPath ? { overlayPath: measured.overlayPath } : {},
+            warnings: [
+              ...exported.warnings,
+              ...cleaned.trimBox ? [] : ["\u6CA1\u6709\u7B97\u51FA\u88C1\u526A\u6846"],
+              ...applied.plateApplied ? [] : [],
+              ...prepared.transport === "base64" ? ["\u89C6\u9891\u8D70\u7684\u662F base64 \u901A\u9053\uFF08\u8F83\u6162\uFF09"] : []
+            ]
+          });
+        } catch (error62) {
+          failures.push({ action: item.action, error: String(error62?.message ?? error62).slice(0, 300) });
+        }
+      }
+      return { ok: failures.length === 0, results, failures };
+    },
+    async auto(args) {
+      const stages = [];
+      const prepared = await this.prepare({ videoPath: args.videoPath, start: 0, end: 4, fps: 12 });
+      stages.push(`prepare: ${prepared.frames} \u5E27 ${prepared.width}x${prepared.height}`);
+      const color = await this.probeColor({ frame: 0 });
+      stages.push(`probeColor: ${color.keyColor} spread=${color.spread.toFixed(3)}`);
+      const tuned = await this.autotune({ frame: 0, maxIters: 6 });
+      stages.push(
+        `autotune: ${tuned.reachedGoal ? "\u8FBE\u6807" : "\u672A\u8FBE\u6807"}\uFF0C${tuned.trace.length} \u8F6E\uFF0C\u53C2\u6570 ${JSON.stringify(tuned.params)}`
+      );
+      const applied = await this.keyApply({ ...tuned.params ?? { colorHex: color.keyColor } });
+      stages.push(`keyApply: ${applied.frames} \u5E27\uFF0C\u7F13\u5B58 ${applied.keyedCount}`);
+      const measured = await this.measure({ frame: 0, overlay: true });
+      const span = { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 };
+      stages.push(`measure: bbox=${JSON.stringify(measured.alphaBBox)} \u9AD8=${measured.contentHeight}`);
+      const cleaned = await this.cleanup({
+        maskRect: args.maskRect ?? null,
+        trim: { mode: args.trimMode ?? "union" }
+      });
+      stages.push(`cleanup: trim=${JSON.stringify(cleaned.trimBox)} mode=${cleaned.mode}`);
+      const exported = await this.exportSheet({
+        cols: args.cols ?? 8,
+        rows: args.rows ?? 6,
+        ...args.targetCharHeight ? { charHeightPx: args.targetCharHeight, span } : {},
+        format: args.format ?? "png",
+        ...args.outDir ? { outDir: args.outDir } : {},
+        name: args.name ?? path19.basename(args.videoPath).replace(/\.[^.]+$/, ""),
+        dirPerAction: true,
+        overwrite: true
+      });
+      stages.push(`export: ${exported.pngPath}\uFF08${exported.bytes} B\uFF09`);
+      return { ...exported, stages };
     },
     async stop() {
       if (stopped) return;
@@ -38833,16 +39299,655 @@ function createSpriteService(options) {
   };
 }
 
+// src/sprite/guide.ts
+var SPRITE_GUIDE = `# \u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\uFF1Aagent \u5FEB\u901F\u4E0A\u624B
+
+## \u4E00\u3001\u516D\u6B65\u539F\u8BED\uFF08\u6700\u5C0F\u53EF\u7528\u8DEF\u5F84\uFF09
+
+1. \`sprite_prepare\` { videoPath, start=0, end=4, fps=12 } \u2192 \u5E27\u6570/\u5C3A\u5BF8
+2. \`sprite_probe_color\` { frame=0 } \u2192 \`keyColor\`\uFF08**\u522B\u7528 #00FF00 \u786C\u731C**\uFF0C\u6BCF\u6BB5\u7D20\u6750\u80CC\u666F\u8272\u90FD\u4E0D\u4E00\u6837\uFF09
+3. \`sprite_measure\` { frame=0, landmarks:[\u2026] } \u2192 \`alphaBBox\` / \u6838\u5BF9\u56FE\uFF08\`overlayPath\`\uFF09
+4. \`sprite_key_apply\` { mode, colorHex, intensity, \u2026 } \u2192 \u62A0\u56FE + \`stats\` + \`worst\`
+5. \`sprite_cleanup\` { trim:{ mode, pad }, maskRect:"auto" } \u2192 \u88C1\u526A\u6846\uFF08\u542B\u56DE\u663E\uFF09
+6. \`sprite_export\` { cols, rows, charHeightPx, span, format } \u2192 PNG/webp + meta
+
+\u60F3\u4E00\u6B21\u8DD1\u5B8C\uFF1A\`sprite_auto\` { videoPath, targetCharHeight, format }\uFF1B
+\u591A\u6BB5\u7D20\u6750\uFF1A\`sprite_batch\` { outRoot, items:[\u2026] }\u3002
+
+## \u4E8C\u3001\u53C2\u6570\u8BED\u4E49\uFF1A**\u54EA\u4E00\u6863\u751F\u6548**\uFF08C2\uFF09
+
+| \u53C2\u6570 | \u7ECF\u5178\u6863 classic | \u667A\u80FD\u6863 advanced | \u8BED\u4E49 | \u5EFA\u8BAE\u521D\u503C |
+|---|---|---|---|---|
+| \`colorHex\` | \u2705 | \u2705 | \u952E\u8272\uFF08**\u5FC5\u987B\u5B9E\u6D4B\u80CC\u666F\u8272**\uFF09 | \u7528 probe_color \u7684\u7ED3\u679C |
+| \`intensity\` | \u2705 | \u2705 | \u8D8A\u5927\u62A0\u5F97\u8D8A\u72E0 | 75~85 |
+| \`feather\` | \u2705 | \u2014 | alpha \u7FBD\u5316\u534A\u5F84 | 20 |
+| \`cleanup\` | \u2705 | \u2014 | \u53BB\u8272\u6EA2\u51FA | 30 |
+| \`softness\` | \u2014 | \u2705 | \u8F6F\u8FB9\u5BBD\u5EA6 | 100 |
+| \`despill\` | \u2014 | \u2705 | \u53BB\u7EFF\u8FB9\u5F3A\u5EA6 | 70 |
+| \`aggressive\` | \u2014 | \u2705 | \u4E3B\u4F53\u8F6E\u5ED3\u4E5F\u53BB\u7EFF | true |
+| \`greenToAlpha\` | \u2014 | \u2705 | \u6B8B\u7EFF\u8F6C\u900F\u660E\uFF08>0 \u8D70\u4E24\u6B65\u6CD5\uFF09 | 25 |
+| \`autoPlate\` | \u2014 | \u2705 | \u81EA\u52A8\u80CC\u666F\u677F\uFF08**\u53EA apply \u751F\u6548**\uFF09 | \u80CC\u666F\u6591\u9A73\u65F6 true |
+
+> \u4F20\u4E86\u4E0D\u751F\u6548\u6863\u7684\u53C2\u6570\u4E0D\u4F1A\u62A5\u9519\uFF0C\u4F46\u4F1A\u51FA\u73B0\u5728\u8FD4\u56DE\u7684 \`ignored\` \u91CC\u2014\u2014**\u770B\u5230 ignored \u975E\u7A7A\u5C31\u8BF4\u660E\u4F60\u9009\u9519\u6863\u4E86**\u3002
+
+## \u4E09\u3001\u75C7\u72B6 \u2192 \u539F\u56E0 \u2192 \u5904\u7406\uFF08C3\uFF09
+
+| \u75C7\u72B6 | \u5927\u6982\u7387\u539F\u56E0 | \u5904\u7406 |
+|---|---|---|
+| \u5BFC\u51FA\u7684\u56FE alpha \u5168 255\u3001\u80CC\u666F\u8FD8\u662F\u7EFF\u7684 | \u62A0\u56FE\u7F13\u5B58\u88AB\u6E05\uFF08\u8DD1\u8FC7 preview / \u6539\u8FC7\u53C2\u6570\uFF09/ \u952E\u8272\u4E0D\u5BF9 | \u91CD\u65B0 \`sprite_key_apply\` \u518D\u7ACB\u523B \`sprite_export\`\uFF08\u5DE5\u5177\u73B0\u5728\u4F1A\u76F4\u63A5\u62A5\u9519\uFF0C\u4E0D\u4F1A\u95F7\u58F0\u51FA\u56FE\uFF09 |
+| \u4E3B\u4F53\u8FB9\u7F18\u4E00\u5708\u6A44\u6984\u8272 | \u7ECF\u5178\u6863\u53BB\u7EFF\u4E0D\u8DB3 | \u6362 advanced \u6863\uFF0C\u6216 \`greenToAlpha\` \u52A0\u5927 |
+| \u88C1\u526A\u6846\u83AB\u540D\u53D8\u5927 | \u67D0\u5E27\u6709\u6B8B\u7559/\u6F02\u6D6E\u7269\uFF0C\u5E76\u96C6\u628A\u5B83\u5E26\u4E0A\u4E86 | \u770B \`sprite_measure\` \u7684 \`perFrameSpread\`\uFF1B\u6216 \`trim.mode:"first-frame"\` |
+| \u89D2\u8272\u9AD8 \u2260 \u76EE\u6807 | \u7528\u9519\u4E86\u300Cbbox \u9AD8\u300D\u8BED\u4E49 | \u7528 \`sprite_scale_to\` \u7684 \`charHeightPx\` + \`span\` |
+| \u5207\u52A8\u4F5C\u201C\u77AC\u79FB\u201D | \u951A\u70B9\u8DE8\u7D20\u6750\u590D\u7528 / \u53E3\u5F84\u4E0D\u4E00\u81F4 | \u6BCF\u6BB5\u5355\u72EC\u91CF\uFF1B\u770B meta \u91CC\u7684 \`anchorConvention\` |
+| \u7ED3\u679C\u5DEE 1~2px | trim pad / alphaThreshold \u9ED8\u8BA4\u503C | \u770B \`sprite_cleanup\` \u8FD4\u56DE\u91CC\u7684 \`pad\` \u4E0E \`alphaThreshold\` |
+| webp \u5BFC\u51FA\u62A5\u201C\u4E0D\u652F\u6301\u201D | \u8FD9\u4E2A\u6D4F\u89C8\u5668\u6CA1\u6709 webp \u7F16\u7801 | \u6362 png\uFF0C\u6216\u5347\u7EA7\u6D4F\u89C8\u5668 |
+
+## \u56DB\u3001\u951A\u70B9\u53E3\u5F84\uFF08\u6700\u5BB9\u6613\u8E29\uFF09
+
+- \u5DE5\u5177\u5185\u90E8\u4E0E meta \u91CC\u7684 \`anchorY\` \u662F **\`y-from-bottom\`**\uFF1A0 = \u5E27\u5E95\uFF0C1 = \u5E27\u9876\u3002
+- \u4E3B\u6D41 2D \u8FD0\u884C\u65F6\uFF08Unity/SpriteRenderer\uFF09\u5E38\u7528 **\`y-from-top\`**\uFF1A0 = \u5E27\u9876\u3002
+  \u4E24\u8005\u662F \`1 - anchorY\` \u7684\u5173\u7CFB\uFF0C**meta \u91CC\u5199\u4E86 \`anchorConvention\`\uFF0C\u8BFB\u5B83\uFF0C\u522B\u731C**\u3002
+- \u91CF\u951A\u70B9\u65F6\u4F18\u5148\u7ED9**\u50CF\u7D20**\uFF1A\`sprite_set_anchor\` { y: <\u4ECE\u5E27\u5E95\u5F80\u4E0A\u7684\u50CF\u7D20>, convention:"y-from-bottom" }\u3002
+
+## \u4E94\u3001\u4EA4\u4ED8\u7269\u7EA6\u5B9A
+
+- \u9ED8\u8BA4\u547D\u540D\uFF1A\`<name>_<cols>x<rows>.<format>\` + \`<\u540C\u540D>.meta.json\`\uFF1B\`dirPerAction:true\` \u65F6\u653E\u8FDB \`<outDir>/<name>/\`\u3002
+- meta \u5FC5\u5E26\uFF1A\u7F51\u683C\u3001\u683C\u5B50\u5C3A\u5BF8\u3001\`anchorX/anchorY\` + \`anchorConvention\`\u3001\`scale\`\u3001\`charHeightPx\`\u3001\`appliedParams\`\u3002
+- \u6838\u5BF9\u56FE\u843D\u5728 \`<outDir>/_debug/\`\uFF0C\u53EF\u4EE5\u76F4\u63A5 \`read_image\` \u770B\u3002
+
+## \u516D\u3001\u81EA\u68C0\u6E05\u5355\uFF08\u6BCF\u6279\u51FA\u56FE\u524D\u8DD1\u4E00\u904D\uFF09
+
+1. \`sprite_probe_color\` \u7684 \`spread\` < 0.05\uFF08\u80CC\u666F\u5747\u5300\uFF09\uFF1B
+2. \`sprite_key_apply\` \u7684 \`stats.bgResidual\` < 0.01\u3001\`subjectCoverage\` > 0.98\u3001\`edgeGreen\` < 0.10\uFF1B
+3. \`worst.frame\` \u4E0E\u7B2C 0 \u5E27\u5DEE\u8DDD\u5927 \u2192 \u90A3\u4E00\u5E27\u6709\u6B8B\u7559\uFF0C\u522B\u5FFD\u7565\uFF1B
+4. \`sprite_export\` \u8FD4\u56DE\u7684 \`scaleClamped\` \u4E3A false\uFF08\u5426\u5219\u76EE\u6807\u5C3A\u5BF8\u6CA1\u8FBE\u5230\uFF09\uFF1B
+5. meta \u7684 \`anchorConvention\` \u4E0E\u4F60\u7684\u8FD0\u884C\u65F6\u4E00\u81F4\u3002
+`;
+var SPRITE_GUIDANCE = `\u4F60\u6709\u300C\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u300D\u80FD\u529B\uFF1A\u628A\u5E26\u7EFF\u5E55\u80CC\u666F\u7684\u89C6\u9891\u8F6C\u6210\u900F\u660E\u5E95\u7CBE\u7075\u56FE\uFF08\u62BD\u5E27 \u2192 \u53D6\u8272 \u2192 \u62A0\u80CC\u666F \u2192 \u53BB\u6C34\u5370/\u88C1\u526A \u2192 \u62FC\u56FE\u5BFC\u51FA\uFF09\u3002
+
+\u6807\u51C6\u8DEF\u5F84\uFF1Asprite_prepare \u2192 sprite_probe_color\uFF08**\u952E\u8272\u5FC5\u987B\u5B9E\u6D4B\uFF0C\u522B\u7528 #00FF00 \u786C\u731C**\uFF09\u2192 sprite_measure\uFF08\u62FF bbox \u4E0E\u6838\u5BF9\u56FE\uFF09
+\u2192 sprite_key_apply \u2192 sprite_cleanup \u2192 sprite_export\u3002\u4E00\u6B21\u8DD1\u5B8C\u7528 sprite_auto\uFF1B\u591A\u6BB5\u7D20\u6750\u7528 sprite_batch\uFF1B\u4E0D\u786E\u5B9A\u8BED\u4E49\u5C31\u8C03 sprite_guide\u3002
+
+\u4E09\u6761\u786C\u89C4\u5219\uFF1A
+- **\u5148 apply \u518D export**\uFF1Asprite_key_preview \u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF0Cexport \u524D\u5FC5\u987B\u91CD\u65B0 apply\uFF08\u5DE5\u5177\u4F1A\u76F4\u63A5\u62A5\u9519\u63D0\u9192\u4F60\uFF09\uFF1B
+- \u53C2\u6570\u5206\u4E24\u6863\uFF08classic/advanced\uFF09\uFF0C\u4F20\u4E86\u4E0D\u751F\u6548\u6863\u7684\u53C2\u6570\u4F1A\u51FA\u73B0\u5728\u8FD4\u56DE\u7684 ignored \u91CC\uFF1B
+- \u76EE\u6807\u5C3A\u5BF8\u7528 sprite_scale_to / charHeightPx + span\uFF08\u6309"\u89D2\u8272\u51C0\u9AD8"\uFF09\uFF0C\u522B\u7528 bbox \u9AD8\u786C\u51D1\u3002
+\u8FED\u4EE3\u4E0A\u9650 6 \u8F6E\u6216\u76F4\u63A5\u7528 sprite_autotune\uFF1B\u4E0D\u6536\u655B\u5C31\u660E\u786E\u544A\u8BC9\u7528\u6237"\u80CC\u666F\u4E0D\u53EF\u62A0/\u9700\u8981\u91CD\u62CD"\uFF0C\u522B\u786C\u585E\u70C2\u56FE\u3002`;
+
+// src/sprite/types.ts
+var KEY_PARAM_KEYS = [
+  "mode",
+  "colorHex",
+  "intensity",
+  "feather",
+  "cleanup",
+  "softness",
+  "despill",
+  "greenToAlpha",
+  "aggressive",
+  "autoPlate",
+  "advIntensity",
+  "advFeather"
+];
+
+// src/sprite/tools.ts
+var json9 = (value) => JSON.stringify(value);
+var fail2 = (error62) => {
+  throw new Error(String(error62?.message ?? error62).slice(0, 500));
+};
+function keyParamsOf(args) {
+  const out = {};
+  if (args.mode === "classic" || args.mode === "advanced") out.mode = args.mode;
+  if (typeof args.colorHex === "string" && args.colorHex.trim() !== "") out.colorHex = args.colorHex.trim();
+  for (const key of ["intensity", "feather", "cleanup", "softness", "despill", "greenToAlpha", "advIntensity", "advFeather"]) {
+    const value = args[key];
+    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
+  }
+  for (const key of ["aggressive", "autoPlate"]) {
+    if (typeof args[key] === "boolean") out[key] = args[key];
+  }
+  return out;
+}
+function ignoredKeysOf(args) {
+  const known = /* @__PURE__ */ new Set([...KEY_PARAM_KEYS, "frame", "indices", "probeFrames"]);
+  return Object.keys(args).filter((key) => !known.has(key));
+}
+function rectOf(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const raw = value;
+  const nums = [raw.x, raw.y, raw.w, raw.h];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) return void 0;
+  return { x: Number(raw.x), y: Number(raw.y), w: Number(raw.w), h: Number(raw.h) };
+}
+var KEY_PROPERTIES = {
+  mode: { type: "string", enum: ["classic", "advanced"], description: "\u62A0\u56FE\u6863\u4F4D\uFF1Aclassic \u8D70 intensity/feather/cleanup\uFF1Badvanced \u8D70 softness/despill/aggressive/greenToAlpha/autoPlate" },
+  colorHex: { type: "string", description: "\u952E\u8272 #RRGGBB\u3002**\u5FC5\u987B\u7528 sprite_probe_color \u5B9E\u6D4B\u7684\u80CC\u666F\u8272**\uFF0C\u5199 #00FF00 \u57FA\u672C\u62A0\u4E0D\u51FA\u6765" },
+  intensity: { type: "number", description: "\u62A0\u8272\u529B\u5EA6 10~90\uFF08\u4E24\u6863\u90FD\u5403\uFF09" },
+  feather: { type: "number", description: "alpha \u7FBD\u5316\u534A\u5F84 0~100\uFF08\u4EC5 classic\uFF09" },
+  cleanup: { type: "number", description: "\u53BB\u8272\u6EA2\u51FA 0~100\uFF08\u4EC5 classic\uFF09" },
+  softness: { type: "number", description: "\u8F6F\u8FB9\u5BBD\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
+  despill: { type: "number", description: "\u53BB\u7EFF\u8FB9\u5F3A\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
+  greenToAlpha: { type: "number", description: "\u6B8B\u7EFF\u8F6C\u900F\u660E 0~300\uFF08\u4EC5 advanced\uFF09" },
+  aggressive: { type: "boolean", description: "\u4E3B\u4F53\u8F6E\u5ED3\u4E5F\u53BB\u7EFF\uFF08\u4EC5 advanced\uFF09" },
+  autoPlate: { type: "boolean", description: "\u81EA\u52A8\u80CC\u666F\u677F\uFF0C**\u53EA\u5728 key_apply \u751F\u6548**\uFF0Cpreview \u770B\u4E0D\u51FA\u6765\uFF08\u4EC5 advanced\uFF09" },
+  advIntensity: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u5F3A\u5EA6 0~100\uFF08\u4E0D\u6539 classic \u7684 intensity\uFF09" },
+  advFeather: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u7FBD\u5316 0~100" }
+};
+function keySchema(extra = {}) {
+  return { type: "object", properties: { ...KEY_PROPERTIES, ...extra } };
+}
+var OUT = {
+  schema: { type: "string" },
+  render: (_args, value) => [{ type: "text", text: String(value) }]
+};
+function buildTools(service) {
+  return [
+    {
+      name: "sprite_prepare",
+      description: "\u5E8F\u5217\u5E27\u7B2C\u4E00\u6B65\uFF1A\u5BFC\u5165\u89C6\u9891\u5E76\u62BD\u5E27\u3002\u8FD4\u56DE {frames,width,height,transport}\u3002transport=http \u8868\u793A\u89C6\u9891\u8D70\u672C\u5730\u76F4\u4F20\uFF08\u5FEB\uFF09\uFF1Bbase64 \u662F\u515C\u5E95\u901A\u9053\uFF08\u6162 20 \u79D2\u5DE6\u53F3\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          videoPath: { type: "string", description: "\u89C6\u9891\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84\uFF08mp4/webm/mov\uFF0C\u2264200MB\uFF09" },
+          start: { type: "number", description: "\u8D77\u59CB\u79D2\uFF0C\u9ED8\u8BA4 0" },
+          end: { type: "number", description: "\u7ED3\u675F\u79D2\uFF0C\u9ED8\u8BA4 4" },
+          fps: { type: "number", description: "\u62BD\u5E27\u5E27\u7387\uFF0C\u9ED8\u8BA4 12" }
+        },
+        required: ["videoPath"]
+      },
+      output: OUT,
+      timeoutMs: 24e4,
+      async execute(args) {
+        const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
+        if (videoPath === "") return fail2("\u9700\u8981 videoPath\uFF08\u89C6\u9891\u7EDD\u5BF9\u8DEF\u5F84\uFF09");
+        try {
+          return json9(
+            await service.prepare({
+              videoPath,
+              ...typeof args.start === "number" ? { start: args.start } : {},
+              ...typeof args.end === "number" ? { end: args.end } : {},
+              ...typeof args.fps === "number" ? { fps: args.fps } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_probe_color",
+      description: "\u4ECE\u5E27\u7684\u56DB\u8FB9\u5E26\u81EA\u52A8\u91C7\u6837\u80CC\u666F\u8272\uFF0C\u8FD4\u56DE {keyColor,spread,samples,rejected}\u3002spread \u8D8A\u5C0F\u8BF4\u660E\u80CC\u666F\u8D8A\u5747\u5300\uFF08<0.05 \u53EF\u7528\uFF09\uFF1B\u88AB\u4E3B\u4F53\u538B\u4F4F\u3001\u5224\u4E0D\u51C6\u7684\u8FB9\u4F1A\u8FDB rejected\u3002**\u62A0\u56FE\u524D\u5148\u8C03\u5B83\u3002**",
+      parameters: {
+        type: "object",
+        properties: {
+          frame: { type: "number", description: "\u7528\u7B2C\u51E0\u5E27\u91C7\u6837\uFF0C\u9ED8\u8BA4 0" },
+          bandPx: { type: "number", description: "\u8FB9\u6846\u5E26\u5BBD\u5EA6\uFF08\u50CF\u7D20\uFF09\uFF0C\u9ED8\u8BA4\u6309\u77ED\u8FB9 3% \u81EA\u52A8\u53D6" }
+        }
+      },
+      output: OUT,
+      timeoutMs: 6e4,
+      async execute(args) {
+        try {
+          return json9(
+            await service.probeColor({
+              ...typeof args.frame === "number" ? { frame: args.frame } : {},
+              ...typeof args.bandPx === "number" ? { bandPx: args.bandPx } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_key_preview",
+      description: "\u6309\u53C2\u6570\u62A0**\u4E00\u5E27**\u5E76\u8FD4\u56DE\u91CF\u5316\u6307\u6807\uFF08bgResidual/subjectCoverage/edgeGreen/alphaHistogram\uFF09\uFF0C\u79D2\u7EA7\uFF0C\u7528\u6765\u8FED\u4EE3\u53C2\u6570\u3002\u26A0\uFE0F \u5B83\u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF1A\u4E4B\u540E\u8981\u5BFC\u51FA\u5FC5\u987B\u91CD\u65B0 sprite_key_apply\u3002autoPlate \u5728\u9884\u89C8\u91CC\u4E0D\u751F\u6548\uFF08\u53EA\u5728 apply \u751F\u6548\uFF09\u3002",
+      parameters: keySchema({ frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" } }),
+      output: OUT,
+      timeoutMs: 12e4,
+      async execute(args) {
+        try {
+          const result2 = await service.keyPreview({
+            ...keyParamsOf(args),
+            ...typeof args.frame === "number" ? { frame: args.frame } : {}
+          });
+          return json9({ ...result2, ignored: ignoredKeysOf(args) });
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_key_apply",
+      description: "\u628A\u53C2\u6570\u5E94\u7528\u5230**\u5168\u90E8\u5E27**\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u56DE {frames,keyedCount,stats,worst,appliedParams}\u3002\u6162\uFF0C30~90 \u79D2\u3002worst \u662F\u62BD\u6837\u5E27\u91CC\u6700\u5DEE\u7684\u4E00\u5E27\u2014\u2014\u7B2C 0 \u5E27\u5E72\u51C0\u4E0D\u4EE3\u8868\u6574\u6BB5\u5E72\u51C0\u3002",
+      parameters: keySchema(),
+      output: OUT,
+      timeoutMs: 6e5,
+      async execute(args) {
+        try {
+          const result2 = await service.keyApply(keyParamsOf(args));
+          return json9({ ...result2, ignored: ignoredKeysOf(args) });
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_measure",
+      description: '\u91CF\u8FD9\u5F20\uFF08\u6216\u5168\u90E8\uFF09\u5E27\u7684\u5185\u5BB9\u8FB9\u754C\uFF1AalphaBBox / contentHeight / perFrameSpread / \u53EF\u9009 landmarks\uFF0C\u5E76\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE\uFF08overlayPath\uFF09\u3002frame:"all" \u80FD\u7ED9\u6BCF\u5E27 topY/soleY \u7684\u6781\u503C\u5206\u5E03\u2014\u2014\u7528\u5B83\u533A\u5206"\u771F\u5185\u5BB9"\u548C"\u67D0\u5E27\u7684\u6B8B\u7559"\u3002\u5750\u6807\u4E00\u5F8B\u300C\u5E27\u539F\u59CB\u50CF\u7D20\u3001\u5DE6\u4E0A\u539F\u70B9\u3001\u53F3\u4E0B\u5F00\u533A\u95F4\u300D\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" },
+          all: { type: "boolean", description: 'true = \u7EDF\u8BA1\u5168\u90E8\u5E27\uFF08\u7ED9 perFrameSpread\uFF0C\u7528\u6765\u53D1\u73B0"\u67D0\u5E27\u6709\u6B8B\u7559"\uFF09' },
+          alphaThreshold: { type: "number", description: "alpha \u9608\u503C\uFF0C\u9ED8\u8BA4 32" },
+          overlay: { type: "boolean", description: "\u662F\u5426\u8F93\u51FA\u6838\u5BF9\u56FE\uFF0C\u9ED8\u8BA4 true" },
+          source: { type: "string", enum: ["keyed", "raw"], description: "\u91CF\u62A0\u56FE\u7ED3\u679C\uFF08\u9ED8\u8BA4 keyed\uFF09\u8FD8\u662F\u539F\u59CB\u5E27\uFF08raw\uFF09" },
+          landmarks: {
+            type: "array",
+            description: "\u8981\u91CF\u7684\u57FA\u51C6\u70B9\uFF1B\u4E0D\u4F20\u5C31\u53EA\u7ED9\u51E0\u4F55\u7EDF\u8BA1",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                type: { type: "string", enum: ["bbox-top", "bbox-bottom", "bbox-left", "bbox-right", "point", "scan-vertical"] },
+                x: { type: "number" },
+                y: { type: "number" },
+                fromY: { type: "number" },
+                toY: { type: "number" },
+                alphaThreshold: { type: "number" }
+              },
+              required: ["id", "type"]
+            }
+          }
+        }
+      },
+      output: OUT,
+      timeoutMs: 3e5,
+      async execute(args) {
+        try {
+          return json9(
+            await service.measure({
+              frame: args.all === true ? "all" : typeof args.frame === "number" ? args.frame : 0,
+              ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
+              ...Array.isArray(args.landmarks) ? { landmarks: args.landmarks } : {},
+              ...typeof args.overlay === "boolean" ? { overlay: args.overlay } : {},
+              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_scale_to",
+      description: '\u6309**\u76EE\u6807\u7269\u7406\u91CF**\u53CD\u63A8\u7F29\u653E\uFF0C\u56DE {scale,wantedScale,clamped,sourcePx,achievedPx,cellW,cellH}\u3002charHeightPx + span\uFF08\u4E24\u4E2A\u57FA\u51C6\u884C\uFF09\u662F\u63A8\u8350\u7528\u6CD5\uFF1BtargetCellHeight \u662F\u65E7\u7684"\u6574\u683C\u9AD8"\u8BED\u4E49\uFF1B\u90FD\u4E0D\u7ED9\u5C31\u6309\u9996\u5E27 bbox \u9AD8\u3002\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u8D85\u4E86 clamped=true \u5E76\u5728 achievedPx \u91CC\u7ED9\u771F\u5B9E\u503C\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          charHeightPx: { type: "number", description: "\u76EE\u6807\uFF1A\u89D2\u8272/\u5185\u5BB9\u51C0\u9AD8\uFF08\u50CF\u7D20\uFF09" },
+          targetCellHeight: { type: "number", description: "\u76EE\u6807\uFF1A\u6574\u683C\u9AD8\uFF08\u65E7\u8BED\u4E49\uFF09" },
+          span: {
+            type: "object",
+            description: "\u53C2\u4E0E\u8BA1\u7B97\u7684\u4E24\u4E2A\u57FA\u51C6\u884C\uFF08\u5E27\u50CF\u7D20\uFF0C\u542B\u7AEF\u70B9\uFF09",
+            properties: { fromY: { type: "number" }, toY: { type: "number" } }
+          }
+        }
+      },
+      output: OUT,
+      timeoutMs: 12e4,
+      async execute(args) {
+        try {
+          const span = args.span && typeof args.span === "object" && typeof args.span.fromY === "number" && typeof args.span.toY === "number" ? {
+            fromY: Number(args.span.fromY),
+            toY: Number(args.span.toY)
+          } : void 0;
+          return json9(
+            await service.scaleTo({
+              ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
+              ...typeof args.targetCellHeight === "number" ? { targetCellHeight: args.targetCellHeight } : {},
+              ...span ? { span } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_get_anchor",
+      description: "\u8BFB\u5F53\u524D\u951A\u70B9\uFF1A{anchorX,anchorY,convention,pixels,frameWidth,frameHeight}\u3002convention \u56FA\u5B9A y-from-bottom\uFF080=\u5E27\u5E95\uFF09\uFF1B\u4E3B\u6D41\u8FD0\u884C\u65F6\u5E38\u7528 y-from-top\uFF0C\u4E24\u8005\u662F 1-y \u7684\u5173\u7CFB\u3002",
+      parameters: { type: "object", properties: {} },
+      output: OUT,
+      timeoutMs: 6e4,
+      async execute() {
+        try {
+          return json9(await service.getAnchor());
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_set_anchor",
+      description: '\u6309**\u50CF\u7D20**\u8BBE\u951A\u70B9\uFF1A{x,y,convention?}\u3002\u26A0\uFE0F \u50CF\u7D20\u7A7A\u95F4\u662F**\u6700\u7EC8\u683C\u5B50**\uFF08\u88C1\u526A+\u6700\u5C0F\u5316+\u7F29\u653E\u4E4B\u540E\uFF09\uFF0C\u4E0D\u662F\u539F\u5E27\u2014\u2014\u4F20\u539F\u5E27\u5750\u6807\u4F1A\u88AB\u5939\u5230\u8FB9\u754C\u3002y \u9ED8\u8BA4\u4ECE\u683C\u5E95\u5F80\u4E0A\u91CF\uFF08y-from-bottom\uFF09\uFF1Bconvention:"y-from-top" \u65F6\u6309\u4ECE\u9876\u5F80\u4E0B\u89E3\u91CA\u3002\u8BBE\u7F6E\u540E get_anchor \u80FD\u8BFB\u56DE\u540C\u4E00\u7EC4\u503C\uFF08\u95ED\u73AF\uFF09\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          x: { type: "number", description: "\u951A\u70B9 x\uFF08\u5E27\u50CF\u7D20\uFF09" },
+          y: { type: "number", description: "\u951A\u70B9 y\uFF08\u5E27\u50CF\u7D20\uFF1B\u53E3\u5F84\u7531 convention \u51B3\u5B9A\uFF09" },
+          convention: { type: "string", enum: ["y-from-bottom", "y-from-top"], description: "\u9ED8\u8BA4 y-from-bottom" }
+        }
+      },
+      output: OUT,
+      timeoutMs: 6e4,
+      async execute(args) {
+        try {
+          return json9(
+            await service.setAnchorPx({
+              ...typeof args.x === "number" ? { x: args.x } : {},
+              ...typeof args.y === "number" ? { y: args.y } : {},
+              ...args.convention === "y-from-bottom" || args.convention === "y-from-top" ? { convention: args.convention } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_cleanup",
+      description: '\u53BB\u6C34\u5370\uFF08maskRect \u53EF\u9009\u77E9\u5F62\u6216 "auto" \u81EA\u52A8\u8BC6\u522B\uFF09+ \u88C1\u526A\uFF08trim \u7B56\u7565\u53EF\u9009\uFF09\u3002trim.mode:"union" \u662F 48 \u5E27\u5E76\u96C6\uFF08\u9632\u622A\u80A2\uFF0C\u4F46\u6F02\u6D6E\u7269\u4F1A\u6491\u5927\u683C\u5B50\uFF09\uFF1B"first-frame" \u53EA\u6309\u9996\u5E27+pad\uFF08\u683C\u5B50\u7A33\uFF09\u3002\u8FD4\u56DE\u91CC\u56DE\u663E pad / alphaThreshold / unionFrames\uFF0C\u65B9\u4FBF\u5BF9\u8D26\uFF08\u5DEE 1~2px \u65F6\u5148\u770B\u8FD9\u91CC\uFF09\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u8BC6\u522B\u6C34\u5370\u533A\u57DF\u518D\u906E" },
+          maskRect: {
+            type: "object",
+            description: "\u53BB\u6C34\u5370\u77E9\u5F62 {x,y,w,h}\uFF08\u7701\u7565=\u4E0D\u906E\uFF09",
+            properties: { x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }
+          },
+          trim: {
+            type: "object",
+            properties: {
+              mode: { type: "string", enum: ["union", "first-frame"], description: "\u9ED8\u8BA4 union" },
+              pad: {
+                type: "object",
+                properties: { top: { type: "number" }, bottom: { type: "number" }, left: { type: "number" }, right: { type: "number" } }
+              },
+              alphaThreshold: { type: "number" }
+            }
+          }
+        }
+      },
+      output: OUT,
+      timeoutMs: 24e4,
+      async execute(args) {
+        try {
+          const mask = args.maskAuto === true ? "auto" : rectOf(args.maskRect) ?? null;
+          const trimArg = args.trim ?? {};
+          const padRaw = trimArg.pad ?? {};
+          return json9(
+            await service.cleanup({
+              maskRect: mask,
+              trim: {
+                ...trimArg.mode === "first-frame" || trimArg.mode === "union" ? { mode: trimArg.mode } : {},
+                pad: {
+                  ...typeof padRaw.top === "number" ? { top: padRaw.top } : {},
+                  ...typeof padRaw.bottom === "number" ? { bottom: padRaw.bottom } : {},
+                  ...typeof padRaw.left === "number" ? { left: padRaw.left } : {},
+                  ...typeof padRaw.right === "number" ? { right: padRaw.right } : {}
+                },
+                ...typeof trimArg.alphaThreshold === "number" ? { alphaThreshold: trimArg.alphaThreshold } : {}
+              }
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_export",
+      description: "\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          cols: { type: "number", description: "\u5217\u6570\uFF0C\u9ED8\u8BA4 8" },
+          rows: { type: "number", description: "\u884C\u6570\uFF0C\u9ED8\u8BA4 6" },
+          targetHeight: { type: "number", description: '\u65E7\u7684"\u6574\u683C\u76EE\u6807\u9AD8"\uFF08\u50CF\u7D20\uFF09' },
+          charHeightPx: { type: "number", description: "\u63A8\u8350\uFF1A\u89D2\u8272/\u5185\u5BB9\u51C0\u9AD8\uFF08\u50CF\u7D20\uFF09\uFF0C\u914D span \u4F7F\u7528" },
+          span: {
+            type: "object",
+            description: "\u4E24\u4E2A\u57FA\u51C6\u884C\uFF08\u5E27\u50CF\u7D20\uFF09\uFF1B\u6765\u81EA sprite_measure \u7684 alphaBBox",
+            properties: { fromY: { type: "number" }, toY: { type: "number" } }
+          },
+          anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309\u5E27\u5BBD\u6BD4\u4F8B\uFF09" },
+          anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF09" },
+          outDir: { type: "string", description: "\u8F93\u51FA\u76EE\u5F55\uFF08\u9ED8\u8BA4 storages/.../sprite-out\uFF09" },
+          fileName: { type: "string", description: "\u56FE\u7247\u6587\u4EF6\u540D\uFF08\u542B\u6269\u5C55\u540D\uFF09" },
+          metaName: { type: "string", description: "meta \u6587\u4EF6\u540D" },
+          dirPerAction: { type: "boolean", description: "true \u2192 \u653E\u8FDB <outDir>/<name>/" },
+          overwrite: { type: "boolean", description: "false \u65F6\u76EE\u6807\u5DF2\u5B58\u5728\u5C31\u62A5\u9519\uFF08\u9ED8\u8BA4 true\uFF09" },
+          format: { type: "string", enum: ["png", "webp"], description: "\u9ED8\u8BA4 png\uFF1Bwebp \u4F53\u79EF\u5C0F\u5F97\u591A" },
+          quality: { type: "number", description: "webp \u8D28\u91CF 0~1\uFF0C\u9ED8\u8BA4 0.9" },
+          name: { type: "string", description: "\u52A8\u4F5C\u540D\uFF08\u7528\u4E8E\u9ED8\u8BA4\u6587\u4EF6\u540D\u4E0E\u5B50\u76EE\u5F55\uFF09" }
+        }
+      },
+      output: OUT,
+      timeoutMs: 6e5,
+      async execute(args) {
+        try {
+          const span = args.span && typeof args.span === "object" && typeof args.span.fromY === "number" && typeof args.span.toY === "number" ? {
+            fromY: Number(args.span.fromY),
+            toY: Number(args.span.toY)
+          } : void 0;
+          return json9(
+            await service.exportSheet({
+              ...typeof args.cols === "number" ? { cols: args.cols } : {},
+              ...typeof args.rows === "number" ? { rows: args.rows } : {},
+              ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {},
+              ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
+              ...span ? { span } : {},
+              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
+              ...typeof args.outDir === "string" ? { outDir: args.outDir } : {},
+              ...typeof args.fileName === "string" ? { fileName: args.fileName } : {},
+              ...typeof args.metaName === "string" ? { metaName: args.metaName } : {},
+              ...typeof args.dirPerAction === "boolean" ? { dirPerAction: args.dirPerAction } : {},
+              ...typeof args.overwrite === "boolean" ? { overwrite: args.overwrite } : {},
+              ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
+              ...typeof args.quality === "number" ? { quality: args.quality } : {},
+              ...typeof args.name === "string" ? { name: args.name } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_autotune",
+      description: '\u81EA\u52A8\u8C03\u53C2\uFF1A\u5148\u81EA\u52A8\u91C7\u8272\uFF0C\u7136\u540E\u6309\u6307\u6807\u8FED\u4EE3\uFF08bgResidual/subjectCoverage/edgeGreen\uFF09\uFF0C\u8FD4\u56DE {params,trace,reachedGoal}\u3002\u7701\u6389\u4F60"\u8BFB stats \u6539\u53C2\u6570\u8BD5\u4E09\u8F6E"\u3002\u26A0\uFE0F \u5B83\u5185\u90E8\u7528 preview\uFF08\u4F1A\u6E05\u7F13\u5B58\uFF09\uFF0C\u8C03\u5B8C\u8981 sprite_key_apply\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "object",
+            properties: {
+              maxBgResidual: { type: "number", description: "\u9ED8\u8BA4 0.01" },
+              minSubjectCoverage: { type: "number", description: "\u9ED8\u8BA4 0.98" },
+              maxEdgeGreen: { type: "number", description: "\u9ED8\u8BA4 0.10" }
+            }
+          },
+          space: {
+            type: "object",
+            properties: {
+              intensity: { type: "array", items: { type: "number" }, description: "[\u4E0B\u754C, \u4E0A\u754C]" },
+              mode: { type: "array", items: { type: "string" }, description: "\u53EF\u9009\u6863\u4F4D\u5217\u8868" }
+            }
+          },
+          maxIters: { type: "number", description: "\u9ED8\u8BA4 6\uFF0C\u4E0A\u9650 12" },
+          frame: { type: "number", description: "\u7528\u54EA\u4E00\u5E27\u8FED\u4EE3\uFF0C\u9ED8\u8BA4 0" }
+        }
+      },
+      output: OUT,
+      timeoutMs: 3e5,
+      async execute(args) {
+        try {
+          const goalRaw = args.goal ?? {};
+          const spaceRaw = args.space ?? {};
+          const intensity = Array.isArray(spaceRaw.intensity) && spaceRaw.intensity.length === 2 ? [Number(spaceRaw.intensity[0]), Number(spaceRaw.intensity[1])] : void 0;
+          return json9(
+            await service.autotune({
+              goal: {
+                ...typeof goalRaw.maxBgResidual === "number" ? { maxBgResidual: goalRaw.maxBgResidual } : {},
+                ...typeof goalRaw.minSubjectCoverage === "number" ? { minSubjectCoverage: goalRaw.minSubjectCoverage } : {},
+                ...typeof goalRaw.maxEdgeGreen === "number" ? { maxEdgeGreen: goalRaw.maxEdgeGreen } : {}
+              },
+              ...intensity ? { space: { intensity } } : {},
+              ...typeof args.maxIters === "number" ? { maxIters: args.maxIters } : {},
+              ...typeof args.frame === "number" ? { frame: args.frame } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_batch",
+      description: "\u6279\u91CF\uFF1A\u4E00\u4E2A items \u6570\u7EC4\u8DD1\u5B8C\u6574\u7BA1\u7EBF\uFF08prepare\u2192\u91C7\u8272\u2192measure\u2192apply\u2192cleanup\u2192export\uFF09\uFF0C\u5355\u6761\u5931\u8D25\u4E0D\u5F71\u54CD\u5176\u4ED6\u6761\u3002\u6BCF\u6761\u5360\u4E00\u4E2A\u5B50\u76EE\u5F55 <outRoot>/<name>/\u3002\u5F53\u524D\u4E32\u884C\u6267\u884C\uFF08\u5E76\u53D1\u9700\u8981\u4F1A\u8BDD\u9694\u79BB\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          outRoot: { type: "string", description: "\u8F93\u51FA\u6839\u76EE\u5F55" },
+          concurrency: { type: "number", description: "\u9884\u7559\uFF1A>1 \u76EE\u524D\u4ECD\u6309\u4E32\u884C\u8DD1\u5E76\u7ED9 warning" },
+          overwrite: { type: "boolean", description: "\u9ED8\u8BA4 true" },
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                videoPath: { type: "string" },
+                action: { type: "string", description: "\u52A8\u4F5C id\uFF0C\u5982 idle / sneak_eat" },
+                name: { type: "string", description: "\u4EA7\u7269\u540D\uFF0C\u9ED8\u8BA4\u7528 action" },
+                start: { type: "number" },
+                end: { type: "number" },
+                fps: { type: "number" },
+                keyColor: { type: "string", description: "\u4E0D\u7ED9\u5C31\u81EA\u52A8\u91C7\u8272" },
+                intensity: { type: "number" },
+                mode: { type: "string", enum: ["classic", "advanced"] },
+                maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u53BB\u6C34\u5370" },
+                targetCharHeight: { type: "number" },
+                trimMode: { type: "string", enum: ["union", "first-frame"] },
+                cols: { type: "number" },
+                rows: { type: "number" },
+                format: { type: "string", enum: ["png", "webp"] }
+              },
+              required: ["videoPath", "action"]
+            }
+          }
+        },
+        required: ["outRoot", "items"]
+      },
+      output: OUT,
+      timeoutMs: 18e5,
+      async execute(args) {
+        try {
+          const items = Array.isArray(args.items) ? args.items : [];
+          if (items.length === 0) return fail2("items \u4E0D\u80FD\u4E3A\u7A7A");
+          const outRoot = typeof args.outRoot === "string" ? args.outRoot : "";
+          if (outRoot === "") return fail2("\u9700\u8981 outRoot\uFF08\u8F93\u51FA\u6839\u76EE\u5F55\uFF09");
+          return json9(
+            await service.batch({
+              outRoot,
+              items: items.map((row) => {
+                const item = row;
+                return {
+                  videoPath: String(item.videoPath ?? ""),
+                  action: String(item.action ?? ""),
+                  ...typeof item.name === "string" ? { name: item.name } : {},
+                  ...typeof item.start === "number" ? { start: item.start } : {},
+                  ...typeof item.end === "number" ? { end: item.end } : {},
+                  ...typeof item.fps === "number" ? { fps: item.fps } : {},
+                  ...typeof item.keyColor === "string" ? { keyColor: item.keyColor } : {},
+                  ...typeof item.intensity === "number" ? { intensity: item.intensity } : {},
+                  ...item.mode === "classic" || item.mode === "advanced" ? { mode: item.mode } : {},
+                  ...item.maskAuto === true ? { maskRect: "auto" } : {},
+                  ...typeof item.targetCharHeight === "number" ? { targetCharHeight: item.targetCharHeight } : {},
+                  ...item.trimMode === "union" || item.trimMode === "first-frame" ? { trimMode: item.trimMode } : {},
+                  ...typeof item.cols === "number" ? { cols: item.cols } : {},
+                  ...typeof item.rows === "number" ? { rows: item.rows } : {},
+                  ...item.format === "png" || item.format === "webp" ? { format: item.format } : {}
+                };
+              }),
+              ...typeof args.concurrency === "number" ? { concurrency: args.concurrency } : {},
+              ...typeof args.overwrite === "boolean" ? { overwrite: args.overwrite } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_auto",
+      description: "\u4E00\u6BB5\u7D20\u6750\u7684\u4E00\u6761\u9F99\uFF1Aprepare \u2192 \u81EA\u52A8\u91C7\u8272 \u2192 measure \u2192 autotune \u2192 apply \u2192 cleanup \u2192 export\u3002\u8FD4\u56DE\u548C sprite_export \u4E00\u6837\u7684\u5B57\u6BB5\uFF0C\u5916\u52A0 stages\uFF08\u6BCF\u6B65\u4E00\u53E5\u8BDD\uFF0C\u51FA\u95EE\u9898\u65F6\u5148\u770B\u5B83\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          videoPath: { type: "string" },
+          name: { type: "string", description: "\u4EA7\u7269\u540D\uFF0C\u9ED8\u8BA4\u7528\u6587\u4EF6\u540D" },
+          outDir: { type: "string" },
+          targetCharHeight: { type: "number" },
+          cols: { type: "number" },
+          rows: { type: "number" },
+          format: { type: "string", enum: ["png", "webp"] },
+          trimMode: { type: "string", enum: ["union", "first-frame"] },
+          maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u53BB\u6C34\u5370" }
+        },
+        required: ["videoPath"]
+      },
+      output: OUT,
+      timeoutMs: 9e5,
+      async execute(args) {
+        try {
+          const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
+          if (videoPath === "") return fail2("\u9700\u8981 videoPath");
+          return json9(
+            await service.auto({
+              videoPath,
+              ...typeof args.name === "string" ? { name: args.name } : {},
+              ...typeof args.outDir === "string" ? { outDir: args.outDir } : {},
+              ...typeof args.targetCharHeight === "number" ? { targetCharHeight: args.targetCharHeight } : {},
+              ...typeof args.cols === "number" ? { cols: args.cols } : {},
+              ...typeof args.rows === "number" ? { rows: args.rows } : {},
+              ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
+              ...args.trimMode === "union" || args.trimMode === "first-frame" ? { trimMode: args.trimMode } : {},
+              ...args.maskAuto === true ? { maskRect: "auto" } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_guide",
+      description: "\u8FD4\u56DE\u8FD9\u5957\u5DE5\u5177\u7684\u5B8C\u6574\u6307\u5357\uFF08\u516D\u6B65\u539F\u8BED / \u53C2\u6570\u8BED\u4E49\u8868 / \u75C7\u72B6\u901F\u67E5 / \u951A\u70B9\u53E3\u5F84 / \u4EA4\u4ED8\u7EA6\u5B9A\uFF09\u3002\u4E0D\u786E\u5B9A\u8BED\u4E49\u65F6\u5148\u8C03\u5B83\uFF0C\u6BD4\u8BFB\u6E90\u7801\u5FEB\u3002",
+      parameters: { type: "object", properties: {} },
+      output: OUT,
+      timeoutMs: 1e4,
+      async execute() {
+        return SPRITE_GUIDE;
+      }
+    }
+  ];
+}
+
 // src/sprite/start.ts
-var SPRITE_GUIDANCE = `\u4F60\u6709\u300C\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u300D\u80FD\u529B\uFF1A\u628A\u5E26\u7EFF\u5E55\u80CC\u666F\u7684\u89C6\u9891\u8F6C\u6210\u900F\u660E\u5E95\u7CBE\u7075\u56FE\uFF08\u62BD\u5E27 \u2192 \u62A0\u80CC\u666F \u2192 \u53BB\u6C34\u5370/\u88C1\u526A \u2192 \u62FC\u56FE\u5BFC\u51FA\uFF09\u3002
-\u6807\u51C6\u6D41\u7A0B\uFF1Asprite_prepare \u2192 \u8C03\u53C2\u5FAA\u73AF\uFF08sprite_key_preview \u770B stats \u2192 \u6539\u53C2\u6570\uFF09\u2192 sprite_key_apply \u2192 sprite_cleanup \u2192 sprite_export\u3002
-\u8C03\u53C2\u89C4\u5219\uFF1A
-- bgResidual > 0.02 \u4E14 subjectCoverage > 0.98 \u2192 \u52A0 intensity\uFF08+10\uFF0C\u4E0A\u9650 90\uFF09
-- bgResidual \u9AD8\u4F46 subjectCoverage \u6389\u5230 0.98 \u4EE5\u4E0B \u2192 \u52A0 softness \u6216\u964D intensity\uFF08\u522B\u628A\u4E3B\u4F53\u62A0\u6389\uFF09
-- edgeGreen > 0.10 \u2192 \u5F00 aggressive\uFF0CgreenToAlpha +10
-- \u80CC\u666F\u6591\u9A73\uFF08\u53C2\u6570\u591F\u4E86\u4F46\u4ECD\u6709\u6B8B\u7559\uFF09\u2192 \u5F00 autoPlate \u518D apply\uFF08\u6CE8\u610F\uFF1AautoPlate \u53EA\u5728 apply \u751F\u6548\uFF0C\u5355\u5E27\u9884\u89C8\u770B\u4E0D\u51FA\u6765\uFF09
-\u6700\u591A\u8FED\u4EE3 6 \u8F6E\uFF0C\u6BCF\u8F6E\u8BB0\u4E0B\u53C2\u6570\u4E0E stats\uFF1B\u6536\u655B\u540E\u624D apply\u3002apply \u4E4B\u540E stats \u4F1A\u518D\u7ED9\u4E00\u6B21\uFF08\u90A3\u662F\u542B\u81EA\u52A8\u80CC\u666F\u677F\u7684\u7ED3\u679C\uFF09\u3002
-\u5982\u679C\u8FED\u4EE3\u5230\u4E0A\u9650\u4ECD\u4E0D\u6536\u655B\uFF0C\u5C31\u660E\u786E\u544A\u8BC9\u7528\u6237"\u80CC\u666F\u4E0D\u53EF\u62A0/\u9700\u8981\u91CD\u62CD"\uFF0C\u4E0D\u8981\u786C\u585E\u4E00\u5F20\u70C2\u56FE\u3002`;
 function packageRoot() {
   try {
     return path20.resolve(path20.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -38857,7 +39962,7 @@ function startSprite(ctx, deps) {
   let service;
   if (deps.enabled === false) {
     probe.service = "disabled";
-  } else if (!existsSync3(toolHtmlPath)) {
+  } else if (!existsSync4(toolHtmlPath)) {
     probe.service = `missing-tool-html: ${toolHtmlPath}`;
     deps.log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u4E0D\u5B58\u5728\uFF08\u5DE5\u5177\u4E0D\u4F1A\u6CE8\u518C\uFF09", { path: toolHtmlPath });
   } else {
@@ -38869,12 +39974,15 @@ function startSprite(ctx, deps) {
       probe.service = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
     }
   }
+  let toolCount = 0;
   if (service) {
     try {
       const tools = ctx.get?.("tools", true);
       if (tools && typeof tools.register === "function") {
-        for (const definition of buildTools(service)) tools.register(definition);
-        probe.tools = "registered";
+        const definitions = buildTools(service);
+        for (const definition of definitions) tools.register(definition);
+        toolCount = definitions.length;
+        probe.tools = `registered(${toolCount})`;
       } else {
         probe.tools = "no-tools";
       }
@@ -38963,6 +40071,7 @@ function startSprite(ctx, deps) {
   }
   return {
     probe,
+    service,
     stop() {
       if (stopped) return;
       stopped = true;
@@ -38973,169 +40082,6 @@ function startSprite(ctx, deps) {
       void service?.stop().catch(() => void 0);
     }
   };
-}
-function buildTools(service) {
-  const json11 = (value) => JSON.stringify(value);
-  const fail2 = (error62) => {
-    throw new Error(String(error62?.message ?? error62).slice(0, 400));
-  };
-  return [
-    {
-      name: "sprite_prepare",
-      description: "\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u7B2C\u4E00\u6B65\uFF1A\u5BFC\u5165\u89C6\u9891\u5E76\u62BD\u5E27\u3002\u8FD4\u56DE\u5E27\u6570\u4E0E\u50CF\u7D20\u5C3A\u5BF8\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          videoPath: { type: "string", description: "\u89C6\u9891\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84\uFF08mp4/webm/mov\uFF09" },
-          start: { type: "number", description: "\u8D77\u59CB\u79D2\uFF0C\u9ED8\u8BA4 0" },
-          end: { type: "number", description: "\u7ED3\u675F\u79D2\uFF0C\u9ED8\u8BA4 4" },
-          fps: { type: "number", description: "\u62BD\u5E27\u5E27\u7387\uFF0C\u9ED8\u8BA4 12" }
-        },
-        required: ["videoPath"]
-      },
-      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 18e4,
-      async execute(args) {
-        const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
-        if (videoPath === "") return fail2("\u9700\u8981 videoPath\uFF08\u89C6\u9891\u7EDD\u5BF9\u8DEF\u5F84\uFF09");
-        try {
-          const result2 = await service.prepare({
-            videoPath,
-            ...typeof args.start === "number" ? { start: args.start } : {},
-            ...typeof args.end === "number" ? { end: args.end } : {},
-            ...typeof args.fps === "number" ? { fps: args.fps } : {}
-          });
-          return json11(result2);
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_key_preview",
-      description: "\u6309\u53C2\u6570\u62A0\u4E00\u5E27\u5E76\u8FD4\u56DE\u91CF\u5316\u6307\u6807\uFF08bgResidual/subjectCoverage/edgeGreen/alphaHistogram\uFF09\u3002\u7528\u5B83\u8FED\u4EE3\u53C2\u6570\uFF0C\u5FEB\uFF08\u79D2\u7EA7\uFF09\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" },
-          colorHex: { type: "string", description: "\u952E\u8272\uFF0C\u5982 #00FF00" },
-          intensity: { type: "number", description: "\u62A0\u8272\u529B\u5EA6\uFF0C\u5173\u952E\u53C2\u6570\uFF0C10~90" },
-          softness: { type: "number", description: "\u67D4\u548C\u5EA6 0~100" },
-          despill: { type: "number", description: "\u53BB\u7EFF\u8FB9 0~100" },
-          greenToAlpha: { type: "number", description: "\u6B8B\u7EFF\u8F6C\u900F\u660E 0~300" },
-          aggressive: { type: "boolean", description: "\u53BB\u7EFF\u8FB9\uFF08\u7BA1\u4E3B\u4F53\u8F6E\u5ED3\uFF09" },
-          autoPlate: { type: "boolean", description: "\u81EA\u52A8\u80CC\u666F\u677F\uFF08\u9884\u89C8\u4E0D\u751F\u6548\uFF0C\u53EA\u5728 apply \u751F\u6548\uFF09" }
-        }
-      },
-      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 12e4,
-      async execute(args) {
-        try {
-          const result2 = await service.keyPreview(keyParamsOf(args));
-          return json11(result2);
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_key_apply",
-      description: "\u628A\u5F53\u524D\u53C2\u6570\u5E94\u7528\u5230\u5168\u90E8\u5E27\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u4F1A\u518D\u7B97\u4E00\u6B21\u6307\u6807\u3002\u6162\uFF0C30~90 \u79D2\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          colorHex: { type: "string" },
-          intensity: { type: "number" },
-          softness: { type: "number" },
-          despill: { type: "number" },
-          greenToAlpha: { type: "number" },
-          aggressive: { type: "boolean" },
-          autoPlate: { type: "boolean" }
-        }
-      },
-      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 3e5,
-      async execute(args) {
-        try {
-          return json11(await service.keyApply(keyParamsOf(args)));
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_cleanup",
-      description: "\u53BB\u6C34\u5370\uFF08\u53EF\u9009\u77E9\u5F62\uFF09\u5E76\u505A\u5C3A\u5BF8\u6700\u5C0F\u5316\u88C1\u526A\u3002\u5FC5\u987B\u5728\u62A0\u56FE\u5408\u683C\u4E4B\u540E\u8C03\u7528\uFF08\u80CC\u666F\u6B8B\u7559\u4F1A\u8BA9\u88C1\u526A\u5931\u6548\uFF09\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          maskRect: {
-            type: "object",
-            description: "\u53BB\u6C34\u5370\u77E9\u5F62 {x,y,w,h}\uFF08\u50CF\u7D20\uFF0C\u57FA\u4E8E\u5E27\u539F\u59CB\u5C3A\u5BF8\uFF09",
-            properties: {
-              x: { type: "number" },
-              y: { type: "number" },
-              w: { type: "number" },
-              h: { type: "number" }
-            }
-          }
-        }
-      },
-      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 12e4,
-      async execute(args) {
-        try {
-          const rect = args.maskRect;
-          const maskRect = rect && typeof rect === "object" && [rect.x, rect.y, rect.w, rect.h].every((n) => typeof n === "number") ? { x: Number(rect.x), y: Number(rect.y), w: Number(rect.w), h: Number(rect.h) } : null;
-          return json11(await service.cleanup({ maskRect }));
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_export",
-      description: "\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA PNG + meta.json\uFF08\u542B\u951A\u70B9\uFF09\u3002\u9ED8\u8BA4 7\xD77\u3001\u76EE\u6807\u9AD8\u5EA6 512\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          cols: { type: "number", description: "\u5217\u6570\uFF0C\u9ED8\u8BA4 7" },
-          rows: { type: "number", description: "\u884C\u6570\uFF0C\u9ED8\u8BA4 7" },
-          targetHeight: { type: "number", description: "\u5355\u683C\u76EE\u6807\u9AD8\u5EA6\uFF08\u50CF\u7D20\uFF09\uFF0C\u9ED8\u8BA4 512\uFF0C\u5EFA\u8BAE\u4E0D\u8D85\u8FC7 512" },
-          anchorX: { type: "number", description: "\u951A\u70B9 X\uFF080~1\uFF09\uFF0C\u9ED8\u8BA4 0.5" },
-          anchorY: { type: "number", description: "\u951A\u70B9 Y\uFF080~1\uFF09\uFF0C\u9ED8\u8BA4 0.04" }
-        }
-      },
-      output: { schema: { type: "string" }, render: (_a3, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 3e5,
-      async execute(args) {
-        try {
-          return json11(
-            await service.exportSheet({
-              ...typeof args.cols === "number" ? { cols: args.cols } : {},
-              ...typeof args.rows === "number" ? { rows: args.rows } : {},
-              ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {},
-              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    }
-  ];
-}
-function keyParamsOf(args) {
-  const out = {};
-  if (typeof args.colorHex === "string" && args.colorHex.trim() !== "") out.colorHex = args.colorHex.trim();
-  for (const key of ["intensity", "softness", "despill", "greenToAlpha", "frame"]) {
-    if (typeof args[key] === "number" && Number.isFinite(args[key])) out[key] = args[key];
-  }
-  for (const key of ["aggressive", "autoPlate"]) {
-    if (typeof args[key] === "boolean") out[key] = args[key];
-  }
-  return out;
 }
 
 // src/xyq/start.ts
@@ -39201,13 +40147,13 @@ ${result2.stderr}`;
     if (auth !== void 0) return { result: result2, message: auth };
     const modelMissing = combined.match(/未找到可用模型[^\n]*/);
     if (modelMissing) return { result: result2, message: modelMissing[0].trim() };
-    const json11 = parseJson(result2.stdout);
+    const json12 = parseJson(result2.stdout);
     if (result2.timedOut) return { result: result2, message: `\u5C0F\u4E91\u96C0\u547D\u4EE4\u8D85\u65F6\uFF08${Math.round(timeoutMs / 1e3)} \u79D2\uFF09` };
-    if (json11 === void 0) {
+    if (json12 === void 0) {
       const reason = result2.stderr.trim() !== "" ? result2.stderr.trim() : result2.stdout.trim();
       return { result: result2, message: reason !== "" ? `\u5C0F\u4E91\u96C0\u8FD4\u56DE\u4E86\u65E0\u6CD5\u89E3\u6790\u7684\u5185\u5BB9\uFF1A${reason.slice(0, 200)}` : "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE\u5185\u5BB9" };
     }
-    return { result: result2, json: json11 };
+    return { result: result2, json: json12 };
   }
   async function poll(threadId, runId, outDir, timeoutMs) {
     const started = (deps.now ?? Date.now)();
@@ -39217,15 +40163,15 @@ ${result2.stderr}`;
         Math.max(3e4, timeoutMs)
       );
       if (answered.message !== void 0) return { ok: false, files: [], message: answered.message };
-      const json11 = answered.json ?? {};
-      const status = typeof json11.status === "string" ? json11.status : "unknown";
-      if (json11.error_message !== void 0 && String(json11.error_message).trim() !== "") {
-        return { ok: false, files: [], status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${String(json11.error_message).slice(0, 200)}` };
+      const json12 = answered.json ?? {};
+      const status = typeof json12.status === "string" ? json12.status : "unknown";
+      if (json12.error_message !== void 0 && String(json12.error_message).trim() !== "") {
+        return { ok: false, files: [], status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${String(json12.error_message).slice(0, 200)}` };
       }
       if (status === "succeeded") {
         const files = [];
         for (const key of ["videos", "images"]) {
-          const list = Array.isArray(json11[key]) ? json11[key] : [];
+          const list = Array.isArray(json12[key]) ? json12[key] : [];
           for (const item of list) {
             if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
           }
@@ -39248,25 +40194,25 @@ ${result2.stderr}`;
     async status() {
       const answered = await call(["status"], 3e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json11 = answered.json ?? {};
+      const json12 = answered.json ?? {};
       return {
         ok: true,
-        loggedIn: json11.logged_in === true,
-        source: typeof json11.source === "string" ? json11.source : "",
-        ...json11.logged_in === true ? {} : { message: "Access Key \u672A\u751F\u6548\uFF0C\u8BF7\u68C0\u67E5\u662F\u5426\u8FC7\u671F" }
+        loggedIn: json12.logged_in === true,
+        source: typeof json12.source === "string" ? json12.source : "",
+        ...json12.logged_in === true ? {} : { message: "Access Key \u672A\u751F\u6548\uFF0C\u8BF7\u68C0\u67E5\u662F\u5426\u8FC7\u671F" }
       };
     },
     async balance() {
       const answered = await call(["get-credit-balance"], 3e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json11 = answered.json ?? {};
-      return { ok: true, totalRemain: typeof json11.total_remain_amount === "string" ? json11.total_remain_amount : String(json11.total_remain_amount ?? "") };
+      const json12 = answered.json ?? {};
+      return { ok: true, totalRemain: typeof json12.total_remain_amount === "string" ? json12.total_remain_amount : String(json12.total_remain_amount ?? "") };
     },
     async models(kind) {
       const answered = await call(["model", "list", "--type", kind], 6e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json11 = answered.json ?? {};
-      const list = Array.isArray(json11.models) ? json11.models : [];
+      const json12 = answered.json ?? {};
+      const list = Array.isArray(json12.models) ? json12.models : [];
       return {
         ok: true,
         models: list.filter((row) => typeof row.name === "string" && String(row.name).trim() !== "").map((row) => ({
@@ -39295,9 +40241,9 @@ ${result2.stderr}`;
       if (typeof input2.count === "number" && Number.isFinite(input2.count) && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
       const submitted = await call(args, 12e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json11 = submitted.json ?? {};
-      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
-      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
+      const json12 = submitted.json ?? {};
+      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
+      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id\uFF0C\u751F\u6210\u672A\u63D0\u4EA4\u6210\u529F" };
       budget.images += 1;
       const outDir = input2.outDir ?? "xyq_output";
@@ -39308,7 +40254,7 @@ ${result2.stderr}`;
         threadId,
         runId,
         files: polled.files,
-        ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {}
+        ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {}
       };
     },
     /** UI 用：只提交生图任务，返回 thread/run（结果由 queryOnce 轮询）。 */
@@ -39326,12 +40272,12 @@ ${result2.stderr}`;
       if (typeof input2.count === "number" && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
       const submitted = await call(args, 12e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json11 = submitted.json ?? {};
-      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
-      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
+      const json12 = submitted.json ?? {};
+      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
+      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
       budget.images += 1;
-      return { ok: true, threadId, runId, ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {} };
+      return { ok: true, threadId, runId, ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {} };
     },
     /** UI 用：只提交生视频任务。 */
     async startVideo(input2) {
@@ -39349,12 +40295,12 @@ ${result2.stderr}`;
       args.push("--task-type", "reference");
       const submitted = await call(args, 18e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json11 = submitted.json ?? {};
-      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
-      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
+      const json12 = submitted.json ?? {};
+      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
+      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
       budget.videos += 1;
-      return { ok: true, threadId, runId, ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {} };
+      return { ok: true, threadId, runId, ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {} };
     },
     /** UI 用：查一次任务状态（不轮询、不阻塞）。 */
     async queryOnce(threadId, runId, outDir) {
@@ -39363,15 +40309,15 @@ ${result2.stderr}`;
         12e4
       );
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json11 = answered.json ?? {};
-      const status = typeof json11.status === "string" ? json11.status : "unknown";
-      if (typeof json11.error_message === "string" && json11.error_message !== "") {
-        return { ok: false, status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${json11.error_message.slice(0, 200)}` };
+      const json12 = answered.json ?? {};
+      const status = typeof json12.status === "string" ? json12.status : "unknown";
+      if (typeof json12.error_message === "string" && json12.error_message !== "") {
+        return { ok: false, status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${json12.error_message.slice(0, 200)}` };
       }
       if (status !== "succeeded") return { ok: true, status };
       const files = [];
       for (const key of ["videos", "images"]) {
-        const list = Array.isArray(json11[key]) ? json11[key] : [];
+        const list = Array.isArray(json12[key]) ? json12[key] : [];
         for (const item of list) {
           if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
         }
@@ -39382,8 +40328,8 @@ ${result2.stderr}`;
     async describe(name2, kind) {
       const answered = await call(["model", "describe", name2, "--type", kind], 6e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json11 = answered.json ?? {};
-      const model2 = json11.model && typeof json11.model === "object" ? json11.model : void 0;
+      const json12 = answered.json ?? {};
+      const model2 = json12.model && typeof json12.model === "object" ? json12.model : void 0;
       if (model2 === void 0) return { ok: false, message: "\u6CA1\u6709\u62FF\u5230\u6A21\u578B\u8BE6\u60C5" };
       return { ok: true, model: model2 };
     },
@@ -39405,9 +40351,9 @@ ${result2.stderr}`;
       args.push("--task-type", "reference");
       const submitted = await call(args, 18e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json11 = submitted.json ?? {};
-      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
-      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
+      const json12 = submitted.json ?? {};
+      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
+      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id\uFF0C\u751F\u6210\u672A\u63D0\u4EA4\u6210\u529F" };
       budget.videos += 1;
       const outDir = input2.outDir ?? "xyq_output";
@@ -39418,7 +40364,7 @@ ${result2.stderr}`;
         threadId,
         runId,
         files: polled.files,
-        ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {}
+        ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {}
       };
     }
   };
@@ -39433,7 +40379,7 @@ var XYQ_DESCRIBE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/describe";
 var XYQ_GENERATE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/generate";
 var XYQ_RESULT_ROUTE = "/api/dsh-remote-dafeiyu/xyq/result";
 var XYQ_FILE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/file";
-function json9(response, status, body) {
+function json10(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
@@ -39466,26 +40412,26 @@ function xyqConfigHandler(deps) {
     if (preflight(request, response)) return;
     const denied = rejected5(request);
     if (denied) {
-      json9(response, 403, { ok: false, error: denied });
+      json10(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json9(response, 200, { ok: true, config: deps.service.view() });
+      json10(response, 200, { ok: true, config: deps.service.view() });
       return;
     }
     if (request.method !== "POST") {
-      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json9(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json10(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     try {
       const body = JSON.parse(await readBody4(request));
-      json9(response, 200, { ok: true, config: deps.service.update(body) });
+      json10(response, 200, { ok: true, config: deps.service.update(body) });
     } catch (error62) {
-      json9(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json10(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -39495,28 +40441,28 @@ function xyqQueryHandler(kind, deps) {
     if (preflight(request, response)) return;
     const denied = rejected5(request);
     if (denied) {
-      json9(response, 403, { ok: false, error: denied });
+      json10(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
       if (kind === "status") {
-        json9(response, 200, await deps.service.status());
+        json10(response, 200, await deps.service.status());
         return;
       }
       if (kind === "balance") {
-        json9(response, 200, await deps.service.balance());
+        json10(response, 200, await deps.service.balance());
         return;
       }
       const url2 = new URL(request.url ?? "/", "http://localhost");
       const type = url2.searchParams.get("type") === "image" ? "image" : "video";
-      json9(response, 200, await deps.service.models(type));
+      json10(response, 200, await deps.service.models(type));
     } catch (error62) {
       deps.log("\u5C0F\u4E91\u96C0\u67E5\u8BE2\u8DEF\u7531\u5931\u8D25", { kind, message: String(error62?.message ?? error62).slice(0, 160) });
-      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json10(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -39525,16 +40471,16 @@ function xyqDescribeHandler(deps) {
     applyCors(request, response);
     if (preflight(request, response)) return;
     const denied = rejected5(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const name2 = (url2.searchParams.get("name") ?? "").trim();
     const type = url2.searchParams.get("type") === "video" ? "video" : "image";
-    if (name2 === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 name" });
+    if (name2 === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 name" });
     try {
-      json9(response, 200, await deps.service.describe(name2, type));
+      json10(response, 200, await deps.service.describe(name2, type));
     } catch (error62) {
-      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json10(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -39543,15 +40489,15 @@ function xyqGenerateHandler(deps) {
     applyCors(request, response);
     if (preflight(request, response)) return;
     const denied = rejected5(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "POST") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
-    if (String(request.headers["x-drc-pair"] ?? "") === "") return json9(response, 403, { ok: false, error: "missing x-drc-pair" });
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (request.method !== "POST") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+    if (String(request.headers["x-drc-pair"] ?? "") === "") return json10(response, 403, { ok: false, error: "missing x-drc-pair" });
     try {
       const body = JSON.parse(await readBody4(request));
       const type = body.type === "video" ? "video" : "image";
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
       const model2 = typeof body.model === "string" ? body.model.trim() : "";
-      if (prompt === "" || model2 === "") return json9(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
+      if (prompt === "" || model2 === "") return json10(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
       try {
         const { mkdirSync: mkdirSync9 } = await import("node:fs");
         mkdirSync9(deps.outDir, { recursive: true });
@@ -39573,9 +40519,9 @@ function xyqGenerateHandler(deps) {
         ...typeof body.resolution === "string" ? { resolution: body.resolution } : {},
         ...typeof body.count === "number" ? { count: body.count } : {}
       });
-      json9(response, result2.ok ? 200 : 502, result2);
+      json10(response, result2.ok ? 200 : 502, result2);
     } catch (error62) {
-      json9(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json10(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -39584,16 +40530,16 @@ function xyqResultHandler(deps) {
     applyCors(request, response);
     if (preflight(request, response)) return;
     const denied = rejected5(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const threadId = (url2.searchParams.get("threadId") ?? "").trim();
     const runId = (url2.searchParams.get("runId") ?? "").trim();
-    if (threadId === "" || runId === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 threadId / runId" });
+    if (threadId === "" || runId === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 threadId / runId" });
     try {
-      json9(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir));
+      json10(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir));
     } catch (error62) {
-      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json10(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -39602,16 +40548,16 @@ function xyqFileHandler(deps) {
     applyCors(request, response);
     if (preflight(request, response)) return;
     const denied = rejected5(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const target = (url2.searchParams.get("path") ?? "").trim();
-    if (target === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
+    if (target === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
     const path28 = await import("node:path");
     const fs10 = await import("node:fs");
     const resolved = path28.resolve(target);
     const root = path28.resolve(deps.outDir);
-    if (!resolved.startsWith(root + path28.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
+    if (!resolved.startsWith(root + path28.sep)) return json10(response, 403, { ok: false, error: "path-escape" });
     try {
       const data = fs10.readFileSync(resolved);
       const ext = path28.extname(resolved).toLowerCase();
@@ -39620,7 +40566,7 @@ function xyqFileHandler(deps) {
       if (request.method === "HEAD") response.end();
       else response.end(data);
     } catch {
-      json9(response, 404, { ok: false, error: "\u6587\u4EF6\u4E0D\u5B58\u5728" });
+      json10(response, 404, { ok: false, error: "\u6587\u4EF6\u4E0D\u5B58\u5728" });
     }
   };
 }
@@ -40049,7 +40995,7 @@ function startAvatar(ctx, deps) {
 
 // src/memory/routes.ts
 var MEMORY_ROUTE = "/api/dsh-remote-dafeiyu/memory";
-function json10(response, status, body) {
+function json11(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
@@ -40095,37 +41041,37 @@ function memoryHandler(deps) {
   return async (request, response) => {
     const denied = rejected6(request);
     if (denied) {
-      json10(response, 403, { ok: false, error: denied });
+      json11(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
       const persona2 = personaOf(request);
       if (persona2 === "") {
-        json10(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
+        json11(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
         return;
       }
-      json10(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
+      json11(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
       return;
     }
     if (request.method !== "POST") {
-      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json11(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     const body = await readBody5(request);
     if (!body.ok) {
-      json10(response, body.status, { ok: false, error: body.error });
+      json11(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json10(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json11(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const persona = typeof parsed.persona === "string" ? parsed.persona.trim() : "";
     if (persona === "") {
-      json10(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
+      json11(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
       return;
     }
     const action = typeof parsed.action === "string" ? parsed.action : "add";
@@ -40133,39 +41079,39 @@ function memoryHandler(deps) {
       const text = typeof parsed.text === "string" ? parsed.text : "";
       const result2 = deps.service.add(persona, text, { importance: parsed.importance, source: "manual" });
       if (!result2.ok) {
-        json10(response, 400, { ok: false, error: result2.error });
+        json11(response, 400, { ok: false, error: result2.error });
         return;
       }
-      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "remove") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.remove(persona, id)) {
-        json10(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json11(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "update") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.update(persona, id, { text: parsed.text, importance: parsed.importance })) {
-        json10(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json11(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "clear") {
       if (!deps.service.clear(persona)) {
-        json10(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
+        json11(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
         return;
       }
-      json10(response, 200, { ok: true, entries: [] });
+      json11(response, 200, { ok: true, entries: [] });
       return;
     }
-    json10(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
+    json11(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
   };
 }
 function registerMemoryRoutes(webServer, deps) {
@@ -40391,11 +41337,11 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync8, readdirSync as readdirSync3, readFileSync as readFileSync9, renameSync as renameSync2, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
+import { existsSync as existsSync7, mkdirSync as mkdirSync8, readdirSync as readdirSync3, readFileSync as readFileSync9, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
 import path25 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync4, readFileSync as readFileSync7 } from "node:fs";
+import { existsSync as existsSync5, readFileSync as readFileSync7 } from "node:fs";
 import path23 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
@@ -40424,7 +41370,7 @@ function workDir(dshHome) {
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync4(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync5(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
     parsed = JSON.parse(readFileSync7(file2, "utf8"));
@@ -40540,7 +41486,7 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync4(file2)) return "";
+  if (!existsSync5(file2)) return "";
   try {
     const parsed = JSON.parse(readFileSync7(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
@@ -40653,8 +41599,8 @@ function runGitAsync(args, options) {
 }
 
 // src/backup/pack.ts
-import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync5, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
+import { createHash as createHash6 } from "node:crypto";
+import { existsSync as existsSync6, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
 import path24 from "node:path";
@@ -40746,7 +41692,7 @@ async function buildHotTree(input2) {
     const target = path24.join(staging, "profiles", path24.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
       const source = path24.join(input2.profileDir, name2);
-      if (!existsSync5(source)) continue;
+      if (!existsSync6(source)) continue;
       await copyFileFresh(source, path24.join(target, name2));
       profiles.push(name2);
     }
@@ -40780,7 +41726,7 @@ async function buildArchiveTree(stagingDir, cooling) {
   const keys = [];
   for (const entry of cooling) {
     const target = path24.join(root, entry.relPath);
-    if (existsSync5(target)) continue;
+    if (existsSync6(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -40793,7 +41739,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync5(dir)) return;
+  if (!existsSync6(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -40837,7 +41783,7 @@ async function stripReadOnly(dir) {
 }
 async function copyFileFresh(source, target) {
   await mkdir(path24.dirname(target), { recursive: true });
-  if (existsSync5(target)) {
+  if (existsSync6(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -40845,7 +41791,7 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync5(sourceDir)) return [];
+  if (!existsSync6(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
@@ -40856,7 +41802,7 @@ async function copyFlat(sourceDir, targetDir) {
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync5(sourceDir)) return total;
+  if (!existsSync6(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
@@ -40882,7 +41828,7 @@ async function walk(sourceDir, targetDir, total) {
 }
 async function sha256Of(file2) {
   try {
-    return createHash5("sha256").update(await readFile(file2)).digest("hex").slice(0, 16);
+    return createHash6("sha256").update(await readFile(file2)).digest("hex").slice(0, 16);
   } catch {
     return "";
   }
@@ -40895,12 +41841,12 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync5(profilesRoot)) return "";
+  if (!existsSync6(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
     const dir = path24.join(profilesRoot, name2);
     const manifest = path24.join(dir, "package.json");
-    if (!existsSync5(manifest)) continue;
+    if (!existsSync6(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync8(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
@@ -41180,7 +42126,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync8(repo, { recursive: true });
-    if (!existsSync6(path25.join(repo, ".git"))) {
+    if (!existsSync7(path25.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -41201,7 +42147,7 @@ var BackupService = class {
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
     const source = path25.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync6(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    if (!existsSync7(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -41247,11 +42193,11 @@ var BackupService = class {
     mkdirSync8(base, { recursive: true });
     if (process.platform === "win32") {
       const file3 = path25.join(base, "askpass.cmd");
-      if (!existsSync6(file3)) writeFileSync4(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      if (!existsSync7(file3)) writeFileSync4(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
     const file2 = path25.join(base, "askpass.sh");
-    if (!existsSync6(file2)) {
+    if (!existsSync7(file2)) {
       writeFileSync4(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
@@ -41285,21 +42231,21 @@ var BackupService = class {
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
       const restoreLatest = path25.join(staging, "latest");
-      const restoredHot = existsSync6(path25.join(restoreLatest, "sessions")) ? countSessionFiles(path25.join(restoreLatest, "sessions")) : 0;
+      const restoredHot = existsSync7(path25.join(restoreLatest, "sessions")) ? countSessionFiles(path25.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
         const target = path25.join(this.deps.dshHome, name2);
-        if (existsSync6(target)) {
-          renameSync2(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
+        if (existsSync7(target)) {
+          renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
       await mergeTree(path25.join(restoreLatest, "sessions"), sessionsRoot);
       await mergeTree(path25.join(restoreLatest, "storages"), path25.join(this.deps.dshHome, "storages"));
-      if (existsSync6(path25.join(restoreLatest, "attachments"))) {
+      if (existsSync7(path25.join(restoreLatest, "attachments"))) {
         await mergeTree(path25.join(restoreLatest, "attachments"), path25.join(this.deps.dshHome, "attachments"));
       }
       await mergeTree(path25.join(staging, "archive"), sessionsRoot);
       const profiles = path25.join(restoreLatest, "profiles");
-      if (existsSync6(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      if (existsSync7(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -41340,7 +42286,7 @@ function clearExceptGit(repo) {
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync6(source)) return;
+  if (!existsSync7(source)) return;
   for (const entry of readdirSync3(source, { withFileTypes: true })) {
     const from = path25.join(source, entry.name);
     const to = path25.join(target, entry.name);
@@ -41350,18 +42296,18 @@ async function mergeTree(source, target) {
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync6(to)) continue;
+    if (existsSync7(to)) continue;
     mkdirSync8(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync6(profilesRoot)) return;
+  if (!existsSync7(profilesRoot)) return;
   for (const entry of readdirSync3(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const from = path25.join(source, entry.name);
     const to = path25.join(profilesRoot, entry.name);
-    if (!existsSync6(to)) continue;
+    if (!existsSync7(to)) continue;
     for (const file2 of readdirSync3(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
       await copyFileFresh(path25.join(from, file2.name), path25.join(to, file2.name));
@@ -41383,7 +42329,7 @@ function countSessionFiles(root) {
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync6(root)) walk2(root);
+  if (existsSync7(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {

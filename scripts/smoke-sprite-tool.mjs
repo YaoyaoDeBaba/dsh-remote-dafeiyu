@@ -40,7 +40,14 @@ try {
 
   const api = await session.evaluate('Object.keys(window.__spriteAgent || {}).join(",")')
   const names = String(api).split(',')
-  for (const required of ['loadVideoBase64', 'setRange', 'extract', 'keyPreview', 'keyApply', 'buildSheet', 'sheetMeta']) {
+  const requiredNames = [
+    // v1
+    'loadVideoBase64', 'setRange', 'extract', 'keyPreview', 'keyApply', 'buildSheet', 'sheetMeta',
+    // v2（.58 起：尺子 / 采色 / 核对图 / 裁剪策略 / 水印 / webp / 缓存只读通道）
+    'loadVideoUrl', 'keyState', 'probeColor', 'measure', 'overlay', 'getAnchor', 'setAnchorPx',
+    'scaleTo', 'trim', 'detectWatermark', 'buildSheetDataURL', 'keyedDataURL',
+  ]
+  for (const required of requiredNames) {
     check(names.includes(required), `bridge 暴露 ${required}`)
   }
 

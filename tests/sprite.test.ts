@@ -15,7 +15,8 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { SPRITE_PAGE_ROUTE, spritePageHandler } from '../src/sprite/routes.js'
-import { SPRITE_GUIDANCE, startSprite } from '../src/sprite/start.js'
+import { startSprite } from '../src/sprite/start.js'
+import { SPRITE_GUIDANCE, SPRITE_GUIDE } from '../src/sprite/guide.js'
 import { findBrowser } from '../src/sprite/browser.js'
 
 interface Reply {
@@ -115,11 +116,20 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
     try {
       const names = registered.map((definition) => String(definition.name)).sort()
       assert.deepEqual(names, [
+        'sprite_auto',
+        'sprite_autotune',
+        'sprite_batch',
         'sprite_cleanup',
         'sprite_export',
+        'sprite_get_anchor',
+        'sprite_guide',
         'sprite_key_apply',
         'sprite_key_preview',
+        'sprite_measure',
         'sprite_prepare',
+        'sprite_probe_color',
+        'sprite_scale_to',
+        'sprite_set_anchor',
       ])
       for (const definition of registered) {
         assert.equal((definition.parameters as { type?: string }).type, 'object')
@@ -129,7 +139,7 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
       const prepare = registered.find((definition) => definition.name === 'sprite_prepare')!
       const required = (prepare.parameters as { required?: string[] }).required ?? []
       assert.deepEqual(required, ['videoPath'], '预览/应用可以不带参数，但导入必须点名视频')
-      assert.equal(handle.probe.tools, 'registered')
+      assert.equal(handle.probe.tools, 'registered(14)')
     } finally {
       handle.stop()
     }
@@ -138,13 +148,21 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
   }
 })
 
-test('引导语点名了整条流程与调参规则（模型看不到就会乱试）', () => {
-  for (const token of ['sprite_prepare', 'sprite_key_preview', 'sprite_key_apply', 'sprite_cleanup', 'sprite_export']) {
+test('引导语点名了整条流程与关键纪律（模型看不到就会乱试）', () => {
+  for (const token of ['sprite_prepare', 'sprite_probe_color', 'sprite_key_apply', 'sprite_cleanup', 'sprite_export']) {
     assert.ok(SPRITE_GUIDANCE.includes(token), `引导语缺少 ${token}`)
   }
-  assert.match(SPRITE_GUIDANCE, /bgResidual/)
-  assert.match(SPRITE_GUIDANCE, /autoPlate/)
-  assert.match(SPRITE_GUIDANCE, /6 轮/)
+  // 三条硬规则必须在：键色要实测 / 先 apply 再 export / 参数分两档
+  assert.match(SPRITE_GUIDANCE, /实测/)
+  assert.match(SPRITE_GUIDANCE, /先 apply 再 export/)
+  assert.match(SPRITE_GUIDANCE, /ignored/)
+})
+
+test('指南（sprite_guide）覆盖参数语义表与症状速查表', () => {
+  for (const token of ['classic', 'advanced', 'greenToAlpha', 'autoPlate', 'first-frame', 'y-from-bottom', 'anchorConvention']) {
+    assert.ok(SPRITE_GUIDE.includes(token), `指南缺少 ${token}`)
+  }
+  assert.match(SPRITE_GUIDE, /症状/)
 })
 
 test('浏览器探测：显式路径不存在时明确返回 undefined（不允许瞎猜一个可执行文件）', () => {

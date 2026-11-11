@@ -1,3 +1,57 @@
+## 0.9.0-dafeiyu.58 —— 序列帧工具 v2：按评审文档四批全量落地
+
+依据 `docs/sprite-tool-agentize-20261111.md`（18 条痛点 P1~P18、迭代项 A1~A7 / B1~B9 / C1~C3）。
+结论跟评审一致：**算法不动，补的是"接口、尺子、说明书"。**
+
+### A 接口层
+- **A1 参数白名单**（P1）：工具层补 `mode` / `feather` / `cleanup` / `advIntensity` / `advFeather`。
+  以前传高级档参数会被白名单吞掉、静默走 classic——这是本轮返工的直接起因。
+- **A2 失败要响 + 参数回显**（P2/P17）：`export` 前断言「抠图缓存非空」、导出后断言「alpha 不是全 255」，
+  两条都**直接报错并给出下一步**；返回统一带 `appliedParams` / `ignored` / `keyedCount`；
+  `cleanup` 回显 `pad` / `alphaThreshold` / `unionFrames`；`keyApply` 多给 `worst`。
+- **A3 输出归调用方**（P5）：`outDir` / `fileName` / `metaName` / `dirPerAction` / `overwrite`，默认
+  `<name>_<cols>x<rows>.<format>` + `<同名>.meta.json`。
+- **A4 批量**（P11）：`sprite_batch`，单条失败不影响其他条；**A5 并发**：`concurrency>1` 时按
+  "一个 worker 一个浏览器实例"真隔离（上限 4）。
+- **A6 webp**（P10）：页面里 `canvas.toBlob('image/webp')` 真编码，实测体积是 png 的 **19%~21%**。
+- **A7 一条龙**（P11）：`sprite_auto`，返回 `stages` 逐句说明每一步。
+- **性能**（P13）：视频不再 base64 过 CDP，改**本地 http 直传**（页面 `fetch` → `File`）。
+  实测 48 帧素材 prepare 从 20~40s 降到 ~4s。
+
+### B 尺子层
+- **B1 `sprite_measure`**（P4/P17）：`alphaBBox` / `contentHeight` / `perFrameSpread` / `landmarks`（含
+  `scan-vertical`）/ `bboxAreaRatio`；**默认量抠图结果**（`source:'keyed'`），原帧整幅不透明这件事
+  以前让"量高"直接量成了整幅。
+- **B2 `sprite_scale_to`**（P6）：按 `charHeightPx` + `span`（两个基准行）反推，不再是"bbox 高"。
+- **B3 锚点**（P7）：`sprite_get_anchor` / `sprite_set_anchor`（像素 + `convention`），闭环可读回；
+  meta 写 `anchorConvention`。**像素空间是"最终格子"**（裁剪+缩放后），工具描述里写明了。
+- **B4 核对图**（P15）：`measure` 默认输出 overlay（bbox 四边 + landmark 十字 + 文字标注），落 `_debug/`。
+- **B5 裁剪策略**（P4/P18）：`trim.mode: union`（全帧并集）/ `first-frame`（首帧+pad）；pad 回显。
+- **B6 最差帧**（P8）：`keyApply` / `export` 的 `stats.worst`，采样走只读通道 `keyedDataURL`
+  （不能用 `keyPreview` 采样——它会清空缓存）。
+- **B7 水印识别**（P9）：`detectWatermark`（原帧 + 局部背景 + 连通块 + 主体重叠过滤），
+  `cleanup({maskAuto:true})` 直接复用；实测命中左上角「AI生成」胶囊 `{24,24,91,40}` confidence 0.85。
+- **B8 自动采色**（P3）：`sprite_probe_color`，四边带中位色 + spread；四边全不透明时走颜色聚类回退
+  （实测 `#94C86B`，spread 0.047，与手工取色最大通道差 5）。
+- **B9 `sprite_autotune`**（P16）：自动采色 + 按指标迭代；默认目标对齐文档（`minSubjectCoverage` 0.6——
+  人物是镂空形状，拿 0.98 当目标会把"已经完美"判成未达标）。
+
+### C 文档层
+- **C1**：工具描述全部重写（各自解释语义与坑）；新增 `sprite_guide()` 返回整篇指南
+  （六步原语 / 参数语义表 / 症状速查 / 锚点口径 / 交付约定）；系统提示段同步；
+  `assets/sprite/README.md` 补 v2 函数表与坑 9~15。
+- **C2/C3**：参数"哪一档生效"表、症状→原因→处理表都在指南里。
+
+### 实测（本机，9 段真实素材 `C:\Users\htsd\Downloads\肥鱼Test\肥鱼修正`）
+- 全流程 e2e：**35 项断言全绿**（`scripts/e2e-sprite-full.mjs`）；
+- 9 段批量（并发 2）：**78.7 秒全绿**，每段 ≈8.7s（评审基线是 4~5 分钟/段）；
+  每段净高都命中 300px（偏差 ≤2px），webp 通过；
+- 页面异常计数 0。
+
+### 兼容
+现有 5 个工具签名不变（只加可选参数）；meta 只加字段不改字段；老页面（无 v2 桥接）会退回 base64 通道
+并在返回里标 `transport:'base64'`。
+
 ## 0.9.0-dafeiyu.57 —— 同步上游那一轮修复
 
 上游（2026-11-11 18:50）把 `markDirty` / `esc` 两个坑修了，这里把打完补丁的工具页重新生成一遍：

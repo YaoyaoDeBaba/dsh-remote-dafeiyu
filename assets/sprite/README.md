@@ -49,9 +49,11 @@
 - **去水印**：`applyRectMask`、`renderMaskPreview`、`onMaskRectChange`、`updateMaskInfo`、`clearMask`
 - **裁剪**：`computeTrimCore`、`applyTrimResult`
 - **输出**：`buildSheet`、`currentMeta`、`renderSheetPreview`、`renderRuler`、`applyOutScale`、
-  `updateMeasureInfo`、`updateMeasureButtons`、`refreshOutput`
-- **锚点**：`renderAnchorPreview`
+  `computeCell`、`updateMeasureInfo`、`updateMeasureButtons`、`refreshOutput`
+- **锚点**：`renderAnchorPreview`、`anchorCurrent`、`anchorProcessedFrame`、`markDirty`
 - **接缝**：`window.SheetKey`（由第 2 段垫片使用，桥接间接受益）
+
+v2 的每个新函数都在函数头注释里写了自己依赖哪几个内部符号。
 
 内部没有 `extractFrames`、也没有 `measureScale` / `keyApply` / `applyMask` 这些名字——
 它们分别是 `generateFrames`、`reverseScale`、`applyKeyToAll`、`applyMaskToAll` 的语义。
@@ -66,7 +68,7 @@
 | `pickBgColor(idx,x,y)` | `state.frames[idx].getContext('2d').getImageData(x,y,1,1)` → `state.key.color` → `updateKeyColorUI()` → `renderKeyResult()`；**不碰取色按钮/`state.picking`** |
 | `keyParams()` | `state.key` + `keyRequestParams()`（`request` 字段就是真发给 `/api/key` 的请求体） |
 | `setKeyParams(patch)` | 直接改 `state.key` / `state.key.adv` → `syncKeyUI()` 同步控件 → `onKeyParamChange()`（清 `keyed`/`masked` + 防抖预览 + 刷新编辑页） |
-| `keyPreview(idx)` | `requestKey([state.frames[idx]], false)` → 结果 `dataURL` 同时 `showPreviewBox('keyResultBox', …)` 写回界面；**不写入 `state.keyed`**（与「预览」语义一致） |
+| `keyPreview(idx)` | `requestKey([state.frames[idx]], false)` → 结果 `dataURL` 同时 `showPreviewBox('keyResultBox', …)` 写回界面；**不写入 `state.keyed`**，但会作废已有缓存（见坑 10） |
 | `keyApply(indices)` | 等价 `applyKeyToAll`，但帧集合显式：`requestKey(frames, state.key.autoPlate)` → `state.keyed` → `renderThumbnails()` / `updateSelCount()` / `refreshEditPreviews()`；`mask.enabled` 时同步重算 `masked`；`trim.enabled` 时重算 bbox |
 | `maskDataURL(idx)` | `effectiveFrame(idx)` 的 alpha 通道当灰度图（与 `showMaskInto` 同一算法）并写回 `#keyResultBox` |
 | `setMaskRect(rect)` | 写 `state.mask.rect` + `state.mask.enabled=true` → `onMaskRectChange()` → `renderMaskPreview()` → `updateMaskInfo()`；`null` 走内部 `clearMask()` |
@@ -78,6 +80,24 @@
 | `buildSheet(cols,rows)` | 写 `#outCols` / `#outRows` → `buildSheet()` → `sheet.toDataURL()` + `currentMeta(r)`；并 `renderRuler()` / `renderAnchorPreview()` / `renderSheetPreview()` 刷新输出页 |
 | `sheetMeta()` | `buildSheet()` + `currentMeta(r)`，额外补 `sheetWidth/sheetHeight/cellW/cellH/total` |
 | `frameDataURL(idx)` | `state.frames[idx].toDataURL('image/png')`（原始帧，不是抠图结果） |
+
+### 4.1 v2 新增（契约 §1~§11，2026-11-11）
+
+| `__spriteAgent.*` | 内部靠什么 |
+| --- | --- |
+| `loadVideoUrl(url,name)` | 页面自己 `fetch(url)` → `Blob` → `File` → 塞 `#fileInput` + 派发 `change`；没接住就 `handleFile(file)` 兜底；等 `state.source.width/duration`（最多 8s）；`updateTabs()` / `renderImportInfo()` |
+| `keyState()` | `state.key` + `state.key.adv` + `state.keyed.size` + `state.masked.size` + `keyHex()` + `keyRequestParams()`（`params.effectiveIntensity` 指出当前模式下真正生效的是哪个强度） |
+| `probeColor({frame,bandPx})` | `effectiveFrame(i)` 的四条边带 `getImageData`；每条边按 α>8 的像素逐通道取中位色，`alphaRatio>0.5` 记入 `rejectedByAlpha` |
+| `measure({frame,source,alphaThreshold,landmarks})` | `state.keyed.get(i)`（默认 `source:'keyed'`）或 `state.frames[i]`（`source:'raw'`）+ `alphaBBox()`；`scan-vertical` 自己扫该列 alpha；**不用** `effectiveFrame`（原因见坑 9） |
+| `overlay({frame,lines,texts,pixelScale})` | `effectiveFrame(i)` 画到副本 canvas 上，`toDataURL('image/png')` |
+| `getAnchor()` / `setAnchorPx({x,y,convention})` | `state.anchor` + `anchorCurrent()` + `anchorProcessedFrame()`（像素口径是**最终格**）+ `renderAnchorPreview()` + `markDirty()` |
+| `scaleTo({charHeightPx,targetCellHeight,span})` | `getCropRect` / `getTrimBBox` / `alphaBBox` 算源高 → `applyOutScale(scale,true)` → `computeCell()` 读回格子尺寸 |
+| `trim({mode,pad,alphaThreshold})` | 写 `state.trim.pad` / `alphaThreshold` + `#trimPad*` → `computeTrimCore`（union：**全部帧**）或首帧 `alphaBBox`（first-frame）→ `applyTrimResult` → `#trimEnabled` 勾上 + `refreshEditPreviews()` + `refreshOutput()` |
+| `detectWatermark({frames,maxRects})` | `state.frames`（**原帧**）+ `state.keyed` 的 `alphaBBox` 当主体排除框；块中位色做局部背景 + 2px 膨胀连通块 |
+| `buildSheetDataURL({cols,rows,format,quality})` | 写 `#outCols/#outRows` → `buildSheet()` → `canvas.toBlob(mime)` → `FileReader` 转 dataURL；webp 编码失败（`blob.type` 不是 `image/webp`）直接报错 |
+| `keyedDataURL({frame})` / `keyedDataURL(n)` | `state.keyed.get(i).toDataURL('image/png')`，**只读**：不动参数、不清缓存 |
+
+`keyApply` / `keyPreview` 的返回补了 `appliedParams`（真正发出去的那份请求体）、`keyedCount`（`keyPreview` 里恒为 0，见坑 8）。
 
 ## 5. 已知坑（都发生在上游，桥接里绕开了）
 
@@ -104,6 +124,28 @@
    原帧坐标 = `box + getCropRect()` 的偏移。
 8. **`keyPreview` 只预览不落盘**：`state.keyed` 不会被预览污染；要看落盘结果得 `keyApply`。
    `apply` 之后再调一次 `keyPreview(0)` 复核是推荐做法（自动背景板只在 apply 生效）。
+9. **量原帧 = 量整幅（v2 的坑，2026-11-11 修正）**：原生视频帧整幅不透明，`alphaBBox` 恒等于整幅，
+   `contentHeight` = 帧高。拿它当「内容物高度」会让 `scaleTo({charHeightPx:300})` 把角色缩成整幅的
+   1/3（实测 26.98%）。所以 `measure` 的 `source` **默认 `'keyed'`**（有 `state.keyed` 就用它），
+   返回里的 `source` / `bboxAreaRatio` 告诉调用方真正量的是什么；要看整幅就显式 `source:'raw'`。
+10. **`keyPreview` 会作废 `state.keyed`**（v2 明确化）：预览走的是「参数驱动重算」那条路，等价于页面里
+    拖滑块（`onKeyParamChange` 清 `keyed`/`masked`）。所以 **apply → 采样 → 拼图** 这个顺序里不能插 preview；
+    要取已抠图帧做分析请用只读的 `keyedDataURL()`，否则拼图会悄悄退回原帧。
+11. **`trim` 的 union 看全部帧，不看勾选**：抽帧后默认只选中第 0 帧，若按选中帧求并集，
+    「并集」会退化成「只按首帧裁」——那正是 `first-frame` 模式的语义。两模式的区别只在
+    `unionFrames`（全部帧数 vs 1）与 `box` 大小。
+12. **`probeColor` 在无 alpha 的素材上必然全 reject**：原生 mp4 四边 `alphaRatio` 恒为 1，
+    契约里「前景压边」的判据失效 → 桥接回退到跨边颜色中位数（返回 `method:'color-median'`、
+    `rejected:[]`、`rejectedByAlpha` 保留原始判定），`spread` 才是真实的四边差异（不是 0）。
+13. **`detectWatermark` 必须看原帧**：这类 AI 素材的角标是**浅绿色半透明胶囊**（实测 `#BCD9A0` 附近，
+    背景 `#94C96A`），抠图会把角标一起抠掉 —— 拿 `keyed` 结果去检测只会看到透明角。
+    另外角标不能用「所有候选像素的并集 bbox」：一个杂点就能把矩形拉到整条边（实测 99×293）；
+    必须做膨胀连通块 + 尺寸/长宽比过滤 + 「与主体 bbox 重叠 > 40% 就丢弃」。
+14. **锚点的像素口径是「最终格」不是原帧**：`getAnchor()/setAnchorPx()` 的 `pixels` 基于
+    `anchorProcessedFrame()`（裁切+最小化+缩放之后），所以 `frameWidth/frameHeight` 常常是
+    222×303 而不是 834×1112（`rawFrameWidth/Height` 另给）。传原帧坐标会被夹到 1.0。
+15. **webp 编码不支持时不许退化成 png**：`canvas.toBlob(..., 'image/webp')` 在不支持的浏览器上
+    会**静默**返回 `image/png`，所以要校验 `blob.type` 后报 `{ok:false,error:'这个浏览器不支持 webp 编码'}`。
 
 ## 6. 上游工具更新后怎么重新打补丁
 
@@ -157,3 +199,56 @@ meta/frame/maskRect/applyMask/maskNull 全部 ok；错误入参返回 {ok:false,
 页面 `Runtime.exceptionThrown` / `console.error` 计数 **0**；UI 同步确认：`#keyColorHex=#00FF00`、
 `#keyEnabled` 勾上、`#keyMode=advanced`、`#trimEnabled` 勾上、`#trimInfo` 有内容物尺寸、
 `#sheetW/H`/`#cellSize`/`#sheetFrames` 已刷新、锚点数字框 `0.500 / 0.050`、`#sheetPreviewBox` 有 canvas。
+
+## 7. v2 扩展（0.9.0-dafeiyu.58，按评审文档 `docs/sprite-tool-agentize-20261111.md`）
+
+契约见 `assets/sprite/bridge-contract.md`。新增：
+
+| 函数 | 作用 | 依赖的内部符号（要点） |
+|---|---|---|
+| `loadVideoUrl(url,name)` | 视频走 http 直传，不再 base64 过 CDP | `fetch` + `File`/`DataTransfer` + `#fileInput` + `handleFile` |
+| `keyState()` | 读抠图状态：`mode` / `keyedCount` / 全部参数 | `state.key`、`state.keyed` |
+| `probeColor({frame,bandPx})` | 四边带采背景色 + spread | `state.frames[i]` 的 canvas `getImageData` |
+| `measure({frame,source,alphaThreshold,landmarks})` | bbox / contentHeight / perFrameSpread / 基准点（`source` 默认 `keyed`） | `state.keyed`/`state.frames`、`alphaBBox` |
+| `overlay({frame,lines,texts})` | 画基准线/文字的核对图 | 新建 canvas + `drawImage` |
+| `getAnchor()` / `setAnchorPx({x,y,convention})` | 锚点读写（带口径，闭环） | `state.anchor`、`anchorProcessedFrame`、`renderAnchorPreview` |
+| `scaleTo({charHeightPx,targetCellHeight,span})` | 按目标物理量反推缩放 | `applyOutScale`、`computeCell`、`#outScale` |
+| `trim({mode,pad,alphaThreshold})` | 裁剪：`union`(全帧并集) / `first-frame` | `computeTrimCore`（union 用**全部帧**）、`alphaBBox`、`applyTrimResult` |
+| `detectWatermark()` | 角落固定角标检测（原帧跨帧稳定 + 局部对比 + 连通块） | `state.frames`、`state.keyed`（当主体框）、`alphaBBox` |
+| `buildSheetDataURL({cols,rows,format,quality})` | 拼图并编码 png/webp | `buildSheet`、`currentMeta`、`canvas.toBlob` |
+| `keyedDataURL({frame})` | **只读**导出已抠图的那一帧（给"最差帧"采样用） | `state.keyed` |
+
+**为什么 `keyedDataURL` 必须是只读的**：`keyPreview` 会先 `setKeyParams` → `onKeyParamChange()` 清空
+keyed 缓存。用 `keyPreview` 去采样最差帧，会把刚 apply 的结果毁掉（评审文档 P2，实测浪费过 2 次整轮）。
+
+逐函数的内部符号细节见 §4.1；踩坑记录见 §5 的 9~15 条；一次真机实测见 §8。
+
+## 8. v2 实测（2026-11-11，无头 Edge + CDP，`shot_05_idle.mp4` 834×1112 / 4.096s / 48 帧 @12fps）
+
+```
+loadVideoUrl  {"ok":true,"bytes":2675025,"duration":4.096,"width":834,"height":1112,"metaReady":true}
+setRange/extract  {"start":0,"end":4,"fps":12} → 48 帧 834×1112
+probeColor    keyColor #94C86B  spread 0.0471  method color-median  rejected []
+              四边中位色 left(148,201,106) right(147,199,108) top(140,192,101) bottom(152,200,112)
+              人工点 (2,2) = (143,198,105) → 逐通道差 [5,2,2]
+measure 0     keyed  bbox {126,92,786,1018} content 660×926  bboxAreaRatio 0.659  cost 14ms
+measure raw   bbox {0,0,834,1112}（整幅，符合原帧无 alpha）      source raw
+measure all   union {118,88,798,1018} topY 88~102  soleY 1017~1017  48 帧  cost 166ms（+ 48 次单帧 ≈ 3.5s）
+landmarks     bbox-top py 92 / point(10,20) 原样 / scan-vertical(x417) 命中 y142 conf 0.825
+keyApply      advanced 48 帧 → keyedCount 48；appliedParams intensity 80 softness 100 color #94c86b
+keyedDataURL  第 0 帧 883226 B / 第 23 帧 958102 B，采样后 keyedCount 仍 48（只读）
+keyPreview    → keyedCount 48→0（清缓存，宿主必须重新 apply）
+重新 apply    keyedCount 48
+scaleTo       span 92~1017 → sourcePx 926 → scale 32.4% → achievedPx 300（cell 270×360）
+trim ff       box {122,88,668,934} pad 4/4/4/4 unionFrames 1   firstFrameBox {126,92,660,926}
+trim union    box {116,86,684,934} pad 2/2/2/2 unionFrames 48   （宽 +16 / 高 +0 / x −6 / y −2）
+detectWatermark rects [{x24,y24,w91,h40,corner tl,confidence 0.85}]（ffmpeg 截帧实测胶囊 x22..117 y22..65）
+overlay       834×1112 PNG 885382 B，decodePng 校验尺寸一致
+buildSheet    png 4944679 B（cell 222×303，8×6 → 1776×1818）
+              webp 949170 B（quality 0.9，是 png 的 19.2%），mime image/webp
+anchor        setAnchorPx({x:111,y:121}) → getAnchor 读回 {111,121}，UI #anchorXNum=0.500 / #anchorYNum=0.399
+页面异常      0（window.onerror + unhandledrejection 全流程收集）
+```
+
+注意 `detectWatermark` 这条：这批素材的角标是**浅绿半透明胶囊**，抠图时会跟背景一起被抠掉，
+所以「keyed 之后四角全透明」不等于「没有水印」——检测必须看原帧（坑 13）。
