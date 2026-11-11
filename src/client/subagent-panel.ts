@@ -167,8 +167,8 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   tools.className = 'tools'
   const pushBtn = doc.createElement('button')
   pushBtn.className = 'ghost'
-  pushBtn.textContent = '推送本会话'
-  pushBtn.title = '把「包工头/派活规范」推到当前这个会话（只推当前，不推全部）'
+  pushBtn.textContent = '推送包工头'
+  pushBtn.title = '把全局派活风格切到「包工头」，并把规范推到当前会话'
   const restore = doc.createElement('button')
   restore.className = 'ghost'
   restore.textContent = '恢复归档子代理'
@@ -562,19 +562,31 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       pushBtn.disabled = true
       pushBtn.textContent = '推送中…'
       try {
+        // ① 全局派活风格切回「包工头」（落盘；下一轮提示段随之生效）
+        const saved = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/config'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+          body: JSON.stringify({ mode: 'foreman' }),
+        })
+        const savedAnswer = (await saved.json()) as { ok?: boolean; error?: string }
+        if (savedAnswer.ok !== true) {
+          setFoot(`推送失败：${String(savedAnswer.error ?? '配置没保存')}`)
+          return
+        }
+        // ② 再推一份「包工头」到当前会话
         const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/guidance/push'), {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
-          body: JSON.stringify({ which: 'subagent', sessionId: sid }),
+          body: JSON.stringify({ which: 'subagent', sessionId: sid, mode: 'foreman' }),
         })
         const answer = (await response.json()) as { ok?: boolean; error?: string; result?: { pushed?: number; total?: number } }
         const pushed = answer.result?.pushed ?? 0
-        setFoot(pushed > 0 ? '已把派活规范推送到当前会话' : `推送失败：${String(answer.error ?? '当前会话不在线')}`)
+        setFoot(pushed > 0 ? '已推送包工头到当前会话（全局模式=包工头）' : `推送失败：${String(answer.error ?? '当前会话不在线')}`)
       } catch (error) {
         setFoot(`推送失败：${String((error as Error)?.message ?? error)}`)
       } finally {
         pushBtn.disabled = false
-        pushBtn.textContent = '推送本会话'
+        pushBtn.textContent = '推送包工头'
       }
     })()
   })

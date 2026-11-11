@@ -3425,8 +3425,8 @@ function mountSubagentMonitor(deps) {
   tools.className = "tools";
   const pushBtn = doc.createElement("button");
   pushBtn.className = "ghost";
-  pushBtn.textContent = "\u63A8\u9001\u672C\u4F1A\u8BDD";
-  pushBtn.title = "\u628A\u300C\u5305\u5DE5\u5934/\u6D3E\u6D3B\u89C4\u8303\u300D\u63A8\u5230\u5F53\u524D\u8FD9\u4E2A\u4F1A\u8BDD\uFF08\u53EA\u63A8\u5F53\u524D\uFF0C\u4E0D\u63A8\u5168\u90E8\uFF09";
+  pushBtn.textContent = "\u63A8\u9001\u5305\u5DE5\u5934";
+  pushBtn.title = "\u628A\u5168\u5C40\u6D3E\u6D3B\u98CE\u683C\u5207\u5230\u300C\u5305\u5DE5\u5934\u300D\uFF0C\u5E76\u628A\u89C4\u8303\u63A8\u5230\u5F53\u524D\u4F1A\u8BDD";
   const restore = doc.createElement("button");
   restore.className = "ghost";
   restore.textContent = "\u6062\u590D\u5F52\u6863\u5B50\u4EE3\u7406";
@@ -3778,19 +3778,29 @@ function mountSubagentMonitor(deps) {
       pushBtn.disabled = true;
       pushBtn.textContent = "\u63A8\u9001\u4E2D\u2026";
       try {
+        const saved = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/subagents/config"), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-drc-pair": "1" },
+          body: JSON.stringify({ mode: "foreman" })
+        });
+        const savedAnswer = await saved.json();
+        if (savedAnswer.ok !== true) {
+          setFoot(`\u63A8\u9001\u5931\u8D25\uFF1A${String(savedAnswer.error ?? "\u914D\u7F6E\u6CA1\u4FDD\u5B58")}`);
+          return;
+        }
         const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/guidance/push"), {
           method: "POST",
           headers: { "content-type": "application/json", "x-drc-pair": "1" },
-          body: JSON.stringify({ which: "subagent", sessionId: sid })
+          body: JSON.stringify({ which: "subagent", sessionId: sid, mode: "foreman" })
         });
         const answer = await response.json();
         const pushed = answer.result?.pushed ?? 0;
-        setFoot(pushed > 0 ? "\u5DF2\u628A\u6D3E\u6D3B\u89C4\u8303\u63A8\u9001\u5230\u5F53\u524D\u4F1A\u8BDD" : `\u63A8\u9001\u5931\u8D25\uFF1A${String(answer.error ?? "\u5F53\u524D\u4F1A\u8BDD\u4E0D\u5728\u7EBF")}`);
+        setFoot(pushed > 0 ? "\u5DF2\u63A8\u9001\u5305\u5DE5\u5934\u5230\u5F53\u524D\u4F1A\u8BDD\uFF08\u5168\u5C40\u6A21\u5F0F=\u5305\u5DE5\u5934\uFF09" : `\u63A8\u9001\u5931\u8D25\uFF1A${String(answer.error ?? "\u5F53\u524D\u4F1A\u8BDD\u4E0D\u5728\u7EBF")}`);
       } catch (error) {
         setFoot(`\u63A8\u9001\u5931\u8D25\uFF1A${String(error?.message ?? error)}`);
       } finally {
         pushBtn.disabled = false;
-        pushBtn.textContent = "\u63A8\u9001\u672C\u4F1A\u8BDD";
+        pushBtn.textContent = "\u63A8\u9001\u5305\u5DE5\u5934";
       }
     })();
   });
