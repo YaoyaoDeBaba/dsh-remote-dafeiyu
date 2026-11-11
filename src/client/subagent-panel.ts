@@ -176,12 +176,16 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   archiveIdle.className = 'ghost'
   archiveIdle.textContent = '一键归档闲置'
   archiveIdle.title = '把闲置超过阈值的子代理一次归档（可恢复）'
+  const undoForeman = doc.createElement('button')
+  undoForeman.className = 'ghost'
+  undoForeman.textContent = '撤销包工头'
+  undoForeman.title = '往当前会话推一份「亲力亲为」提示，撤销这次注入的包工头人格'
   const refreshNow = doc.createElement('button')
   refreshNow.className = 'ghost'
   refreshNow.textContent = '刷新'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  tools.append(pushBtn, restore, archiveIdle, refreshNow, close)
+  tools.append(pushBtn, undoForeman, restore, archiveIdle, refreshNow, close)
   head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
@@ -470,6 +474,34 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     event.stopPropagation()
     restoring = !restoring
     render()
+  })
+
+  undoForeman.addEventListener('click', (event) => {
+    event.stopPropagation()
+    const sid = session || deps.getCurrentSession?.() || ''
+    if (sid === '') {
+      foot.textContent = '没有当前会话，无法推送'
+      return
+    }
+    void (async () => {
+      undoForeman.disabled = true
+      undoForeman.textContent = '撤销中…'
+      try {
+        const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/guidance/push'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+          body: JSON.stringify({ which: 'subagent', sessionId: sid, mode: 'hands-on' }),
+        })
+        const answer = (await response.json()) as { ok?: boolean; error?: string; result?: { pushed?: number } }
+        const pushed = answer.result?.pushed ?? 0
+        foot.textContent = pushed > 0 ? '已把「亲力亲为」推送到当前会话' : `撤销失败：${String(answer.error ?? '当前会话不在线')}`
+      } catch (error) {
+        foot.textContent = `撤销失败：${String((error as Error)?.message ?? error)}`
+      } finally {
+        undoForeman.disabled = false
+        undoForeman.textContent = '撤销包工头'
+      }
+    })()
   })
 
   const defaultFoot = '闲置超过阈值的子代理会标黄，可归档（可恢复）。'

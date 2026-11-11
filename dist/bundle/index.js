@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.43" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.44" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36985,7 +36985,8 @@ function guidancePushHandler(deps) {
       const body = JSON.parse(await readBody2(request));
       const which = body.which === "xyq" ? "xyq" : body.which === "both" ? "both" : "subagent";
       const sessionId = typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? body.sessionId.trim() : void 0;
-      json7(response, 200, { ok: true, which, result: await deps.pushGuidance(which, sessionId) });
+      const mode = body.mode === "hands-on" || body.mode === "foreman" ? body.mode : void 0;
+      json7(response, 200, { ok: true, which, mode: mode ?? null, result: await deps.pushGuidance(which, sessionId, mode) });
     } catch (error62) {
       json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
@@ -37367,12 +37368,13 @@ function startSubagents(ctx, input2) {
     ...input2,
     config: configFace,
     guidanceText: () => subagentGuidance(config2.mode),
-    pushGuidance: async (which, sessionId) => {
+    pushGuidance: async (which, sessionId, mode) => {
       const merged = { total: 0, pushed: 0, failed: 0, errors: [] };
       const targets = which === "both" ? ["subagent", "xyq"] : [which];
       for (const target of targets) {
+        const text = target === "subagent" && mode !== void 0 ? subagentGuidance(mode) : guidanceTexts[target];
         const one = await pusher(
-          guidanceTexts[target],
+          text,
           target === "subagent" ? "\u6D3E\u6D3B\u89C4\u8303\uFF08\u5B50\u4EE3\u7406\u76D1\u89C6\u5668\uFF09" : "\u5C0F\u4E91\u96C0\u5DE5\u5177\u4F7F\u7528\u8BF4\u660E",
           sessionId
         );

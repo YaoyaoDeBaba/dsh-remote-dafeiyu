@@ -3434,12 +3434,16 @@ function mountSubagentMonitor(deps) {
   archiveIdle.className = "ghost";
   archiveIdle.textContent = "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
   archiveIdle.title = "\u628A\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4E00\u6B21\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09";
+  const undoForeman = doc.createElement("button");
+  undoForeman.className = "ghost";
+  undoForeman.textContent = "\u64A4\u9500\u5305\u5DE5\u5934";
+  undoForeman.title = "\u5F80\u5F53\u524D\u4F1A\u8BDD\u63A8\u4E00\u4EFD\u300C\u4EB2\u529B\u4EB2\u4E3A\u300D\u63D0\u793A\uFF0C\u64A4\u9500\u8FD9\u6B21\u6CE8\u5165\u7684\u5305\u5DE5\u5934\u4EBA\u683C";
   const refreshNow = doc.createElement("button");
   refreshNow.className = "ghost";
   refreshNow.textContent = "\u5237\u65B0";
   const close = doc.createElement("button");
   close.textContent = "\u5173\u95ED \u2715";
-  tools.append(pushBtn, restore, archiveIdle, refreshNow, close);
+  tools.append(pushBtn, undoForeman, restore, archiveIdle, refreshNow, close);
   head.append(title, tools);
   const body = doc.createElement("div");
   const foot = doc.createElement("div");
@@ -3693,6 +3697,33 @@ function mountSubagentMonitor(deps) {
     event.stopPropagation();
     restoring = !restoring;
     render();
+  });
+  undoForeman.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const sid = session || deps.getCurrentSession?.() || "";
+    if (sid === "") {
+      foot.textContent = "\u6CA1\u6709\u5F53\u524D\u4F1A\u8BDD\uFF0C\u65E0\u6CD5\u63A8\u9001";
+      return;
+    }
+    void (async () => {
+      undoForeman.disabled = true;
+      undoForeman.textContent = "\u64A4\u9500\u4E2D\u2026";
+      try {
+        const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/guidance/push"), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-drc-pair": "1" },
+          body: JSON.stringify({ which: "subagent", sessionId: sid, mode: "hands-on" })
+        });
+        const answer = await response.json();
+        const pushed = answer.result?.pushed ?? 0;
+        foot.textContent = pushed > 0 ? "\u5DF2\u628A\u300C\u4EB2\u529B\u4EB2\u4E3A\u300D\u63A8\u9001\u5230\u5F53\u524D\u4F1A\u8BDD" : `\u64A4\u9500\u5931\u8D25\uFF1A${String(answer.error ?? "\u5F53\u524D\u4F1A\u8BDD\u4E0D\u5728\u7EBF")}`;
+      } catch (error) {
+        foot.textContent = `\u64A4\u9500\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
+      } finally {
+        undoForeman.disabled = false;
+        undoForeman.textContent = "\u64A4\u9500\u5305\u5DE5\u5934";
+      }
+    })();
   });
   const defaultFoot = "\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4F1A\u6807\u9EC4\uFF0C\u53EF\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09\u3002";
   const setFoot = (text) => {

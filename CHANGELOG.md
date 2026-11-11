@@ -1,3 +1,9 @@
+## 0.9.0-dafeiyu.44 —— 派活助手面板增加「撤销包工头」
+
+- 面板顶栏新增按钮：把一份「亲力亲为」提示推送到**当前会话**，撤销之前注入的包工头人格；
+- 宿主 push 路由支持 `mode` 覆盖（foreman / hands-on），不改变全局 `mode` 配置；
+- 永久切换仍走 设置 → 大肥鱼 → 派活助手 的「派活风格」（重启生效）。
+
 ## 0.9.0-dafeiyu.43 —— 修推送 `Failed to fetch`（跨源预检 OPTIONS 405）
 
 - 现场：`POST /guidance/push` 在宿主侧 200 正常，浏览器却报 `Failed to fetch`；
