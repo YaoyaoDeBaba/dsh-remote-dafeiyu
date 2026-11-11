@@ -3916,15 +3916,15 @@ function mountAvatarWidget(deps) {
 #dafeiyu-avatar-widget .stage.dragging { cursor: grabbing; }
 #dafeiyu-avatar-widget .layer { position: absolute; inset: 0; background-repeat: no-repeat;
   pointer-events: none; will-change: opacity; }
-#dafeiyu-avatar-menu { position: absolute; top: calc(100% + 4px); right: 0; width: 148px; padding: 6px;
+#dafeiyu-avatar-menu { position: absolute; top: calc(100% + 4px); right: 0; width: 168px; padding: 6px;
   display: flex; flex-direction: column; gap: 2px; border-radius: 10px;
-  border: 1px solid var(--dsw-alias-border-l2, #333); background: var(--dsw-alias-bg-primary, #1e1e1e);
-  box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 3; }
+  border: 1px solid #1f3b63; background: #0d1117;
+  box-shadow: 0 10px 28px rgba(0,0,0,.5); z-index: 3; }
 #dafeiyu-avatar-menu[hidden] { display: none !important; }
 #dafeiyu-avatar-menu button { display: flex; gap: 8px; align-items: center; width: 100%;
-  padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; text-align: left;
-  color: var(--dsw-alias-label-primary, #eee); font-size: 13px; cursor: pointer; }
-#dafeiyu-avatar-menu button:hover { background: rgba(127,127,127,.16); }
+  padding: 7px 9px; border: 0; border-radius: 7px; background: transparent; text-align: left;
+  color: #8ab4ff; font-size: 13px; cursor: pointer; }
+#dafeiyu-avatar-menu button:hover { background: rgba(75,123,236,.22); color: #cfe0ff; }
 `;
   doc.head.appendChild(style);
   const wrap = doc.createElement("div");
