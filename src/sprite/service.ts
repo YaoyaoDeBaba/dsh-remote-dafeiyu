@@ -16,7 +16,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { createReadStream, mkdirSync, readFileSync, statSync, writeFileSync, existsSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { analyzeSpritePng, type SpriteStats } from './analyze.js'
-import { assertKeyedPresent, assertNotOpaque, defaultFileNames, pickWorst } from './guard.js'
+import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, pickWorst } from './guard.js'
 import { launchBrowser, type CdpSession } from './browser.js'
 import type {
   AnchorInfo,
@@ -675,6 +675,14 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       const dir = outDirOf(args.outDir)
       const name = (args.name ?? 'sheet').replace(/[\\/:*?"<>|]/g, '_')
       const format = args.format === 'webp' ? 'webp' : 'png'
+      // 网格：没给就按帧数推（48 帧 → 7×7；30 帧 → 6×5），给了就先验容量。
+      const framesKnown = lastPrepare?.frames ?? 0
+      // 48 帧沿用既有的 8×6（形象素材那套约定：正好 48 格，不留空）；其它帧数按 sqrt 推。
+      const autoGrid = framesKnown === 48 ? { cols: 8, rows: 6 } : gridFor(framesKnown || 48)
+      const cols = Math.max(1, Math.floor(args.cols ?? autoGrid.cols))
+      const rows = Math.max(1, Math.floor(args.rows ?? autoGrid.rows))
+      const gridWarnings =
+        framesKnown > 0 ? checkGridCapacity(framesKnown, cols, rows).warnings : []
       // 1) 前置断言：没有抠图缓存就 export，会静默拼出原帧（绿底）——这是 P2 那个坑。
       const state = await keytedParamsOf()
       assertKeyedPresent(state.keyedCount)
@@ -695,8 +703,8 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
           : await bridge<AnchorInfo>('getAnchor')
       const names = defaultFileNames({
         name,
-        cols: args.cols ?? 8,
-        rows: args.rows ?? 6,
+        cols,
+        rows,
         format,
         ...(args.fileName ? { fileName: args.fileName } : {}),
         ...(args.metaName ? { metaName: args.metaName } : {}),
@@ -720,15 +728,15 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         width?: number
         height?: number
       }>('buildSheetDataURL', {
-        cols: args.cols ?? 8,
-        rows: args.rows ?? 6,
+        cols,
+        rows,
         format,
         ...(typeof args.quality === 'number' ? { quality: args.quality } : {}),
       })
       const buffer = dataUrlToBuffer(built.dataURL)
       if (!buffer) throw new Error('页面没返回精灵图（dataURL 为空）')
       // 4) 后置断言：alpha 全不透 = 大概率退回了原帧（绿底）。
-      const warnings: string[] = []
+      const warnings: string[] = [...gridWarnings]
       if (format === 'png') assertNotOpaque(analyzeSpritePng(buffer))
       const tmpPng = `${pngPath}.tmp-${process.pid}`
       writeFileSync(tmpPng, buffer)
@@ -892,8 +900,8 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
             ? { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 }
             : undefined
           const exported = await this.exportSheet({
-            cols: item.cols ?? 8,
-            rows: item.rows ?? 6,
+            ...(typeof item.cols === 'number' ? { cols: item.cols } : {}),
+            ...(typeof item.rows === 'number' ? { rows: item.rows } : {}),
             ...(item.targetCharHeight ? { charHeightPx: item.targetCharHeight, ...(span ? { span } : {}) } : {}),
             format: item.format ?? 'png',
             outDir: args.outRoot,
@@ -950,8 +958,8 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       })
       stages.push(`cleanup: trim=${JSON.stringify(cleaned.trimBox)} mode=${cleaned.mode}`)
       const exported = await this.exportSheet({
-        cols: args.cols ?? 8,
-        rows: args.rows ?? 6,
+        ...(typeof args.cols === 'number' ? { cols: args.cols } : {}),
+        ...(typeof args.rows === 'number' ? { rows: args.rows } : {}),
         ...(args.targetCharHeight ? { charHeightPx: args.targetCharHeight, span } : {}),
         format: args.format ?? 'png',
         ...(args.outDir ? { outDir: args.outDir } : {}),

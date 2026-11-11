@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { assertKeyedPresent, assertNotOpaque, defaultFileNames, pickWorst } from '../src/sprite/guard.js'
+import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, pickWorst } from '../src/sprite/guard.js'
 import type { SpriteStats } from '../src/sprite/analyze.js'
 
 function stats(over: Partial<SpriteStats> = {}): SpriteStats {
@@ -65,4 +65,15 @@ test('默认命名：<name>_<cols>x<rows>.<format>，显式给了就用给的', 
   assert.equal(defaultFileNames({ name: 'a/b:c*', cols: 2, rows: 2, format: 'png' }).file, 'a_b_c__2x2.png')
   // 已经带扩展名的不重复加
   assert.equal(defaultFileNames({ name: 'x', cols: 1, rows: 1, format: 'png', fileName: 'x.png' }).file, 'x.png')
+})
+test('网格：按帧数推（48 沿用 8×6、其它 sqrt）；塞不下必须报错，太空给 warning', () => {
+  assert.deepEqual(gridFor(48), { cols: 7, rows: 7 })
+  assert.deepEqual(gridFor(30), { cols: 6, rows: 5 })
+  assert.deepEqual(gridFor(1), { cols: 1, rows: 1 })
+
+  // 塞不下 = 静默丢帧，必须抛
+  assert.throws(() => checkGridCapacity(60, 8, 6), /静默丢掉 12 帧/)
+  assert.deepEqual(checkGridCapacity(48, 8, 6), { warnings: [] })
+  // 空格过半 → warning（不拦）
+  assert.match(checkGridCapacity(20, 8, 6).warnings[0] ?? '', /末尾会留大片空格/)
 })

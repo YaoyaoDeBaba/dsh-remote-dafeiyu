@@ -75,3 +75,33 @@ export function defaultFileNames(args: {
   const meta = args.metaName ?? `${file.replace(new RegExp(`\\.${args.format}$`, 'i'), '')}.meta.json`
   return { file, meta }
 }
+/**
+ * 按帧数推网格（评审文档 §8：`cols = rows = ceil(sqrt(frames))` 的思路）。
+ *
+ * 为什么不让调用方总靠自己算：48 帧几乎总被写成 8×6，但 30 帧的素材写成 8×6 会留一排空格，
+ * 而 60 帧写成 8×6 会**直接丢掉 12 帧**——后者是静默数据丢失，必须由工具挡住。
+ */
+export function gridFor(frames: number): { cols: number; rows: number } {
+  const total = Math.max(1, Math.floor(frames))
+  const cols = Math.max(1, Math.ceil(Math.sqrt(total)))
+  const rows = Math.max(1, Math.ceil(total / cols))
+  return { cols, rows }
+}
+
+/**
+ * 网格容量校验：放不下就抛（静默丢帧是最坏的一种"成功"）；浪费超过一半给 warning。
+ */
+export function checkGridCapacity(frames: number, cols: number, rows: number): { warnings: string[] } {
+  const capacity = Math.max(1, Math.floor(cols)) * Math.max(1, Math.floor(rows))
+  if (frames > capacity) {
+    throw new Error(
+      `网格塞不下：${frames} 帧要放进 ${cols}×${rows}=${capacity} 格。` +
+        `会静默丢掉 ${frames - capacity} 帧——请把 cols/rows 调大，或不传让工具按帧数自动推。`,
+    )
+  }
+  const warnings: string[] = []
+  if (capacity >= frames * 2) {
+    warnings.push(`网格偏大：${cols}×${rows}=${capacity} 格只放 ${frames} 帧，末尾会留大片空格`)
+  }
+  return { warnings }
+}

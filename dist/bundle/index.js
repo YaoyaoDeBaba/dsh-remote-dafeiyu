@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.58" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.59" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38422,6 +38422,25 @@ function defaultFileNames(args) {
   const meta3 = args.metaName ?? `${file2.replace(new RegExp(`\\.${args.format}$`, "i"), "")}.meta.json`;
   return { file: file2, meta: meta3 };
 }
+function gridFor(frames) {
+  const total = Math.max(1, Math.floor(frames));
+  const cols = Math.max(1, Math.ceil(Math.sqrt(total)));
+  const rows = Math.max(1, Math.ceil(total / cols));
+  return { cols, rows };
+}
+function checkGridCapacity(frames, cols, rows) {
+  const capacity = Math.max(1, Math.floor(cols)) * Math.max(1, Math.floor(rows));
+  if (frames > capacity) {
+    throw new Error(
+      `\u7F51\u683C\u585E\u4E0D\u4E0B\uFF1A${frames} \u5E27\u8981\u653E\u8FDB ${cols}\xD7${rows}=${capacity} \u683C\u3002\u4F1A\u9759\u9ED8\u4E22\u6389 ${frames - capacity} \u5E27\u2014\u2014\u8BF7\u628A cols/rows \u8C03\u5927\uFF0C\u6216\u4E0D\u4F20\u8BA9\u5DE5\u5177\u6309\u5E27\u6570\u81EA\u52A8\u63A8\u3002`
+    );
+  }
+  const warnings = [];
+  if (capacity >= frames * 2) {
+    warnings.push(`\u7F51\u683C\u504F\u5927\uFF1A${cols}\xD7${rows}=${capacity} \u683C\u53EA\u653E ${frames} \u5E27\uFF0C\u672B\u5C3E\u4F1A\u7559\u5927\u7247\u7A7A\u683C`);
+  }
+  return { warnings };
+}
 
 // src/sprite/browser.ts
 import { spawn as spawn2 } from "node:child_process";
@@ -39031,6 +39050,11 @@ function createSpriteService(options) {
       const dir = outDirOf(args.outDir);
       const name2 = (args.name ?? "sheet").replace(/[\\/:*?"<>|]/g, "_");
       const format = args.format === "webp" ? "webp" : "png";
+      const framesKnown = lastPrepare?.frames ?? 0;
+      const autoGrid = framesKnown === 48 ? { cols: 8, rows: 6 } : gridFor(framesKnown || 48);
+      const cols = Math.max(1, Math.floor(args.cols ?? autoGrid.cols));
+      const rows = Math.max(1, Math.floor(args.rows ?? autoGrid.rows));
+      const gridWarnings = framesKnown > 0 ? checkGridCapacity(framesKnown, cols, rows).warnings : [];
       const state = await keytedParamsOf();
       assertKeyedPresent(state.keyedCount);
       const scaled = await bridge("scaleTo", {
@@ -39044,8 +39068,8 @@ function createSpriteService(options) {
       }) : await bridge("getAnchor");
       const names = defaultFileNames({
         name: name2,
-        cols: args.cols ?? 8,
-        rows: args.rows ?? 6,
+        cols,
+        rows,
         format,
         ...args.fileName ? { fileName: args.fileName } : {},
         ...args.metaName ? { metaName: args.metaName } : {}
@@ -39061,14 +39085,14 @@ function createSpriteService(options) {
         if (existsSync3(metaPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${metaPath}`);
       }
       const built = await bridge("buildSheetDataURL", {
-        cols: args.cols ?? 8,
-        rows: args.rows ?? 6,
+        cols,
+        rows,
         format,
         ...typeof args.quality === "number" ? { quality: args.quality } : {}
       });
       const buffer = dataUrlToBuffer(built.dataURL);
       if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u7CBE\u7075\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
-      const warnings = [];
+      const warnings = [...gridWarnings];
       if (format === "png") assertNotOpaque(analyzeSpritePng(buffer));
       const tmpPng = `${pngPath}.tmp-${process.pid}`;
       writeFileSync2(tmpPng, buffer);
@@ -39220,8 +39244,8 @@ function createSpriteService(options) {
           });
           const span = measured.alphaBBox ? { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 } : void 0;
           const exported = await this.exportSheet({
-            cols: item.cols ?? 8,
-            rows: item.rows ?? 6,
+            ...typeof item.cols === "number" ? { cols: item.cols } : {},
+            ...typeof item.rows === "number" ? { rows: item.rows } : {},
             ...item.targetCharHeight ? { charHeightPx: item.targetCharHeight, ...span ? { span } : {} } : {},
             format: item.format ?? "png",
             outDir: args.outRoot,
@@ -39274,8 +39298,8 @@ function createSpriteService(options) {
       });
       stages.push(`cleanup: trim=${JSON.stringify(cleaned.trimBox)} mode=${cleaned.mode}`);
       const exported = await this.exportSheet({
-        cols: args.cols ?? 8,
-        rows: args.rows ?? 6,
+        ...typeof args.cols === "number" ? { cols: args.cols } : {},
+        ...typeof args.rows === "number" ? { rows: args.rows } : {},
         ...args.targetCharHeight ? { charHeightPx: args.targetCharHeight, span } : {},
         format: args.format ?? "png",
         ...args.outDir ? { outDir: args.outDir } : {},
