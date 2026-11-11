@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.41" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.42" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32670,9 +32670,24 @@ function createServicesKernel(services, options) {
     const catalog = await subagentCatalog(parentSessionId, descendants);
     let records = [];
     if (catalog.size > 0) {
+      const created = /* @__PURE__ */ new Map();
+      const listLive = fn(services.sessions, "list");
+      if (listLive) {
+        try {
+          const rowsLive = listLive.call(services.sessions) ?? [];
+          for (const row of rowsLive) {
+            if (typeof row?.id === "string" && (typeof row.createdAt === "number" || typeof row.createdAt === "string")) {
+              created.set(row.id, row.createdAt);
+            }
+          }
+        } catch {
+        }
+      }
       for (const id of catalog.keys()) {
         const header = liveAgent(id)?.session?.header;
-        records.push({ header: { id, parentSession: parentSessionId, ...header ?? {} } });
+        const fallbackCreated = header?.createdAt ?? created.get(id);
+        const merged = { ...header ?? {}, ...fallbackCreated === void 0 ? {} : { createdAt: fallbackCreated } };
+        records.push({ header: { id, parentSession: parentSessionId, ...merged } });
       }
     } else {
       const read = fn(services.sessionQuery, "listSessions");
@@ -32718,7 +32733,7 @@ function createServicesKernel(services, options) {
         subagentRunningSince.delete(id);
       }
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt });
-      const lastActive = lastActivityAt.get(id) ?? createdAt;
+      const lastActive = lastActivityAt.get(id) ?? (createdAt > 0 ? createdAt : now);
       const title = titleCache.get(id)?.title;
       const labeled = splitSubagentLabel(labels.get(id));
       const naming = labeled.naming;

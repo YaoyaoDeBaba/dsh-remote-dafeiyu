@@ -876,9 +876,25 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     let records: SessionRecordLike[] = []
     if (catalog.size > 0) {
       // catalog 给成员 id + label；创建时间/运行态再按需从活 agent 的会话头拿。
+      const created = new Map<string, number | string>()
+      const listLive = fn(services.sessions, 'list')
+      if (listLive) {
+        try {
+          const rowsLive = (listLive.call(services.sessions) ?? []) as Array<{ id?: unknown; createdAt?: unknown }>
+          for (const row of rowsLive) {
+            if (typeof row?.id === 'string' && (typeof row.createdAt === 'number' || typeof row.createdAt === 'string')) {
+              created.set(row.id, row.createdAt)
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       for (const id of catalog.keys()) {
         const header = (liveAgent(id)?.session as { header?: { createdAt?: number | string; cwd?: string } } | undefined)?.header
-        records.push({ header: { id, parentSession: parentSessionId, ...(header ?? {}) } })
+        const fallbackCreated = header?.createdAt ?? created.get(id)
+        const merged = { ...(header ?? {}), ...(fallbackCreated === undefined ? {} : { createdAt: fallbackCreated }) }
+        records.push({ header: { id, parentSession: parentSessionId, ...merged } })
       }
     } else {
       // 该代宿主没有 catalog（或投影还没出）：退回原来的“列全部会话头”路径。
@@ -931,7 +947,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       // 不再读日志：工作时长只由事件流（turn/start→turn/end 与 runningSince）累计，
       // 最后活动时间来自 session/event。子代理监视器因此不会碰 sessionQuery 的 5 格 LRU。
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt })
-      const lastActive = lastActivityAt.get(id) ?? createdAt
+      const lastActive = lastActivityAt.get(id) ?? (createdAt > 0 ? createdAt : now)
       const title = titleCache.get(id)?.title
       const labeled = splitSubagentLabel(labels.get(id))
       const naming = labeled.naming

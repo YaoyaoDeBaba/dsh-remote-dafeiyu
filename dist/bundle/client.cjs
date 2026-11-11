@@ -3544,7 +3544,7 @@ function mountSubagentMonitor(deps) {
       card.appendChild(top);
       const summary = doc.createElement("div");
       summary.className = "summary";
-      summary.textContent = row.naming === "ok" && row.summary ? row.summary : "\u672A\u6309\u8981\u6C42\u586B\u5199";
+      summary.textContent = row.naming === "ok" && row.summary ? row.summary : "\u672A\u6309\u8981\u6C42\u586B\u5199 \xB7 \u6B63\u786E\u683C\u5F0F\uFF1A\u540D\u79F0\uFF5C\u4E00\u53E5\u8BDD\u7B80\u8FF0";
       card.appendChild(summary);
       const idleWarn = row.status === "idle" && (row.idleMs ?? 0) >= idleWarnMs;
       const time = doc.createElement("div");
@@ -3649,6 +3649,8 @@ function mountSubagentMonitor(deps) {
       if (!opened) {
         session = "";
         apply2([]);
+      } else {
+        foot.textContent = "\u8BFB\u4E0D\u5230\u5F53\u524D\u4F1A\u8BDD\uFF1A\u5207\u5230\u4E00\u6761\u5BF9\u8BDD\u540E\u518D\u6253\u5F00";
       }
       return;
     }
@@ -3670,10 +3672,14 @@ function mountSubagentMonitor(deps) {
       if (answer.config && typeof answer.config.idleWarnMs === "number" && Number.isFinite(answer.config.idleWarnMs)) {
         idleWarnMs = answer.config.idleWarnMs;
       }
-      if (answer.ok === true && Array.isArray(answer.items)) apply2(answer.items);
-      else apply2([]);
-    } catch {
-      apply2([]);
+      if (answer.ok === true && Array.isArray(answer.items)) {
+        apply2(answer.items);
+        foot.textContent = defaultFoot;
+      } else {
+        foot.textContent = `\u8BFB\u53D6\u5931\u8D25\uFF1A${String(answer.error ?? "\u5BBF\u4E3B\u6CA1\u6709\u8FD4\u56DE\u6570\u636E")}`;
+      }
+    } catch (error) {
+      foot.textContent = `\u8BFB\u53D6\u5931\u8D25\uFF1A${String(error?.message ?? error)}`;
     } finally {
       busy = false;
     }

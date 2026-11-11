@@ -1,3 +1,11 @@
+## 0.9.0-dafeiyu.42 —— 派活助手列表：catalog 优先 + 错误可见 + 命名格式提示
+
+- 列表成员改问 `subagents.listChildren/listDescendants`（纯内存投影，带 label），不再每次
+  全量扫会话头；catalog 缺失时才退回 sessionQuery，且上限压到 2 秒；
+- **读取失败不再悄悄清空**：面板底部显示「读取失败：…」，保留上一次列表；取不到当前会话也会提示；
+- 命名不合规的行显示「未按要求填写 · 正确格式：名称｜一句话简述」；
+- 测试同步为 catalog-first（新增 catalog 存在时无需 sessionQuery、以及两者都缺才抛错）。
+
 ## 0.9.0-dafeiyu.41 —— 子代理列表改读内存 catalog（不再碰会话头/日志）
 
 - 上一版用 `sessions.list()` 拿不到 `parentSession`（它是扁平行），而且旧路径仍会读全部会话头；

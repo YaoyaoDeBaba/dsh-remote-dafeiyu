@@ -297,7 +297,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       card.appendChild(top)
       const summary = doc.createElement('div')
       summary.className = 'summary'
-      summary.textContent = row.naming === 'ok' && row.summary ? row.summary : '未按要求填写'
+      summary.textContent =
+        row.naming === 'ok' && row.summary
+          ? row.summary
+          : '未按要求填写 · 正确格式：名称｜一句话简述'
       card.appendChild(summary)
       const idleWarn = row.status === 'idle' && (row.idleMs ?? 0) >= idleWarnMs
       const time = doc.createElement('div')
@@ -416,6 +419,8 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       if (!opened) {
         session = ''
         apply([])
+      } else {
+        foot.textContent = '读不到当前会话：切到一条对话后再打开'
       }
       return
     }
@@ -436,16 +441,21 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       const answer = (await response.json()) as {
         ok?: boolean
         items?: SubagentRow[]
+        error?: string
         config?: { idleWarnMs?: number }
       }
       if (answer.config && typeof answer.config.idleWarnMs === 'number' && Number.isFinite(answer.config.idleWarnMs)) {
         idleWarnMs = answer.config.idleWarnMs
       }
-      if (answer.ok === true && Array.isArray(answer.items)) apply(answer.items)
-      else apply([])
-    } catch {
-      // 宿主没起这条路由（旧版本）或网络抖动：安静隐藏，不打扰用户
-      apply([])
+      if (answer.ok === true && Array.isArray(answer.items)) {
+        apply(answer.items)
+        foot.textContent = defaultFoot
+      } else {
+        // 列表失败必须在界面上说清楚；悄悄清空会让人以为“没有子代理”。
+        foot.textContent = `读取失败：${String(answer.error ?? '宿主没有返回数据')}`
+      }
+    } catch (error) {
+      foot.textContent = `读取失败：${String((error as Error)?.message ?? error)}`
     } finally {
       busy = false
     }

@@ -23,18 +23,28 @@ function services(options: { withQuery?: boolean; running?: string[] } = {}): Se
     agents: {
       get: (id: string) => (running.has(id) ? { status: 'running' } : { status: 'idle' }),
     },
+    sessions: {
+      list: () => [
+        { id: 'child-run', createdAt: NOW - 600_000 },
+        { id: 'child-idle', createdAt: NOW - 3_600_000 },
+      ],
+    },
     subagents: {
-      listChildren: () =>
-        Promise.resolve([
-          { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收' },
-          { id: 'child-idle', label: '没按格式写的名字' },
-        ]),
-      listDescendants: () =>
-        Promise.resolve([
-          { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收' },
-          { id: 'child-idle', label: '没按格式写的名字' },
-          { id: 'grandchild-1', label: '孙子｜第三层' },
-        ]),
+      listChildren: (parentId: string) =>
+        Promise.resolve(parentId === 'session-p'
+          ? [
+              { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收' },
+              { id: 'child-idle', label: '没按格式写的名字' },
+            ]
+          : []),
+      listDescendants: (parentId: string) =>
+        Promise.resolve(parentId === 'session-p'
+          ? [
+              { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收' },
+              { id: 'child-idle', label: '没按格式写的名字' },
+              { id: 'grandchild-1', label: '孙子｜第三层' },
+            ]
+          : []),
     },
   }
   if (options.withQuery !== false) {
@@ -121,6 +131,10 @@ test('listSubagents：工作时长/闲置时长/标题仍然照旧', async () =>
 
 test('listSubagents：descendants=true 才递归，默认只一层', async () => {
   const bundle = services()
+  ;(bundle.subagents as Record<string, unknown>).listChildren = (parentId: string) =>
+    Promise.resolve(parentId === 'session-p' ? [{ id: 'child-1', createdAt: NOW }] : [])
+  ;(bundle.subagents as Record<string, unknown>).listDescendants = () =>
+    Promise.resolve([{ id: 'child-1' }, { id: 'grandchild-1' }])
   ;(bundle.sessionQuery as { listSessions: () => Promise<unknown> }).listSessions = () =>
     Promise.resolve([
       { header: { id: 'session-p', createdAt: NOW } },
@@ -135,8 +149,16 @@ test('listSubagents：descendants=true 才递归，默认只一层', async () =>
   )
 })
 
-test('listSubagents：没有 sessionQuery 能力时明确抛错，不回空数组', async () => {
+test('listSubagents：catalog 在时没有 sessionQuery 也能列（不再要求全量列表）', async () => {
   const port = kernel(services({ withQuery: false }))
+  const rows = await port.listSubagents!('session-p')
+  assert.equal(rows.length, 2, 'catalog 直接给出成员，不需要 sessionQuery')
+})
+
+test('listSubagents：catalog 和 sessionQuery 都没有时明确抛错', async () => {
+  const bundle = services({ withQuery: false })
+  delete (bundle as Record<string, unknown>).subagents
+  const port = kernel(bundle)
   await assert.rejects(() => port.listSubagents!('session-p'), /listSessions/)
 })
 
