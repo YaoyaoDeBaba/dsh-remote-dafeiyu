@@ -714,6 +714,15 @@ export class HostRuntime {
             return
           }
           const items = await list.call(this.kernel, cmd.sessionId, { descendants: cmd.descendants === true })
+          // `lite`（0.52）：手机端面板关着时只为了保住 🐝 徽标数字，不需要整张表。
+          // 整表实测 24 个子代理 ≈ 6KB，5 秒一轮 ≈ 4MB/小时；这里只回两个整数（≈60 字节）。
+          // 计数口径与整表一致（归档的已被内核默认过滤掉），所以两种回包的数字对得上。
+          if (cmd.lite === true) {
+            reply(true, {
+              data: { lite: true, count: items.length, running: items.filter((row) => row.status === 'running').length },
+            })
+            return
+          }
           reply(true, { data: { items } })
           return
         }

@@ -4308,3 +4308,41 @@ test('cmd.list_subagents：回执走 ev.result.data.items；能力缺失时明�
   assert.equal(asked[0]!.sessionId, 'a1', '必须点名父会话')
   assert.equal((asked[0]!.options as { descendants?: boolean }).descendants, true, 'descendants 必须真的传下去')
 })
+
+test('cmd.list_subagents：lite=true 只回 count/running，不回整张表（手机还在跟着），计数与整表一致', async () => {
+  const { runtime, kernel, transport } = fixture()
+  runtime.start()
+  await settle()
+  ;(kernel as unknown as { listSubagents?: unknown }).listSubagents = async (sessionId: string) => [
+    { id: 'child-1', parentId: sessionId, depth: 1, status: 'running', workMs: 5_000, idleMs: 1_000 },
+    { id: 'child-2', parentId: sessionId, depth: 1, status: 'idle', workMs: 60_000, idleMs: 2 * 60 * 60 * 1000 },
+    { id: 'child-3', parentId: sessionId, depth: 1, status: 'running', workMs: 1_000, idleMs: 200 },
+  ]
+  type ResultPayload = Extract<EvPayload, { t: 'ev.result' }>
+  const replies = () =>
+    transport.replies
+      .map((item) => item.payload)
+      .filter((p): p is ResultPayload => p.t === PAYLOAD_TYPES.evResult)
+
+  const lite = cmd(PAYLOAD_TYPES.cmdListSubagents, { sessionId: 'a1', lite: true })
+  await runtime.handleCommand(lite, 'c_sub_lite')
+  await settle()
+  const liteAnswer = replies().filter((p) => p.cmdId === lite.cmdId).at(-1)
+  assert.ok(liteAnswer)
+  assert.equal(liteAnswer.ok, true)
+  const liteData = liteAnswer.data as { items?: unknown; count?: number; running?: number; lite?: boolean }
+  assert.equal(liteData.items, undefined, 'lite 模式不许回整张表（回表的流量就是这条命令要省的）')
+  assert.equal(liteData.lite, true)
+  assert.equal(liteData.count, 3)
+  assert.equal(liteData.running, 2, 'running 数要对得上：手机靠它决定要不要提速轮询')
+
+  // 同一份数据走整表：计数必须与 lite 完全一致（两种回包的数字对不上，界面就会跳变）
+  const full = cmd(PAYLOAD_TYPES.cmdListSubagents, { sessionId: 'a1' })
+  await runtime.handleCommand(full, 'c_sub_full')
+  await settle()
+  const fullData = replies().filter((p) => p.cmdId === full.cmdId).at(-1)!.data as {
+    items?: Array<{ status: string }>
+  }
+  assert.equal(fullData.items?.length, liteData.count)
+  assert.equal(fullData.items?.filter((row) => row.status === 'running').length, liteData.running)
+})

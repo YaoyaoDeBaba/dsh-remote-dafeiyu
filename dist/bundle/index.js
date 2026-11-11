@@ -6252,7 +6252,7 @@ function buildLogRecord(message, fields, now) {
   return record2;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/bytes.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/crypto/bytes.js
 import { Buffer as Buffer2 } from "node:buffer";
 var encoder = new TextEncoder();
 var decoder = new TextDecoder("utf-8", { fatal: false });
@@ -6279,7 +6279,7 @@ function concat(parts) {
   return out;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/keys.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/crypto/keys.js
 import { createHash, randomBytes } from "node:crypto";
 var KDF_NAMESPACE = "dsh-rc/v1";
 var UNIT_SEPARATOR = 31;
@@ -6316,7 +6316,7 @@ function randomNonce() {
   return new Uint8Array(randomBytes(NONCE_BYTES));
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/record.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/crypto/record.js
 var import_tweetnacl = __toESM(require_nacl_fast(), 1);
 var MAC_BYTES = 16;
 var MIN_RECORD_BYTES = NONCE_BYTES + MAC_BYTES;
@@ -6349,7 +6349,7 @@ function open(key, record2) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/crypto/sas.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/crypto/sas.js
 var import_tweetnacl2 = __toESM(require_nacl_fast(), 1);
 var SAS_LABEL = "dsh-rc/sas";
 var WRAP_LABEL = "dsh-rc/psk-wrap";
@@ -6385,7 +6385,7 @@ function wrapPsk(shared, psk) {
   };
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/identity/pairing.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/identity/pairing.js
 import { randomBytes as randomBytes2 } from "node:crypto";
 function randomPairingToken() {
   let n = 0;
@@ -6400,7 +6400,7 @@ function formatPairingToken(n) {
   return String(Math.abs(Math.trunc(n)) % 1e6).padStart(6, "0");
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/limits.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/limits.js
 var MAX_RELAY_MESSAGE_BYTES = 1024 * 1024;
 var MAX_CIPHERTEXT_BYTES = MAX_RELAY_MESSAGE_BYTES - 8 * 1024;
 var MAX_IMAGE_ATTACHMENTS = 4;
@@ -26128,7 +26128,7 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/frames.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/frames.js
 var PROTOCOL_VERSION = 1;
 var PAIRING_TOKEN_RE = /^\d{6}$/;
 var nonEmpty = external_exports.string().min(1);
@@ -26533,7 +26533,7 @@ function parseRelayFrameText(raw) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/platform/sleep.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/platform/sleep.js
 var SLEEP_BACKENDS = ["caffeinate", "systemd-inhibit", "unsupported"];
 function detectBackend(platform) {
   if (platform === "darwin")
@@ -26572,7 +26572,7 @@ function buildSleepCommand(platform, ownerPid, keepDisplay = false) {
   }
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/payloads.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/payloads.js
 var SESSION_STATES = [
   "idle",
   "running",
@@ -27003,7 +27003,18 @@ var cmdListSubagents = external_exports.object({
   /** 父会话 id。 */
   sessionId: nonEmpty2,
   /** true = 连后代一起列（默认只列直接子级）。 */
-  descendants: external_exports.boolean().optional()
+  descendants: external_exports.boolean().optional(),
+  /**
+   * true = **只回数字**：`{count, running}`，不回整张表（2026-11-11 加）。
+   *
+   * 为什么需要：手机端就算监视器面板关着也要保住 🐝 徽标上的数字，于是每几秒拉一次；
+   * 一条 24 个子代理的会话整表回包实测 ~6KB，按 5 秒一轮就是 ~4MB/小时，
+   * 而这些流量换来的只是一个整数。带 `lite` 时回包 ~60 字节（降两个数量级）。
+   *
+   * 兼容性：可选字段，老主机不解这个键（zod 会把它剥掉）→ 仍回整表，
+   * 手机端按"有 items 就用 items，否则用 count"判断，两端都不会错。
+   */
+  lite: external_exports.boolean().optional()
 });
 var cmdAvatarManifest = external_exports.object({
   t: external_exports.literal("cmd.avatar_manifest"),
@@ -27086,7 +27097,7 @@ function isoOrUndefined(value) {
   return void 0;
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/registry.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/registry.js
 var ENDPOINT_FRAME_NAMES = [
   "hello",
   "pair-begin",
@@ -27166,7 +27177,7 @@ function isKnownPayloadType(name2) {
   return typeof name2 === "string" && PAYLOAD_TYPE_SET.has(name2);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/outbound.js
 function pairGrant(sessionId, hostPub, nonce, wrappedPsk) {
   if (sessionId === "")
     throw new Error("pair-grant \u7684 sessionId \u4E0D\u80FD\u4E3A\u7A7A");
@@ -27296,7 +27307,7 @@ function sessionHistory(args) {
   };
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/errors.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/errors.js
 var RETRYABLE = /* @__PURE__ */ new Set([
   "rate_limited",
   "pair_table_full",
@@ -27307,7 +27318,7 @@ function isRetryableError(code) {
   return typeof code === "string" && RETRYABLE.has(code);
 }
 
-// node_modules/.pnpm/@dsh-remote+protocol@https+_f3286673a4033878a1c69883c404c31b/node_modules/@dsh-remote/protocol/dist/src/wire/idempotency.js
+// node_modules/.pnpm/@dsh-remote+protocol@https+_ff5139101dd9ddf8fd73b47994141d57/node_modules/@dsh-remote/protocol/dist/src/wire/idempotency.js
 var IdempotencyLedger = class {
   entries = /* @__PURE__ */ new Map();
   windowMs;
@@ -27660,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.51" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.52" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -28967,6 +28978,12 @@ var HostRuntime = class {
             return;
           }
           const items = await list.call(this.kernel, cmd.sessionId, { descendants: cmd.descendants === true });
+          if (cmd.lite === true) {
+            reply(true, {
+              data: { lite: true, count: items.length, running: items.filter((row) => row.status === "running").length }
+            });
+            return;
+          }
           reply(true, { data: { items } });
           return;
         }
