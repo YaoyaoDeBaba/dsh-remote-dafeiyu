@@ -81,9 +81,15 @@
 
 ## 5. 已知坑（都发生在上游，桥接里绕开了）
 
-1. **`markDirty` 根本没定义**：`setAnchorValue()`（原文件 3581 行）最后一句调用 `markDirty()`，
-   而全文件只有 3 处调用、0 处定义 → 直接点锚点数字框会 `ReferenceError`。
-   桥接的 `setAnchor` 不调它，自己写 `state.anchor` + `renderAnchorPreview()`，并 `typeof` 判过再决定要不要调。
+1. **`markDirty` 曾经根本没定义**（**2026-11-11 18:50 上游已修**）：原文件里 3 处调用、0 处定义，
+   点锚点数字框 / 拖锚点 / 点「确认锚点」都会 `ReferenceError`，把后面的语句（`e.preventDefault()`、
+   「✓ 已确认…」提示）一起带崩。
+   - 上游现在补上了 `markDirty(reason)` / `clearDirty()` + `#anchorDirtyHint`（卡片上显示「● 未保存」）；
+   - 同一轮上游还把 `renderKeyResult` 错误分支里不存在的 `esc(...)` 改成了 `escapeHtml(...)`；
+   - 打补丁脚本保留一层**兼容老版本**的守卫：若源文件里找不到 `function markDirty`，就把三处调用改写成
+     `typeof markDirty === 'function' && markDirty();`（不新增同名函数声明——同作用域重复声明在严格模式下
+     会直接 SyntaxError）。上游修了它就自动跳过，日志会打「源文件已自带 markDirty()，跳过上游兜底」；
+   - 桥接的 `setAnchor` 自己写 `state.anchor` + 重画，然后 `typeof` 判过再 `markDirty('代理设锚点')`。
 2. **`state.conv` 是摆设**：`generateFrames()` 只读 `#convStart/#convEnd/#convFps` 三个 DOM 值，
    改 `state.conv` 完全没用 → `setRange` 必须写 DOM。
 3. **`#convFps` 是 `<select>`**：只有 8/12/16/20/24/30，传别的帧率会被 `value=""` 吞掉 →
@@ -111,6 +117,14 @@ node scripts/patch-sprite-tool.mjs "E:\MonSlayer\序列帧精灵图工具.html"
 
 # 3. 自检：起始标记只出现 1 次
 node -e "const fs=require('fs');const h=fs.readFileSync('assets/sprite/sprite-tool.html','utf8');const m='/* ==== SPRITE-AGENT-BRIDGE v1 ==== */';if(h.split(m).length-1!==1)process.exit(1);console.log('ok',h.length)"
+
+# 4. 静态体检：成品页里"被调用但从未定义"的函数名（上游自带工具，2026-11-11 新增）
+node "E:\MonSlayer\工具\js-call-check.js" assets\sprite\sprite-tool.html
+
+# 5. 运行时冒烟（需要本机 Edge/Chrome）
+node scripts/smoke-sprite-tool.mjs            # 页面 + bridge
+node scripts/make-sprite-fixture.mjs          # 生成绿幕素材（可选）
+node scripts/smoke-sprite-tool.mjs %TEMP%\sprite-fixture-green.webm   # 抽帧 + 单帧抠图
 ```
 
 脚本行为：

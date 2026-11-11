@@ -643,13 +643,21 @@
       if (!state.frames.length) return fail('还没有帧，先 extract()');
       const nx = clampv(num(x, state.anchor.x), 0, 1);
       const ny = clampv(num(y, state.anchor.y), 0, 1);
-      /* 不调内部 setAnchorValue：它最后会调 markDirty()，而本工具里没有这个函数，
-         一调就 ReferenceError（上游遗留）。这里直接写 state + 渲染。 */
+      /* 不走内部 setAnchorValue：那条路会连带把输入框和脏标记一起处理，而我们只需要
+         定值 + 重画。脏标记自己打（带原因，人能在卡片上看到「● 未保存（代理设锚点）」）。
+         2026-11-11 上游把 markDirty 补上了（此前从未定义，调用必抛 ReferenceError），
+         所以这里的 typeof 守卫现在只是兼容老版本工具的兜底。 */
       state.anchor.x = nx;
       state.anchor.y = ny;
       state.anchor.confirmed = true;
       renderAnchorPreview();
-      if (typeof markDirty === 'function') { try { markDirty(); } catch (_) { /* ignore */ } }
+      if (typeof markDirty === 'function') {
+        try {
+          markDirty('代理设锚点');
+        } catch (_) {
+          /* 脏标记是增强项，打不上也不许影响定位 */
+        }
+      }
       return { ok: true, x: state.anchor.x, y: state.anchor.y };
     } catch (e) {
       return fail(e);

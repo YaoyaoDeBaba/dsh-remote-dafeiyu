@@ -588,6 +588,7 @@ details summary{cursor:pointer;color:var(--gold2);font-size:12.5px}
         <button id="btnAnchorNext">下一帧 ›</button>
         <button class="primary" id="btnConfirmAnchor">✓ 确认锚点</button>
         <span class="hint" id="anchorHint">青色竖线＝人中 橙色横线＝脚底</span>
+        <span class="hint" id="anchorDirtyHint" style="color:var(--gold)"></span>
       </div>
     </div>
 
@@ -1565,6 +1566,7 @@ const state = {
     idleAnchor: { x: 0.5, y: 0.025 },  // Idle 自己的锚点（读自它的 meta.json）
     idleName: '',
     zoom: 1,              // 滚轮缩放（左右两栏共用，与 Unity 的 _anchorZoom 一致）
+    dirty: false,         // 锚点是否有未保存的修改
     drag: null,           // 正在拖的线：'x' | 'y' | null
     layout: null,         // 当前帧在画布上的布局 {left, top, dw, dh}
     confirmed: false,
@@ -2797,7 +2799,7 @@ async function renderKeyResult() {
     else showPreviewBox('keyResultBox', c);
   } catch (e) {
     if (token !== keyPreviewToken) return;
-    box.innerHTML = '<div class="hint">抠图失败：' + esc(String(e.message || e)) + '</div>';
+    box.innerHTML = '<div class="hint">抠图失败：' + escapeHtml(String(e.message || e)) + '</div>';
   }
 }
 
@@ -3578,11 +3580,26 @@ function renderAnchorPreview() {
     : '先勾选帧（滚轮可缩放预览）';
 }
 
+/* 标记「有未保存的改动」：锚点卡片上给可见提示，保存成功后清除。
+   （原来这里调用的 markDirty 从未定义过 —— 每次执行都抛 ReferenceError，
+     把同一行后面的语句全带崩：拖拽的 preventDefault、确认按钮的提示都没跑到。） */
+function markDirty(reason) {
+  state.dirty = true;
+  const hint = $('anchorDirtyHint');
+  if (hint) hint.textContent = '● 未保存' + (reason ? '（' + reason + '）' : '');
+  return true;
+}
+
+function clearDirty() {
+  state.dirty = false;
+  const hint = $('anchorDirtyHint');
+  if (hint) hint.textContent = '';
+}
 function setAnchorValue(which, v) {
   v = clamp(Number(v) || 0, 0, 1);
   if (which === 'x') state.anchor.x = v; else state.anchor.y = v;
   renderAnchorPreview();
-  typeof markDirty === 'function' && markDirty();
+  markDirty('锚点数值');
 }
 
 function stepAnchorFrame(delta) {
@@ -3622,7 +3639,7 @@ function onAnchorMove(e) {
   if (state.anchor.drag === 'x') state.anchor.x = clamp((p.x - L.left) / L.dw, 0, 1);
   else state.anchor.y = clamp(1 - (p.y - L.top) / L.dh, 0, 1);
   renderAnchorPreview();
-  typeof markDirty === 'function' && markDirty();
+  markDirty('拖拽锚点');
   e.preventDefault();
 }
 
@@ -3696,6 +3713,7 @@ async function saveToProject() {
     });
     const j = await resp.json();
     if (j && j.error) throw new Error(j.error);
+    clearDirty();
     toast('已保存：' + (j.path || ''), 'ok');
     $('saveHint').innerHTML = '<span class="ok">✓ 已保存：' + escapeHtml(j.path || '') + '（' + fmtBytes(blob.size) + '）</span>';
   } catch (e) {
@@ -3727,6 +3745,7 @@ async function saveSheet() {
       await mw.write(new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' }));
       await mw.close();
 
+      clearDirty();
       toast('已写入：' + dir.name + '/' + finalName + ' + ' + metaName, 'ok');
       $('saveHint').innerHTML = '<span class="ok">✓ 已输出到 ' + dir.name + '/' + finalName + ' 与 ' + metaName +
         '（' + fmtBytes(blob.size) + '）</span>';
@@ -3808,7 +3827,7 @@ function bindEvents() {
   $('btnAnchorNext').addEventListener('click', () => stepAnchorFrame(1));
   $('btnConfirmAnchor').addEventListener('click', () => {
     state.anchor.confirmed = true;
-    typeof markDirty === 'function' && markDirty();
+    markDirty('已确认锚点，待保存');
     $('anchorHint').textContent = '✓ 已确认：保存到项目时写入 meta.json（anchorX ' +
       state.anchor.x.toFixed(3) + ' / anchorY ' + state.anchor.y.toFixed(3) + '）';
     toast('锚点已确认', 'ok');
@@ -4614,13 +4633,21 @@ $('statusText').textContent = '就绪 — 导入素材开始';
       if (!state.frames.length) return fail('还没有帧，先 extract()');
       const nx = clampv(num(x, state.anchor.x), 0, 1);
       const ny = clampv(num(y, state.anchor.y), 0, 1);
-      /* 不调内部 setAnchorValue：它最后会调 markDirty()，而本工具里没有这个函数，
-         一调就 ReferenceError（上游遗留）。这里直接写 state + 渲染。 */
+      /* 不走内部 setAnchorValue：那条路会连带把输入框和脏标记一起处理，而我们只需要
+         定值 + 重画。脏标记自己打（带原因，人能在卡片上看到「● 未保存（代理设锚点）」）。
+         2026-11-11 上游把 markDirty 补上了（此前从未定义，调用必抛 ReferenceError），
+         所以这里的 typeof 守卫现在只是兼容老版本工具的兜底。 */
       state.anchor.x = nx;
       state.anchor.y = ny;
       state.anchor.confirmed = true;
       renderAnchorPreview();
-      if (typeof markDirty === 'function') { try { markDirty(); } catch (_) { /* ignore */ } }
+      if (typeof markDirty === 'function') {
+        try {
+          markDirty('代理设锚点');
+        } catch (_) {
+          /* 脏标记是增强项，打不上也不许影响定位 */
+        }
+      }
       return { ok: true, x: state.anchor.x, y: state.anchor.y };
     } catch (e) {
       return fail(e);
