@@ -3481,6 +3481,11 @@ function mountSubagentMonitor(deps) {
   let numbering = /* @__PURE__ */ new Map();
   let nextNumber = 1;
   let ledger = [];
+  const FOOT_DEFAULT = "\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4F1A\u6807\u9EC4\uFF0C\u53EF\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09\u3002";
+  const footText = () => {
+    const hidden = items.filter((row) => row.archived === true).length;
+    return hidden > 0 ? `\u5DF2\u5F52\u6863 ${hidden} \u4E2A\uFF08\u5DF2\u9690\u85CF\uFF09\xB7 \u70B9\u300C\u6062\u590D\u5F52\u6863\u5B50\u4EE3\u7406\u300D\u627E\u56DE` : FOOT_DEFAULT;
+  };
   const ledgerKey = (sid) => "drc.subagentArchive." + sid;
   const loadLedger = (sid) => {
     try {
@@ -3509,6 +3514,17 @@ function mountSubagentMonitor(deps) {
       if (!ledger.some((entry) => entry.id === row.id)) ledger.push({ id: row.id, name: displayName(row) });
     }
     saveLedger();
+  };
+  const syncArchivedLedger = () => {
+    let changed = false;
+    for (const row of items) {
+      if (row.archived !== true) continue;
+      if (ledger.some((entry) => entry.id === row.id)) continue;
+      const name2 = row.naming === "ok" && row.name ? row.name : "\u5DF2\u5F52\u6863\u5B50\u4EE3\u7406";
+      ledger.push({ id: row.id, name: name2 });
+      changed = true;
+    }
+    if (changed) saveLedger();
   };
   let openedAt = 0;
   const setOpen = (next) => {
@@ -3545,14 +3561,17 @@ function mountSubagentMonitor(deps) {
       }
       return;
     }
-    if (items.length === 0) {
+    const active = items.filter((row) => row.archived !== true);
+    const archivedCount = items.length - active.length;
+    if (active.length === 0) {
       const empty = doc.createElement("div");
       empty.className = "empty";
-      empty.textContent = "\u8FD9\u4E2A\u5BF9\u8BDD\u8FD8\u6CA1\u6709\u5B50\u4EE3\u7406\u3002";
+      empty.textContent = archivedCount > 0 ? `\u6CA1\u6709\u5728\u7528\u7684\u5B50\u4EE3\u7406\uFF08\u5DF2\u5F52\u6863 ${archivedCount} \u4E2A\uFF0C\u5DF2\u9690\u85CF\uFF09` : "\u8FD9\u4E2A\u5BF9\u8BDD\u8FD8\u6CA1\u6709\u5B50\u4EE3\u7406\u3002";
       body.appendChild(empty);
+      foot.textContent = footText();
       return;
     }
-    for (const row of items) {
+    for (const row of active) {
       const card = doc.createElement("div");
       card.className = "card";
       const top = doc.createElement("div");
@@ -3588,9 +3607,10 @@ function mountSubagentMonitor(deps) {
       }
       body.appendChild(card);
     }
-    const idleCount = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= idleWarnMs).length;
+    const idleCount = active.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= idleWarnMs).length;
     archiveIdle.disabled = idleCount === 0;
     archiveIdle.textContent = idleCount > 0 ? `\u4E00\u952E\u5F52\u6863\u95F2\u7F6E (${idleCount})` : "\u4E00\u952E\u5F52\u6863\u95F2\u7F6E";
+    foot.textContent = footText();
   };
   const restoreEntry = async (id, button) => {
     button.disabled = true;
@@ -3614,7 +3634,7 @@ function mountSubagentMonitor(deps) {
     }
   };
   const archiveIdleNow = async () => {
-    const ids = items.filter((row) => row.status !== "running" && (row.idleMs ?? 0) >= IDLE_WARN_MS).map((row) => row.id);
+    const ids = items.filter((row) => row.archived !== true && row.status !== "running" && (row.idleMs ?? 0) >= idleWarnMs).map((row) => row.id);
     if (ids.length === 0) return;
     archiveIdle.disabled = true;
     archiveIdle.textContent = "\u5F52\u6863\u4E2D\u2026";
@@ -3659,10 +3679,11 @@ function mountSubagentMonitor(deps) {
   };
   const apply2 = (next) => {
     items = next;
-    const has = items.length > 0;
+    syncArchivedLedger();
+    const has = items.some((row) => row.archived !== true);
     fab.classList.toggle("has-items", has);
     badge.hidden = !has;
-    badge.textContent = String(items.length);
+    badge.textContent = String(items.filter((row) => row.archived !== true).length);
     render();
   };
   const refresh = async () => {
@@ -3689,7 +3710,9 @@ function mountSubagentMonitor(deps) {
     busy = true;
     try {
       const response = await fetch(
-        resolveHostUrl("/api/dsh-remote-dafeiyu/subagents?sessionId=" + encodeURIComponent(current))
+        resolveHostUrl(
+          "/api/dsh-remote-dafeiyu/subagents?includeArchived=1&sessionId=" + encodeURIComponent(current)
+        )
       );
       const answer = await response.json();
       if (answer.config && typeof answer.config.idleWarnMs === "number" && Number.isFinite(answer.config.idleWarnMs)) {
@@ -3697,7 +3720,7 @@ function mountSubagentMonitor(deps) {
       }
       if (answer.ok === true && Array.isArray(answer.items)) {
         apply2(answer.items);
-        foot.textContent = defaultFoot;
+        foot.textContent = footText();
       } else {
         foot.textContent = `\u8BFB\u53D6\u5931\u8D25\uFF1A${String(answer.error ?? "\u5BBF\u4E3B\u6CA1\u6709\u8FD4\u56DE\u6570\u636E")}`;
       }
@@ -3758,12 +3781,11 @@ function mountSubagentMonitor(deps) {
       }
     })();
   });
-  const defaultFoot = "\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u7684\u5B50\u4EE3\u7406\u4F1A\u6807\u9EC4\uFF0C\u53EF\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09\u3002";
   const setFoot = (text) => {
     foot.textContent = text;
-    if (text !== defaultFoot) {
+    if (text !== FOOT_DEFAULT) {
       setTimeout(() => {
-        foot.textContent = defaultFoot;
+        foot.textContent = footText();
       }, 6e3);
     }
   };

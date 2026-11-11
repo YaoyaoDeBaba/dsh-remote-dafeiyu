@@ -223,11 +223,40 @@ export function startSubagents(
     probe['injectThrew:webServer'] = String((error as Error)?.message ?? error).slice(0, 160)
   }
 
+  /**
+   * 事件总线 → SSE 的桥。
+   *
+   * 2026-11-11 之前这座桥是**断的**：`emitSubagentChange()` 在内核事件里被调用，
+   * 但没有任何地方订阅它，`streamClients` 也就永远收不到数据。表现是面板的 EventSource
+   * 连上了却不刷新（连上就不会触发退化轮询），"事件驱动"名存实亡。
+   * 总线本身 400ms 合并一次，这里只负责写给订阅者；写失败（客户端已断）就把它摘掉。
+   */
+  const onBusChange = (): void => {
+    for (const client of streamClients) {
+      try {
+        client.write('data: change\n\n')
+      } catch {
+        streamClients.delete(client)
+      }
+    }
+  }
+  try {
+    subagentBus.on('change', onBusChange)
+    probe.bus = 'subscribed'
+  } catch (error) {
+    probe.bus = `subscribe threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+  }
+
   return {
     probe,
     stop(): void {
       if (stopped) return
       stopped = true
+      try {
+        subagentBus.removeListener('change', onBusChange)
+      } catch {
+        /* 退不掉也不许拖住停机 */
+      }
       try {
         unregister?.()
       } catch {

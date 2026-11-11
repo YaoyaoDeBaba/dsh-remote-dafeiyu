@@ -467,6 +467,9 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   function archivedIds(): Set<string> {
     const registry = services.workspaceRegistry
     const ids = (registry as LooseObject | undefined)?.archivedSessionIds
+    // 真机给的是字符串数组；有的版本给 Set。两种都认，别因为形状差异悄悄退回空表
+    // （退回空表的表现就是"归档了但哪儿都没变"——2026-11-11 修的就是这个）。
+    if (ids instanceof Set) return new Set([...ids].map(String))
     return Array.isArray(ids) ? new Set(ids.map(String)) : new Set<string>()
   }
 
@@ -785,19 +788,27 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   /**
    * 子代理成员表：优先问 subagents 的投影 catalog（纯内存，`listChildren/listDescendants`），
    * 它直接给出 id + label，不需要读会话头或日志——这样监视器既快，也不碰 sessionQuery 的冷读缓存。
+   *
+   * `trusted` 是这次探测的**可信度**，决定调用方要不要退回"拉全量会话头"的老路：
+   * - `true`：服务在、方法在、调用没抛——即使是空数组，也说明"这个父会话确实没有子代理"；
+   * - `false`：服务/方法缺失或调用抛错，才需要退回全量扫描。
+   *
+   * 2026-11-11：以前只按 `size > 0` 判断，于是**没有子代理的会话每次刷新都会去
+   * `sessionQuery.listSessions()` 拉一遍全量会话**（面板 focus/SSE 都会刷新），
+   * 这正是"频繁拉全量会话数据"的隐患来源。
    */
   async function subagentCatalog(
     parentSessionId: string,
     descendants: boolean,
-  ): Promise<Map<string, { label?: string }>> {
+  ): Promise<{ entries: Map<string, { label?: string }>; trusted: boolean }> {
     const out = new Map<string, { label?: string }>()
     const service = services.subagents
-    if (!service) return out
+    if (!service) return { entries: out, trusted: false }
     const call = (name: 'listDescendants' | 'listChildren'): ((...args: unknown[]) => unknown) | undefined =>
       fn(service, name)
-    const read = async (name: 'listDescendants' | 'listChildren'): Promise<void> => {
+    const read = async (name: 'listDescendants' | 'listChildren'): Promise<boolean> => {
       const list = call(name)
-      if (!list) return
+      if (!list) return false
       const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4_000)) as Array<
         { id?: unknown; label?: unknown } | undefined
       >
@@ -806,17 +817,21 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         const label = typeof row.label === 'string' && row.label.trim() !== '' ? row.label.trim() : undefined
         out.set(row.id, label === undefined ? {} : { label })
       }
+      // 空数组也是"调用成功"：投影明确回答了这个父会话没有子代理。
+      return Array.isArray(rows)
     }
+    let trusted = false
     try {
       if (descendants) {
-        await read('listDescendants')
-        if (out.size > 0) return out
+        if (await read('listDescendants')) trusted = true
+        if (out.size > 0) return { entries: out, trusted }
       }
-      await read('listChildren')
+      if (await read('listChildren')) trusted = true
     } catch (error) {
       log('subagent catalog unavailable', { message: messageOf(error).slice(0, 120) })
+      return { entries: out, trusted: out.size > 0 }
     }
-    return out
+    return { entries: out, trusted }
   }
 
   async function subagentLabels(
@@ -869,10 +884,11 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    */
   async function listSubagents(
     parentSessionId: string,
-    listOptions?: { descendants?: boolean },
+    listOptions?: { descendants?: boolean; includeArchived?: boolean },
   ): Promise<KernelSubagent[]> {
     const descendants = listOptions?.descendants === true
-    const catalog = await subagentCatalog(parentSessionId, descendants)
+    const catalogRead = await subagentCatalog(parentSessionId, descendants)
+    const catalog = catalogRead.entries
     let records: SessionRecordLike[] = []
     if (catalog.size > 0) {
       // catalog 给成员 id + label；创建时间/运行态再按需从活 agent 的会话头拿。
@@ -896,9 +912,10 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         const merged = { ...(header ?? {}), ...(fallbackCreated === undefined ? {} : { createdAt: fallbackCreated }) }
         records.push({ header: { id, parentSession: parentSessionId, ...merged } })
       }
-    } else {
-      // 该代宿主没有 catalog（或投影还没出）：退回原来的“列全部会话头”路径。
-      // 用 2s 上限，绝不把面板拖成 15s 超时；也只在 catalog 缺失时发生。
+    } else if (!catalogRead.trusted) {
+      // 只有 catalog 缺失/抛错时才退回"列全部会话头"。投影明确答了空数组的场合
+      // **不再**扫全量（没子代理的会话每刷新一次就扫一遍，那就是白拉）。
+      // 用 2s 上限，绝不把面板拖成 15s 超时。
       const read = fn(services.sessionQuery, 'listSessions')
       if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
       const rows = (await withTimeout(
@@ -906,6 +923,9 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
       ).catch(() => [])) as SessionRecordLike[] | undefined
       records = (rows ?? []).filter((row) => typeof row?.header?.id === 'string')
+    } else {
+      // catalog 可信且为空：这个父会话确实没有子代理，直接回空表。
+      return []
     }
     const childrenOf = new Map<string, SessionRecordLike[]>()
     for (const row of records) {
@@ -934,10 +954,14 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       for (const [id, label] of await subagentLabels(parentSessionId, descendants)) labels.set(id, label)
     }
     const now = options.clock.now()
+    // 归档态一次取一批：`workspaceRegistry.archivedSessionIds` 是纯内存数组，逐行问没有意义。
+    // 这就是"归档了却没被隐藏/没标记"的根因——读侧以前根本不知道有归档这回事。
+    const archived = archivedIds()
     const out: KernelSubagent[] = []
     for (const row of targets) {
       const id = String(row.header?.id)
-      const running = agentStatus(id) === 'running'
+      const isArchived = archived.has(id)
+      const running = !isArchived && agentStatus(id) === 'running'
       if (running) {
         if (!subagentRunningSince.has(id)) subagentRunningSince.set(id, now)
       } else if (subagentRunningSince.has(id)) {
@@ -969,6 +993,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         naming,
         ...(running && activity ? { activity: activity.text } : {}),
         status: running ? 'running' : 'idle',
+        ...(isArchived ? { archived: true } : {}),
         ...(iso(createdAt) ? { createdAt: iso(createdAt) } : {}),
         ...(iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {}),
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
@@ -977,12 +1002,15 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         ...(running ? { runningMs: Math.max(0, now - (subagentRunningSince.get(id) ?? now)) } : {}),
       })
     }
-    // running 在前，同状态按最近活动倒序（监视器第一眼该看到"正在干活的那几个"）
+    // running 在前，归档垫底，同状态按最近活动倒序（监视器第一眼该看到"正在干活的那几个"）
     out.sort((a, b) => {
       if (a.status !== b.status) return a.status === 'running' ? -1 : 1
+      if ((a.archived === true) !== (b.archived === true)) return a.archived === true ? 1 : -1
       return String(b.lastActiveAt ?? '').localeCompare(String(a.lastActiveAt ?? ''))
     })
-    return out
+    // 归档的默认不下发（语义就是"清理掉"）：手机端不用改就看不见它们。
+    // 桌面监视器传 includeArchived 才拿全量，用来显示"已归档 N 个"并给恢复入口。
+    return listOptions?.includeArchived === true ? out : out.filter((item) => item.archived !== true)
   }
   /**
    * 新建一条会话。

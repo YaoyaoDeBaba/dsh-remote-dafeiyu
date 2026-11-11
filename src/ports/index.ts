@@ -52,6 +52,14 @@ export interface KernelSubagent {
   activity?: string
   /** 此刻在不在跑（`agent.status === 'running'`）。 */
   status: 'running' | 'idle'
+  /**
+   * 这条子会话是否已被归档（`workspaceRegistry.archivedSessionIds`）。
+   *
+   * 与 `status` 并存而不是塞进 `status`：手机端与桌面端都在读 `status`，
+   * 老客户端只认 `running | idle`，多一个枚举值会让它们把归档行当成未知状态。
+   * 端上按这个布尔值隐藏/标记即可。
+   */
+  archived?: boolean
   /** 会话创建时间（ISO）。 */
   createdAt?: string
   /** 最后一次活动时间（ISO）。 */
@@ -370,8 +378,12 @@ export interface KernelPort {
    *
    * `options.descendants` 为 true 时按 `parentSession` 链递归（子孙一起列）；
    * 默认只列直接子级。
+   *
+   * `options.includeArchived`：默认 **false**——已归档的子代理不下发。
+   * 归档的语义就是"清理掉、别再占地方"，手机端拿到的列表因此天然干净；
+   * 桌面监视器要显示"已归档 N 个"和恢复入口时才显式传 true。
    */
-  listSubagents?(sessionId: string, options?: { descendants?: boolean }): Promise<KernelSubagent[]>
+  listSubagents?(sessionId: string, options?: { descendants?: boolean; includeArchived?: boolean }): Promise<KernelSubagent[]>
   /** 虚拟形象素材清单（sprite sheet 元数据）；未安装素材时返回 null。 */
   avatarManifest?(): Promise<{ version: number; states: Array<Record<string, unknown>> } | null>
   /** 取一张 sprite sheet（webp）的 base64；id 非法/文件缺失返回 null。 */

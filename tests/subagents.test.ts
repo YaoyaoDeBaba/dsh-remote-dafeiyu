@@ -14,6 +14,9 @@ import path from 'node:path'
 import { createServicesKernel, type ServicesBundle } from '../src/platform/carrier-services.js'
 import { readSubagentsConfig, writeSubagentsConfig } from '../src/subagents/config.js'
 import { createGuidancePusher } from '../src/subagents/pusher.js'
+import { startSubagents } from '../src/subagents/start.js'
+import { emitSubagentChange } from '../src/subagents/bus.js'
+import { streamClients } from '../src/subagents/routes.js'
 
 const NOW = 1_800_000_000_000
 
@@ -165,6 +168,89 @@ test('listSubagents：catalog 和 sessionQuery 都没有时明确抛错', async 
 test('listSubagents：没有子代理就是空数组（不抛）', async () => {
   const port = kernel(services())
   assert.deepEqual(await port.listSubagents!('other'), [])
+})
+
+test('listSubagents：catalog 明确回空数组时不再拉全量会话头（防止每刷新一次扫一遍全量）', async () => {
+  const bundle = services()
+  let scans = 0
+  const query = bundle.sessionQuery as { listSessions: () => Promise<unknown> }
+  const original = query.listSessions
+  query.listSessions = () => {
+    scans += 1
+    return original()
+  }
+  const port = kernel(bundle)
+  await port.listSubagents!('other')
+  await port.listSubagents!('other')
+  assert.equal(scans, 0, '投影说"没有子代理"就是没有，不要退回拉全量会话')
+  // 反过来：catalog 方法整个缺失时该退回全量扫描（老宿主）
+  const bundleNoCatalog = services()
+  delete (bundleNoCatalog as Record<string, unknown>).subagents
+  let fallbackScans = 0
+  const q2 = bundleNoCatalog.sessionQuery as { listSessions: () => Promise<unknown> }
+  const o2 = q2.listSessions
+  q2.listSessions = () => {
+    fallbackScans += 1
+    return o2()
+  }
+  const port2 = kernel(bundleNoCatalog)
+  await port2.listSubagents!('session-p')
+  assert.equal(fallbackScans, 1, '没有 catalog 的宿主仍然要靠全量会话头找成员')
+})
+
+test('listSubagents：已归档的默认不下发，显式 includeArchived 才带 archived 标记并排在最后', async () => {
+  const bundle = services()
+  ;(bundle as Record<string, unknown>).workspaceRegistry = { archivedSessionIds: ['child-idle'] }
+  const port = kernel(bundle)
+  const byDefault = await port.listSubagents!('session-p')
+  assert.deepEqual(byDefault.map((row) => row.id), ['child-run'], '归档的子代理默认就不该出现（手机端不用改就看不见）')
+  const rows = await port.listSubagents!('session-p', { includeArchived: true })
+  const idle = rows.find((row) => row.id === 'child-idle')!
+  const run = rows.find((row) => row.id === 'child-run')!
+  assert.equal(idle.archived, true, '归档了就要报出来，端上才能隐藏/标记')
+  assert.equal(idle.status, 'idle', 'status 仍是 running|idle，不塞新枚举值（老客户端会认不出）')
+  assert.equal(run.archived, undefined, '没归档的不带这个字段')
+  assert.deepEqual(rows.map((row) => row.id), ['child-run', 'child-idle'], '归档的垫底')
+})
+
+test('listSubagents：archivedSessionIds 给成 Set 也要认（形状差异不能悄悄退回空表）', async () => {
+  const bundle = services()
+  ;(bundle as Record<string, unknown>).workspaceRegistry = { archivedSessionIds: new Set(['child-run']) }
+  const port = kernel(bundle)
+  const rows = await port.listSubagents!('session-p', { includeArchived: true })
+  assert.equal(rows.find((row) => row.id === 'child-run')!.archived, true)
+})
+
+test('SSE 桥：总线变化写给订阅者，停机后不再写', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-subagents-bus-'))
+  const written: string[] = []
+  const fake = { write: (chunk: string) => void written.push(chunk), end: () => undefined } as never
+  let handle: { stop(): void } | undefined
+  try {
+    handle = startSubagents({} as never, {
+      dshHome: dir,
+      list: async () => [],
+      log: () => {},
+    })
+    streamClients.add(fake)
+    emitSubagentChange()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    assert.ok(written.length > 0, 'emitSubagentChange 之后订阅者必须收到一条 SSE 数据')
+    assert.match(written[0]!, /data: change/)
+    handle.stop()
+    const before = written.length
+    emitSubagentChange()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    assert.equal(written.length, before, '停机后不许再往旧订阅者写')
+  } finally {
+    streamClients.delete(fake)
+    try {
+      handle?.stop()
+    } catch {
+      /* ignore */
+    }
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 

@@ -18,7 +18,7 @@ export const GUIDANCE_PUSH_ROUTE = '/api/dsh-remote-dafeiyu/guidance/push'
 export const SUBAGENTS_STREAM_ROUTE = '/api/dsh-remote-dafeiyu/subagents/stream'
 
 export interface SubagentRouteDeps {
-  list: (sessionId: string, options?: { descendants?: boolean }) => Promise<KernelSubagent[]>
+  list: (sessionId: string, options?: { descendants?: boolean; includeArchived?: boolean }) => Promise<KernelSubagent[]>
   /** 归档 / 取消归档（清理闲置子代理）：写路由，要带 `x-drc-pair` 头。 */
   archive?: (sessionId: string, archived: boolean) => Promise<{ ok: boolean; message?: string }>
   /** 派活助手配置的读/写（闲置阈值、提示段开关）。 */
@@ -62,8 +62,10 @@ export function subagentsHandler(deps: SubagentRouteDeps) {
       return
     }
     const descendants = url.searchParams.get('descendants') === '1'
+    // 归档的默认不下发（与内核端口同一口径）；监视器要显示"已归档 N 个"时显式要。
+    const includeArchived = url.searchParams.get('includeArchived') === '1'
     try {
-      const items = await deps.list(sessionId, { descendants })
+      const items = await deps.list(sessionId, { descendants, includeArchived })
       json(response, 200, { ok: true, items, config: deps.config.read() })
     } catch (error) {
       const message = String((error as Error)?.message ?? error).slice(0, 200)
@@ -251,7 +253,10 @@ export function subagentsStreamHandler() {
         /* 关掉时忽略 */
       }
     }, 25_000)
-    request.on('close', () => clearInterval(heartbeat))
+    request.on('close', () => {
+      clearInterval(heartbeat)
+      streamClients.delete(response)
+    })
     streamClients.add(response)
   }
 }

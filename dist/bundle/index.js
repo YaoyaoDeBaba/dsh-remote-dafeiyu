@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.50" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.51" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32388,6 +32388,7 @@ function createServicesKernel(services, options) {
   function archivedIds() {
     const registry2 = services.workspaceRegistry;
     const ids = registry2?.archivedSessionIds;
+    if (ids instanceof Set) return new Set([...ids].map(String));
     return Array.isArray(ids) ? new Set(ids.map(String)) : /* @__PURE__ */ new Set();
   }
   function liveAgent(sessionId) {
@@ -32621,28 +32622,31 @@ function createServicesKernel(services, options) {
   async function subagentCatalog(parentSessionId, descendants) {
     const out = /* @__PURE__ */ new Map();
     const service = services.subagents;
-    if (!service) return out;
+    if (!service) return { entries: out, trusted: false };
     const call = (name2) => fn(service, name2);
     const read = async (name2) => {
       const list = call(name2);
-      if (!list) return;
+      if (!list) return false;
       const rows = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4e3);
       for (const row of rows ?? []) {
         if (typeof row?.id !== "string" || row.id === "") continue;
         const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : void 0;
         out.set(row.id, label === void 0 ? {} : { label });
       }
+      return Array.isArray(rows);
     };
+    let trusted = false;
     try {
       if (descendants) {
-        await read("listDescendants");
-        if (out.size > 0) return out;
+        if (await read("listDescendants")) trusted = true;
+        if (out.size > 0) return { entries: out, trusted };
       }
-      await read("listChildren");
+      if (await read("listChildren")) trusted = true;
     } catch (error62) {
       log("subagent catalog unavailable", { message: messageOf(error62).slice(0, 120) });
+      return { entries: out, trusted: out.size > 0 };
     }
-    return out;
+    return { entries: out, trusted };
   }
   async function subagentLabels(parentSessionId, descendants) {
     const labels = /* @__PURE__ */ new Map();
@@ -32678,7 +32682,8 @@ function createServicesKernel(services, options) {
   }
   async function listSubagents(parentSessionId, listOptions) {
     const descendants = listOptions?.descendants === true;
-    const catalog = await subagentCatalog(parentSessionId, descendants);
+    const catalogRead = await subagentCatalog(parentSessionId, descendants);
+    const catalog = catalogRead.entries;
     let records = [];
     if (catalog.size > 0) {
       const created = /* @__PURE__ */ new Map();
@@ -32700,7 +32705,7 @@ function createServicesKernel(services, options) {
         const merged = { ...header ?? {}, ...fallbackCreated === void 0 ? {} : { createdAt: fallbackCreated } };
         records.push({ header: { id, parentSession: parentSessionId, ...merged } });
       }
-    } else {
+    } else if (!catalogRead.trusted) {
       const read = fn(services.sessionQuery, "listSessions");
       if (!read) throw new Error("\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u5217\u4F1A\u8BDD\uFF08sessionQuery \u6CA1\u6709 listSessions\uFF09");
       const rows = await withTimeout(
@@ -32708,6 +32713,8 @@ function createServicesKernel(services, options) {
         Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2e3)
       ).catch(() => []);
       records = (rows ?? []).filter((row) => typeof row?.header?.id === "string");
+    } else {
+      return [];
     }
     const childrenOf = /* @__PURE__ */ new Map();
     for (const row of records) {
@@ -32733,10 +32740,12 @@ function createServicesKernel(services, options) {
       for (const [id, label] of await subagentLabels(parentSessionId, descendants)) labels.set(id, label);
     }
     const now = options.clock.now();
+    const archived = archivedIds();
     const out = [];
     for (const row of targets) {
       const id = String(row.header?.id);
-      const running = agentStatus(id) === "running";
+      const isArchived = archived.has(id);
+      const running = !isArchived && agentStatus(id) === "running";
       if (running) {
         if (!subagentRunningSince.has(id)) subagentRunningSince.set(id, now);
       } else if (subagentRunningSince.has(id)) {
@@ -32761,6 +32770,7 @@ function createServicesKernel(services, options) {
         naming,
         ...running && activity ? { activity: activity.text } : {},
         status: running ? "running" : "idle",
+        ...isArchived ? { archived: true } : {},
         ...iso(createdAt) ? { createdAt: iso(createdAt) } : {},
         ...iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {},
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
@@ -32771,9 +32781,10 @@ function createServicesKernel(services, options) {
     }
     out.sort((a, b) => {
       if (a.status !== b.status) return a.status === "running" ? -1 : 1;
+      if (a.archived === true !== (b.archived === true)) return a.archived === true ? 1 : -1;
       return String(b.lastActiveAt ?? "").localeCompare(String(a.lastActiveAt ?? ""));
     });
-    return out;
+    return listOptions?.includeArchived === true ? out : out.filter((item) => item.archived !== true);
   }
   async function newSession(args) {
     const controller = services.sessionController;
@@ -36849,8 +36860,9 @@ function subagentsHandler(deps) {
       return;
     }
     const descendants = url2.searchParams.get("descendants") === "1";
+    const includeArchived = url2.searchParams.get("includeArchived") === "1";
     try {
-      const items = await deps.list(sessionId, { descendants });
+      const items = await deps.list(sessionId, { descendants, includeArchived });
       json7(response, 200, { ok: true, items, config: deps.config.read() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
@@ -37016,7 +37028,10 @@ function subagentsStreamHandler() {
       } catch {
       }
     }, 25e3);
-    request.on("close", () => clearInterval(heartbeat));
+    request.on("close", () => {
+      clearInterval(heartbeat);
+      streamClients.delete(response);
+    });
     streamClients.add(response);
   };
 }
@@ -37488,11 +37503,30 @@ function startSubagents(ctx, input2) {
   } catch (error62) {
     probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
   }
+  const onBusChange = () => {
+    for (const client of streamClients) {
+      try {
+        client.write("data: change\n\n");
+      } catch {
+        streamClients.delete(client);
+      }
+    }
+  };
+  try {
+    subagentBus.on("change", onBusChange);
+    probe.bus = "subscribed";
+  } catch (error62) {
+    probe.bus = `subscribe threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+  }
   return {
     probe,
     stop() {
       if (stopped) return;
       stopped = true;
+      try {
+        subagentBus.removeListener("change", onBusChange);
+      } catch {
+      }
       try {
         unregister?.();
       } catch {

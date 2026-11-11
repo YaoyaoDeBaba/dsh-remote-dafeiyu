@@ -32,6 +32,8 @@ export interface SubagentRow {
   /** running 时「正在干什么」 */
   activity?: string
   status: 'running' | 'idle'
+  /** 已归档（宿主 `workspaceRegistry.archivedSessionIds` 里有它）：主列表隐藏，进「恢复归档」清单 */
+  archived?: boolean
   createdAt?: string
   lastActiveAt?: string
   workMs?: number
@@ -227,6 +229,13 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   let nextNumber = 1
   let ledger: Array<{ id: string; name: string }> = []
 
+  const FOOT_DEFAULT = '闲置超过阈值的子代理会标黄，可归档（可恢复）。'
+  /** 底栏文案：有已归档的就报个数，提醒它们被隐藏了、去哪儿找回。 */
+  const footText = (): string => {
+    const hidden = items.filter((row) => row.archived === true).length
+    return hidden > 0 ? `已归档 ${hidden} 个（已隐藏）· 点「恢复归档子代理」找回` : FOOT_DEFAULT
+  }
+
   const ledgerKey = (sid: string): string => 'drc.subagentArchive.' + sid
   const loadLedger = (sid: string): void => {
     try {
@@ -258,6 +267,24 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       if (!ledger.some((entry) => entry.id === row.id)) ledger.push({ id: row.id, name: displayName(row) })
     }
     saveLedger()
+  }
+  /**
+   * 把宿主报上来的归档态并进本地面板清单。
+   *
+   * 以前只靠按钮点击时写本地 ledger：换台设备/清了 localStorage 就找不回被归档的子代理，
+   * 而且列表里那几行照样显示成「空闲」。现在以宿主的 archived 标记为准。
+   */
+  const syncArchivedLedger = (): void => {
+    let changed = false
+    for (const row of items) {
+      if (row.archived !== true) continue
+      if (ledger.some((entry) => entry.id === row.id)) continue
+      // 不用 displayName：那会给归档行占编号，把还在用的子代理的「子代理N」顶后一位。
+      const name = row.naming === 'ok' && row.name ? row.name : '已归档子代理'
+      ledger.push({ id: row.id, name })
+      changed = true
+    }
+    if (changed) saveLedger()
   }
 
   // 从形象菜单点开时，打开面板那一次的 click 还会继续冒泡到 document；
@@ -299,14 +326,18 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       return
     }
-    if (items.length === 0) {
+    // 已归档的一律不进主列表（隐藏），只在底部报个数；它们的完整清单在「恢复归档子代理」里。
+    const active = items.filter((row) => row.archived !== true)
+    const archivedCount = items.length - active.length
+    if (active.length === 0) {
       const empty = doc.createElement('div')
       empty.className = 'empty'
-      empty.textContent = '这个对话还没有子代理。'
+      empty.textContent = archivedCount > 0 ? `没有在用的子代理（已归档 ${archivedCount} 个，已隐藏）` : '这个对话还没有子代理。'
       body.appendChild(empty)
+      foot.textContent = footText()
       return
     }
-    for (const row of items) {
+    for (const row of active) {
       const card = doc.createElement('div')
       card.className = 'card'
       const top = doc.createElement('div')
@@ -348,9 +379,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       body.appendChild(card)
     }
-    const idleCount = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs).length
+    const idleCount = active.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs).length
     archiveIdle.disabled = idleCount === 0
     archiveIdle.textContent = idleCount > 0 ? `一键归档闲置 (${idleCount})` : '一键归档闲置'
+    foot.textContent = footText()
   }
 
   const restoreEntry = async (id: string, button: HTMLButtonElement): Promise<void> => {
@@ -375,9 +407,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     }
   }
 
-  /** 顶栏的批量归档：一口气归档所有闲置 ≥ 2h 的子代理（逐条走同一归档端口）。 */
+  /** 顶栏的批量归档：一口气归档所有闲置 ≥ 阈值（设置页可改）且未归档的子代理（逐条走同一归档端口）。 */
   const archiveIdleNow = async (): Promise<void> => {
-    const ids = items.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= IDLE_WARN_MS).map((row) => row.id)
+    const ids = items
+      .filter((row) => row.archived !== true && row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs)
+      .map((row) => row.id)
     if (ids.length === 0) return
     archiveIdle.disabled = true
     archiveIdle.textContent = '归档中…'
@@ -424,10 +458,12 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
 
   const apply = (next: SubagentRow[]): void => {
     items = next
-    const has = items.length > 0
+    syncArchivedLedger()
+    // 徽标与 FAB 只算"还在用的"：全归档了就别再挂个 🐝 在那儿。
+    const has = items.some((row) => row.archived !== true)
     fab.classList.toggle('has-items', has)
     badge.hidden = !has
-    badge.textContent = String(items.length)
+    badge.textContent = String(items.filter((row) => row.archived !== true).length)
     // 不要因为“当前会话没有子代理”就自动关面板：从形象菜单手动打开的面板
     // 会在刷新返回空时瞬间被关掉（闪退），推送/切会话后尤其明显。
     // 空列表就显示空态，让用户自己关。
@@ -460,7 +496,9 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     busy = true
     try {
       const response = await fetch(
-        resolveHostUrl('/api/dsh-remote-dafeiyu/subagents?sessionId=' + encodeURIComponent(current)),
+        resolveHostUrl(
+          '/api/dsh-remote-dafeiyu/subagents?includeArchived=1&sessionId=' + encodeURIComponent(current),
+        ),
       )
       const answer = (await response.json()) as {
         ok?: boolean
@@ -473,7 +511,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       if (answer.ok === true && Array.isArray(answer.items)) {
         apply(answer.items)
-        foot.textContent = defaultFoot
+        foot.textContent = footText()
       } else {
         // 列表失败必须在界面上说清楚；悄悄清空会让人以为“没有子代理”。
         foot.textContent = `读取失败：${String(answer.error ?? '宿主没有返回数据')}`
@@ -542,12 +580,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     })()
   })
 
-  const defaultFoot = '闲置超过阈值的子代理会标黄，可归档（可恢复）。'
   const setFoot = (text: string): void => {
     foot.textContent = text
-    if (text !== defaultFoot) {
+    if (text !== FOOT_DEFAULT) {
       setTimeout(() => {
-        foot.textContent = defaultFoot
+        foot.textContent = footText()
       }, 6000)
     }
   }
