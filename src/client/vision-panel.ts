@@ -11,6 +11,7 @@
  * 纪律：钩子全部由调用方传入（不能静态 require react）；每个 DOM 操作都包 try。
  */
 import { VISION_BASE, callJson } from './host-api.js'
+import { makeDraggable } from './draggable.js'
 
 type Hooks = {
   useState?: <S>(initial: S) => [S, (next: S) => void]
@@ -287,6 +288,7 @@ export function mountVisionFab(deps: {
   actions.append(sendBtn, copyBtn)
   panel.append(head, input, result, actions, note)
   doc.body.appendChild(panel)
+  makeDraggable(panel, head, 'vision')
 
   let recognized = ''
   let busy = false

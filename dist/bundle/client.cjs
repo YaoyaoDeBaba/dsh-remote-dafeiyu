@@ -2003,6 +2003,100 @@ async function callJson(path, body, timeoutMs = 2e4) {
   }
 }
 
+// src/client/draggable.ts
+var MARGIN = 8;
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+function place(panel, left, top) {
+  panel.style.left = `${Math.round(left)}px`;
+  panel.style.top = `${Math.round(top)}px`;
+  panel.style.right = "auto";
+  panel.style.bottom = "auto";
+}
+function bounds(panel, viewportW, viewportH) {
+  const width = Math.min(panel.offsetWidth || 320, viewportW - MARGIN * 2);
+  const height = Math.min(panel.offsetHeight || 200, viewportH - MARGIN * 2);
+  return {
+    left: Math.max(MARGIN, viewportW - width - MARGIN),
+    top: Math.max(MARGIN, viewportH - height - MARGIN)
+  };
+}
+function makeDraggable(panel, handle, key) {
+  const storageKey = `drc.panelPos.${key}`;
+  let saved = null;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.left === "number" && typeof parsed.top === "number") saved = { left: parsed.left, top: parsed.top };
+    }
+  } catch {
+    saved = null;
+  }
+  if (saved) {
+    place(panel, clamp(saved.left, MARGIN, Math.max(MARGIN, window.innerWidth - 80)), clamp(saved.top, MARGIN, Math.max(MARGIN, window.innerHeight - 80)));
+  }
+  handle.style.cursor = "move";
+  handle.style.userSelect = "none";
+  handle.style.touchAction = "none";
+  handle.title = handle.title || "\u62D6\u52A8\u8FD9\u91CC\u79FB\u52A8\u9762\u677F\uFF08\u53CC\u51FB\u590D\u4F4D\uFF09";
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let baseLeft = 0;
+  let baseTop = 0;
+  const onMove = (event) => {
+    if (!dragging) return;
+    const max = bounds(panel, window.innerWidth, window.innerHeight);
+    place(
+      panel,
+      clamp(baseLeft + event.clientX - startX, MARGIN, Math.max(MARGIN, window.innerWidth - (panel.offsetWidth || 320) - MARGIN)),
+      clamp(baseTop + event.clientY - startY, MARGIN, Math.max(MARGIN, max.top > 0 ? window.innerHeight - (panel.offsetHeight || 200) - MARGIN : MARGIN))
+    );
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        left: parseFloat(panel.style.left || "0") || 0,
+        top: parseFloat(panel.style.top || "0") || 0
+      }));
+    } catch {
+    }
+  };
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const target = event.target;
+    if (target && target.closest("button, input, textarea, select, a")) return;
+    const rect = panel.getBoundingClientRect();
+    baseLeft = rect.left;
+    baseTop = rect.top;
+    place(panel, rect.left, rect.top);
+    startX = event.clientX;
+    startY = event.clientY;
+    dragging = true;
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    event.preventDefault();
+  });
+  handle.addEventListener("dblclick", () => {
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+    }
+    panel.style.left = "";
+    panel.style.top = "";
+    panel.style.right = "";
+    panel.style.bottom = "";
+  });
+}
+
 // src/client/vision-panel.ts
 var fieldStyle = {
   width: "100%",
@@ -2222,6 +2316,7 @@ function mountVisionFab(deps) {
   actions.append(sendBtn, copyBtn);
   panel.append(head, input, result, actions, note);
   doc.body.appendChild(panel);
+  makeDraggable(panel, head, "vision");
   let recognized = "";
   let busy = false;
   const setNote = (text) => {
@@ -3352,6 +3447,7 @@ function mountSubagentMonitor(deps) {
   foot.textContent = "\u95F2\u7F6E\u8D85\u8FC7 2 \u5C0F\u65F6\u7684\u5B50\u4EE3\u7406\u4F1A\u6807\u9EC4\uFF0C\u53EF\u4E00\u952E\u5F52\u6863\uFF08\u53EF\u6062\u590D\uFF09\u3002";
   panel.append(head, body, foot);
   doc.body.appendChild(panel);
+  makeDraggable(panel, head, "subagent");
   let items = [];
   let idleWarnMs = IDLE_WARN_MS;
   let session = "";
@@ -3854,15 +3950,15 @@ function mountAvatarWidget(deps) {
     return { w, h };
   };
   const spriteHeight = () => Math.round(WIDGET_WIDTH * 4 / 3);
-  const clamp = (x, y) => {
+  const clamp2 = (x, y) => {
     const { w, h } = viewport();
     return {
       x: Math.min(Math.max(8, x), Math.max(8, w - WIDGET_WIDTH - 8)),
       y: Math.min(Math.max(8, y), Math.max(8, h - spriteHeight() - 40))
     };
   };
-  const place = (x, y, persist) => {
-    const p = clamp(x, y);
+  const place2 = (x, y, persist) => {
+    const p = clamp2(x, y);
     wrap.style.left = p.x + "px";
     wrap.style.top = p.y + "px";
     placed = true;
@@ -3885,10 +3981,10 @@ function mountAvatarWidget(deps) {
     } catch {
       saved = null;
     }
-    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) place(Number(saved.x), Number(saved.y), false);
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) place2(Number(saved.x), Number(saved.y), false);
     else {
       const p = defaultPosition();
-      place(p.x, p.y, false);
+      place2(p.x, p.y, false);
     }
   };
   const paint = () => {
@@ -4047,7 +4143,7 @@ function mountAvatarWidget(deps) {
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) drag.moved = true;
-    if (drag.moved) place(drag.left + dx, drag.top + dy, false);
+    if (drag.moved) place2(drag.left + dx, drag.top + dy, false);
   };
   const onUp = () => {
     if (!drag) return;
@@ -4055,17 +4151,17 @@ function mountAvatarWidget(deps) {
     drag = void 0;
     stage.classList.remove("dragging");
     if (moved) {
-      place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
+      place2(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, true);
     } else {
       toggleMenu();
     }
   };
   const onDouble = () => {
     const p = defaultPosition();
-    place(p.x, p.y, true);
+    place2(p.x, p.y, true);
   };
   const onResize = () => {
-    if (placed) place(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, false);
+    if (placed) place2(parseFloat(wrap.style.left) || 0, parseFloat(wrap.style.top) || 0, false);
   };
   stage.addEventListener("pointerdown", onDown);
   stage.addEventListener("pointermove", onMove);
@@ -4222,6 +4318,7 @@ function mountXyqQuick() {
   result.className = "result";
   panel.append(head, prompt, modelSelect, params, estimate, balance, actions, status, result);
   doc.body.appendChild(panel);
+  makeDraggable(panel, head, "xyq");
   const overlay = doc.createElement("div");
   overlay.id = "dafeiyu-xyq-settings";
   const box = doc.createElement("div");

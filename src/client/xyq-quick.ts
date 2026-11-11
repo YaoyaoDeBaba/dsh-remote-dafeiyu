@@ -5,6 +5,7 @@
  * → 看预计积分 → 生成 → 轮询结果 → 预览产物。右上角齿轮打开二级窗口填 Access Key。
  */
 import { resolveHostUrl } from './host-url.js'
+import { makeDraggable } from './draggable.js'
 
 const BASE = '/api/dsh-remote-dafeiyu/xyq'
 const PRICE_PER_SECOND: Record<string, number> = {
@@ -142,6 +143,7 @@ export function mountXyqQuick(): XyqQuickHandle {
   result.className = 'result'
   panel.append(head, prompt, modelSelect, params, estimate, balance, actions, status, result)
   doc.body.appendChild(panel)
+  makeDraggable(panel, head, 'xyq')
 
   // 设置二级窗口
   const overlay = doc.createElement('div')

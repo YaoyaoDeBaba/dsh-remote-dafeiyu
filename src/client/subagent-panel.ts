@@ -15,6 +15,7 @@
  * 带走（它不在 React 树里）。
  */
 import { resolveHostUrl } from './host-url.js'
+import { makeDraggable } from './draggable.js'
 
 export interface SubagentRow {
   id: string
@@ -188,6 +189,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   foot.textContent = '闲置超过 2 小时的子代理会标黄，可一键归档（可恢复）。'
   panel.append(head, body, foot)
   doc.body.appendChild(panel)
+  makeDraggable(panel, head, 'subagent')
 
   let items: SubagentRow[] = []
   // 闲置阈值来自宿主配置（设置页「派活助手」可改），缺省 2h。
