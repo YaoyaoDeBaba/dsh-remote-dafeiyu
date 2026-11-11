@@ -27660,7 +27660,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.42" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.43" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31906,6 +31906,13 @@ function applyCors(request, response) {
   } catch {
   }
 }
+function preflight(request, response) {
+  if (request.method !== "OPTIONS") return false;
+  applyCors(request, response);
+  response.writeHead(204, { "Access-Control-Max-Age": "600", "Content-Length": "0" });
+  response.end();
+  return true;
+}
 function json4(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -32120,6 +32127,7 @@ function registerPillRoutes(webServer, deps) {
     ...definition,
     handler: (request, response) => {
       applyCors(request, response);
+      if (preflight(request, response)) return;
       if (request?.method === "OPTIONS") {
         response.writeHead(204);
         response.end();
@@ -32204,6 +32212,7 @@ function readonly2(request) {
 function avatarManifestHandler(dir) {
   return (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected(request);
     if (denied) return json5(response, 403, { ok: false, error: denied });
     if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
@@ -32216,6 +32225,7 @@ function avatarManifestHandler(dir) {
 function avatarSheetHandler(dir) {
   return (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected(request);
     if (denied) return json5(response, 403, { ok: false, error: denied });
     if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
@@ -32245,6 +32255,7 @@ function avatarSheetHandler(dir) {
 function avatarStateHandler(getStatus) {
   return (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected(request);
     if (denied) return json5(response, 403, { ok: false, error: denied });
     if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
@@ -36432,6 +36443,7 @@ function registerVisionRoutes(webServer, deps) {
     ...definition,
     handler: (request, response) => {
       applyCors(request, response);
+      if (preflight(request, response)) return;
       if (request?.method === "OPTIONS") {
         response.writeHead(204);
         response.end();
@@ -36820,6 +36832,7 @@ function rejected3(request) {
 function subagentsHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected3(request);
     if (denied) {
       json7(response, 403, { ok: false, error: denied });
@@ -36866,6 +36879,7 @@ function readBody2(request) {
 function subagentsArchiveHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected3(request);
     if (denied) {
       json7(response, 403, { ok: false, error: denied });
@@ -36920,6 +36934,7 @@ function subagentsArchiveHandler(deps) {
 function subagentsConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected3(request);
     if (denied) {
       json7(response, 403, { ok: false, error: denied });
@@ -36948,6 +36963,7 @@ function subagentsConfigHandler(deps) {
 function guidancePushHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected3(request);
     if (denied) {
       json7(response, 403, { ok: false, error: denied });
@@ -37803,6 +37819,7 @@ function readBody3(request) {
 function xyqConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected4(request);
     if (denied) {
       json8(response, 403, { ok: false, error: denied });
@@ -37831,6 +37848,7 @@ function xyqConfigHandler(deps) {
 function xyqQueryHandler(kind, deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected4(request);
     if (denied) {
       json8(response, 403, { ok: false, error: denied });
@@ -37861,6 +37879,7 @@ function xyqQueryHandler(kind, deps) {
 function xyqDescribeHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected4(request);
     if (denied) return json8(response, 403, { ok: false, error: denied });
     if (request.method !== "GET" && request.method !== "HEAD") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
@@ -37878,6 +37897,7 @@ function xyqDescribeHandler(deps) {
 function xyqGenerateHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected4(request);
     if (denied) return json8(response, 403, { ok: false, error: denied });
     if (request.method !== "POST") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
@@ -37918,6 +37938,7 @@ function xyqGenerateHandler(deps) {
 function xyqResultHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected4(request);
     if (denied) return json8(response, 403, { ok: false, error: denied });
     if (request.method !== "GET" && request.method !== "HEAD") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
@@ -37935,6 +37956,7 @@ function xyqResultHandler(deps) {
 function xyqFileHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected4(request);
     if (denied) return json8(response, 403, { ok: false, error: denied });
     if (request.method !== "GET" && request.method !== "HEAD") return json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
@@ -38511,6 +38533,7 @@ function registerMemoryRoutes(webServer, deps) {
         path: MEMORY_ROUTE,
         handler: (request, response) => {
           applyCors(request, response);
+          if (preflight(request, response)) return;
           if (request?.method === "OPTIONS") {
             response.writeHead(204);
             response.end();

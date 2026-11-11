@@ -5,7 +5,7 @@
  * 这里**没有写操作**：清理走手机/桌面已有的归档命令，不在这个路由上开第二条路。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
+import { applyCors, preflight, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
 import type { KernelSubagent } from '../ports/index.js'
 import type { SubagentsConfig } from './config.js'
 import { SUBAGENT_GUIDANCE } from './guidance.js'
@@ -45,6 +45,7 @@ function rejected(request: IncomingMessage): string | undefined {
 export function subagentsHandler(deps: SubagentRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })
@@ -99,6 +100,7 @@ function readBody(request: IncomingMessage): Promise<string> {
 export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })
@@ -161,6 +163,7 @@ export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
 export function subagentsConfigHandler(deps: SubagentRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })
@@ -192,6 +195,7 @@ export function subagentsConfigHandler(deps: SubagentRouteDeps) {
 export function guidancePushHandler(deps: SubagentRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })

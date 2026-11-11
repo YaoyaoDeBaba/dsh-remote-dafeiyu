@@ -8,7 +8,7 @@
  * 请求体上限 25MB（base64 后的图片上限 20MB，剩余给 JSON 外壳）。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
+import { applyCors, preflight, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
 import type { VisionService } from './service.js'
 import { VisionError } from './protocols.js'
 
@@ -178,6 +178,7 @@ export function registerVisionRoutes(
     ...definition,
     handler: (request: IncomingMessage, response: ServerResponse) => {
       applyCors(request, response)
+      if (preflight(request, response)) return
       if (request?.method === 'OPTIONS') {
         response.writeHead(204)
         response.end()

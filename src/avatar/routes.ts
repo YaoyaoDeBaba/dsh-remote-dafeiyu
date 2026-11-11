@@ -14,7 +14,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
-import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
+import { applyCors, preflight, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
 
 export const AVATAR_BASE = '/api/dsh-remote-dafeiyu/avatar'
 export const AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`
@@ -94,6 +94,7 @@ function readonly(request: IncomingMessage): boolean {
 export function avatarManifestHandler(dir: string) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (!readonly(request)) return json(response, 405, { ok: false, error: '只支持 GET' })
@@ -107,6 +108,7 @@ export function avatarManifestHandler(dir: string) {
 export function avatarSheetHandler(dir: string) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (!readonly(request)) return json(response, 405, { ok: false, error: '只支持 GET' })
@@ -139,6 +141,7 @@ export function avatarSheetHandler(dir: string) {
 export function avatarStateHandler(getStatus: (sessionId: string) => string | undefined) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (!readonly(request)) return json(response, 405, { ok: false, error: '只支持 GET' })

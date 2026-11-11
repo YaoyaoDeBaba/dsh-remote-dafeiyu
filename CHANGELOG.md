@@ -1,3 +1,11 @@
+## 0.9.0-dafeiyu.43 —— 修推送 `Failed to fetch`（跨源预检 OPTIONS 405）
+
+- 现场：`POST /guidance/push` 在宿主侧 200 正常，浏览器却报 `Failed to fetch`；
+  抓预检：`OPTIONS` 返回 **405**（只处理 POST），浏览器直接拦掉真正的 POST；
+- 修复：所有带 CORS 的写路由统一处理 `OPTIONS` → 204 + `Access-Control-Max-Age`，
+  覆盖派活助手（配置/推送/归档）、小云雀、识图、记忆、备份、pill 配置等；
+- 这同时修好了所有 JSON POST（之前只是推送按钮最常被点）。
+
 ## 0.9.0-dafeiyu.42 —— 派活助手列表：catalog 优先 + 错误可见 + 命名格式提示
 
 - 列表成员改问 `subagents.listChildren/listDescendants`（纯内存投影，带 label），不再每次

@@ -8,7 +8,7 @@
  * 守卫与识图路由同一套（Host 回环 + Origin 白名单 + CORS 回声）。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
+import { applyCors, preflight, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
 import type { MemoryService } from './service.js'
 
 export const MEMORY_ROUTE = '/api/dsh-remote-dafeiyu/memory'
@@ -154,6 +154,7 @@ export function registerMemoryRoutes(
         path: MEMORY_ROUTE,
         handler: (request, response) => {
           applyCors(request, response)
+          if (preflight(request, response)) return
           if (request?.method === 'OPTIONS') {
             response.writeHead(204)
             response.end()

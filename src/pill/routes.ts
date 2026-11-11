@@ -291,6 +291,20 @@ export function applyCors(request: IncomingMessage, response: ServerResponse): v
   }
 }
 
+/**
+ * 浏览器跨源预检：带 JSON content-type 的 POST 会先发 OPTIONS。
+ * 路由只处理 POST 时会回 405（就算带了 CORS 头），预检失败浏览器直接
+ * 报 `Failed to fetch`。这里统一把 OPTIONS 正常结束掉。
+ */
+export function preflight(request: IncomingMessage, response: ServerResponse): boolean {
+  if (request.method !== 'OPTIONS') return false
+  applyCors(request, response)
+  response.writeHead(204, { 'Access-Control-Max-Age': '600', 'Content-Length': '0' })
+  response.end()
+  return true
+}
+
+
 function json(response: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body)
   response.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) })
@@ -598,6 +612,7 @@ export function registerPillRoutes(
     ...definition,
     handler: (request: IncomingMessage, response: ServerResponse) => {
       applyCors(request, response)
+      if (preflight(request, response)) return
       if (request?.method === 'OPTIONS') {
         response.writeHead(204)
         response.end()

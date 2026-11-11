@@ -5,7 +5,7 @@
  * 生成本身走工具调用，不在这里开第二条收费入口。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { applyCors, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
+import { applyCors, preflight, hostIsLoopback, originIsLoopbackOrAbsent } from '../pill/routes.js'
 import type { XyqService } from './service.js'
 
 export const XYQ_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/xyq/config'
@@ -57,6 +57,7 @@ function readBody(request: IncomingMessage): Promise<string> {
 export function xyqConfigHandler(deps: XyqRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })
@@ -87,6 +88,7 @@ export function xyqConfigHandler(deps: XyqRouteDeps) {
 export function xyqQueryHandler(kind: 'status' | 'balance' | 'models', deps: XyqRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })
@@ -119,6 +121,7 @@ export function xyqQueryHandler(kind: 'status' | 'balance' | 'models', deps: Xyq
 export function xyqDescribeHandler(deps: XyqRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (request.method !== 'GET' && request.method !== 'HEAD') return json(response, 405, { ok: false, error: '只支持 GET' })
@@ -138,6 +141,7 @@ export function xyqDescribeHandler(deps: XyqRouteDeps) {
 export function xyqGenerateHandler(deps: XyqRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (request.method !== 'POST') return json(response, 405, { ok: false, error: '只支持 POST' })
@@ -184,6 +188,7 @@ export function xyqGenerateHandler(deps: XyqRouteDeps) {
 export function xyqResultHandler(deps: XyqRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (request.method !== 'GET' && request.method !== 'HEAD') return json(response, 405, { ok: false, error: '只支持 GET' })
@@ -203,6 +208,7 @@ export function xyqResultHandler(deps: XyqRouteDeps) {
 export function xyqFileHandler(deps: XyqRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) return json(response, 403, { ok: false, error: denied })
     if (request.method !== 'GET' && request.method !== 'HEAD') return json(response, 405, { ok: false, error: '只支持 GET' })
