@@ -123,7 +123,13 @@ await esbuild.build({
   format: 'cjs',
   target: 'chrome120',
   sourcemap: false,
-  minify: false,
+  // 0.53 起压缩（**只压空白与语法，不改标识符**）：转生/分身面板塞进来之后，
+  // 不压是 329KB（上限 320KB），压完 ~250KB。不动标识符是刻意的——下面那条
+  // 「静态 require('react') 不许落在 factory 顶层」的判据靠 `function personaClientFactory`
+  // 这个**名字**定位豁免区，改名会让判据失效（判据失效比超 9KB 危险得多）。
+  minifyWhitespace: true,
+  minifySyntax: true,
+  minifyIdentifiers: false,
   logLevel: 'warning',
   banner: {
     js:
@@ -164,17 +170,89 @@ if (!clientText.includes('conversation.composer.dock')) {
 // 连已经在生产跑的右栏自动弹码一起没。运行期那一句最坏只少一颗 pill。
 //
 // 0.8.0 起合进了人设那一半：那份客户端是**已裹好外壳**的 loader 文件，内部写着
-// `const react = require("react")`。它现在落在 `personaClientFactory()` 的**函数体内**，
-// 只有 `apply` 真调它时才求值，外层还有 try/catch —— 与上面禁的那一形状不是一回事。
-// 所以判据从"文本里有没有"改成"有没有落在顶层"：静态 require 只许出现在人设工厂定义之后。
-const personaFactoryAt = clientText.indexOf('function personaClientFactory')
-const staticReactAt = clientText.search(/require\(["']react["']\)/)
-if (staticReactAt >= 0 && (personaFactoryAt < 0 || staticReactAt < personaFactoryAt)) {
-  console.error(
-    '[bundle-plugin] client.cjs 的 factory 顶层出现了静态 require("react")：' +
-      '那会让装载失败变成整页起不来（人设工厂函数体内的那一句不算）',
-  )
-  process.exit(1)
+// `const react = require("react")`。它落在某个函数体内，只有 `apply` 真调它时才求值，
+// 外层还有 try/catch —— 与上面禁的那一形状不是一回事。
+//
+// 判据的正确形状是**语法位置**，不是文本顺序：数一数那段 `require("react")` 处在
+// factory 体的第几层花括号里。深度 0 = 顶层语句（会在 factory 一执行就跑），必须拦；
+// 深度 ≥1 = 函数体内（调用时才求值），放行。
+//
+// 2026-11-11（0.53）改的就是这一条：原来用「它在不在 `function personaClientFactory`
+// 之后」当豁免，开压缩后模块顺序一变就误报——而那种误报会诱使人去关掉这条判据本身。
+// 现在按花括号深度判，与压缩与否无关。
+const factoryBodyAt = (() => {
+  const marker = 'factory: (require) => {'
+  const at = clientText.indexOf(marker)
+  return at < 0 ? -1 : at + marker.length
+})()
+/** 在 factory 体里找 `require("react")` 的花括号深度；找不到返回 -1。 */
+function reactRequireDepths(text, from) {
+  const depths = []
+  let depth = 0
+  let i = from
+  const n = text.length
+  while (i < n) {
+    const ch = text[i]
+    if (ch === '"' || ch === "'" || ch === '`') {
+      const quote = ch
+      i += 1
+      while (i < n) {
+        if (text[i] === '\\') {
+          i += 2
+          continue
+        }
+        if (text[i] === quote) {
+          i += 1
+          break
+        }
+        i += 1
+      }
+      continue
+    }
+    if (ch === '/' && text[i + 1] === '/') {
+      const end = text.indexOf('\n', i)
+      i = end < 0 ? n : end + 1
+      continue
+    }
+    if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2)
+      i = end < 0 ? n : end + 2
+      continue
+    }
+    if (ch === '{') {
+      depth += 1
+      i += 1
+      continue
+    }
+    if (ch === '}') {
+      depth -= 1
+      if (depth < 0) return depths
+      i += 1
+      continue
+    }
+    if (ch === 'r' && text.startsWith('require("react")', i)) {
+      depths.push(depth)
+      i += 'require("react")'.length
+      continue
+    }
+    if (ch === 'r' && text.startsWith("require('react')", i)) {
+      depths.push(depth)
+      i += "require('react')".length
+      continue
+    }
+    i += 1
+  }
+  return depths
+}
+if (factoryBodyAt >= 0) {
+  const depths = reactRequireDepths(clientText, factoryBodyAt)
+  if (depths.some((depth) => depth === 0)) {
+    console.error(
+      '[bundle-plugin] client.cjs 的 factory 顶层出现了静态 require("react")：' +
+        '那会让装载失败变成整页起不来（函数体内的那一句不算）',
+    )
+    process.exit(1)
+  }
 }
 // 反向也钉一条：react 被**内联**进来同样致命（宿主那份与我们这份是两套 fiber，钩子互相
 // 不认识，一点 dock 就白屏）。内联的产物体积会跳一个数量级，所以这里用体积上限当探针。

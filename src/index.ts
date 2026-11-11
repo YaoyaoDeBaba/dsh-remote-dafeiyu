@@ -57,6 +57,8 @@ import { mountPersona } from './persona/mount.js'
 import { startVision, type VisionHandle } from './vision/start.js'
 // 子代理监视器（2026-11-09）：一条只读路由给桌面端页面，手机走协议命令。
 import { startSubagents, type SubagentsHandle } from './subagents/start.js'
+// 一键转生 / 一键分身（0.9.0.53）：三条回环路由 + 一个作业管理器。
+import { startHandoff, type HandoffHandle } from './handoff/start.js'
 // 小云雀（CLI 工具）：生图/生视频/余额，设置页一栏。
 import { startXyq, type XyqHandle } from './xyq/start.js'
 import { startAvatar, type AvatarHandle } from './avatar/start.js'
@@ -1484,6 +1486,78 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
+  let handoffHandle: HandoffHandle | undefined
+  try {
+    handoffHandle = startHandoff(ctx as never, {
+      dshHome: resolveDshHome(process.env),
+      log,
+      /**
+       * 注入写作指令：必须走**当前会话那个 agent 的 inject**（只进它的下一步队列，不唤醒），
+       * 而且消息必须带唯一 id——缺 id 会让 `inbox/spliced` 与 `user/message` 对不上，
+       * 把会话历史写坏（2026-11-10 真机事故）。
+       */
+      inject: (sessionId, text) => {
+        let service: unknown
+        try {
+          service = ctx.get?.('agents', true)
+        } catch {
+          service = undefined
+        }
+        const list = service && typeof (service as { list?: unknown }).list === 'function'
+          ? ((service as { list: () => unknown[] }).list() ?? [])
+          : []
+        const agent = (Array.isArray(list) ? list : []).find(
+          (row) => !!row && typeof (row as { id?: unknown }).id === 'string' && (row as { id: string }).id === sessionId,
+        ) as { inject?: (input: unknown) => unknown } | undefined
+        if (!agent || typeof agent.inject !== 'function') {
+          return { ok: false, message: '这个会话现在没有活着的 agent（先在里面发一条消息，再点转生/分身）' }
+        }
+        try {
+          agent.inject({
+            id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
+              ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+            role: 'user',
+            content: [{ type: 'text', text }],
+            source: { kind: 'user' },
+          })
+          return { ok: true }
+        } catch (error) {
+          return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+        }
+      },
+      // 三个都延后取 kernel：路由可能比服务先挂上。
+      newSession: async (args) => {
+        const port = kernel
+        const create = port?.newSession
+        if (!port || !create) return { ok: false, message: '主机这一代不支持新建会话（没有 newSession）' }
+        return create.call(port, args)
+      },
+      sendPrompt: async (sessionId, text) => {
+        const port = kernel
+        const send = port?.sendPrompt
+        if (!port || !send) return { ok: false, message: '主机这一代不支持发消息（没有 sendPrompt）' }
+        return send.call(port, sessionId, text)
+      },
+      sessionCwd: async (sessionId) => {
+        const port = kernel
+        const list = port?.listSessions
+        if (!port || !list) return undefined
+        try {
+          const rows = await list.call(port, 200)
+          const hit = rows.find((row) => row.summary?.id === sessionId)
+          return hit?.summary?.workspace
+        } catch {
+          return undefined
+        }
+      },
+    })
+  } catch (error) {
+    handoffHandle = undefined
+    log('转生/分身起不来（远控/识图/派活不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   let avatarHandle: AvatarHandle | undefined
   try {
     avatarHandle = startAvatar(ctx as never, { dshHome: resolveDshHome(process.env), log })
@@ -1589,6 +1663,11 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         subagentsHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      try {
+        handoffHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }

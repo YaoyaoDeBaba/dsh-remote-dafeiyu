@@ -30,6 +30,7 @@ import { mountVisionFab } from './vision-panel.js'
 import { mountSubagentMonitor } from './subagent-panel.js'
 import { mountAvatarWidget } from './avatar-widget.js'
 import { mountXyqQuick } from './xyq-quick.js'
+import { mountHandoffPanel } from './handoff-panel.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -139,6 +140,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
 
   // ②b 子代理监视器（2026-11-09）：当前对话有子代理时，右侧出现一颗小图标。
   let subagentsCleanup: (() => void) | undefined
+  let handoffPanel: ReturnType<typeof mountHandoffPanel> | undefined
   let avatarCleanup: (() => void) | undefined
   try {
     xyqQuick = mountXyqQuick()
@@ -154,6 +156,13 @@ export function apply(ctx: ClientContext): (() => void) | void {
       },
     })
 
+  // 转生 / 分身（0.53）：形象菜单两项，面板走宿主那三条回环路由。
+  try {
+    handoffPanel = mountHandoffPanel({ getCurrentSession: resolveCurrentSession(ctx) })
+  } catch (error) {
+    swallow('转生/分身面板挂载抛错（已吞掉）', error)
+  }
+
   // avatar widget (0.14): chat page bottom-left, auto-switches by agent status.
   try {
     avatarCleanup = mountAvatarWidget({
@@ -161,6 +170,8 @@ export function apply(ctx: ClientContext): (() => void) | void {
       onMenuAction: (id) => {
         if (id === 'subagents') openSubagents?.()
         else if (id === 'vision') openVision?.()
+        else if (id === 'rebirth') handoffPanel?.open('rebirth')
+        else if (id === 'branch') handoffPanel?.open('branch')
         else xyqQuick?.open()
       },
     })
@@ -251,6 +262,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
     }
     try {
       visionCleanup?.()
+    } catch {
+      /* 卸载动作不许拖住卸载 */
+    }
+    try {
+      handoffPanel?.destroy()
     } catch {
       /* 卸载动作不许拖住卸载 */
     }

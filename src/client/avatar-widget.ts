@@ -49,8 +49,8 @@ const POKE_MS = 1800
 
 export interface AvatarWidgetDeps {
   getCurrentSession: () => string | undefined | null
-  /** 点击菜单项：派活助手 / 小云雀 / 肥鱼识图（入口都收在形象身上）。 */
-  onMenuAction?: (id: 'subagents' | 'xyq' | 'vision') => void
+  /** 点击菜单项：派活助手 / 小云雀 / 肥鱼识图 / 转生 / 分身（入口都收在形象身上）。 */
+  onMenuAction?: (id: 'subagents' | 'xyq' | 'vision' | 'rebirth' | 'branch') => void
 }
 
 export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
@@ -131,6 +131,8 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   addMenuButton('🐝', '派活助手', () => deps.onMenuAction?.('subagents'))
   addMenuButton('☁️', '小云雀', () => deps.onMenuAction?.('xyq'))
   addMenuButton('🐳', '肥鱼识图', () => deps.onMenuAction?.('vision'))
+  addMenuButton('🐟', '一键转生', () => deps.onMenuAction?.('rebirth'))
+  addMenuButton('🧬', '一键分身', () => deps.onMenuAction?.('branch'))
   addMenuButton('😤', '戳一下', () => {
     if (available(POKE_CLIP)) {
       pokeUntil = Date.now() + POKE_MS
