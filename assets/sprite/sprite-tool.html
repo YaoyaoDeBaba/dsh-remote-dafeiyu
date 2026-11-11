@@ -3582,7 +3582,7 @@ function setAnchorValue(which, v) {
   v = clamp(Number(v) || 0, 0, 1);
   if (which === 'x') state.anchor.x = v; else state.anchor.y = v;
   renderAnchorPreview();
-  markDirty();
+  typeof markDirty === 'function' && markDirty();
 }
 
 function stepAnchorFrame(delta) {
@@ -3622,7 +3622,7 @@ function onAnchorMove(e) {
   if (state.anchor.drag === 'x') state.anchor.x = clamp((p.x - L.left) / L.dw, 0, 1);
   else state.anchor.y = clamp(1 - (p.y - L.top) / L.dh, 0, 1);
   renderAnchorPreview();
-  markDirty();
+  typeof markDirty === 'function' && markDirty();
   e.preventDefault();
 }
 
@@ -3808,7 +3808,7 @@ function bindEvents() {
   $('btnAnchorNext').addEventListener('click', () => stepAnchorFrame(1));
   $('btnConfirmAnchor').addEventListener('click', () => {
     state.anchor.confirmed = true;
-    markDirty();
+    typeof markDirty === 'function' && markDirty();
     $('anchorHint').textContent = '✓ 已确认：保存到项目时写入 meta.json（anchorX ' +
       state.anchor.x.toFixed(3) + ' / anchorY ' + state.anchor.y.toFixed(3) + '）';
     toast('锚点已确认', 'ok');

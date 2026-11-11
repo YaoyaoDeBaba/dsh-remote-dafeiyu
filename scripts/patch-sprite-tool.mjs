@@ -112,10 +112,42 @@ if (missing.length) {
 const insertLine = lineOf(html, closeIdx)
 const indent = ''
 
+/* ---------------- 上游缺陷兜底 ----------------
+ *
+ * 2026-11-11 实测：原工具里 `markDirty()` 被**调用 3 次、从未定义**（全文件 0 处 `function markDirty`）。
+ * 于是每次走到那三处都会抛 ReferenceError，**同一段里排在它后面的语句全部不执行**：
+ *   - 点「确认锚点」→ `state.anchor.confirmed = true` 生效了，但那句「✓ 已确认…」提示永不出现，
+ *     用户感受是"这按钮按了没反应"；
+ *   - 锚点预览里拖动 → 后面的 `e.preventDefault()` 不跑，拖动时会顺带选中文字/滚动页面。
+ *
+ * 为什么不直接在 bridge 里补一个 `function markDirty(){}`：那是**同一个 module 作用域**，
+ * 哪天作者把这函数补回来就会变成重复声明（严格模式下直接 SyntaxError，整个工具起不来）。
+ * 所以改成在**调用点**加一条 `typeof` 守卫：作者补了就用他的，没补就跳过——
+ * 两种情况下都不会再抛。
+ */
+const DIRTY_CALL = 'markDirty();'
+const DIRTY_GUARD = "typeof markDirty === 'function' && markDirty();"
+let shimCount = 0
+let base = html
+if (countOf(body, 'function markDirty') === 0) {
+  const calls = countOf(html, DIRTY_CALL)
+  if (calls > 0) {
+    base = html.split(DIRTY_CALL).join(DIRTY_GUARD)
+    shimCount = calls
+  }
+} else {
+  console.log('[patch] 源文件已自带 markDirty()，跳过上游兜底')
+}
+/* 兜底替换会改动长度，插入点必须在替换之后重新算 */
+const baseOpen = openRe.exec(base)
+const baseBodyStart = baseOpen ? baseOpen.index + baseOpen[0].length : bodyStart
+const baseCloseIdx = base === html ? closeIdx : base.indexOf(CLOSE_SCRIPT, baseBodyStart)
+if (baseCloseIdx < 0) fail('上游兜底替换后找不到 module script 闭合标签', '替换不应该动到标签')
+
 /* 保证闭合标签独占一行，插入的代码前后都留空行 */
 let injected = '\n' + indent + bridgeRaw + '\n'
-if (!html.slice(0, closeIdx).endsWith('\n')) injected = '\n' + injected
-const patched = html.slice(0, closeIdx) + injected + html.slice(closeIdx)
+if (!base.slice(0, baseCloseIdx).endsWith('\n')) injected = '\n' + injected
+const patched = base.slice(0, baseCloseIdx) + injected + base.slice(baseCloseIdx)
 
 /* ---------------- 写输出 ---------------- */
 mkdirSync(dirname(outPath), { recursive: true })
@@ -127,8 +159,8 @@ const marks = countOf(written, START_MARK)
 const endMarks = countOf(written, END_MARK)
 if (marks !== 1) fail('自检失败：输出里桥接起始标记出现 ' + marks + ' 次（应为 1）')
 if (endMarks !== 1) fail('自检失败：输出里桥接结束标记出现 ' + endMarks + ' 次（应为 1）')
-if (written.length !== html.length + injected.length) {
-  fail('自检失败：输出长度与预期不符', `期望 ${html.length + injected.length}，实际 ${written.length}`)
+if (written.length !== base.length + injected.length) {
+  fail('自检失败：输出长度与预期不符', '期望 ' + (base.length + injected.length) + '，实际 ' + written.length)
 }
 if (countOf(written, '<script') !== countOf(html, '<script')) {
   fail('自检失败：script 标签数量变了（插入内容破坏了文档结构）')
@@ -136,6 +168,10 @@ if (countOf(written, '<script') !== countOf(html, '<script')) {
 if (countOf(written, CLOSE_SCRIPT) !== countOf(html, CLOSE_SCRIPT)) {
   fail('自检失败：脚本闭合标签数量变了')
 }
+if (shimCount > 0 && countOf(written, DIRTY_GUARD) !== shimCount) {
+  fail('自检失败：markDirty 守卫没全部写进去', '期望 ' + shimCount + ' 处，实际 ' + countOf(written, DIRTY_GUARD))
+}
+
 
 const outStat = statSync(outPath)
 const outLines = written.split('\n').length
@@ -150,3 +186,4 @@ console.log('[patch] 插入：module script 内部、' + CLOSE_SCRIPT + ' 之前
 console.log('[patch] 输出：' + outPath)
 console.log('[patch]       ' + outStat.size + ' B（' + (outStat.size / 1024).toFixed(1) + ' KB）· ' + outLines + ' 行')
 console.log('[patch] 自检：起始标记 ' + marks + ' 次 · 结束标记 ' + endMarks + ' 次 · script 标签数未变')
+if (shimCount > 0) console.log('[patch] 上游兜底：markDirty() 调用点加 typeof 守卫 ' + shimCount + ' 处（原工具里这个函数从未定义）')

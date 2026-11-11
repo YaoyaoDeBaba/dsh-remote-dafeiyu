@@ -1,3 +1,16 @@
+## 0.9.0-dafeiyu.56 —— 顺手修掉上游一个"按钮点了没反应"
+
+- 原工具里 `markDirty()` 被**调用 3 次、从未定义**（全文件 0 处定义），所以那三处每次执行都抛
+  `ReferenceError`，同一段里排在它后面的语句全不跑：
+  - 点「确认锚点」→ `state.anchor.confirmed` 生效了，但「✓ 已确认…」提示永不出现（看着像按钮坏了）；
+  - 锚点预览拖动 → 后面的 `e.preventDefault()` 不跑，会顺带选中文字/滚动页面；
+  - 锚点输入框改值 → "标记未保存"没生效（无可见影响）。
+- 修法在**打补丁这一层**：`scripts/patch-sprite-tool.mjs` 把那三处调用改写成
+  `typeof markDirty === 'function' && markDirty();`。不在 bridge 里补一个同名函数——
+  那是同一个 module 作用域，作者哪天把这函数补回来就会变成重复声明，严格模式下直接 SyntaxError。
+- 实测：补丁后点「确认锚点」能正常显示「✓ 已确认：保存到项目时写入 meta.json（anchorX 0.500 / anchorY 0.000）」。
+- 上游原始文件（`E:\MonSlayer\序列帧精灵图工具.html`）**没动**，作者要修还是得自己补那个函数。
+
 ## 0.9.0-dafeiyu.55 —— 序列帧精灵图工具：agent 能自己抠图了
 
 把 `E:\MonSlayer\序列帧精灵图工具.html`（单文件、纯前端）吸进插件，并且**给它一副手和一双眼睛**。
