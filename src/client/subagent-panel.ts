@@ -107,6 +107,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     #dafeiyu-subagent-panel.open { display: block; }
     #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
     #dafeiyu-subagent-panel .head .tools { display: flex; gap: 6px; align-items: center; }
+    #dafeiyu-subagent-panel .head label.notify { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #1d4ed8; cursor: pointer; user-select: none; }
     #dafeiyu-subagent-panel .head .ghost { background: #13233f; color: #8ab4ff; border: 0; border-radius: 7px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 400; }
     #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
     #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
@@ -180,12 +181,31 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   undoForeman.className = 'ghost'
   undoForeman.textContent = '撤销包工头'
   undoForeman.title = '往当前会话推一份「亲力亲为」提示，撤销这次注入的包工头人格'
+  const notifyToggle = doc.createElement('input')
+  notifyToggle.type = 'checkbox'
+  notifyToggle.title = '撤销包工头时，是否往当前会话推一条变更通知（不勾则只改配置）'
+  try {
+    notifyToggle.checked = localStorage.getItem('drc.subagentNotify') !== '0'
+  } catch {
+    notifyToggle.checked = true
+  }
+  notifyToggle.addEventListener('change', () => {
+    try {
+      localStorage.setItem('drc.subagentNotify', notifyToggle.checked ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  })
+  const notifyLabel = doc.createElement('label')
+  notifyLabel.className = 'notify'
+  notifyLabel.title = '撤销包工头时，是否往当前会话推一条变更通知（不勾则只改配置）'
+  notifyLabel.append(notifyToggle, doc.createTextNode('推送通知'))
   const refreshNow = doc.createElement('button')
   refreshNow.className = 'ghost'
   refreshNow.textContent = '刷新'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  tools.append(pushBtn, undoForeman, restore, archiveIdle, refreshNow, close)
+  tools.append(pushBtn, undoForeman, notifyLabel, restore, archiveIdle, refreshNow, close)
   head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
@@ -498,7 +518,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
           foot.textContent = `撤销失败：${String(savedAnswer.error ?? '配置没保存')}`
           return
         }
-        // ② 再往当前会话推一条「亲力亲为」变更通知（历史里的包工头消息不会删，但工作方式会覆盖）
+        // ② 勾了“推送通知”才往当前会话推一条变更通知
+        if (notifyToggle.checked === false) {
+          foot.textContent = '已撤销（仅改配置，未推送通知）'
+          return
+        }
         const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/guidance/push'), {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },

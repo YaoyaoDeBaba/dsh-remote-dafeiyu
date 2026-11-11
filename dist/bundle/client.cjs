@@ -3367,6 +3367,7 @@ function mountSubagentMonitor(deps) {
     #dafeiyu-subagent-panel.open { display: block; }
     #dafeiyu-subagent-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
     #dafeiyu-subagent-panel .head .tools { display: flex; gap: 6px; align-items: center; }
+    #dafeiyu-subagent-panel .head label.notify { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #1d4ed8; cursor: pointer; user-select: none; }
     #dafeiyu-subagent-panel .head .ghost { background: #13233f; color: #8ab4ff; border: 0; border-radius: 7px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 400; }
     #dafeiyu-subagent-panel .warn { color: #e0a83a; font-size: 11px; margin-left: 4px; }
     #dafeiyu-subagent-panel .act { color: #8fd6c3; margin-top: 3px; line-height: 1.5; }
@@ -3438,12 +3439,30 @@ function mountSubagentMonitor(deps) {
   undoForeman.className = "ghost";
   undoForeman.textContent = "\u64A4\u9500\u5305\u5DE5\u5934";
   undoForeman.title = "\u5F80\u5F53\u524D\u4F1A\u8BDD\u63A8\u4E00\u4EFD\u300C\u4EB2\u529B\u4EB2\u4E3A\u300D\u63D0\u793A\uFF0C\u64A4\u9500\u8FD9\u6B21\u6CE8\u5165\u7684\u5305\u5DE5\u5934\u4EBA\u683C";
+  const notifyToggle = doc.createElement("input");
+  notifyToggle.type = "checkbox";
+  notifyToggle.title = "\u64A4\u9500\u5305\u5DE5\u5934\u65F6\uFF0C\u662F\u5426\u5F80\u5F53\u524D\u4F1A\u8BDD\u63A8\u4E00\u6761\u53D8\u66F4\u901A\u77E5\uFF08\u4E0D\u52FE\u5219\u53EA\u6539\u914D\u7F6E\uFF09";
+  try {
+    notifyToggle.checked = localStorage.getItem("drc.subagentNotify") !== "0";
+  } catch {
+    notifyToggle.checked = true;
+  }
+  notifyToggle.addEventListener("change", () => {
+    try {
+      localStorage.setItem("drc.subagentNotify", notifyToggle.checked ? "1" : "0");
+    } catch {
+    }
+  });
+  const notifyLabel = doc.createElement("label");
+  notifyLabel.className = "notify";
+  notifyLabel.title = "\u64A4\u9500\u5305\u5DE5\u5934\u65F6\uFF0C\u662F\u5426\u5F80\u5F53\u524D\u4F1A\u8BDD\u63A8\u4E00\u6761\u53D8\u66F4\u901A\u77E5\uFF08\u4E0D\u52FE\u5219\u53EA\u6539\u914D\u7F6E\uFF09";
+  notifyLabel.append(notifyToggle, doc.createTextNode("\u63A8\u9001\u901A\u77E5"));
   const refreshNow = doc.createElement("button");
   refreshNow.className = "ghost";
   refreshNow.textContent = "\u5237\u65B0";
   const close = doc.createElement("button");
   close.textContent = "\u5173\u95ED \u2715";
-  tools.append(pushBtn, undoForeman, restore, archiveIdle, refreshNow, close);
+  tools.append(pushBtn, undoForeman, notifyLabel, restore, archiveIdle, refreshNow, close);
   head.append(title, tools);
   const body = doc.createElement("div");
   const foot = doc.createElement("div");
@@ -3717,6 +3736,10 @@ function mountSubagentMonitor(deps) {
         const savedAnswer = await saved.json();
         if (savedAnswer.ok !== true) {
           foot.textContent = `\u64A4\u9500\u5931\u8D25\uFF1A${String(savedAnswer.error ?? "\u914D\u7F6E\u6CA1\u4FDD\u5B58")}`;
+          return;
+        }
+        if (notifyToggle.checked === false) {
+          foot.textContent = "\u5DF2\u64A4\u9500\uFF08\u4EC5\u6539\u914D\u7F6E\uFF0C\u672A\u63A8\u9001\u901A\u77E5\uFF09";
           return;
         }
         const response = await fetch(resolveHostUrl("/api/dsh-remote-dafeiyu/guidance/push"), {
