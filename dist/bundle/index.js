@@ -36915,6 +36915,19 @@ var FOREMAN_GUIDANCE = [
   "- **\u5199\u603B\u7ED3**\uFF1A\u4E00\u8F6E\u6D3B\u5E72\u5B8C\uFF0C\u7ED9\u7528\u6237\u4E00\u6BB5\u6C47\u62A5\uFF1A\u505A\u4E86\u4EC0\u4E48\u3001\u8C01\u505A\u7684\u3001\u7ED3\u679C\u5982\u4F55\u3001\u9057\u7559\u95EE\u9898\uFF1B",
   "- **\u804A\u65B9\u6848**\uFF1A\u591A\u548C\u7528\u6237\u8BA8\u8BBA\u62C6\u6CD5\u548C\u9A8C\u6536\u6807\u51C6\uFF0C\u628A\u65B9\u6848\u5B9A\u6E05\u695A\u518D\u6D3E\u6D3B\uFF1B",
   "- \u53EA\u6709\u4E24\u79CD\u60C5\u51B5\u81EA\u5DF1\u52A8\u624B\uFF1A\u4EFB\u52A1\u5C0F\u5230\u4E0D\u503C\u5F97\u6D3E\u3001\u6216\u7528\u6237\u660E\u786E\u8981\u4F60\u4EB2\u81EA\u505A\u3002",
+  "### \u6E05\u70B9\u4E0E\u5F52\u6863\uFF08\u6BCF\u8F6E\u90FD\u8981\u505A\uFF0C\u4E0D\u662F\u6E05\u7406\u65F6\u624D\u505A\uFF09",
+  "**\u89E6\u53D1\u70B9\u53EA\u6709\u4E24\u4E2A\uFF0C\u4E00\u5230\u5C31\u987A\u624B\u505A\u4E00\u904D**\uFF1A",
+  "1. **\u6BCF\u6B21\u6536\u5230\u5B50\u4EE3\u7406\u7684\u8FD4\u56DE\u6D88\u606F**\uFF08\u5B83\u4EA4\u6D3B\u4E86\u3001\u62A5\u9519\u4E86\u3001\u6216\u4F60\u8BF4\u5B8C\u611F\u8C22\uFF09\u4E4B\u540E\uFF1B",
+  "2. **\u6BCF\u6B21\u6D3E\u51FA\u65B0\u7684\u5B50\u4EE3\u7406**\u4E4B\u540E\u3002",
+  "\u505A\u6CD5\uFF1A\u8C03 `list_agents` \u770B\u4E00\u773C\u5F53\u524D\u5217\u8868\uFF0C\u95EE\u81EA\u5DF1\u4E00\u53E5\u300C\u8FD9\u91CC\u54EA\u4E9B\u6211**\u4E0D\u6253\u7B97\u518D\u7528**\u4E86\uFF1F\u300D\uFF0C\u7528 `subagent_archive` \u6279\u91CF\u6536\u6389\u3002",
+  "**\u8BE5\u5F52\u6863**\uFF08\u4EFB\u4E00\u6210\u7ACB\u5373\u53EF\uFF09\uFF1A",
+  "- \u5B83\u5DF2\u7ECF\u4EA4\u4ED8\u3001\u4F60\u4E5F\u9A8C\u6536\u8FC7\u4E86\uFF0C\u540E\u9762\u8FD9\u8F6E\u6D3B\u4E0D\u4F1A\u518D\u8BA9\u5B83\u5E72\u540C\u4E00\u4EF6\u4E8B\uFF1B",
+  "- \u5B83\u662F\u63A2\u8DEF/\u8BD5\u9519\u7684\u4EA7\u7269\uFF0C\u7ED3\u8BBA\u4F60\u5DF2\u7ECF\u62FF\u5230\uFF08\u54EA\u6015\u5B83\u81EA\u5DF1\u5931\u8D25\u4E86\uFF09\uFF1B",
+  "- \u5B83\u505A\u7684\u4E8B\u5DF2\u7ECF\u548C\u5F53\u524D\u4EFB\u52A1\u65E0\u5173\uFF08\u8BDD\u9898\u6362\u4E86\u3001\u65B9\u6848\u6362\u4E86\uFF09\uFF1B",
+  "- \u5B83\u8FDE\u7EED\u5931\u8D25\u3001\u4F60\u5DF2\u7ECF\u6362\u4EBA\u5E72\u8FD9\u4EF6\u4E8B\u4E86\u3002",
+  "**\u4E0D\u8BE5\u5F52\u6863**\uFF1A\u8FD8\u5728\u8DD1\u7684\uFF1B\u4F60\u51C6\u5907\u8FFD\u52A0\u6307\u4EE4\u8BA9\u5B83\u63A5\u7740\u6539\u7684\uFF1B\u8FD9\u8F6E\u9A8C\u6536\u8FD8\u6CA1\u8FC7\u7684\u3002",
+  "**\u4E3A\u4EC0\u4E48\u8FD9\u662F\u5E38\u89C4\u52A8\u4F5C\u800C\u4E0D\u662F\u6D01\u7656**\uFF1A\u4F1A\u8BDD\u548C\u95F2\u7F6E\u5B50\u4EE3\u7406\u6512\u591A\u4E86\u4F1A\u8BA9\u6574\u4E2A DSH \u53D8\u6162\uFF08\u5207\u6362\u5BF9\u8BDD\u53CD\u590D\u51FA\u73B0\u300C\u8F7D\u5165\u5386\u53F2\u2026\u300D\u3001\u751A\u81F3\u628A\u8FDE\u63A5\u62D6\u65AD\uFF09\u3002\u5F52\u6863**\u4E0D\u5220\u5386\u53F2**\u3001\u968F\u65F6\u53EF\u4EE5 `unarchive:true` \u653E\u56DE\u6765\uFF0C\u6240\u4EE5\u5B81\u53EF\u591A\u6536\u3002",
+  "\u5F52\u6863\u65F6\u7ED9\u4E00\u53E5 `reason`\uFF0C\u65B9\u4FBF\u4E8B\u540E\u590D\u76D8\u8FD9\u8F6E\u5230\u5E95\u6D3E\u4E86\u4E9B\u4EC0\u4E48\u3002",
   ...NAMING
 ].join("\n");
 var HANDS_ON_GUIDANCE = [
@@ -36923,7 +36936,8 @@ var HANDS_ON_GUIDANCE = [
   "### \u5F53\u524D\u98CE\u683C\uFF1A\u4EB2\u529B\u4EB2\u4E3A",
   "- \u9ED8\u8BA4\u81EA\u5DF1\u52A8\u624B\u5B8C\u6210\u5DE5\u4F5C\uFF0C**\u4E0D\u8981\u4E3A\u4E86\u6D3E\u6D3B\u800C\u6D3E\u6D3B**\uFF0C\u4E0D\u8981\u4E3B\u52A8\u626E\u6F14\u5305\u5DE5\u5934\uFF1B",
   "- \u53EA\u6709\u4EFB\u52A1\u660E\u663E\u53EF\u62C6\u5206\u3001\u8017\u65F6\u5F88\u957F\u3001\u6216\u7528\u6237\u660E\u786E\u8981\u6C42\u65F6\u624D\u6D3E\u5B50\u4EE3\u7406\uFF1B",
-  "- \u6D3E\u51FA\u53BB\u4E4B\u540E\u4ECD\u7136\u8981\u9A8C\u6536\u7ED3\u679C\u5E76\u5411\u7528\u6237\u8BF4\u660E\u3002",
+  "- \u6D3E\u51FA\u53BB\u4E4B\u540E\u4ECD\u7136\u8981\u9A8C\u6536\u7ED3\u679C\u5E76\u5411\u7528\u6237\u8BF4\u660E\uFF1B",
+  "- \u7528\u4E0D\u4E0A\u7684\u5B50\u4EE3\u7406\u987A\u624B\u7528 `subagent_archive` \u6536\u6389\uFF1A\u95F2\u7F6E\u5B50\u4EE3\u7406\u6512\u591A\u4E86\u4F1A\u8BA9\u6574\u4E2A DSH \u53D8\u6162\uFF0C\u5F52\u6863\u4E0D\u5220\u5386\u53F2\u3002",
   ...NAMING
 ].join("\n");
 var SUBAGENT_GUIDANCE = FOREMAN_GUIDANCE;
@@ -37370,6 +37384,73 @@ ${text}
   };
 }
 
+// src/subagents/tools.ts
+var OUT = {
+  schema: { type: "string" },
+  render: (_args, value) => [{ type: "text", text: String(value) }]
+};
+function explain(message, archived) {
+  const raw = String(message ?? "").slice(0, 200);
+  if (/running|在跑|busy|active/i.test(raw)) {
+    return `\u8FD8\u5728\u8DD1\uFF0C\u7B49\u5B83\u6536\u5DE5\u518D${archived ? "\u5F52\u6863" : "\u53D6\u6D88\u5F52\u6863"}\uFF08\u5185\u6838\u4E0D\u5141\u8BB8\u5F52\u6863\u8FD0\u884C\u4E2D\u7684\u4F1A\u8BDD\uFF09\uFF1A${raw}`;
+  }
+  return raw === "" ? `${archived ? "\u5F52\u6863" : "\u53D6\u6D88\u5F52\u6863"}\u5931\u8D25\uFF08\u5185\u6838\u6CA1\u7ED9\u539F\u56E0\uFF09` : raw;
+}
+function buildSubagentTools(deps) {
+  if (!deps.archive) return [];
+  return [
+    {
+      name: "subagent_archive",
+      description: "\u5F52\u6863\uFF08\u6216\u53D6\u6D88\u5F52\u6863\uFF09\u5B50\u4EE3\u7406\u4F1A\u8BDD\u3002\u5F52\u6863 = \u4ECE\u76D1\u89C6\u5668\u4E0E\u5217\u8868\u91CC\u9690\u85CF\u3001\u4E0D\u518D\u5360\u7740\u4F60\u7684\u6E05\u70B9\u89C6\u91CE\uFF0C**\u4E0D\u5220\u9664\u5386\u53F2**\u3002\n\u5305\u5DE5\u5934\u7684\u5E38\u89C4\u52A8\u4F5C\uFF1A\u6BCF\u6B21\u6536\u5230\u5B50\u4EE3\u7406\u7684\u8FD4\u56DE\u3001\u6216\u6D3E\u51FA\u65B0\u5B50\u4EE3\u7406\u4E4B\u540E\uFF0C\u5148\u770B\u4E00\u773C `list_agents`\uFF0C\u628A\u300C\u5DF2\u7ECF\u4EA4\u4ED8\u4E14\u4E0D\u518D\u9700\u8981\u300D\u300C\u63A2\u8DEF\u4EA7\u7269\u7ED3\u8BBA\u5DF2\u62FF\u5230\u300D\u300C\u548C\u5F53\u524D\u4EFB\u52A1\u65E0\u5173\u300D\u7684\u5B50\u4EE3\u7406\u6279\u91CF\u5F52\u6863\u3002\n**\u4E0D\u8981\u5F52\u6863**\uFF1A\u8FD8\u5728\u8DD1\u7684\u3001\u4F60\u51C6\u5907\u8FFD\u52A0\u6307\u4EE4\u7684\u3001\u5F53\u524D\u8FD9\u8F6E\u9A8C\u6536\u8FD8\u6CA1\u8FC7\u7684\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "\u8981\u5904\u7406\u7684\u5B50\u4EE3\u7406 id\uFF08\u5C31\u662F `list_agents` \u91CC\u663E\u793A\u7684\u90A3\u4E2A id\uFF09\uFF0C\u53EF\u6279\u91CF"
+          },
+          unarchive: { type: "boolean", description: "true = \u53D6\u6D88\u5F52\u6863\uFF08\u8BEF\u6536\u4E86\u8981\u653E\u56DE\u6765\u65F6\u7528\uFF09" },
+          reason: { type: "string", description: "\u4E00\u53E5\u8BDD\u8BF4\u660E\u4E3A\u4EC0\u4E48\u4E0D\u518D\u9700\u8981\uFF08\u53EA\u8FDB\u65E5\u5FD7\uFF0C\u4FBF\u4E8E\u4E8B\u540E\u590D\u76D8\uFF09" }
+        },
+        required: ["ids"]
+      },
+      output: OUT,
+      timeoutMs: 3e4,
+      async execute(args) {
+        const input2 = args ?? {};
+        const archived = input2.unarchive !== true;
+        const reason = typeof input2.reason === "string" ? input2.reason.slice(0, 120) : "";
+        const rawIds = Array.isArray(input2.ids) ? input2.ids : [];
+        const ids = [...new Set(rawIds.map((id) => String(id ?? "").trim()).filter((id) => id !== ""))];
+        if (ids.length === 0) {
+          return JSON.stringify({ ok: false, error: "ids \u4E0D\u80FD\u4E3A\u7A7A\uFF1A\u7ED9 `list_agents` \u91CC\u7684\u5B50\u4EE3\u7406 id" });
+        }
+        const done = [];
+        const failed = [];
+        for (const id of ids) {
+          try {
+            const result2 = await deps.archive(id, archived);
+            if (result2?.ok) done.push(id);
+            else failed.push({ id, error: explain(result2?.message, archived) });
+          } catch (error62) {
+            failed.push({ id, error: explain(String(error62?.message ?? error62), archived) });
+          }
+        }
+        if (reason !== "") deps.log("\u5305\u5DE5\u5934\u5F52\u6863\u5B50\u4EE3\u7406", { count: done.length, archived, reason });
+        return JSON.stringify({
+          ok: failed.length === 0,
+          action: archived ? "archive" : "unarchive",
+          done,
+          failed,
+          // 提醒模型下一步该做什么，避免它以为"归档完就结束了"
+          note: done.length > 0 ? "\u5DF2\u5F52\u6863\u7684\u4E0D\u4F1A\u518D\u51FA\u73B0\u5728 list_agents \u7684\u6B63\u5E38\u5217\u8868\u91CC\uFF1B\u9700\u8981\u65F6\u53EF\u7528 unarchive:true \u653E\u56DE\u6765\u3002" : "\u4E00\u4E2A\u90FD\u6CA1\u6210\u529F\uFF0C\u770B failed \u91CC\u7684\u539F\u56E0\u3002"
+        });
+      }
+    }
+  ];
+}
+
 // src/xyq/config.ts
 import fs8 from "node:fs";
 import path16 from "node:path";
@@ -37508,6 +37589,18 @@ function startSubagents(ctx, input2) {
       return merged;
     }
   };
+  try {
+    const tools = ctx.get?.("tools", true);
+    if (tools && typeof tools.register === "function") {
+      const definitions = buildSubagentTools({ archive: deps.archive, log: deps.log });
+      for (const definition of definitions) tools.register(definition);
+      probe.tool = definitions.length > 0 ? "registered" : "no-archive";
+    } else {
+      probe.tool = "no-tools";
+    }
+  } catch (error62) {
+    probe.tool = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+  }
   if (!config2.guidance) probe.section = "disabled-by-config";
   else try {
     const systemPrompt = ctx.get?.("systemPrompt", true);
@@ -39778,7 +39871,7 @@ var KEY_PROPERTIES = {
 function keySchema(extra = {}) {
   return { type: "object", properties: { ...KEY_PROPERTIES, ...extra } };
 }
-var OUT = {
+var OUT2 = {
   schema: { type: "string" },
   render: (_args, value) => [{ type: "text", text: String(value) }]
 };
@@ -39824,7 +39917,7 @@ function buildTools(service) {
         },
         required: ["videoPath"]
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 24e4,
       async execute(args) {
         const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
@@ -39853,7 +39946,7 @@ function buildTools(service) {
           bandPx: { type: "number", description: "\u8FB9\u6846\u5E26\u5BBD\u5EA6\uFF08\u50CF\u7D20\uFF09\uFF0C\u9ED8\u8BA4\u6309\u77ED\u8FB9 3% \u81EA\u52A8\u53D6" }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 6e4,
       async execute(args) {
         try {
@@ -39872,7 +39965,7 @@ function buildTools(service) {
       name: "sprite_key_preview",
       description: "\u6309\u53C2\u6570\u62A0**\u4E00\u5E27**\u5E76\u8FD4\u56DE\u91CF\u5316\u6307\u6807\uFF08bgResidual/subjectCoverage/edgeGreen/alphaHistogram\uFF09\uFF0C\u79D2\u7EA7\uFF0C\u7528\u6765\u8FED\u4EE3\u53C2\u6570\u3002\u26A0\uFE0F \u5B83\u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF1A\u4E4B\u540E\u8981\u5BFC\u51FA\u5FC5\u987B\u91CD\u65B0 sprite_key_apply\u3002autoPlate \u5728\u9884\u89C8\u91CC\u4E0D\u751F\u6548\uFF08\u53EA\u5728 apply \u751F\u6548\uFF09\u3002",
       parameters: keySchema({ frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" } }),
-      output: OUT,
+      output: OUT2,
       timeoutMs: 12e4,
       async execute(args) {
         try {
@@ -39890,7 +39983,7 @@ function buildTools(service) {
       name: "sprite_key_apply",
       description: "\u628A\u53C2\u6570\u5E94\u7528\u5230**\u5168\u90E8\u5E27**\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u56DE {frames,keyedCount,stats,worst,appliedParams}\u3002\u6162\uFF0C30~90 \u79D2\u3002worst \u662F\u62BD\u6837\u5E27\u91CC\u6700\u5DEE\u7684\u4E00\u5E27\u2014\u2014\u7B2C 0 \u5E27\u5E72\u51C0\u4E0D\u4EE3\u8868\u6574\u6BB5\u5E72\u51C0\u3002",
       parameters: keySchema(),
-      output: OUT,
+      output: OUT2,
       timeoutMs: 6e5,
       async execute(args) {
         try {
@@ -39934,7 +40027,7 @@ function buildTools(service) {
           }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 3e5,
       async execute(args) {
         try {
@@ -39967,7 +40060,7 @@ function buildTools(service) {
           }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 12e4,
       async execute(args) {
         try {
@@ -39991,7 +40084,7 @@ function buildTools(service) {
       name: "sprite_get_anchor",
       description: "\u8BFB\u5F53\u524D\u951A\u70B9\uFF1A{anchorX,anchorY,convention,pixels,frameWidth,frameHeight}\u3002convention \u56FA\u5B9A y-from-bottom\uFF080=\u5E27\u5E95\uFF09\uFF1B\u4E3B\u6D41\u8FD0\u884C\u65F6\u5E38\u7528 y-from-top\uFF0C\u4E24\u8005\u662F 1-y \u7684\u5173\u7CFB\u3002",
       parameters: { type: "object", properties: {} },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 6e4,
       async execute() {
         try {
@@ -40012,7 +40105,7 @@ function buildTools(service) {
           convention: { type: "string", enum: ["y-from-bottom", "y-from-top"], description: "\u9ED8\u8BA4 y-from-bottom" }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 6e4,
       async execute(args) {
         try {
@@ -40058,7 +40151,7 @@ function buildTools(service) {
           }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 24e4,
       async execute(args) {
         try {
@@ -40113,7 +40206,7 @@ function buildTools(service) {
           name: { type: "string", description: "\u52A8\u4F5C\u540D\uFF08\u7528\u4E8E\u9ED8\u8BA4\u6587\u4EF6\u540D\u4E0E\u5B50\u76EE\u5F55\uFF09" }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 6e5,
       async execute(args) {
         try {
@@ -40170,7 +40263,7 @@ function buildTools(service) {
           frame: { type: "number", description: "\u7528\u54EA\u4E00\u5E27\u8FED\u4EE3\uFF0C\u9ED8\u8BA4 0" }
         }
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 3e5,
       async execute(args) {
         try {
@@ -40230,7 +40323,7 @@ function buildTools(service) {
         },
         required: ["outRoot", "items"]
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 18e5,
       async execute(args) {
         try {
@@ -40288,7 +40381,7 @@ function buildTools(service) {
         },
         required: ["videoPath"]
       },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 9e5,
       async execute(args) {
         try {
@@ -40316,7 +40409,7 @@ function buildTools(service) {
       name: "sprite_guide",
       description: "\u8FD4\u56DE\u8FD9\u5957\u5DE5\u5177\u7684\u5B8C\u6574\u6307\u5357\uFF08\u516D\u6B65\u539F\u8BED / \u53C2\u6570\u8BED\u4E49\u8868 / \u75C7\u72B6\u901F\u67E5 / \u951A\u70B9\u53E3\u5F84 / \u4EA4\u4ED8\u7EA6\u5B9A\uFF09\u3002\u4E0D\u786E\u5B9A\u8BED\u4E49\u65F6\u5148\u8C03\u5B83\uFF0C\u6BD4\u8BFB\u6E90\u7801\u5FEB\u3002",
       parameters: { type: "object", properties: {} },
-      output: OUT,
+      output: OUT2,
       timeoutMs: 1e4,
       async execute() {
         return SPRITE_GUIDE;

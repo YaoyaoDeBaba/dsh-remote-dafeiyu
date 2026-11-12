@@ -24,6 +24,7 @@ import type { KernelSubagent } from '../ports/index.js'
 import { SUBAGENT_GUIDANCE, subagentGuidance } from './guidance.js'
 import { createGuidancePusher, type GuidancePushResult } from './pusher.js'
 import { resetSubagentBusGate, setSubagentBusGate, subagentBus } from './bus.js'
+import { buildSubagentTools } from './tools.js'
 import { readXyqConfig, resolveXyqConfigFile } from '../xyq/config.js'
 import { xyqGuidance } from '../xyq/guidance.js'
 
@@ -73,6 +74,7 @@ export function startSubagents(
       return undefined
     }
   })
+  // ── 提示段 ──
   const xyqConfigFile = resolveXyqConfigFile(input.dshHome)
   const guidanceTexts: Record<'subagent' | 'xyq', string> = {
     get subagent(): string {
@@ -106,6 +108,23 @@ export function startSubagents(
       return merged
     },
   }
+  // ── agent 工具：归档子代理 ──
+  // 归档以前只有 HTTP 路由（面板/手机），模型侧没有入口，"主动清点"就只是句空话。
+  try {
+    const tools = ctx.get?.('tools', true) as
+      | { register?: (definition: Record<string, unknown>) => unknown }
+      | undefined
+    if (tools && typeof tools.register === 'function') {
+      const definitions = buildSubagentTools({ archive: deps.archive, log: deps.log })
+      for (const definition of definitions) tools.register(definition)
+      probe.tool = definitions.length > 0 ? 'registered' : 'no-archive'
+    } else {
+      probe.tool = 'no-tools'
+    }
+  } catch (error) {
+    probe.tool = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+  }
+
   // 提示词段：插件激活就告诉模型「按 名称｜简述 派活」。拿不到 systemPrompt 只是少一段提示。
   // 配置里 guidance=false 就不注入（改开关要重启宿主才生效，与识图同一条纪律）。
   if (!config.guidance) probe.section = 'disabled-by-config'
