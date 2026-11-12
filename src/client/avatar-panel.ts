@@ -107,6 +107,9 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
 
     const anchorX = typeof current?.anchorX === 'number' ? current.anchorX : 0.5
     const anchorY = typeof current?.anchorY === 'number' ? current.anchorY : 0.955
+    // 画布比例跟素材格子走（格子不是 3:4 时不被拉伸，锚点线也才落在真正的像素位置上）
+    const cellAspect =
+      current && current.cellWidth > 0 && current.cellHeight > 0 ? `${current.cellWidth} / ${current.cellHeight}` : '3 / 4'
     const overlay = showAnchor
       ? [
           h('div', {
@@ -147,7 +150,7 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
             position: 'relative',
             width: '100%',
             maxWidth: '520px',
-            aspectRatio: '3 / 4',
+            aspectRatio: cellAspect,
             backgroundImage: `url(${BASE}/sheet?id=${encodeURIComponent(current.id)}${version > 0 ? `&v=${version}` : ''})`,
             backgroundSize: `${current.cols * 100}% ${current.rows * 100}%`,
             backgroundRepeat: 'no-repeat',

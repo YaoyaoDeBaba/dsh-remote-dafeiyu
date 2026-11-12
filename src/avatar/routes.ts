@@ -30,6 +30,9 @@ export interface AvatarState {
   cellWidth: number
   cellHeight: number
   file: string
+  /** 锚点（0~1，y 以格子顶部为 0）；缺省时端上回落 0.5 / 0.955。 */
+  anchorX?: number
+  anchorY?: number
 }
 
 export interface AvatarManifest {
@@ -45,12 +48,17 @@ function sanitizeState(row: unknown): AvatarState | undefined {
   if (!row || typeof row !== 'object') return undefined
   const value = row as Record<string, unknown>
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : 0)
+  // 锚点是 0~1 的归一化值：非数字 / 越界一律丢弃，让端上走兜底，不会画出格。
+  const unit = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined
   const cols = num(value.cols)
   const rows = num(value.rows)
   const frames = num(value.frames)
   const file = typeof value.file === 'string' ? value.file : ''
   if (typeof value.id !== 'string' || cols <= 0 || rows <= 0 || frames <= 0 || file === '') return undefined
   if (path.basename(file) !== file) return undefined
+  const anchorX = unit(value.anchorX)
+  const anchorY = unit(value.anchorY)
   return {
     id: value.id,
     label: typeof value.label === 'string' && value.label !== '' ? value.label : value.id,
@@ -60,6 +68,8 @@ function sanitizeState(row: unknown): AvatarState | undefined {
     cellWidth: num(value.cellWidth) || 1,
     cellHeight: num(value.cellHeight) || 1,
     file,
+    ...(anchorX !== undefined ? { anchorX } : {}),
+    ...(anchorY !== undefined ? { anchorY } : {}),
   }
 }
 

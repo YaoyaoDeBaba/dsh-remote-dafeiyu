@@ -19,11 +19,19 @@ type AvatarStateView = {
   cellWidth: number
   cellHeight: number
   file: string
+  /** 锚点（0~1，y 以格子顶部为 0）；缺省 0.5 / 0.955（历史素材的口径）。 */
+  anchorX?: number
+  anchorY?: number
 }
 
 const BASE = '/api/dsh-remote-dafeiyu/avatar'
 const FPS = 24
 const WIDGET_WIDTH = 132
+/** 舞台高度：与 CSS 的 aspect-ratio: 3/4 保持一致。 */
+const STAGE_HEIGHT = Math.round((WIDGET_WIDTH * 4) / 3)
+/** 锚点落在舞台里的固定位置（脚底靠下、左右居中）——所有动作都对齐到这里。 */
+const ANCHOR_SCREEN_X = WIDGET_WIDTH / 2
+const ANCHOR_SCREEN_Y = STAGE_HEIGHT - 8
 const POS_KEY = 'drc.avatarWidgetPos'
 const DRAG_SLOP = 4
 
@@ -201,7 +209,31 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     return { w, h }
   }
 
-  const spriteHeight = (): number => Math.round(WIDGET_WIDTH * 4 / 3)
+  const spriteHeight = (): number => STAGE_HEIGHT
+
+  const anchorOf = (state: AvatarStateView): { x: number; y: number } => ({
+    x: typeof state.anchorX === 'number' ? state.anchorX : 0.5,
+    y: typeof state.anchorY === 'number' ? state.anchorY : 0.955,
+  })
+
+  /**
+   * 所有动作共用一个「格像素 → 屏幕像素」比例（取最大的那格刚好放进舞台）。
+   * 这样换动作时角色的大小不会跟着格子尺寸跳。
+   */
+  let displayScale = 1
+  const recomputeScale = (): void => {
+    let maxW = 0
+    let maxH = 0
+    for (const state of states) {
+      maxW = Math.max(maxW, state.cellWidth)
+      maxH = Math.max(maxH, state.cellHeight)
+    }
+    displayScale = maxW > 0 && maxH > 0 ? Math.min(WIDGET_WIDTH / maxW, STAGE_HEIGHT / maxH) : 1
+  }
+
+  /** 每层的对齐原点（背景定位用）：锚点在格子里的偏移，保证它落在舞台的固定点上。 */
+  type LayerOrigin = { x: number; y: number; cellW: number; cellH: number; scale: number }
+  const layerOrigins = new Map<HTMLDivElement, LayerOrigin>()
 
   const clamp = (x: number, y: number): { x: number; y: number } => {
     const { w, h } = viewport()
@@ -250,7 +282,11 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     const col = frame % current.cols
     const row = Math.floor(frame / current.cols) % current.rows
     const layer = layers[active]!
-    layer.style.backgroundPosition = `${(col / Math.max(1, current.cols - 1)) * 100}% ${(row / Math.max(1, current.rows - 1)) * 100}%`
+    const origin = layerOrigins.get(layer)
+    if (origin === undefined) return
+    const x = Math.round(origin.x - col * origin.cellW * origin.scale)
+    const y = Math.round(origin.y - row * origin.cellH * origin.scale)
+    layer.style.backgroundPosition = `${x}px ${y}px`
     frame = (frame + 1) % current.frames
   }
 
@@ -266,8 +302,21 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     const layer = layers[next]!
     const previousLayer = layers[previousIndex]!
     layer.style.backgroundImage = `url(${assetUrl(state)})`
-    layer.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`
-    layer.style.backgroundPosition = '0% 0%'
+    // 尺寸/位置全部按 manifest 的 cellWidth/cellHeight/anchorX/anchorY 算：
+    // 舞台里每个动作都对齐到同一个锚点，换动作不会跳、也不会被拉伸。
+    const scale = displayScale
+    const cellW = state.cellWidth > 0 ? state.cellWidth : 1
+    const cellH = state.cellHeight > 0 ? state.cellHeight : 1
+    const anchor = anchorOf(state)
+    layerOrigins.set(layer, {
+      x: ANCHOR_SCREEN_X - anchor.x * cellW * scale,
+      y: ANCHOR_SCREEN_Y - anchor.y * cellH * scale,
+      cellW,
+      cellH,
+      scale,
+    })
+    layer.style.backgroundSize = `${state.cols * cellW * scale}px ${state.rows * cellH * scale}px`
+    layer.style.backgroundPosition = '0px 0px'
     layer.style.zIndex = '2'
     layer.style.opacity = '1'
     active = next
@@ -394,6 +443,7 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
       if (answer.ok === true && answer.manifest && Array.isArray(answer.manifest.states) && answer.manifest.states.length > 0) {
         states = answer.manifest.states
         manifestVersion = typeof answer.manifest.version === 'number' ? answer.manifest.version : 0
+        recomputeScale()
         for (const state of states) ensureAsset(state)
         const idle = states.find((state) => state.id === 'idle') ?? states[0]
         if (idle) ensureAsset(idle, () => { if (current === undefined) switchTo(idle) })
