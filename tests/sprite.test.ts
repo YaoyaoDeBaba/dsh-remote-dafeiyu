@@ -165,6 +165,30 @@ test('指南（sprite_guide）覆盖参数语义表与症状速查表', () => {
   assert.match(SPRITE_GUIDE, /症状/)
 })
 
+test('指南必须覆盖第二轮新增能力（否则 agent 又得自己摸源码）', () => {
+  // 2026-11-12：这几个都是给 agent 用的"语义入口"。写进指南 = 不用读 6000 行源码；
+  // 漏一个，下一位使用者就得自己反推——上一批锚点搞错就是这么发生的。
+  for (const token of [
+    'scan-horizontal', // measure 的列扫原语
+    'boundary', // A→B 色段交界
+    'minRun', // 防呆参数（不给会被呆毛骗走）
+    'maskMode', // 水印探测档位
+    'selected', // rects 里要认 selected 而不是 rects[0]
+    'anchorYTopDown', // meta 的顶口径锚点
+    'cellWidth', // meta 的格子尺寸
+    'fps', // meta 的帧率
+    '已空闲回收', // P1-3 的错误语义
+  ]) {
+    assert.ok(SPRITE_GUIDE.includes(token), `指南缺少 ${token}（新能力没写给 agent，等于逼他自己摸代码）`)
+  }
+})
+
+test('系统提示短引导也提到测量原语与双口径锚点', () => {
+  for (const token of ['scan-horizontal', 'minRun', 'anchorYTopDown']) {
+    assert.ok(SPRITE_GUIDANCE.includes(token), `系统提示缺少 ${token}`)
+  }
+})
+
 test('浏览器探测：显式路径不存在时明确返回 undefined（不允许瞎猜一个可执行文件）', () => {
   assert.equal(findBrowser('C:\\definitely\\not\\here\\msedge.exe'), undefined)
 })
