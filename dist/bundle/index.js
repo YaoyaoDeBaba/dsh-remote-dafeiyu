@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.59" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.60" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32186,12 +32186,15 @@ function sanitizeState(row) {
   if (!row || typeof row !== "object") return void 0;
   const value = row;
   const num = (v) => typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0;
+  const unit = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : void 0;
   const cols = num(value.cols);
   const rows = num(value.rows);
   const frames = num(value.frames);
   const file2 = typeof value.file === "string" ? value.file : "";
   if (typeof value.id !== "string" || cols <= 0 || rows <= 0 || frames <= 0 || file2 === "") return void 0;
   if (path6.basename(file2) !== file2) return void 0;
+  const anchorX = unit(value.anchorX);
+  const anchorY = unit(value.anchorY);
   return {
     id: value.id,
     label: typeof value.label === "string" && value.label !== "" ? value.label : value.id,
@@ -32200,7 +32203,9 @@ function sanitizeState(row) {
     frames,
     cellWidth: num(value.cellWidth) || 1,
     cellHeight: num(value.cellHeight) || 1,
-    file: file2
+    file: file2,
+    ...anchorX !== void 0 ? { anchorX } : {},
+    ...anchorY !== void 0 ? { anchorY } : {}
   };
 }
 function loadAvatarManifest(dir) {
