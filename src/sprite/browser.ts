@@ -126,7 +126,16 @@ export async function launchBrowser(options: LaunchOptions): Promise<CdpSession>
     `--user-data-dir=${profileDir}`,
     'about:blank',
   ]
-  const child: ChildProcess = spawn(executable, args, { stdio: 'ignore', windowsHide: true })
+  // ⚠️ `cwd` 必须显式给，不能让它继承宿主的。
+  //
+  // 2026-11-12 DSH 自更新失败的现场：安装器要把 `D:\FeiYu` 改名成 `D:\FeiYu.old-{GUID}`，
+  // MoveFileExW 连续 10 次 `Windows error 32（另一个程序正在使用此文件）` 后放弃——
+  // 表现就是"小窗一闪、没有进度条、也不重启"。
+  // 目录能被改名要求：**没有进程以它为工作目录**。而无头浏览器是用 spawn 起的子进程，
+  // 不给 cwd 就继承 DSH 宿主的工作目录（从 `D:\FeiYu` 启动时就是那个安装目录本身），
+  // 于是只要它还没退，安装器就永远换不掉目录。
+  // 把它钉在临时 profile 目录里，既不影响功能，也绝不再站进任何安装路径。
+  const child: ChildProcess = spawn(executable, args, { stdio: 'ignore', windowsHide: true, cwd: profileDir })
 
   let closed = false
   const cleanup = async (): Promise<void> => {

@@ -54,6 +54,11 @@ export const defaultCliRunner: CliRunner = (args, options) =>
     const child = spawn(cliPathForRun(args), args.slice(1), {
       env: { ...process.env, ...options.env },
       windowsHide: true,
+      // 同 sprite/browser.ts 的理由：**别继承宿主的工作目录**。
+      // 子进程以某个目录为 cwd 时，Windows 不允许把那个目录改名；DSH 自更新恰恰要把
+      // `D:\FeiYu` 改成 `D:\FeiYu.old-*`，一个还活着的子进程就能让安装器连试 10 次
+      // `error 32` 后放弃（2026-11-12 现场就是这样）。CLI 跑完就退，但别赌它来得及。
+      cwd: os.tmpdir(),
     } as never)
     let stdout = ''
     let stderr = ''

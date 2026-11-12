@@ -38610,7 +38610,7 @@ async function launchBrowser(options) {
     `--user-data-dir=${profileDir}`,
     "about:blank"
   ];
-  const child = spawn2(executable, args, { stdio: "ignore", windowsHide: true });
+  const child = spawn2(executable, args, { stdio: "ignore", windowsHide: true, cwd: profileDir });
   let closed = false;
   const cleanup = async () => {
     if (closed) return;
@@ -40966,7 +40966,12 @@ function ensureCliScript(home = os4.homedir()) {
 var defaultCliRunner = (args, options) => new Promise((resolve) => {
   const child = spawn3(cliPathForRun(args), args.slice(1), {
     env: { ...process.env, ...options.env },
-    windowsHide: true
+    windowsHide: true,
+    // 同 sprite/browser.ts 的理由：**别继承宿主的工作目录**。
+    // 子进程以某个目录为 cwd 时，Windows 不允许把那个目录改名；DSH 自更新恰恰要把
+    // `D:\FeiYu` 改成 `D:\FeiYu.old-*`，一个还活着的子进程就能让安装器连试 10 次
+    // `error 32` 后放弃（2026-11-12 现场就是这样）。CLI 跑完就退，但别赌它来得及。
+    cwd: os4.tmpdir()
   });
   let stdout = "";
   let stderr = "";
