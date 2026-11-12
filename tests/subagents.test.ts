@@ -374,6 +374,31 @@ test('catalog 失败要退避 30 秒：一次超时不许变成每次刷新都�
   assert.equal(calls, 2, '退避期过了才许再试一次')
 })
 
+test('catalog 不可信时的回退扫描也要缓存（.60 实测每次调用仍 2.2~3.8 秒，就烧在这条上）', async () => {
+  const bundle = services()
+  const inner = (bundle as unknown as { subagents: Record<string, unknown> }).subagents
+  inner.listChildren = () => Promise.reject(new Error('catalog unavailable'))
+  const q = (bundle as unknown as { sessionQuery: Record<string, unknown> }).sessionQuery
+  let scans = 0
+  q.listSessions = () => {
+    scans += 1
+    return Promise.resolve([
+      { header: { id: 'session-p', createdAt: NOW - 7_200_000 } },
+      { header: { id: 'child-run', parentSession: 'session-p', delegationDepth: 1, createdAt: NOW - 600_000 } },
+    ])
+  }
+  const state = { now: NOW }
+  const port = kernelWithClock(bundle, state)
+
+  const first = await port.listSubagents!('session-p')
+  assert.equal(first.length, 1, 'catalog 挂了以后仍然要能从回退扫描里认出子代理')
+  assert.equal(scans, 1)
+
+  state.now += 1_000
+  await port.listSubagents!('session-p')
+  assert.equal(scans, 1, '5 秒内不许再扫一遍全量会话')
+})
+
 const settle = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 test('总线：相同载荷不发第二帧（没变化就不推，这是 dsh-agent-team 的核心纪律）', async () => {

@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.60" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.61" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32392,6 +32392,7 @@ function createServicesKernel(services, options) {
   const subagentParentOf = /* @__PURE__ */ new Map();
   let archivedCache;
   let sessionsListCache;
+  let fallbackSessionsCache;
   const CATALOG_TTL_MS = 2e3;
   const CATALOG_FAIL_TTL_MS = 3e4;
   const catalogCache = /* @__PURE__ */ new Map();
@@ -32399,7 +32400,10 @@ function createServicesKernel(services, options) {
     subagentParentOf.set(id, parent);
     if (knownSubagentIds.has(id)) return;
     knownSubagentIds.add(id);
-    if (invalidateCatalog) catalogCache.clear();
+    if (invalidateCatalog) {
+      catalogCache.clear();
+      fallbackSessionsCache = void 0;
+    }
   }
   let lastTouchedSessionId = "";
   const cwdBySession = /* @__PURE__ */ new Map();
@@ -32780,11 +32784,16 @@ function createServicesKernel(services, options) {
     } else if (!catalogRead.trusted) {
       const read = fn(services.sessionQuery, "listSessions");
       if (!read) throw new Error("\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u5217\u4F1A\u8BDD\uFF08sessionQuery \u6CA1\u6709 listSessions\uFF09");
-      const rows = await withTimeout(
-        Promise.resolve(read.call(services.sessionQuery)),
-        Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2e3)
-      ).catch(() => []);
-      records = (rows ?? []).filter((row) => typeof row?.header?.id === "string");
+      const fallbackAt = options.clock.now();
+      if (fallbackSessionsCache === void 0 || fallbackAt - fallbackSessionsCache.at >= fallbackSessionsCache.ttl) {
+        const scanned = await withTimeout(
+          Promise.resolve(read.call(services.sessionQuery)),
+          Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2e3)
+        ).catch(() => []);
+        const rowsScanned = scanned ?? [];
+        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5e3 : 3e4 };
+      }
+      records = fallbackSessionsCache.rows.filter((row) => typeof row?.header?.id === "string");
     } else {
       return [];
     }

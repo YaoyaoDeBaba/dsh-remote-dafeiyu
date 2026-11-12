@@ -333,6 +333,13 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   /** `sessions.list()` 的 2 秒缓存（只用来兜 createdAt，见 listSubagents）。 */
   let sessionsListCache: { at: number; value: Map<string, number | string> } | undefined
   /**
+   * catalog 不可信时那条回退扫描（`sessionQuery.listSessions`）的缓存。
+   *
+   * .60 上线后实测：每次调用仍然 2.2~3.8 秒——因为这台宿主的 catalog 一直不可信，
+   * 于是**每一次刷新都掉进这条"最多等 2 秒"的扫描**。只缓存 catalog 挡不住它。
+   */
+  let fallbackSessionsCache: { at: number; rows: SessionRecordLike[]; ttl: number } | undefined
+  /**
    * catalog 结果缓存。**这是 2026-11-12 那次性能排查的头号发现**：
    *
    * 实测 `subagents.listChildren()` 在"父会话没有活的子代理"时不会返回，一路耗到 4000ms
@@ -359,7 +366,11 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     subagentParentOf.set(id, parent)
     if (knownSubagentIds.has(id)) return
     knownSubagentIds.add(id)
-    if (invalidateCatalog) catalogCache.clear()
+    if (invalidateCatalog) {
+      catalogCache.clear()
+      // 回退扫描的缓存同样要作废：否则刚派出去的子代理可能被"30 秒空结果退避"挡住看不见。
+      fallbackSessionsCache = undefined
+    }
   }
 
   /**
@@ -994,11 +1005,20 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       // 用 2s 上限，绝不把面板拖成 15s 超时。
       const read = fn(services.sessionQuery, 'listSessions')
       if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
-      const rows = (await withTimeout(
-        Promise.resolve(read.call(services.sessionQuery)),
-        Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
-      ).catch(() => [])) as SessionRecordLike[] | undefined
-      records = (rows ?? []).filter((row) => typeof row?.header?.id === 'string')
+      // 2026-11-12 补：这条回退**也要缓存**。实测（.60 装好之后）每次调用仍然是 2.2~3.8 秒，
+      // 因为 catalog 在这台宿主上一直不可信，于是每次刷新都掉进这条"最多等 2 秒"的扫描里。
+      // 只缓存 catalog 是不够的——真正烧时间的在这。
+      const fallbackAt = options.clock.now()
+      if (fallbackSessionsCache === undefined || fallbackAt - fallbackSessionsCache.at >= fallbackSessionsCache.ttl) {
+        const scanned = (await withTimeout(
+          Promise.resolve(read.call(services.sessionQuery)),
+          Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
+        ).catch(() => [])) as SessionRecordLike[] | undefined
+        const rowsScanned = scanned ?? []
+        // 扫到东西缓存 5 秒；扫空（多半是超时）就认账 30 秒，别每 2 秒再交一次 2 秒。
+        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5_000 : 30_000 }
+      }
+      records = fallbackSessionsCache.rows.filter((row) => typeof row?.header?.id === 'string')
     } else {
       // catalog 可信且为空：这个父会话确实没有子代理，直接回空表。
       return []
