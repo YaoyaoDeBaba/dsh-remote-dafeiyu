@@ -5821,19 +5821,649 @@ $('statusText').textContent = '就绪 — 导入素材开始';
     }
   }
 
-  /* ---------------- v2-9. 固定角标（水印）检测（契约 §9） ---------------- */
+  /* ---------------- v2-9. 固定角标（水印）检测（契约 §9 + 评审 P1-4） ---------------- */
   /* 依赖内部符号：state.frames（原帧）/ state.keyed / state.trim.alphaThreshold / alphaBBox —
      注意**不用** effectiveFrame：半透明角标常常连绿幕一起被抠掉（这类素材实测如此），
      用它当输入会「看不见」角标，所以颜色与稳定性一律看原帧。
-     做法：
-       ① 均匀采样若干帧 → 「跨帧颜色几乎不变 + 不透明」= 静态层；
-       ② 用 16×16 块中位色当局部背景，只保留「相对局部背景有明显对比」的静态像素
-          （背景渐变会被块中位色跟踪掉，留下的才是压在上面的东西，例如半透明角标）；
-       ③ 以 2px 膨胀做连通块 —— 一个角标（胶囊 + 文字）是一个块，避免把两个不相干的东西
-          的并集当成一个矩形；
-       ④ 每块按「候选像素数 + 尺寸 + 长宽比」过滤（角标是宽扁的小块），每角只取最大那块，
-          再排除抠图结果 alpha 并集（主体）里的块；
-       ⑤ confidence = 该矩形在采样帧里的稳定比例（各帧最小值，保守）。 */
+     两段式判据：
+       ① 严格判据（老路径：判据、顺序、数值一字不改）：跨帧稳定层 → 16×16 块中位色当局部背景 →
+          对比 >= contrast → 2px 膨胀连通 → 尺寸/比例/主体 bbox 过滤 → 每角取最大块 →
+          confidence = 各帧稳定比例的最小值。有 confidence >= 0.8 的照旧返回，**不跑兜底**。
+       ② 四角兜底（P1-4 新增）：严格判据判不出高置信时（典型是渐变绿墙上的浅色角标，
+          局部差只有 8~14 级，够不到默认 contrast=24），在四角 40~120px 方框里重扫一遍
+          （对比度阈值降到 8），选「跨帧最稳 + 与邻域对比度最高」的块，以低置信度返回并要求人工确认。
+     候选永远吐出：哪怕一个都没选中，也把全部候选（含未选原因）按置信度降序放进 rects，
+     调用方自己能挑 —— 以前这里只给空数组 + 一句"未命中"。
+     像素算法全在下面 WATERMARK-DETECT 段（纯函数、不碰 state/DOM），
+     tests/sprite-watermark.test.ts 会把那段源码抠出来跑合成帧；页面这层只做三件事：
+     取采样帧、算主体 bbox（要 canvas 的 alphaBBox）、拼返回值。 */
+  /* ==== WATERMARK-DETECT-BEGIN ==== */
+  function spriteWatermarkDetect() {
+    'use strict';
+    /* 常量集中处：阈值与置信度公式里的每个数都在这里，改行为只改这一处。 */
+    const WM = {
+      /* —— 严格判据（= 旧实现里散落的字面量，动它等于改老行为）—— */
+      BLOCK_SIZE: 16,
+      BLOCK_MIN_PIXELS: 8,
+      DILATE: 2,
+      BODY_OVERLAP_MAX: 0.4,
+      /* —— 置信度公式：三项加权，权重和为 1 —— */
+      STABILITY_WEIGHT: 0.5,
+      CONTRAST_WEIGHT: 0.3,
+      SIZE_WEIGHT: 0.2,
+      /* 尺寸子分的两项权重（和为 1） */
+      SIZE_AREA_WEIGHT: 0.6,
+      SIZE_FLAT_WEIGHT: 0.4,
+      CONTRAST_SATURATION: 32,
+      MAX_BADGE_AREA_RATIO: 0.1,
+      ASPECT_FULL_SCORE: 3,
+      HIGH_CONFIDENCE: 0.8,
+      /* —— 四角兜底 —— */
+      CORNER_SEARCH_PX: 120,
+      CORNER_MIN_PX: 40,
+      CORNER_CONTRAST: 8,
+      CORNER_MIN_PIXELS: 60,
+      CORNER_MIN_WIDTH: 12,
+      CORNER_MIN_HEIGHT: 8,
+      CORNER_MAX_SIZE: 120,
+      CORNER_BODY_OVERLAP_MAX: 0.3,
+      CORNER_CONFIDENCE_CAP: 0.6,
+      /* —— 噪声地板 —— */
+      NOISE_PIXELS: 16,
+    };
+    /* 每个常数的依据写在这里，而不是散在代码里：
+       BLOCK_SIZE=16        角标字宽 8~12px，块取 16 才让中位色贴着背景、不被字带偏；
+       BLOCK_MIN_PIXELS=8   块内稳定像素不足 8 个时中位色没意义（约 1/2 块宽的量级）；
+       DILATE=2             胶囊边框与文字之间通常 1~2px 空档，不膨胀会把一个角标拆成碎块；
+       BODY_OVERLAP_MAX=0.4 旧实现的「主体排除」比例，保持不动（改它会改老行为）；
+       STABILITY/CONTRAST/SIZE_WEIGHT=0.5/0.3/0.2 跨帧稳定是角标第一特征（不动），
+                            对比度决定能不能和背景分开，尺寸只做否决性的弱证据，故 5:3:2；
+       SIZE_AREA_WEIGHT/SIZE_FLAT_WEIGHT=0.6/0.4 尺寸子分里「面积不大」比「宽扁」更硬；
+       CONTRAST_SATURATION=32 对比度"满分"刻度：约等于严格默认阈值 24 的 4/3，再高不再加分；
+       MAX_BADGE_AREA_RATIO=0.1 角标占帧面积超过 10% 就不是角标而是画面内容；
+       ASPECT_FULL_SCORE=3  宽高比到 3 即算完全宽扁（"AI生成 三图"这类胶囊约 2:1，拿一半分）；
+       HIGH_CONFIDENCE=0.8  与 service 的自动应用门槛（WATERMARK_AUTO_CONFIDENCE）同一个数：
+                            跨帧稳定 >= 80% 才敢自动遮挡；
+       CORNER_SEARCH_PX=120 / CORNER_MIN_PX=40 需求给的「四角 40~120px 方块」；
+       CORNER_CONTRAST=8    渐变绿墙上浅色角标的实测局部差 8~14 级，取严格阈值 24 的 1/3；
+       CORNER_MIN_PIXELS=60 / MIN_WIDTH=12 / MIN_HEIGHT=8 角标墨迹的下限（"AI生成"+边框）；
+       CORNER_MAX_SIZE=120  比角部方框还大的块已经不是角标；
+       CORNER_BODY_OVERLAP_MAX=0.3 兜底比严格判据更保守：吃角色比留水印更难修；
+       CORNER_CONFIDENCE_CAP=0.6 严格判据已判定「局部对比不足」，兜底不许冒充高置信
+                            （压到 0.8 门槛以下，service 才不会自动套用）；
+       NOISE_PIXELS=16      小于 16 像素的连通块当噪声，不进候选清单（否则几百个碎块刷屏）。 */
+
+    const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+    const round3 = (v) => Math.round(v * 1000) / 1000;
+    const median = (arr) => {
+      const s = arr.slice().sort((a, b) => a - b);
+      const m = s.length >> 1;
+      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    };
+
+    /* 跨帧稳定层：所有采样帧都「不透明 + 与参考帧逐通道差 <= tol」。 */
+    function stableMask(imgs, thr, tol) {
+      const total = imgs[0].width * imgs[0].height;
+      const ref = imgs[0].data;
+      const stable = new Uint8Array(total);
+      for (let p = 0, q = 0; p < total; p++, q += 4) {
+        let ok = true;
+        for (let k = 0; k < imgs.length; k++) {
+          const d = imgs[k].data;
+          if (d[q + 3] <= thr) {
+            ok = false;
+            break;
+          }
+          if (
+            k > 0 &&
+            (Math.abs(d[q] - ref[q]) > tol ||
+              Math.abs(d[q + 1] - ref[q + 1]) > tol ||
+              Math.abs(d[q + 2] - ref[q + 2]) > tol)
+          ) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) stable[p] = 1;
+      }
+      return stable;
+    }
+
+    /* 一个矩形在各采样帧里「仍与参考帧一致（不透明 + 颜色差 <= tol）」的像素比例，取最小值（保守口径）。
+       严格候选的 confidence 就是这个数（历史语义：service 的 0.8 门槛按它定的）。 */
+    function stabilityOfRect(imgs, rect, thr, tol) {
+      const w = imgs[0].width;
+      const ref = imgs[0].data;
+      const area = Math.max(1, rect.w * rect.h);
+      let conf = 1;
+      for (let k = 0; k < imgs.length; k++) {
+        const d = imgs[k].data;
+        let good = 0;
+        for (let y = rect.y; y < rect.y + rect.h; y++) {
+          for (let x = rect.x; x < rect.x + rect.w; x++) {
+            const q = (y * w + x) * 4;
+            if (d[q + 3] <= thr) continue;
+            if (
+              Math.abs(d[q] - ref[q]) > tol ||
+              Math.abs(d[q + 1] - ref[q + 1]) > tol ||
+              Math.abs(d[q + 2] - ref[q + 2]) > tol
+            )
+              continue;
+            good++;
+          }
+        }
+        conf = Math.min(conf, good / area);
+      }
+      return conf;
+    }
+
+    /* 在矩形区域内跑「块中位色当局部背景 → 相对邻域的对比 mask → 膨胀 → 8 邻域连通」。
+       为什么用块中位色而不是全局色：渐变背景（本次素材四边中位色差 30 级）会让全局色整片误判，
+       块中位色跟得上局部背景，留下的才是压在上面的东西（角标/文字）。
+       返回的 comps 用**帧坐标**；meanDev 是块内候选像素相对块中位色的平均通道差。 */
+    function regionComponents(ctx, bounds, P) {
+      const w = ctx.w;
+      const x0 = bounds.x0;
+      const y0 = bounds.y0;
+      const rw = bounds.x1 - x0 + 1;
+      const rh = bounds.y1 - y0 + 1;
+      const BLK = P.blockSize;
+      const bw = Math.ceil(rw / BLK);
+      const bh = Math.ceil(rh / BLK);
+      const blkR = new Int16Array(bw * bh);
+      const blkG = new Int16Array(bw * bh);
+      const blkB = new Int16Array(bw * bh);
+      const hasBlk = new Uint8Array(bw * bh);
+      const ref = ctx.imgs[0].data;
+      for (let by = 0; by < bh; by++) {
+        for (let bx = 0; bx < bw; bx++) {
+          const rs = [];
+          const gs = [];
+          const bs = [];
+          const xEnd = Math.min(rw, (bx + 1) * BLK);
+          const yEnd = Math.min(rh, (by + 1) * BLK);
+          for (let y = by * BLK; y < yEnd; y++) {
+            for (let x = bx * BLK; x < xEnd; x++) {
+              const gp = (y0 + y) * w + (x0 + x);
+              if (!ctx.stable[gp]) continue;
+              const q = gp * 4;
+              rs.push(ref[q]);
+              gs.push(ref[q + 1]);
+              bs.push(ref[q + 2]);
+            }
+          }
+          if (rs.length < P.blockMinPixels) continue;
+          const bi = by * bw + bx;
+          blkR[bi] = median(rs);
+          blkG[bi] = median(gs);
+          blkB[bi] = median(bs);
+          hasBlk[bi] = 1;
+        }
+      }
+      const cand = new Uint8Array(rw * rh);
+      const dev = new Float32Array(rw * rh);
+      let candTotal = 0;
+      for (let y = 0; y < rh; y++) {
+        const byRow = (y / BLK) | 0;
+        for (let x = 0; x < rw; x++) {
+          const gp = (y0 + y) * w + (x0 + x);
+          if (!ctx.stable[gp]) continue;
+          const bi = byRow * bw + ((x / BLK) | 0);
+          if (!hasBlk[bi]) continue;
+          const q = gp * 4;
+          const dmax = Math.max(
+            Math.abs(ref[q] - blkR[bi]),
+            Math.abs(ref[q + 1] - blkG[bi]),
+            Math.abs(ref[q + 2] - blkB[bi]),
+          );
+          if (dmax >= P.contrast) {
+            const li = y * rw + x;
+            cand[li] = 1;
+            dev[li] = dmax;
+            candTotal++;
+          }
+        }
+      }
+      const DIL = P.dilate;
+      const dil = new Uint8Array(rw * rh);
+      for (let y = 0; y < rh; y++) {
+        for (let x = 0; x < rw; x++) {
+          if (!cand[y * rw + x]) continue;
+          const yA = Math.max(0, y - DIL);
+          const yB = Math.min(rh - 1, y + DIL);
+          const xA = Math.max(0, x - DIL);
+          const xB = Math.min(rw - 1, x + DIL);
+          for (let yy = yA; yy <= yB; yy++) for (let xx = xA; xx <= xB; xx++) dil[yy * rw + xx] = 1;
+        }
+      }
+      const seen = new Uint8Array(rw * rh);
+      const stack = new Int32Array(rw * rh);
+      const comps = [];
+      for (let p = 0; p < rw * rh; p++) {
+        if (!dil[p] || seen[p]) continue;
+        let sp = 0;
+        stack[sp++] = p;
+        seen[p] = 1;
+        let lx0 = -1;
+        let ly0 = -1;
+        let lx1 = -1;
+        let ly1 = -1;
+        let candPixels = 0;
+        let devSum = 0;
+        while (sp > 0) {
+          const q = stack[--sp];
+          const lx = q % rw;
+          const ly = (q - lx) / rw;
+          if (cand[q]) {
+            candPixels++;
+            devSum += dev[q];
+            if (lx0 < 0 || lx < lx0) lx0 = lx;
+            if (lx > lx1) lx1 = lx;
+            if (ly0 < 0 || ly < ly0) ly0 = ly;
+            if (ly > ly1) ly1 = ly;
+          }
+          for (let dy = -1; dy <= 1; dy++) {
+            const yy = ly + dy;
+            if (yy < 0 || yy >= rh) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = lx + dx;
+              if (xx < 0 || xx >= rw) continue;
+              const r2 = yy * rw + xx;
+              if (!dil[r2] || seen[r2]) continue;
+              seen[r2] = 1;
+              stack[sp++] = r2;
+            }
+          }
+        }
+        if (candPixels <= 0) continue;
+        comps.push({
+          x: x0 + lx0,
+          y: y0 + ly0,
+          w: lx1 - lx0 + 1,
+          h: ly1 - ly0 + 1,
+          candPixels: candPixels,
+          meanDev: devSum / candPixels,
+        });
+      }
+      return { comps: comps, candTotal: candTotal };
+    }
+
+    function cornerOf(rect, w, h) {
+      const cx = rect.x + rect.w / 2;
+      const cy = rect.y + rect.h / 2;
+      return (cy < h / 2 ? 't' : 'b') + (cx < w / 2 ? 'l' : 'r');
+    }
+
+    /* 候选与主体 bbox 的重叠比例（0~1）。角色静止时脚/身体会有一大块稳定，
+       只看「完全在框内」不够——框底那几行会溢出来。 */
+    function overlapRatio(rect, body) {
+      if (!body) return 0;
+      const ox = Math.max(0, Math.min(rect.x + rect.w, body.x1) - Math.max(rect.x, body.x0));
+      const oy = Math.max(0, Math.min(rect.y + rect.h, body.y1) - Math.max(rect.y, body.y0));
+      return (ox * oy) / Math.max(1, rect.w * rect.h);
+    }
+
+    /* 对比度"达标程度"：从阈值到满刻度线性，0 = 刚好卡在阈值上，1 = 超过 CONTRAST_SATURATION 级 */
+    function contrastScore(meanDev, threshold) {
+      return clamp01((meanDev - threshold) / WM.CONTRAST_SATURATION);
+    }
+
+    /* 尺寸合理性：面积不大（不是画面内容）+ 宽扁（不是轮廓竖条） */
+    function sizeScore(rect, frameW, frameH) {
+      const areaRatio = (rect.w * rect.h) / Math.max(1, frameW * frameH);
+      const notTooBig = clamp01(1 - areaRatio / WM.MAX_BADGE_AREA_RATIO);
+      const flat = clamp01((rect.w / Math.max(1, rect.h) - 1) / (WM.ASPECT_FULL_SCORE - 1));
+      return clamp01(WM.SIZE_AREA_WEIGHT * notTooBig + WM.SIZE_FLAT_WEIGHT * flat);
+    }
+
+    /* 可解释置信度：0.5×跨帧稳定 + 0.3×对比度达标 + 0.2×尺寸合理 */
+    function compositeConfidence(stability, contrast, size) {
+      return clamp01(WM.STABILITY_WEIGHT * stability + WM.CONTRAST_WEIGHT * contrast + WM.SIZE_WEIGHT * size);
+    }
+
+    /* 统一的候选形状：老字段（x/y/w/h/corner/confidence/candidatePixels）在前且语义不变，
+       新增字段只做"解释"，不改老字段的值。 */
+    function makeCandidate(rect, corner, source, confidence, scores, reasons) {
+      return {
+        x: rect.x,
+        y: rect.y,
+        w: rect.w,
+        h: rect.h,
+        corner: corner,
+        confidence: round3(confidence),
+        candidatePixels: rect.candPixels,
+        source: source,
+        tier: confidence >= WM.HIGH_CONFIDENCE ? 'high' : 'low',
+        selected: false,
+        scores: {
+          stability: round3(scores.stability),
+          contrast: round3(scores.contrast),
+          size: round3(scores.size),
+        },
+        reasons: reasons,
+      };
+    }
+
+    function sortCandidates(list) {
+      return list.sort((a, b) => b.confidence - a.confidence || b.candidatePixels - a.candidatePixels);
+    }
+
+    /* ① 严格判据（老路径）。返回的 picked 必须与旧实现逐字段相等：
+       过滤顺序、每角取最大块的规则、confidence 公式、排序与 maxRects 截断全部照抄。 */
+    function strictPass(ctx, body, P) {
+      const w = ctx.w;
+      const h = ctx.h;
+      const found = regionComponents(
+        ctx,
+        { x0: 0, y0: 0, x1: w - 1, y1: h - 1 },
+        { blockSize: P.blockSize, blockMinPixels: P.blockMinPixels, dilate: P.dilate, contrast: P.contrast },
+      );
+      const winners = {};
+      const rejected = [];
+      let compCount = 0;
+      let droppedNoise = 0;
+      for (const comp of found.comps) {
+        compCount++;
+        const corner = cornerOf(comp, w, h);
+        if (comp.candPixels < WM.NOISE_PIXELS) {
+          droppedNoise++;
+          continue;
+        }
+        let reason = '';
+        if (comp.candPixels < P.minPixels) {
+          reason = '候选像素 ' + comp.candPixels + ' < minPixels ' + P.minPixels + '（太小，多半是噪声）';
+        } else if (comp.w < P.minWidth || comp.h < P.minHeight) {
+          reason = '尺寸 ' + comp.w + '×' + comp.h + ' 小于 min ' + P.minWidth + '×' + P.minHeight;
+        } else if (comp.w / comp.h < 1) {
+          reason = '宽高比 ' + round3(comp.w / comp.h) + ' < 1：细长竖条更像背景边缘/主体轮廓，不像角标';
+        } else {
+          const ov = overlapRatio(comp, body);
+          if (ov > P.bodyOverlapMax) {
+            reason =
+              '与主体 bbox 重叠 ' + Math.round(ov * 100) + '% > ' + Math.round(P.bodyOverlapMax * 100) +
+              '%（是角色的一部分，不是角标）';
+          }
+        }
+        if (reason) {
+          rejected.push({ comp: comp, corner: corner, reason: reason });
+          continue;
+        }
+        const cur = winners[corner];
+        if (!cur) {
+          winners[corner] = comp;
+        } else if (comp.candPixels > cur.candPixels) {
+          rejected.push({
+            comp: cur,
+            corner: corner,
+            reason: '同角（' + corner + '）已有更大的块（' + comp.candPixels + ' > ' + cur.candPixels + ' 像素）',
+          });
+          winners[corner] = comp;
+        } else {
+          rejected.push({
+            comp: comp,
+            corner: corner,
+            reason: '同角（' + corner + '）已有更大的块（' + cur.candPixels + ' >= ' + comp.candPixels + ' 像素）',
+          });
+        }
+      }
+
+      const winnersList = [];
+      for (const key of Object.keys(winners)) {
+        const comp = winners[key];
+        const stability = stabilityOfRect(ctx.imgs, comp, ctx.thr, ctx.tol);
+        const cand = makeCandidate(
+          comp,
+          key,
+          'strict',
+          stability,
+          {
+            stability: stability,
+            contrast: contrastScore(comp.meanDev, P.contrast),
+            size: sizeScore(comp, w, h),
+          },
+          [
+            '跨帧稳定 ' + Math.round(stability * 100) + '%（' + ctx.imgs.length + ' 帧取最小值）',
+            '与邻域块中位色的平均差 ' + round3(comp.meanDev) + ' ≥ contrast ' + P.contrast,
+            '尺寸 ' + comp.w + '×' + comp.h + '，占帧面积 ' + round3((comp.w * comp.h * 100) / (w * h)) + '%',
+            body
+              ? '与主体 bbox 重叠 ' + Math.round(overlapRatio(comp, body) * 100) + '%（<= ' + Math.round(P.bodyOverlapMax * 100) + '%）'
+              : '没有抠图结果，未做主体排除',
+          ],
+        );
+        winnersList.push(cand);
+      }
+      sortCandidates(winnersList);
+      const picked = winnersList.slice(0, P.maxRects);
+      for (const cand of picked) cand.selected = true;
+      for (let i = P.maxRects; i < winnersList.length; i++) {
+        winnersList[i].rejectedReason =
+          '按置信度排进候选但超出 maxRects=' + P.maxRects + '，未自动选中（可显式给 maskRect）';
+      }
+
+      const extras = [];
+      for (const row of rejected) {
+        const stability = stabilityOfRect(ctx.imgs, row.comp, ctx.thr, ctx.tol);
+        const cand = makeCandidate(
+          row.comp,
+          row.corner,
+          'strict',
+          stability,
+          {
+            stability: stability,
+            contrast: contrastScore(row.comp.meanDev, P.contrast),
+            size: sizeScore(row.comp, w, h),
+          },
+          ['与邻域块中位色的平均差 ' + round3(row.comp.meanDev) + '（>= contrast ' + P.contrast + '）'],
+        );
+        cand.rejectedReason = row.reason;
+        extras.push(cand);
+      }
+
+      return {
+        candidates: winnersList.concat(extras),
+        picked: picked,
+        high: picked.filter((c) => c.confidence >= WM.HIGH_CONFIDENCE),
+        compCount: compCount,
+        candTotal: found.candTotal,
+        droppedNoise: droppedNoise,
+      };
+    }
+
+    /* ② 四角兜底：四个角各扫一个 40~120px 的方框，方框内重跑同一套区块对比 + 连通，
+       对比度门槛降到 CORNER_CONTRAST。选出跨帧最稳 + 对比度最高的那一块。
+       与主体 bbox 重叠 > 30% 直接放弃（吃角色比留水印更难修）。 */
+    function cornerPass(ctx, body) {
+      const w = ctx.w;
+      const h = ctx.h;
+      const side = Math.min(WM.CORNER_SEARCH_PX, w, h);
+      const warnings = [];
+      if (side < WM.CORNER_MIN_PX) {
+        warnings.push(
+          '四角兜底跳过：帧只有 ' + w + '×' + h + '，角部方框不足 ' + WM.CORNER_MIN_PX + 'px（无可扫区域）',
+        );
+        return { candidates: [], selected: null, warnings: warnings, compCount: 0, candTotal: 0, droppedNoise: 0 };
+      }
+      const corners = [
+        { id: 'tl', x0: 0, y0: 0 },
+        { id: 'tr', x0: w - side, y0: 0 },
+        { id: 'bl', x0: 0, y0: h - side },
+        { id: 'br', x0: w - side, y0: h - side },
+      ];
+      const candidates = [];
+      const eligible = [];
+      const bodyRejected = [];
+      let compCount = 0;
+      let candTotal = 0;
+      let droppedNoise = 0;
+      for (const cn of corners) {
+        const found = regionComponents(
+          ctx,
+          { x0: cn.x0, y0: cn.y0, x1: cn.x0 + side - 1, y1: cn.y0 + side - 1 },
+          {
+            blockSize: WM.BLOCK_SIZE,
+            blockMinPixels: WM.BLOCK_MIN_PIXELS,
+            dilate: WM.DILATE,
+            contrast: WM.CORNER_CONTRAST,
+          },
+        );
+        compCount += found.comps.length;
+        candTotal += found.candTotal;
+        for (const comp of found.comps) {
+          if (comp.candPixels < WM.NOISE_PIXELS) {
+            droppedNoise++;
+            continue;
+          }
+          const stability = stabilityOfRect(ctx.imgs, comp, ctx.thr, ctx.tol);
+          const contrast = contrastScore(comp.meanDev, WM.CORNER_CONTRAST);
+          const size = sizeScore(comp, w, h);
+          const raw = compositeConfidence(stability, contrast, size);
+          /* 兜底候选一律压低：严格判据已经判定"局部对比度不够"，这里不该冒充高置信 */
+          const confidence = Math.min(raw, WM.CORNER_CONFIDENCE_CAP);
+          const cand = makeCandidate(
+            comp,
+            cn.id,
+            'corner',
+            confidence,
+            { stability: stability, contrast: contrast, size: size },
+            [
+              '跨帧稳定 ' + Math.round(stability * 100) + '%（' + ctx.imgs.length + ' 帧取最小值）',
+              '与邻域块中位色的平均差 ' + round3(comp.meanDev) + ' >= 兜底阈值 ' + WM.CORNER_CONTRAST,
+              '尺寸 ' + comp.w + '×' + comp.h + '（角部方框 ' + side + 'px）',
+              '综合分 ' + round3(raw) + '，封顶 ' + WM.CORNER_CONFIDENCE_CAP,
+            ],
+          );
+          let reason = '';
+          if (comp.candPixels < WM.CORNER_MIN_PIXELS) {
+            reason = '候选像素 ' + comp.candPixels + ' < ' + WM.CORNER_MIN_PIXELS + '（兜底下限）';
+          } else if (comp.w < WM.CORNER_MIN_WIDTH || comp.h < WM.CORNER_MIN_HEIGHT) {
+            reason = '尺寸 ' + comp.w + '×' + comp.h + ' 小于兜底下限 ' + WM.CORNER_MIN_WIDTH + '×' + WM.CORNER_MIN_HEIGHT;
+          } else if (comp.w > WM.CORNER_MAX_SIZE || comp.h > WM.CORNER_MAX_SIZE) {
+            reason = '尺寸 ' + comp.w + '×' + comp.h + ' 超出角部方框 ' + WM.CORNER_MAX_SIZE + 'px（不是角标）';
+          } else {
+            const ov = overlapRatio(comp, body);
+            if (ov > WM.CORNER_BODY_OVERLAP_MAX) {
+              reason =
+                '与主体 bbox 重叠 ' + Math.round(ov * 100) + '% > ' + Math.round(WM.CORNER_BODY_OVERLAP_MAX * 100) +
+                '%（会吃掉角色，放弃）';
+              bodyRejected.push({ corner: cn.id, ratio: ov });
+            }
+          }
+          if (reason) cand.rejectedReason = reason;
+          else eligible.push(cand);
+          candidates.push(cand);
+        }
+      }
+
+      sortCandidates(eligible);
+      const best = eligible.length ? eligible[0] : null;
+      if (best) {
+        best.selected = true;
+        for (let i = 1; i < eligible.length; i++) {
+          eligible[i].rejectedReason =
+            '四角兜底本次只选中置信度最高的一块（' + best.corner + '，' + best.confidence + '）';
+        }
+        warnings.push(
+          '低置信度兜底（四角扫描命中 ' + best.corner + '，confidence ' + best.confidence + ' < ' + WM.HIGH_CONFIDENCE +
+            '）：请人工确认 maskRect 是否吃掉了角色',
+        );
+      } else if (bodyRejected.length) {
+        warnings.push(
+          '四角兜底放弃：' + bodyRejected[0].corner + ' 的候选与主体 bbox 重叠 ' +
+            Math.round(bodyRejected[0].ratio * 100) + '% > ' + Math.round(WM.CORNER_BODY_OVERLAP_MAX * 100) +
+            '%（吃角色比留水印更难修，需要时请显式给 maskRect）',
+        );
+      } else {
+        warnings.push(
+          '四角兜底未命中：四角 ' + WM.CORNER_MIN_PX + '~' + WM.CORNER_SEARCH_PX +
+            'px 方框内没有「跨帧稳定 + 与邻域有对比」的块（需要时请显式给 maskRect）',
+        );
+      }
+      return {
+        candidates: candidates,
+        selected: best,
+        warnings: warnings,
+        compCount: compCount,
+        candTotal: candTotal,
+        droppedNoise: droppedNoise,
+      };
+    }
+
+    /* 入口：imgs = ImageData 形状数组，body = {x0,y0,x1,y1} 或 null。
+       mode 'auto'（默认）= 严格判据优先，判不出高置信才兜底；'corner' = 跳过严格判据直接兜底。 */
+    function detect(imgs, body, params) {
+      const p = params || {};
+      if (!imgs || !imgs.length) return { ok: false, error: '没有帧' };
+      const w = imgs[0].width;
+      const h = imgs[0].height;
+      for (let k = 1; k < imgs.length; k++) {
+        if (imgs[k].width !== w || imgs[k].height !== h) {
+          return {
+            ok: false,
+            error: '采样帧尺寸不一致（' + w + '×' + h + ' vs ' + imgs[k].width + '×' + imgs[k].height + '）',
+          };
+        }
+      }
+      const ctx = { w: w, h: h, imgs: imgs, thr: p.alphaThreshold | 0, tol: Math.max(0, Math.round(p.colorTolerance || 0)) };
+      ctx.stable = stableMask(imgs, ctx.thr, ctx.tol);
+      const mode = p.mode === 'corner' ? 'corner' : 'auto';
+
+      let strict = { candidates: [], picked: [], high: [], compCount: 0, candTotal: 0, droppedNoise: 0 };
+      if (mode === 'auto') {
+        strict = strictPass(ctx, body, {
+          blockSize: WM.BLOCK_SIZE,
+          blockMinPixels: WM.BLOCK_MIN_PIXELS,
+          dilate: WM.DILATE,
+          contrast: p.contrast,
+          minPixels: p.minPixels,
+          minWidth: p.minWidth,
+          minHeight: p.minHeight,
+          maxRects: p.maxRects,
+          bodyOverlapMax: WM.BODY_OVERLAP_MAX,
+        });
+      }
+      const corner =
+        mode === 'corner' || strict.high.length === 0
+          ? cornerPass(ctx, body)
+          : { candidates: [], selected: null, warnings: [], compCount: 0, candTotal: 0, droppedNoise: 0 };
+
+      const all = sortCandidates(strict.candidates.concat(corner.candidates));
+      const selected = all.filter((c) => c.selected);
+      let path = 'none';
+      if (selected.length) {
+        if (selected[0].source === 'strict') path = 'strict';
+        else path = mode === 'corner' ? 'corner' : 'corner-fallback';
+      }
+      return {
+        ok: true,
+        mode: mode,
+        path: path,
+        rects: all,
+        selectedCount: selected.length,
+        highConfidence: strict.high.length,
+        components: strict.compCount + corner.compCount,
+        candidatePixels: strict.candTotal + corner.candTotal,
+        droppedNoise: strict.droppedNoise + corner.droppedNoise,
+        warnings: corner.warnings,
+        note: selected.length
+          ? ''
+          : '未命中：没有找到「跨帧颜色稳定 + 相对局部背景有对比 + 尺寸像个角标 + 不在主体 bbox 内」的角落连通块',
+      };
+    }
+
+    return {
+      constants: WM,
+      detect: detect,
+      stableMask: stableMask,
+      stabilityOfRect: stabilityOfRect,
+      regionComponents: regionComponents,
+      contrastScore: contrastScore,
+      sizeScore: sizeScore,
+      compositeConfidence: compositeConfidence,
+      overlapRatio: overlapRatio,
+    };
+  }
+  /* ==== WATERMARK-DETECT-END ==== */
+  const WMD = spriteWatermarkDetect();
   async function detectWatermark(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
@@ -5849,6 +6479,9 @@ $('statusText').textContent = '就绪 — 导入素材开始';
       const minH = clampv(Math.round(num(o.minHeight, 10)), 2, 400);
       const maxRects = clampv(Math.round(num(o.maxRects, 4)), 1, 8);
       const want = clampv(Math.round(num(o.frames, 8)), 2, Math.min(24, n));
+      /* mode：'auto'（默认）= 严格判据优先、判不出高置信才四角兜底；'corner' = 直接四角兜底。
+         也认 maskMode（工具层用这个名字，跟抠图档位的 mode 区分开）。 */
+      const mode = (o.mode === 'corner' || o.maskMode === 'corner') ? 'corner' : 'auto';
 
       const idxs = [];
       for (let k = 0; k < want; k++) {
@@ -5858,116 +6491,17 @@ $('statusText').textContent = '就绪 — 导入素材开始';
       const imgs = idxs.map((i) => {
         const f = state.frames[i];
         const d = f.getContext('2d').getImageData(0, 0, f.width, f.height);
-        return { w: d.width, h: d.height, data: d.data };
+        return { width: d.width, height: d.height, data: d.data };
       });
-      const w = imgs[0].w, h = imgs[0].h;
+      const w = imgs[0].width, h = imgs[0].height;
       for (let k = 1; k < imgs.length; k++) {
-        if (imgs[k].w !== w || imgs[k].h !== h) {
-          return fail('采样帧尺寸不一致（' + w + '×' + h + ' vs ' + imgs[k].w + '×' + imgs[k].h + '）');
-        }
-      }
-      const S = imgs.length;
-      const total = w * h;
-      const ref = imgs[0].data;
-
-      /* ① 静态层 */
-      const stable = new Uint8Array(total);
-      for (let p = 0, q = 0; p < total; p++, q += 4) {
-        let ok = true;
-        for (let k = 0; k < S; k++) {
-          const d = imgs[k].data;
-          if (d[q + 3] <= thr) { ok = false; break; }
-          if (k > 0 && (Math.abs(d[q] - ref[q]) > tol || Math.abs(d[q + 1] - ref[q + 1]) > tol || Math.abs(d[q + 2] - ref[q + 2]) > tol)) { ok = false; break; }
-        }
-        if (ok) stable[p] = 1;
-      }
-
-      /* ② 局部背景（16×16 块内稳定像素的中位色）+ 候选像素 */
-      const BLK = 16;
-      const bw = Math.ceil(w / BLK), bh = Math.ceil(h / BLK);
-      const blkR = new Int16Array(bw * bh), blkG = new Int16Array(bw * bh), blkB = new Int16Array(bw * bh);
-      const hasBlk = new Uint8Array(bw * bh);
-      for (let by = 0; by < bh; by++) {
-        for (let bx = 0; bx < bw; bx++) {
-          const rs = [], gs = [], bs = [];
-          const xEnd = Math.min(w, (bx + 1) * BLK), yEnd = Math.min(h, (by + 1) * BLK);
-          for (let y = by * BLK; y < yEnd; y++) {
-            for (let x = bx * BLK; x < xEnd; x++) {
-              if (!stable[y * w + x]) continue;
-              const q = (y * w + x) * 4;
-              rs.push(ref[q]); gs.push(ref[q + 1]); bs.push(ref[q + 2]);
-            }
-          }
-          if (rs.length < 8) continue;
-          const med = (arr) => {
-            const s2 = arr.slice().sort((p, q2) => p - q2);
-            const m = s2.length >> 1;
-            return s2.length % 2 ? s2[m] : Math.round((s2[m - 1] + s2[m]) / 2);
-          };
-          const bi = by * bw + bx;
-          blkR[bi] = med(rs); blkG[bi] = med(gs); blkB[bi] = med(bs);
-          hasBlk[bi] = 1;
-        }
-      }
-      const cand = new Uint8Array(total);
-      let candTotal = 0;
-      for (let y = 0; y < h; y++) {
-        const byRow = (y / BLK) | 0;
-        for (let x = 0; x < w; x++) {
-          const p = y * w + x;
-          if (!stable[p]) continue;
-          const bi = byRow * bw + ((x / BLK) | 0);
-          if (!hasBlk[bi]) continue;
-          const q = p * 4;
-          const dmax = Math.max(Math.abs(ref[q] - blkR[bi]), Math.abs(ref[q + 1] - blkG[bi]), Math.abs(ref[q + 2] - blkB[bi]));
-          if (dmax >= contrast) { cand[p] = 1; candTotal++; }
+        if (imgs[k].width !== w || imgs[k].height !== h) {
+          return fail('采样帧尺寸不一致（' + w + '×' + h + ' vs ' + imgs[k].width + '×' + imgs[k].height + '）');
         }
       }
 
-      /* ③ 连通块：候选 mask 膨胀 2px 后 8 邻域连通（胶囊的边框与文字才会连成一块） */
-      const DIL = 2;
-      const dil = new Uint8Array(total);
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          if (!cand[y * w + x]) continue;
-          const y0 = Math.max(0, y - DIL), y1 = Math.min(h - 1, y + DIL);
-          const x0 = Math.max(0, x - DIL), x1 = Math.min(w - 1, x + DIL);
-          for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) dil[yy * w + xx] = 1;
-        }
-      }
-      const seen = new Uint8Array(total);
-      const stack = new Int32Array(total);
-      const comps = [];
-      for (let p = 0; p < total; p++) {
-        if (!dil[p] || seen[p]) continue;
-        let sp = 0;
-        stack[sp++] = p; seen[p] = 1;
-        let x0 = w, y0 = h, x1 = -1, y1 = -1, candPixels = 0;
-        while (sp > 0) {
-          const q = stack[--sp];
-          const x = q % w, y = (q - x) / w;
-          if (cand[q]) {
-            candPixels++;
-            if (x < x0) x0 = x; if (x > x1) x1 = x;
-            if (y < y0) y0 = y; if (y > y1) y1 = y;
-          }
-          for (let dy = -1; dy <= 1; dy++) {
-            const yy = y + dy;
-            if (yy < 0 || yy >= h) continue;
-            for (let dx = -1; dx <= 1; dx++) {
-              const xx = x + dx;
-              if (xx < 0 || xx >= w) continue;
-              const r2 = yy * w + xx;
-              if (!dil[r2] || seen[r2]) continue;
-              seen[r2] = 1; stack[sp++] = r2;
-            }
-          }
-        }
-        if (candPixels <= 0) continue;
-        comps.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, candPixels });
-      }
-
-      /* 主体排除框：抠图结果的 alpha 并集（没有 keyed 结果就不排除） */
+      /* 主体排除框：抠图结果的 alpha 并集（没有 keyed 结果就不排除）。
+         这一步要 canvas 的 alphaBBox，所以留在页面这层，不进纯函数。 */
       let body = null;
       if (state.keyed && state.keyed.size && typeof alphaBBox === 'function') {
         let x0 = w, y0 = h, x1 = -1, y1 = -1;
@@ -5982,85 +6516,49 @@ $('statusText').textContent = '就绪 — 导入素材开始';
         if (x1 > x0) body = { x0, y0, x1, y1 };
       }
 
-      const cornerOf = (r) => {
-        const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-        return (cy < h / 2 ? 't' : 'b') + (cx < w / 2 ? 'l' : 'r');
-      };
-      const perCorner = { tl: 0, tr: 0, bl: 0, br: 0 };
-      const keep = [];
-      for (const c of comps) {
-        if (c.candPixels < minPixels) continue;
-        if (c.w < minW || c.h < minH) continue;
-        /* 角标是宽扁的：细长竖条基本是背景边缘/主体轮廓 */
-        if (c.w / c.h < 1.0) continue;
-        /* 和主体 bbox 重叠 > 40% → 是角色的一部分，不是角标（只看「完全在框内」不够：
-           角色静止时脚/身体会有一大块稳定，而框底那几行是溢出来的） */
-        if (body) {
-          const ox = Math.max(0, Math.min(c.x + c.w, body.x1) - Math.max(c.x, body.x0));
-          const oy = Math.max(0, Math.min(c.y + c.h, body.y1) - Math.max(c.y, body.y0));
-          if (ox * oy / (c.w * c.h) > 0.4) continue;
-        }
-        const corner = cornerOf(c);
-        perCorner[corner]++;
-        keep.push(Object.assign({ corner }, c));
-      }
-      /* 每角只留候选像素最多的那一块（避免把两个不相干的东西的并集当矩形） */
-      const byCorner = {};
-      for (const c of keep) {
-        const cur = byCorner[c.corner];
-        if (!cur || c.candPixels > cur.candPixels) byCorner[c.corner] = c;
-      }
-      const picked0 = Object.keys(byCorner).map((k) => byCorner[k]);
-
-      const rects = picked0.map((r) => {
-        /* confidence：每个采样帧里「该矩形内仍与参考帧一致（不透明 + 颜色差 ≤ tol）」的像素比例，取最小值 */
-        let conf = 1;
-        const area = r.w * r.h;
-        for (let k = 0; k < S; k++) {
-          const d = imgs[k].data;
-          let good = 0;
-          for (let y = r.y; y < r.y + r.h; y++) {
-            for (let x = r.x; x < r.x + r.w; x++) {
-              const q = (y * w + x) * 4;
-              if (d[q + 3] <= thr) continue;
-              if (Math.abs(d[q] - ref[q]) > tol || Math.abs(d[q + 1] - ref[q + 1]) > tol || Math.abs(d[q + 2] - ref[q + 2]) > tol) continue;
-              good++;
-            }
-          }
-          conf = Math.min(conf, good / area);
-        }
-        return {
-          x: r.x, y: r.y, w: r.w, h: r.h,
-          corner: r.corner,
-          confidence: r3(conf),
-          candidatePixels: r.candPixels,
-        };
+      const res = WMD.detect(imgs, body, {
+        alphaThreshold: thr,
+        colorTolerance: tol,
+        contrast: contrast,
+        minPixels: minPixels,
+        minWidth: minW,
+        minHeight: minH,
+        maxRects: maxRects,
+        mode: mode,
       });
-      rects.sort((a, b) => b.confidence - a.confidence || b.candidatePixels - a.candidatePixels);
-      const picked = rects.slice(0, maxRects);
+      if (res.ok !== true) return fail(res.error || 'detectWatermark 失败');
 
-      return {
+      const answer = {
         ok: true,
-        rects: picked,
-        sampled: S,
+        rects: res.rects,
+        sampled: imgs.length,
         frames: idxs,
         bodyBBox: body,
         frameWidth: w,
         frameHeight: h,
-        components: comps.length,
-        candidatePixels: candTotal,
+        components: res.components,
+        candidatePixels: res.candidatePixels,
         params: {
-          alphaThreshold: thr, colorTolerance: tol, contrast: contrast, blockSize: BLK,
-          minPixels, minWidth: minW, minHeight: minH, maxRects,
+          alphaThreshold: thr, colorTolerance: tol, contrast: contrast, blockSize: WMD.constants.BLOCK_SIZE,
+          minPixels: minPixels, minWidth: minW, minHeight: minH, maxRects: maxRects, mode: mode,
         },
         source: 'state.frames（原帧：角标是烧进画面的，抠图结果可能把它一起抠掉）',
         costMs: Math.round(nowMs() - t0),
-        note: picked.length ? '' : '未命中：没有找到「跨帧颜色稳定 + 相对局部背景有对比 + 尺寸像个角标 + 不在主体 bbox 内」的角落连通块',
+        note: res.note,
+        mode: res.mode,
+        path: res.path,
+        selectedCount: res.selectedCount,
+        highConfidence: res.highConfidence,
+        droppedNoise: res.droppedNoise,
       };
+      /* 没兜底成功时保持老样子（没有 warnings 键）——老输出的形状不要因为新逻辑变胖 */
+      if (res.warnings && res.warnings.length) answer.warnings = res.warnings;
+      return answer;
     } catch (e) {
       return fail(e);
     }
   }
+
   /* ---------------- v2-10. 拼图并直接给 dataURL（契约 §10，含 png/webp） ---------------- */
   /* 依赖内部符号：state.frames / ensureSelection / buildSheet / currentMeta / el('outCols'|'outRows') /
      renderRuler / renderAnchorPreview / renderSheetPreview / state.trim 生效（buildSheet 内部读） */

@@ -358,6 +358,8 @@ export function buildTools(service: SpriteService): Array<Record<string, unknown
       name: 'sprite_cleanup',
       description:
         '去水印（maskRect 可选矩形或 "auto" 自动识别）+ 裁剪（trim 策略可选）。' +
+        'maskRect:"auto" 时先在四角严格判据里找角标，判不出高置信会自动退到四角 40~120px 兜底扫描；' +
+        '全部候选（含置信度、命中/未选原因）都在 watermarkCandidates 里按置信度降序给出。' +
         'trim.mode:"union" 是 48 帧并集（防截肢，但漂浮物会撑大格子）；"first-frame" 只按首帧+pad（格子稳）。' +
         '返回里回显 pad / alphaThreshold / unionFrames，方便对账（差 1~2px 时先看这里）。',
       parameters: {
@@ -368,6 +370,13 @@ export function buildTools(service: SpriteService): Array<Record<string, unknown
             type: 'object',
             description: '去水印矩形 {x,y,w,h}（省略=不遮）',
             properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } },
+          },
+          maskMode: {
+            type: 'string',
+            enum: ['auto', 'corner'],
+            description:
+              '自动识别的策略（默认 auto）：auto = 严格判据优先、判不出高置信才四角兜底；' +
+              'corner = 跳过严格判据直接四角扫描（兜底候选置信度偏低，需人工确认 maskRect 没吃掉角色）',
           },
           trim: {
             type: 'object',
@@ -392,6 +401,7 @@ export function buildTools(service: SpriteService): Array<Record<string, unknown
           return json(
             await service.cleanup({
               maskRect: mask,
+              ...(args.maskMode === 'auto' || args.maskMode === 'corner' ? { maskMode: args.maskMode } : {}),
               trim: {
                 ...(trimArg.mode === 'first-frame' || trimArg.mode === 'union' ? { mode: trimArg.mode } : {}),
                 pad: {

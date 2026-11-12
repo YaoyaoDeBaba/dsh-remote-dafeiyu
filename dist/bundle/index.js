@@ -38745,6 +38745,7 @@ async function launchBrowser(options) {
 }
 
 // src/sprite/service.ts
+var WATERMARK_AUTO_CONFIDENCE = 0.8;
 function dataUrlToBuffer(dataUrl) {
   const text = typeof dataUrl === "string" ? dataUrl : "";
   const comma = text.indexOf(",");
@@ -39131,11 +39132,17 @@ function createSpriteService(options) {
       const warnings = [];
       let watermarkCandidates;
       if (args.maskRect === "auto") {
-        const detected = await bridge("detectWatermark");
+        const maskMode = args.maskMode === "corner" ? "corner" : "auto";
+        const detected = await bridge("detectWatermark", { mode: maskMode });
         watermarkCandidates = detected.rects ?? [];
-        const best = [...watermarkCandidates].filter((row) => (row.confidence ?? 0) >= 0.8).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+        const eligible = watermarkCandidates.filter((row) => row.selected !== false);
+        const best = [...eligible].filter((row) => (row.confidence ?? 0) >= WATERMARK_AUTO_CONFIDENCE).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+        const fallback = [...eligible].filter((row) => row.source === "corner").sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
         if (best) rect = { x: best.x, y: best.y, w: best.w, h: best.h };
-        else warnings.push(detected.note || "\u6CA1\u68C0\u6D4B\u5230\u53EF\u4FE1\u7684\u6C34\u5370\u533A\u57DF\uFF0C\u8FD9\u6B21\u4E0D\u505A\u906E\u6321");
+        else if (fallback) rect = { x: fallback.x, y: fallback.y, w: fallback.w, h: fallback.h };
+        const pageWarnings = Array.isArray(detected.warnings) ? detected.warnings.filter((row) => typeof row === "string") : [];
+        if (pageWarnings.length) warnings.push(...pageWarnings);
+        else if (!rect) warnings.push(detected.note || "\u6CA1\u68C0\u6D4B\u5230\u53EF\u4FE1\u7684\u6C34\u5370\u533A\u57DF\uFF0C\u8FD9\u6B21\u4E0D\u505A\u906E\u6321");
       } else if (args.maskRect && typeof args.maskRect === "object") {
         rect = args.maskRect;
       }
@@ -39848,7 +39855,7 @@ function buildTools(service) {
     },
     {
       name: "sprite_cleanup",
-      description: '\u53BB\u6C34\u5370\uFF08maskRect \u53EF\u9009\u77E9\u5F62\u6216 "auto" \u81EA\u52A8\u8BC6\u522B\uFF09+ \u88C1\u526A\uFF08trim \u7B56\u7565\u53EF\u9009\uFF09\u3002trim.mode:"union" \u662F 48 \u5E27\u5E76\u96C6\uFF08\u9632\u622A\u80A2\uFF0C\u4F46\u6F02\u6D6E\u7269\u4F1A\u6491\u5927\u683C\u5B50\uFF09\uFF1B"first-frame" \u53EA\u6309\u9996\u5E27+pad\uFF08\u683C\u5B50\u7A33\uFF09\u3002\u8FD4\u56DE\u91CC\u56DE\u663E pad / alphaThreshold / unionFrames\uFF0C\u65B9\u4FBF\u5BF9\u8D26\uFF08\u5DEE 1~2px \u65F6\u5148\u770B\u8FD9\u91CC\uFF09\u3002',
+      description: '\u53BB\u6C34\u5370\uFF08maskRect \u53EF\u9009\u77E9\u5F62\u6216 "auto" \u81EA\u52A8\u8BC6\u522B\uFF09+ \u88C1\u526A\uFF08trim \u7B56\u7565\u53EF\u9009\uFF09\u3002maskRect:"auto" \u65F6\u5148\u5728\u56DB\u89D2\u4E25\u683C\u5224\u636E\u91CC\u627E\u89D2\u6807\uFF0C\u5224\u4E0D\u51FA\u9AD8\u7F6E\u4FE1\u4F1A\u81EA\u52A8\u9000\u5230\u56DB\u89D2 40~120px \u515C\u5E95\u626B\u63CF\uFF1B\u5168\u90E8\u5019\u9009\uFF08\u542B\u7F6E\u4FE1\u5EA6\u3001\u547D\u4E2D/\u672A\u9009\u539F\u56E0\uFF09\u90FD\u5728 watermarkCandidates \u91CC\u6309\u7F6E\u4FE1\u5EA6\u964D\u5E8F\u7ED9\u51FA\u3002trim.mode:"union" \u662F 48 \u5E27\u5E76\u96C6\uFF08\u9632\u622A\u80A2\uFF0C\u4F46\u6F02\u6D6E\u7269\u4F1A\u6491\u5927\u683C\u5B50\uFF09\uFF1B"first-frame" \u53EA\u6309\u9996\u5E27+pad\uFF08\u683C\u5B50\u7A33\uFF09\u3002\u8FD4\u56DE\u91CC\u56DE\u663E pad / alphaThreshold / unionFrames\uFF0C\u65B9\u4FBF\u5BF9\u8D26\uFF08\u5DEE 1~2px \u65F6\u5148\u770B\u8FD9\u91CC\uFF09\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -39857,6 +39864,11 @@ function buildTools(service) {
             type: "object",
             description: "\u53BB\u6C34\u5370\u77E9\u5F62 {x,y,w,h}\uFF08\u7701\u7565=\u4E0D\u906E\uFF09",
             properties: { x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }
+          },
+          maskMode: {
+            type: "string",
+            enum: ["auto", "corner"],
+            description: "\u81EA\u52A8\u8BC6\u522B\u7684\u7B56\u7565\uFF08\u9ED8\u8BA4 auto\uFF09\uFF1Aauto = \u4E25\u683C\u5224\u636E\u4F18\u5148\u3001\u5224\u4E0D\u51FA\u9AD8\u7F6E\u4FE1\u624D\u56DB\u89D2\u515C\u5E95\uFF1Bcorner = \u8DF3\u8FC7\u4E25\u683C\u5224\u636E\u76F4\u63A5\u56DB\u89D2\u626B\u63CF\uFF08\u515C\u5E95\u5019\u9009\u7F6E\u4FE1\u5EA6\u504F\u4F4E\uFF0C\u9700\u4EBA\u5DE5\u786E\u8BA4 maskRect \u6CA1\u5403\u6389\u89D2\u8272\uFF09"
           },
           trim: {
             type: "object",
@@ -39881,6 +39893,7 @@ function buildTools(service) {
           return json9(
             await service.cleanup({
               maskRect: mask,
+              ...args.maskMode === "auto" || args.maskMode === "corner" ? { maskMode: args.maskMode } : {},
               trim: {
                 ...trimArg.mode === "first-frame" || trimArg.mode === "union" ? { mode: trimArg.mode } : {},
                 pad: {

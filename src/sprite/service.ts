@@ -97,17 +97,39 @@ export interface ApplyResult {
   error?: string
 }
 
+/**
+ * 自动遮挡的置信度门槛：跨帧稳定占比 >= 80% 才敢自动套用（P1-4 之前这个数写死在 cleanup 里，
+ * 抽出来是因为页面侧（四角兜底）用同一个数决定"这算不算高置信"）。
+ */
+export const WATERMARK_AUTO_CONFIDENCE = 0.8
+
+/** 页面 `detectWatermark` 返回的一条候选（老字段在前，新增字段只做解释）。 */
+export interface WatermarkCandidate extends Rect {
+  confidence?: number
+  corner?: string
+  /** 'strict' = 严格判据命中；'corner' = 四角兜底。 */
+  source?: 'strict' | 'corner'
+  tier?: 'high' | 'low'
+  /** false = 只是"摆出来给调用方看"的候选，不参与自动选中（低置信/被过滤/被同角挤掉）。 */
+  selected?: boolean
+  candidatePixels?: number
+  scores?: { stability?: number; contrast?: number; size?: number }
+  reasons?: string[]
+  rejectedReason?: string
+}
+
 export interface CleanupResult {
   ok: boolean
   /** 实际用来遮挡的矩形（maskRect:'auto' 时是自动检测选中的那个）。 */
   maskRect?: Rect | null
-  /** 自动检测的全部候选（含置信度不足的），供调用方自己判断。 */
-  watermarkCandidates?: Array<Rect & { confidence?: number; corner?: string }>
+  /** 自动检测的全部候选（含置信度不足的，含未选原因），按置信度降序，供调用方自己判断。 */
+  watermarkCandidates?: WatermarkCandidate[]
   trimBox: Rect | null
   mode: 'union' | 'first-frame'
   pad: { top: number; bottom: number; left: number; right: number }
   alphaThreshold: number
   unionFrames: number
+  warnings?: string[]
   error?: string
 }
 
@@ -171,7 +193,7 @@ export interface SpriteService {
   scaleTo(args: { charHeightPx?: number; targetCellHeight?: number; span?: { fromY: number; toY: number } }): Promise<ScaleResult>
   getAnchor(): Promise<AnchorInfo>
   setAnchorPx(args: { x?: number; y?: number; convention?: 'y-from-bottom' | 'y-from-top' }): Promise<AnchorInfo>
-  cleanup(args: { maskRect?: Rect | 'auto' | null; trim?: TrimOptions }): Promise<CleanupResult>
+  cleanup(args: { maskRect?: Rect | 'auto' | null; maskMode?: 'auto' | 'corner'; trim?: TrimOptions }): Promise<CleanupResult>
   exportSheet(args: ExportOptions): Promise<ExportResult>
   autotune(args: { goal?: AutotuneGoal; space?: AutotuneSpace; maxIters?: number; frame?: number }): Promise<{
     ok: boolean
@@ -652,19 +674,36 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       const warnings: string[] = []
       // 所有候选都回给调用方（不只是被选中的那个）：置信度低不等于"不存在"，
       // 人/agent 看到 0.72 的候选时还能自己决定要不要手动给矩形。
-      let watermarkCandidates: Array<Rect & { confidence?: number; corner?: string }> | undefined
+      let watermarkCandidates: WatermarkCandidate[] | undefined
       if (args.maskRect === 'auto') {
+        // maskMode 只影响页面的检测策略：auto = 严格判据优先、判不出高置信才四角兜底；
+        // corner = 跳过严格判据直接兜底（P1-4 的退路）。
+        const maskMode = args.maskMode === 'corner' ? 'corner' : 'auto'
         const detected = await bridge<{
           ok: boolean
-          rects?: Array<Rect & { confidence?: number; corner?: string }>
+          rects?: WatermarkCandidate[]
           note?: string
-        }>('detectWatermark')
+          warnings?: string[]
+          selectedCount?: number
+        }>('detectWatermark', { mode: maskMode })
         watermarkCandidates = detected.rects ?? []
-        const best = [...watermarkCandidates]
-          .filter((row) => (row.confidence ?? 0) >= 0.8)
+        // 只有 selected !== false 的才参与自动选中：页面会把"被过滤掉/被同角挤掉"的候选也吐出来
+        // 供人工参考，它们如果恰好稳定度高，不该把 maskRect 带偏（老行为只有 picked 参与）。
+        const eligible = watermarkCandidates.filter((row) => row.selected !== false)
+        const best = [...eligible]
+          .filter((row) => (row.confidence ?? 0) >= WATERMARK_AUTO_CONFIDENCE)
           .sort((a, b) => (b.w * b.h) - (a.w * a.h))[0]
+        // 四角兜底：严格判据没给出高置信候选时才可能走到这里，置信度必然 < 门槛，
+        // 所以只在没有高置信候选时用，并且一定要把"请人工确认"的理由带给调用方。
+        const fallback = [...eligible]
+          .filter((row) => row.source === 'corner')
+          .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0]
         if (best) rect = { x: best.x, y: best.y, w: best.w, h: best.h }
-        else warnings.push(detected.note || '没检测到可信的水印区域，这次不做遮挡')
+        else if (fallback) rect = { x: fallback.x, y: fallback.y, w: fallback.w, h: fallback.h }
+        // 页面自己写的理由（兜底命中 / 兜底放弃 / 兜底未命中）优先；没有就退回老的那一句话。
+        const pageWarnings = Array.isArray(detected.warnings) ? detected.warnings.filter((row) => typeof row === 'string') : []
+        if (pageWarnings.length) warnings.push(...pageWarnings)
+        else if (!rect) warnings.push(detected.note || '没检测到可信的水印区域，这次不做遮挡')
       } else if (args.maskRect && typeof args.maskRect === 'object') {
         rect = args.maskRect
       }
