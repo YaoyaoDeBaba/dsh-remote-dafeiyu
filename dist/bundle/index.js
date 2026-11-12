@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.61" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.62" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32394,7 +32394,7 @@ function createServicesKernel(services, options) {
   let sessionsListCache;
   let fallbackSessionsCache;
   const CATALOG_TTL_MS = 2e3;
-  const CATALOG_FAIL_TTL_MS = 3e4;
+  const CATALOG_FAIL_TTL_MS = 3e5;
   const catalogCache = /* @__PURE__ */ new Map();
   function noteSubagentKnown(id, parent, invalidateCatalog = false) {
     subagentParentOf.set(id, parent);
@@ -32791,7 +32791,7 @@ function createServicesKernel(services, options) {
           Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2e3)
         ).catch(() => []);
         const rowsScanned = scanned ?? [];
-        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5e3 : 3e4 };
+        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5e3 : CATALOG_FAIL_TTL_MS };
       }
       records = fallbackSessionsCache.rows.filter((row) => typeof row?.header?.id === "string");
     } else {

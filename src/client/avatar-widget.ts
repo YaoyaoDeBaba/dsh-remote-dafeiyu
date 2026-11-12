@@ -92,8 +92,10 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
 #dafeiyu-avatar-widget .stage { position: relative; width: ${WIDGET_WIDTH}px; aspect-ratio: 3 / 4;
   border-radius: 12px; cursor: grab; touch-action: none; filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
 #dafeiyu-avatar-widget .stage.dragging { cursor: grabbing; }
-#dafeiyu-avatar-widget .layer { position: absolute; inset: 0; background-repeat: no-repeat;
+#dafeiyu-avatar-widget .layer { position: absolute; inset: 0; overflow: hidden;
   pointer-events: none; will-change: opacity; }
+#dafeiyu-avatar-widget .cell { position: absolute; left: 0; top: 0;
+  background-repeat: no-repeat; pointer-events: none; }
 #dafeiyu-avatar-menu { position: absolute; top: calc(100% + 4px); right: 0; width: 168px; padding: 6px;
   display: flex; flex-direction: column; gap: 2px; border-radius: 10px;
   border: 1px solid #1f3b63; background: #0d1117;
@@ -115,6 +117,14 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   for (const layer of layers) layer.className = 'layer'
   layers[0]!.style.opacity = '1'
   layers[1]!.style.opacity = '0'
+  // 每层里再放一个「单元格」：它只有一格大小，背景是整张 sheet —— 于是相邻格
+  // 永远落在它外面（被 layer 的 overflow:hidden 裁掉），不会串帧。
+  const cells = layers.map((layer) => {
+    const cell = doc.createElement('div')
+    cell.className = 'cell'
+    layer.appendChild(cell)
+    return cell
+  })
   let active = 0
   stage.append(layers[0]!, layers[1]!)
   const menu = doc.createElement('div')
@@ -231,10 +241,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     displayScale = maxW > 0 && maxH > 0 ? Math.min(WIDGET_WIDTH / maxW, STAGE_HEIGHT / maxH) : 1
   }
 
-  /** 每层的对齐原点（背景定位用）：锚点在格子里的偏移，保证它落在舞台的固定点上。 */
-  type LayerOrigin = { x: number; y: number; cellW: number; cellH: number; scale: number }
-  const layerOrigins = new Map<HTMLDivElement, LayerOrigin>()
-
   const clamp = (x: number, y: number): { x: number; y: number } => {
     const { w, h } = viewport()
     return {
@@ -281,12 +287,12 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     if (!current) return
     const col = frame % current.cols
     const row = Math.floor(frame / current.cols) % current.rows
-    const layer = layers[active]!
-    const origin = layerOrigins.get(layer)
-    if (origin === undefined) return
-    const x = Math.round(origin.x - col * origin.cellW * origin.scale)
-    const y = Math.round(origin.y - row * origin.cellH * origin.scale)
-    layer.style.backgroundPosition = `${x}px ${y}px`
+    const cellW = current.cellWidth > 0 ? current.cellWidth : 1
+    const cellH = current.cellHeight > 0 ? current.cellHeight : 1
+    const scale = displayScale
+    const cell = cells[active]
+    if (cell === undefined) return
+    cell.style.backgroundPosition = `${-col * cellW * scale}px ${-row * cellH * scale}px`
     frame = (frame + 1) % current.frames
   }
 
@@ -300,23 +306,21 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     const previousIndex = active
     const next = 1 - active
     const layer = layers[next]!
+    const cell = cells[next]!
     const previousLayer = layers[previousIndex]!
-    layer.style.backgroundImage = `url(${assetUrl(state)})`
-    // 尺寸/位置全部按 manifest 的 cellWidth/cellHeight/anchorX/anchorY 算：
-    // 舞台里每个动作都对齐到同一个锚点，换动作不会跳、也不会被拉伸。
+    // 单元格只有「一格」大小，背景却是整张 sheet：相邻格永远在它外面，被裁掉。
     const scale = displayScale
     const cellW = state.cellWidth > 0 ? state.cellWidth : 1
     const cellH = state.cellHeight > 0 ? state.cellHeight : 1
     const anchor = anchorOf(state)
-    layerOrigins.set(layer, {
-      x: ANCHOR_SCREEN_X - anchor.x * cellW * scale,
-      y: ANCHOR_SCREEN_Y - anchor.y * cellH * scale,
-      cellW,
-      cellH,
-      scale,
-    })
-    layer.style.backgroundSize = `${state.cols * cellW * scale}px ${state.rows * cellH * scale}px`
-    layer.style.backgroundPosition = '0px 0px'
+    cell.style.width = `${cellW * scale}px`
+    cell.style.height = `${cellH * scale}px`
+    // 单元格左上角 = 锚点落点 - 锚点在格内的偏移
+    cell.style.left = `${ANCHOR_SCREEN_X - anchor.x * cellW * scale}px`
+    cell.style.top = `${ANCHOR_SCREEN_Y - anchor.y * cellH * scale}px`
+    cell.style.backgroundImage = `url(${assetUrl(state)})`
+    cell.style.backgroundSize = `${state.cols * cellW * scale}px ${state.rows * cellH * scale}px`
+    cell.style.backgroundPosition = '0px 0px'
     layer.style.zIndex = '2'
     layer.style.opacity = '1'
     active = next

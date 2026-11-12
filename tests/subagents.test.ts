@@ -351,7 +351,7 @@ test('catalog 缓存：2 秒内重复刷新只打一次 listChildren（4 秒的�
   assert.equal(calls, 2, '过期之后必须重新取，否则新建的子代理永远不出现')
 })
 
-test('catalog 失败要退避 30 秒：一次超时不许变成每次刷新都超时', async () => {
+test('catalog 失败要退避 5 分钟：一次超时不许变成每次刷新都超时', async () => {
   const bundle = services({ withQuery: false })
   const inner = (bundle as unknown as { subagents: Record<string, unknown> }).subagents
   let calls = 0
@@ -367,9 +367,13 @@ test('catalog 失败要退避 30 秒：一次超时不许变成每次刷新都�
 
   state.now += 1_000
   await port.listSubagents!('session-p').catch(() => undefined)
-  assert.equal(calls, 1, '失败结果要缓存 30 秒：这条路径每次都要 4 秒，不能 2 秒就重试')
+  assert.equal(calls, 1, '失败结果要缓存：这条路径每次都要 4 秒，不能 2 秒就重试')
 
-  state.now += 40_000
+  state.now += 60_000
+  await port.listSubagents!('session-p').catch(() => undefined)
+  assert.equal(calls, 1, '一分钟内也不许重试（实测每半分钟一次尖峰就是这样来的）')
+
+  state.now += 300_000
   await port.listSubagents!('session-p').catch(() => undefined)
   assert.equal(calls, 2, '退避期过了才许再试一次')
 })

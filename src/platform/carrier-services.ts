@@ -351,7 +351,18 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * 可信结果缓存 2 秒；不可信（超时/抛错）缓存 30 秒，退避掉那个必然超时的调用。
    */
   const CATALOG_TTL_MS = 2_000
-  const CATALOG_FAIL_TTL_MS = 30_000
+  /**
+   * catalog **失败**的退避时长。
+   *
+   * 2026-11-12 二次调参：30 秒 → 5 分钟。实测（.61）稳态是"绝大多数调用 2~300ms、
+   * 但每 30 秒冒一次 1.5~3 秒的尖峰"——尖峰就是这条负缓存过期后重新付一次
+   * `listChildren` 超时 + 回退扫描的钱。宿主上 `listChildren` 长期不可信（一直返回空），
+   * 所以那 30 秒一次的尝试基本是白花；拉到 5 分钟，长尾从每 30 秒一次降到每 5 分钟一次。
+   *
+   * 不会因此看不见新子代理：`noteSubagentKnown(..., true)`（来自 `agent/status`）会
+   * 立刻清掉这两处缓存。
+   */
+  const CATALOG_FAIL_TTL_MS = 300_000
   const catalogCache = new Map<string, { at: number; value: { entries: Map<string, { label?: string }>; trusted: boolean }; ttl: number }>()
 
   /**
@@ -1015,8 +1026,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
           Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
         ).catch(() => [])) as SessionRecordLike[] | undefined
         const rowsScanned = scanned ?? []
-        // 扫到东西缓存 5 秒；扫空（多半是超时）就认账 30 秒，别每 2 秒再交一次 2 秒。
-        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5_000 : 30_000 }
+        // 扫到东西缓存 5 秒；扫空（多半是超时）就认账 5 分钟，别每半分钟再交一次 2 秒。
+        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5_000 : CATALOG_FAIL_TTL_MS }
       }
       records = fallbackSessionsCache.rows.filter((row) => typeof row?.header?.id === 'string')
     } else {
