@@ -2885,3 +2885,46 @@ test('反向：登记失败不许让"新建会话"失败（会话已经建好了
   assert.equal(made.ok, true, '登记失败不能让用户看到"新建失败"——会话其实建出来了，只是暂时未分组')
   assert.equal(made.sessionId, 'session-orphan')
 })
+
+test('手机读历史：同一会话没新事件时只回放一次（0.70：翻页/补差量不再各回放一遍整份日志）', async () => {
+  const f = fixture()
+  const services = f.bundle({ live: true })
+  let reads = 0
+  services.sessionQuery = {
+    readSession: (id: string) => {
+      reads += 1
+      return Promise.resolve({ session: { id }, events: realLog(id) })
+    },
+  }
+  const kernel = f.kernel(services)
+  await kernel.readHistory!('ses_1', { limit: 40 })
+  await kernel.readHistory!('ses_1', { limit: 40, beforeSeq: 999 })
+  await kernel.readHistory!('ses_1', { limit: 40, since: 9 })
+  assert.equal(reads, 1, `没有新事件时应复用同一份整份事件，实际回放了 ${reads} 次`)
+})
+
+test('手机读历史：来了新事件必须重新回放（宁可慢，也不许回一份过时页）', async () => {
+  const f = fixture()
+  const services = f.bundle({ live: true })
+  const listeners: Record<string, (...args: unknown[]) => void> = {}
+  services.on = (name: string, listener: (...args: unknown[]) => void) => {
+    listeners[name] = listener
+    return () => {}
+  }
+  let reads = 0
+  services.sessionQuery = {
+    readSession: (id: string) => {
+      reads += 1
+      return Promise.resolve({ session: { id }, events: realLog(id) })
+    },
+  }
+  const kernel = f.kernel(services)
+  kernel.subscribe(() => {})
+  await kernel.readHistory!('ses_1', { limit: 40 })
+  listeners['session/event']?.(
+    { id: 'ses_1' },
+    { type: 'user/message', seq: 99, data: { role: 'user', content: [{ type: 'text', text: '新消息' }] } },
+  )
+  await kernel.readHistory!('ses_1', { limit: 40 })
+  assert.equal(reads, 2, '有新事件还回旧缓存：手机会少一条消息，比慢更糟')
+})

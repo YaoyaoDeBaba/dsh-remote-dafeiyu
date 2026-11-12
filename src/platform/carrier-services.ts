@@ -340,6 +340,17 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    */
   let fallbackSessionsCache: { at: number; rows: SessionRecordLike[]; ttl: number } | undefined
   /**
+   * 手机读历史的「整份事件」缓存（见 loadHistoryEvents）。
+   *
+   * 失效判据是"这个会话来了新事件"，不是时间——时间型的失效会在"有消息进来但还没过 TTL"
+   * 时回一份过时页，那比慢更糟（手机会漏消息）。
+   */
+  const HISTORY_CACHE_MAX_SESSIONS = 2
+  const HISTORY_CACHE_MAX_EVENTS = 20_000
+  const historyEventsCache = new Map<string, Array<{ type?: unknown; seq?: unknown; data?: unknown }>>()
+  /** 同一会话正在回放中的请求（并发合流用）。 */
+  const historyReadInflight = new Map<string, Promise<Array<{ type?: unknown; seq?: unknown; data?: unknown }>>>()
+  /**
    * catalog 结果缓存。**这是 2026-11-12 那次性能排查的头号发现**：
    *
    * 实测 `subagents.listChildren()` 在"父会话没有活的子代理"时不会返回，一路耗到 4000ms
@@ -1944,31 +1955,79 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * 能力缺失时**抛**而不是回空页：空页在手机上是"这个会话没内容"，
    * 那是一个会让人查错方向的假事实。
    */
-  async function readHistory(
+  /**
+   * 读一次会话的**整份事件**，带缓存与并发合流。
+   *
+   * 为什么需要（0.70）：`sessionQuery.readSession(id)` 做的是「整份日志回放校验 +
+   * 把每条事件复制一遍」，`historyPageFromLog` 之后才从里面切 40 条。手机每打开一次对话、
+   * 每补一次差量（重连）、每翻一页，都要重付一次整份回放的钱——大会话上是几百毫秒到
+   * 一两秒，而且和桌面抢同一条主线程。
+   *
+   * 插件侧能做的只有"别重复付"：
+   * - **按会话缓存整份事件**：任何一条新的 `session/event` 到达就作废（见 translateSessionEvent），
+   *   所以"会话没动静时的重复读"免费，"有新消息时的读"一定是最新的；
+   * - **并发合流**：同一会话的并发请求共用一次回放（手机重连最容易同时发两三条）。
+   *
+   * 只留 2 份、且超过 `HISTORY_CACHE_MAX_EVENTS` 条的不缓存：缓存本身要占内存，
+   * 而宿主常年 2GB+；大会话宁可每次重读，也不要把宿主推向换页。
+   */
+  async function loadHistoryEvents(
     sessionId: string,
-    page: { beforeSeq?: number; since?: number; limit: number },
-  ): Promise<KernelHistoryPage> {
+  ): Promise<Array<{ type?: unknown; seq?: unknown; data?: unknown }>> {
+    const cached = historyEventsCache.get(sessionId)
+    if (cached !== undefined) {
+      // 重新插入 = 移到 LRU 队尾
+      historyEventsCache.delete(sessionId)
+      historyEventsCache.set(sessionId, cached)
+      return cached
+    }
+    const running = historyReadInflight.get(sessionId)
+    if (running !== undefined) return running
     const read = fn(services.sessionQuery, 'readSession')
     if (!read) {
       throw new Error(
         `这一代宿主不能读会话历史（sessionQuery 没有 readSession，keys=[${shapeOf(services.sessionQuery)}]）`,
       )
     }
-    const loaded = (await withTimeout(
-      Promise.resolve(read.call(services.sessionQuery, sessionId)),
-      options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
-    )) as { events?: Array<{ type?: unknown; seq?: unknown; data?: unknown }> } | undefined
-    /**
-     * **`events` 不是数组时必须抛，不许静默回一张空页**（2026-10-06）。
-     *
-     * 空页在手机上是"这个会话没内容"——一个会让人查错方向的假事实，与本文件
-     * 上面"能力缺失就抛"那条纪律同源。`readSession` 的形状变了（返回 undefined、
-     * 或返回 `{items: …}`）时旧写法会把它当成"零条历史"，现场看起来完全正常。
-     */
-    if (!Array.isArray(loaded?.events)) {
-      throw new Error(`会话历史读不出来：sessionQuery.readSession 没回 events 数组（shape=${shapeOf(loaded)}）`)
+    const pending = (async () => {
+      const loaded = (await withTimeout(
+        Promise.resolve(read.call(services.sessionQuery, sessionId)),
+        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT,
+      )) as { events?: Array<{ type?: unknown; seq?: unknown; data?: unknown }> } | undefined
+      /**
+       * **`events` 不是数组时必须抛，不许静默回一张空页**（2026-10-06）。
+       *
+       * 空页在手机上是"这个会话没内容"——一个会让人查错方向的假事实，与本文件
+       * 上面"能力缺失就抛"那条纪律同源。`readSession` 的形状变了（返回 undefined、
+       * 或返回 `{items: …}`）时旧写法会把它当成"零条历史"，现场看起来完全正常。
+       */
+      if (!Array.isArray(loaded?.events)) {
+        throw new Error(`会话历史读不出来：sessionQuery.readSession 没回 events 数组（shape=${shapeOf(loaded)}）`)
+      }
+      const events = loaded.events
+      if (events.length <= HISTORY_CACHE_MAX_EVENTS) {
+        historyEventsCache.set(sessionId, events)
+        while (historyEventsCache.size > HISTORY_CACHE_MAX_SESSIONS) {
+          const oldest = historyEventsCache.keys().next().value
+          if (oldest === undefined) break
+          historyEventsCache.delete(oldest)
+        }
+      }
+      return events
+    })()
+    historyReadInflight.set(sessionId, pending)
+    try {
+      return await pending
+    } finally {
+      if (historyReadInflight.get(sessionId) === pending) historyReadInflight.delete(sessionId)
     }
-    const events = loaded.events
+  }
+
+  async function readHistory(
+    sessionId: string,
+    page: { beforeSeq?: number; since?: number; limit: number },
+  ): Promise<KernelHistoryPage> {
+    const events = await loadHistoryEvents(sessionId)
     return historyPageFromLog({
       sessionId,
       events,
@@ -2127,6 +2186,9 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     lastTouchedSessionId = sessionId
     // 同理，"最后活动时刻"记的是**用户动过**，不是"这条会话有多新"。
     lastActivityAt.set(sessionId, options.clock.now())
+    // 这条会话有新事件 = 历史已经变了：手机读历史用的整份事件缓存必须作废。
+    // 判据用"有新事件"而不是时间，才不会在"刚进消息但还没过 TTL"时回一份过时页。
+    historyEventsCache.delete(sessionId)
     const data = (event?.data ?? {}) as LooseObject
     // 子代理监视器的「当前正在干什么」：用的是同一条事件流，不额外订阅。
     try {

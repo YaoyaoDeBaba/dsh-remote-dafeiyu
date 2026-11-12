@@ -32412,6 +32412,10 @@ function createServicesKernel(services, options) {
   let archivedCache;
   let sessionsListCache;
   let fallbackSessionsCache;
+  const HISTORY_CACHE_MAX_SESSIONS = 2;
+  const HISTORY_CACHE_MAX_EVENTS = 2e4;
+  const historyEventsCache = /* @__PURE__ */ new Map();
+  const historyReadInflight = /* @__PURE__ */ new Map();
   const CATALOG_TTL_MS = 2e3;
   const CATALOG_FAIL_TTL_MS = 3e5;
   const catalogCache = /* @__PURE__ */ new Map();
@@ -33316,21 +33320,49 @@ function createServicesKernel(services, options) {
       return { ok: false, message: `\u5207\u6A21\u578B\u5931\u8D25\uFF1A${messageOf(error62)}` };
     }
   }
-  async function readHistory(sessionId, page) {
+  async function loadHistoryEvents(sessionId) {
+    const cached2 = historyEventsCache.get(sessionId);
+    if (cached2 !== void 0) {
+      historyEventsCache.delete(sessionId);
+      historyEventsCache.set(sessionId, cached2);
+      return cached2;
+    }
+    const running = historyReadInflight.get(sessionId);
+    if (running !== void 0) return running;
     const read = fn(services.sessionQuery, "readSession");
     if (!read) {
       throw new Error(
         `\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u80FD\u8BFB\u4F1A\u8BDD\u5386\u53F2\uFF08sessionQuery \u6CA1\u6709 readSession\uFF0Ckeys=[${shapeOf(services.sessionQuery)}]\uFF09`
       );
     }
-    const loaded = await withTimeout(
-      Promise.resolve(read.call(services.sessionQuery, sessionId)),
-      options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT
-    );
-    if (!Array.isArray(loaded?.events)) {
-      throw new Error(`\u4F1A\u8BDD\u5386\u53F2\u8BFB\u4E0D\u51FA\u6765\uFF1AsessionQuery.readSession \u6CA1\u56DE events \u6570\u7EC4\uFF08shape=${shapeOf(loaded)}\uFF09`);
+    const pending2 = (async () => {
+      const loaded = await withTimeout(
+        Promise.resolve(read.call(services.sessionQuery, sessionId)),
+        options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT
+      );
+      if (!Array.isArray(loaded?.events)) {
+        throw new Error(`\u4F1A\u8BDD\u5386\u53F2\u8BFB\u4E0D\u51FA\u6765\uFF1AsessionQuery.readSession \u6CA1\u56DE events \u6570\u7EC4\uFF08shape=${shapeOf(loaded)}\uFF09`);
+      }
+      const events = loaded.events;
+      if (events.length <= HISTORY_CACHE_MAX_EVENTS) {
+        historyEventsCache.set(sessionId, events);
+        while (historyEventsCache.size > HISTORY_CACHE_MAX_SESSIONS) {
+          const oldest = historyEventsCache.keys().next().value;
+          if (oldest === void 0) break;
+          historyEventsCache.delete(oldest);
+        }
+      }
+      return events;
+    })();
+    historyReadInflight.set(sessionId, pending2);
+    try {
+      return await pending2;
+    } finally {
+      if (historyReadInflight.get(sessionId) === pending2) historyReadInflight.delete(sessionId);
     }
-    const events = loaded.events;
+  }
+  async function readHistory(sessionId, page) {
+    const events = await loadHistoryEvents(sessionId);
     return historyPageFromLog({
       sessionId,
       events,
@@ -33446,6 +33478,7 @@ function createServicesKernel(services, options) {
     seenEventTypes.add(type);
     lastTouchedSessionId = sessionId;
     lastActivityAt.set(sessionId, options.clock.now());
+    historyEventsCache.delete(sessionId);
     const data = event?.data ?? {};
     try {
       recordActivity(sessionId, typeof event?.type === "string" ? event.type : "", data);
