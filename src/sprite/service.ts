@@ -287,8 +287,17 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
   let idleTimer: ReturnType<typeof setTimeout> | undefined
   let launching: Promise<CdpSession> | undefined
   let stopped = false
-  /** 最近一次 prepare 的帧尺寸/数量，用于默认值与断言。 */
-  let lastPrepare: { frames: number; width: number; height: number } | undefined
+  /** 最近一次 prepare 的帧尺寸/数量/帧率，用于默认值、断言与 meta 回填。 */
+  let lastPrepare: { frames: number; width: number; height: number; fps: number } | undefined
+  /**
+   * 帧数据是不是已经被空闲回收掉了。
+   *
+   * 回收会关掉浏览器页面，`state.frames` 随之消失；但下一次 `ensureSession()` 会
+   * 重新拉起一个**空页面**，于是任何依赖帧的调用只会得到页面那句「还没有帧，先 extract()」——
+   * 而 `extract()` 这个工具根本不存在（真正要做的是重新 `sprite_prepare`）。
+   * 2026-11-12 实测就有人在这上面白试了几轮，所以这里记一笔，把错误改成能照做的说法。
+   */
+  let framesLost = false
 
   const touch = (): void => {
     if (idleTimer) clearTimeout(idleTimer)
@@ -303,8 +312,11 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
 
   const recycle = async (why: string): Promise<void> => {
     const current = session
+    const hadFrames = lastPrepare !== undefined
     session = undefined
     lastPrepare = undefined
+    // 只有"真的有帧、又被回收了"才置位：从没 prepare 过的会话报错说"已回收"是误导。
+    if (hadFrames) framesLost = true
     if (current) {
       log('关掉序列帧浏览器', { why })
       await current.close().catch(() => undefined)
@@ -352,7 +364,13 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
     })()`
     const answer = await active.evaluate<{ ok?: boolean; error?: string } & Record<string, unknown>>(expression, 600_000)
     if (!answer || answer.ok !== true) {
-      throw new Error(String(answer?.error ?? `${name} 失败（页面没有返回 ok）`))
+      const raw = String(answer?.error ?? `${name} 失败（页面没有返回 ok）`)
+      if (framesLost) {
+        throw new Error(
+          `会话已空闲回收（超过 ${Math.round(idleMs / 60_000)} 分钟无操作），帧数据已释放，请重新 sprite_prepare。原始错误：${raw}`,
+        )
+      }
+      throw new Error(raw)
     }
     return answer as T
   }
@@ -472,13 +490,16 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         )
       }
       if (loaded.ok !== true) throw new Error(loaded.error ?? '视频没能载入页面')
-      await bridge('setRange', args.start ?? 0, args.end ?? 4, args.fps ?? 12)
+      const fpsUsed = args.fps ?? 12
+      await bridge('setRange', args.start ?? 0, args.end ?? 4, fpsUsed)
       const extracted = await bridge<{ ok: boolean; count?: number; width?: number; height?: number }>('extract')
       const frames = Number(extracted.count ?? 0)
       const width = Number(extracted.width ?? 0)
       const height = Number(extracted.height ?? 0)
       if (frames <= 0) throw new Error('抽帧结果是 0 帧：检查时间区间（start/end）与 fps')
-      lastPrepare = { frames, width, height }
+      lastPrepare = { frames, width, height, fps: fpsUsed }
+      // 这一段有了新帧，"已回收"的判定自然失效。
+      framesLost = false
       return { ok: true, frames, width, height, video: String(loaded.name ?? path.basename(videoPath)), transport }
     },
 
@@ -741,16 +762,43 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       const tmpPng = `${pngPath}.tmp-${process.pid}`
       writeFileSync(tmpPng, buffer)
       renameSync(tmpPng, pngPath)
+      // 格子尺寸从最终图集反推：图集一定是 cols×cellW 宽、rows×cellH 高。
+      // 除不尽说明页面缩放时有亚像素漂移，按整数给并留一条 warning（宁可显式，不静默）。
+      const sheetWidthOut = built.width ?? 0
+      const sheetHeightOut = built.height ?? 0
+      const cellWidthOut = sheetWidthOut > 0 ? Math.round(sheetWidthOut / cols) : null
+      const cellHeightOut = sheetHeightOut > 0 ? Math.round(sheetHeightOut / rows) : null
+      if (cellWidthOut !== null && cellWidthOut * cols !== sheetWidthOut) {
+        warnings.push(
+          `cellWidth*cols=${cellWidthOut * cols} 与图集宽 ${sheetWidthOut} 差 ${sheetWidthOut - cellWidthOut * cols}px（缩放取整）`,
+        )
+      }
+      if (cellHeightOut !== null && cellHeightOut * rows !== sheetHeightOut) {
+        warnings.push(
+          `cellHeight*rows=${cellHeightOut * rows} 与图集高 ${sheetHeightOut} 差 ${sheetHeightOut - cellHeightOut * rows}px（缩放取整）`,
+        )
+      }
       const meta = {
         ...(built.meta ?? {}),
+        // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
+        // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
+        name,
         format,
         width: built.width ?? null,
         height: built.height ?? null,
-        cellWidth: null,
-        cellHeight: null,
+        sheetWidth: built.width ?? null,
+        sheetHeight: built.height ?? null,
+        // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
+        // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
+        cellWidth: cellWidthOut,
+        cellHeight: cellHeightOut,
         anchorX: anchor.anchorX,
         anchorY: anchor.anchorY,
         anchorConvention: anchor.convention,
+        // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
+        anchorYTopDown: Number((1 - anchor.anchorY).toFixed(6)),
+        // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
+        fps: lastPrepare?.fps ?? 12,
         scale: scaled.scale,
         charHeightPx: scaled.achievedPx,
         appliedParams: state.params ?? null,

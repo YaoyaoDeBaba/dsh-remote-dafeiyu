@@ -38820,6 +38820,7 @@ function createSpriteService(options) {
   let launching;
   let stopped = false;
   let lastPrepare;
+  let framesLost = false;
   const touch = () => {
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
@@ -38833,8 +38834,10 @@ function createSpriteService(options) {
   };
   const recycle = async (why) => {
     const current = session;
+    const hadFrames = lastPrepare !== void 0;
     session = void 0;
     lastPrepare = void 0;
+    if (hadFrames) framesLost = true;
     if (current) {
       log("\u5173\u6389\u5E8F\u5217\u5E27\u6D4F\u89C8\u5668", { why });
       await current.close().catch(() => void 0);
@@ -38879,7 +38882,13 @@ function createSpriteService(options) {
     })()`;
     const answer = await active.evaluate(expression, 6e5);
     if (!answer || answer.ok !== true) {
-      throw new Error(String(answer?.error ?? `${name2} \u5931\u8D25\uFF08\u9875\u9762\u6CA1\u6709\u8FD4\u56DE ok\uFF09`));
+      const raw = String(answer?.error ?? `${name2} \u5931\u8D25\uFF08\u9875\u9762\u6CA1\u6709\u8FD4\u56DE ok\uFF09`);
+      if (framesLost) {
+        throw new Error(
+          `\u4F1A\u8BDD\u5DF2\u7A7A\u95F2\u56DE\u6536\uFF08\u8D85\u8FC7 ${Math.round(idleMs / 6e4)} \u5206\u949F\u65E0\u64CD\u4F5C\uFF09\uFF0C\u5E27\u6570\u636E\u5DF2\u91CA\u653E\uFF0C\u8BF7\u91CD\u65B0 sprite_prepare\u3002\u539F\u59CB\u9519\u8BEF\uFF1A${raw}`
+        );
+      }
+      throw new Error(raw);
     }
     return answer;
   };
@@ -38974,13 +38983,15 @@ function createSpriteService(options) {
         );
       }
       if (loaded.ok !== true) throw new Error(loaded.error ?? "\u89C6\u9891\u6CA1\u80FD\u8F7D\u5165\u9875\u9762");
-      await bridge("setRange", args.start ?? 0, args.end ?? 4, args.fps ?? 12);
+      const fpsUsed = args.fps ?? 12;
+      await bridge("setRange", args.start ?? 0, args.end ?? 4, fpsUsed);
       const extracted = await bridge("extract");
       const frames = Number(extracted.count ?? 0);
       const width = Number(extracted.width ?? 0);
       const height = Number(extracted.height ?? 0);
       if (frames <= 0) throw new Error("\u62BD\u5E27\u7ED3\u679C\u662F 0 \u5E27\uFF1A\u68C0\u67E5\u65F6\u95F4\u533A\u95F4\uFF08start/end\uFF09\u4E0E fps");
-      lastPrepare = { frames, width, height };
+      lastPrepare = { frames, width, height, fps: fpsUsed };
+      framesLost = false;
       return { ok: true, frames, width, height, video: String(loaded.name ?? path19.basename(videoPath)), transport };
     },
     async probeColor(args) {
@@ -39195,16 +39206,41 @@ function createSpriteService(options) {
       const tmpPng = `${pngPath}.tmp-${process.pid}`;
       writeFileSync2(tmpPng, buffer);
       renameSync2(tmpPng, pngPath);
+      const sheetWidthOut = built.width ?? 0;
+      const sheetHeightOut = built.height ?? 0;
+      const cellWidthOut = sheetWidthOut > 0 ? Math.round(sheetWidthOut / cols) : null;
+      const cellHeightOut = sheetHeightOut > 0 ? Math.round(sheetHeightOut / rows) : null;
+      if (cellWidthOut !== null && cellWidthOut * cols !== sheetWidthOut) {
+        warnings.push(
+          `cellWidth*cols=${cellWidthOut * cols} \u4E0E\u56FE\u96C6\u5BBD ${sheetWidthOut} \u5DEE ${sheetWidthOut - cellWidthOut * cols}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
+        );
+      }
+      if (cellHeightOut !== null && cellHeightOut * rows !== sheetHeightOut) {
+        warnings.push(
+          `cellHeight*rows=${cellHeightOut * rows} \u4E0E\u56FE\u96C6\u9AD8 ${sheetHeightOut} \u5DEE ${sheetHeightOut - cellHeightOut * rows}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
+        );
+      }
       const meta3 = {
         ...built.meta ?? {},
+        // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
+        // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
+        name: name2,
         format,
         width: built.width ?? null,
         height: built.height ?? null,
-        cellWidth: null,
-        cellHeight: null,
+        sheetWidth: built.width ?? null,
+        sheetHeight: built.height ?? null,
+        // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
+        // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
+        cellWidth: cellWidthOut,
+        cellHeight: cellHeightOut,
         anchorX: anchor2.anchorX,
         anchorY: anchor2.anchorY,
         anchorConvention: anchor2.convention,
+        // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
+        anchorYTopDown: Number((1 - anchor2.anchorY).toFixed(6)),
+        // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
+        fps: lastPrepare?.fps ?? 12,
         scale: scaled.scale,
         charHeightPx: scaled.achievedPx,
         appliedParams: state.params ?? null,
