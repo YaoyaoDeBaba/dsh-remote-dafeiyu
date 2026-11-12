@@ -32695,12 +32695,13 @@ function createServicesKernel(services, options) {
     const service = services.subagents;
     if (!service) return { entries: out, trusted: false };
     const call = (name2) => fn(service, name2);
-    const read = async (name2) => {
+    const read = async (name2, directOnly = false) => {
       const list = call(name2);
       if (!list) return false;
       const rows = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4e3);
       for (const row of rows ?? []) {
         if (typeof row?.id !== "string" || row.id === "") continue;
+        if (directOnly && row.depth !== void 0 && Number(row.depth) !== 1) continue;
         const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : void 0;
         out.set(row.id, label === void 0 ? {} : { label });
       }
@@ -32712,7 +32713,11 @@ function createServicesKernel(services, options) {
         if (await read("listDescendants")) trusted = true;
         if (out.size > 0) return { entries: out, trusted };
       }
-      if (await read("listChildren")) trusted = true;
+      if (await read("listChildren")) {
+        trusted = true;
+      } else if (await read("listDescendants", true)) {
+        trusted = true;
+      }
     } catch (error62) {
       log("subagent catalog unavailable", { message: messageOf(error62).slice(0, 120) });
       return { entries: out, trusted: out.size > 0 };
@@ -32742,6 +32747,18 @@ function createServicesKernel(services, options) {
         const rows = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 8e3);
         for (const row of rows ?? []) {
           if (typeof row?.id === "string" && typeof row.label === "string" && row.label.trim() !== "") {
+            labels.set(row.id, row.label.trim());
+          }
+        }
+        return labels;
+      }
+      const all = call("listDescendants");
+      if (all) {
+        const rows = await withTimeout(Promise.resolve(all.call(service, parentSessionId)), 8e3);
+        for (const row of rows ?? []) {
+          if (!row) continue;
+          if (row.depth !== void 0 && Number(row.depth) !== 1) continue;
+          if (typeof row.id === "string" && typeof row.label === "string" && row.label.trim() !== "") {
             labels.set(row.id, row.label.trim());
           }
         }

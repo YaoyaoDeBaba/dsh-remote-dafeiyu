@@ -892,14 +892,16 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     if (!service) return { entries: out, trusted: false }
     const call = (name: 'listDescendants' | 'listChildren'): ((...args: unknown[]) => unknown) | undefined =>
       fn(service, name)
-    const read = async (name: 'listDescendants' | 'listChildren'): Promise<boolean> => {
+    const read = async (name: 'listDescendants' | 'listChildren', directOnly = false): Promise<boolean> => {
       const list = call(name)
       if (!list) return false
       const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4_000)) as Array<
-        { id?: unknown; label?: unknown } | undefined
+        { id?: unknown; label?: unknown; depth?: unknown } | undefined
       >
       for (const row of rows ?? []) {
         if (typeof row?.id !== 'string' || row.id === '') continue
+        // `listDescendants` 会把整棵子树都带出来；只要直接子级时按 depth 过滤（缺 depth 视作 1）。
+        if (directOnly && row.depth !== undefined && Number(row.depth) !== 1) continue
         const label = typeof row.label === 'string' && row.label.trim() !== '' ? row.label.trim() : undefined
         out.set(row.id, label === undefined ? {} : { label })
       }
@@ -912,7 +914,15 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         if (await read('listDescendants')) trusted = true
         if (out.size > 0) return { entries: out, trusted }
       }
-      if (await read('listChildren')) trusted = true
+      if (await read('listChildren')) {
+        trusted = true
+      } else if (await read('listDescendants', true)) {
+        // 2026-11-12：DSH 0.2.2-rc.2 把 `listChildren` 从服务上**删掉了**，只留 `listDescendants`。
+        // 旧代码只认 `listChildren`，拿不到就静默退回"扫全量会话"，而那条路上没有 label，
+        // 于是面板上所有子代理都变成「未按规范填写」（内核里的 label 其实好好的）。
+        // 这里补一条回退：用 `listDescendants` 取整棵子树，再按 depth 只留直接子级。
+        trusted = true
+      }
     } catch (error) {
       log('subagent catalog unavailable', { message: messageOf(error).slice(0, 120) })
       return { entries: out, trusted: out.size > 0 }
@@ -951,6 +961,21 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         >
         for (const row of rows ?? []) {
           if (typeof row?.id === 'string' && typeof row.label === 'string' && row.label.trim() !== '') {
+            labels.set(row.id, row.label.trim())
+          }
+        }
+        return labels
+      }
+      // 同 readSubagentCatalog 的理由：新宿主没有 `listChildren`，退回 `listDescendants` 取直接子级。
+      const all = call('listDescendants')
+      if (all) {
+        const rows = (await withTimeout(Promise.resolve(all.call(service, parentSessionId)), 8_000)) as Array<
+          { id?: unknown; label?: unknown; depth?: unknown } | undefined
+        >
+        for (const row of rows ?? []) {
+          if (!row) continue
+          if (row.depth !== undefined && Number(row.depth) !== 1) continue
+          if (typeof row.id === 'string' && typeof row.label === 'string' && row.label.trim() !== '') {
             labels.set(row.id, row.label.trim())
           }
         }

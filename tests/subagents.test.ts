@@ -304,6 +304,30 @@ test('guidance pusher：逐个注入在线会话，单个失败不影响其它',
   assert.notEqual(injected[0]!.id, injected[1]!.id, '两次推送的 id 必须不同')
 })
 
+test('新宿主没有 listChildren 时，靠 listDescendants 也要拿到名称（.67 回归）', async () => {
+  // 2026-11-12：DSH 0.2.2-rc.2 把 `listChildren` 从 subagents 服务上删了，只留 `listDescendants`。
+  // 我们只认前者 → 拿不到 → 静默退回"扫全量会话"（那条路没有 label）→ 面板上全显示「未按规范填写」。
+  // 这条测试钉住回退链：listChildren 缺席时，用 listDescendants 按 depth 只取直接子级。
+  const bundle = services()
+  const inner = (bundle as unknown as { subagents: Record<string, unknown> }).subagents
+  delete inner.listChildren
+  inner.listDescendants = (parentId: string) =>
+    Promise.resolve(
+      parentId === 'session-p'
+        ? [
+            { id: 'child-run', label: '渲染合批｜升级 VFX 批次合并并跑通验收', depth: 1 },
+            { id: 'child-idle', label: '没按格式写的名字', depth: 1 },
+            { id: 'grandchild-1', label: '孙子｜第三层', depth: 2 },
+          ]
+        : [],
+    )
+  const port = kernel(bundle)
+  const rows = await port.listSubagents!('session-p')
+  assert.equal(rows.length, 2, '只认直接子级，孙代不能混进来')
+  assert.equal(rows.find((row) => row.id === 'child-run')!.name, '渲染合批', '名称必须能解析出来')
+  assert.equal(rows.find((row) => row.id === 'child-idle')!.naming, 'fallback', '没按规范写的仍然要标记')
+})
+
 test('guidance pusher：agents 服务缺失时 total=0 不抛', async () => {
   const push = createGuidancePusher(() => undefined)
   const result = await push('x', 'y')
