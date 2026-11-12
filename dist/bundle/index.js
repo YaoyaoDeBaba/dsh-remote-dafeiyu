@@ -39547,6 +39547,8 @@ var KEY_PARAM_KEYS = [
   "advIntensity",
   "advFeather"
 ];
+var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation"];
+var SCAN_OPS = [">", ">=", "<", "<="];
 
 // src/sprite/tools.ts
 var json9 = (value) => JSON.stringify(value);
@@ -39598,6 +39600,33 @@ var OUT = {
   schema: { type: "string" },
   render: (_args, value) => [{ type: "text", text: String(value) }]
 };
+var LANDMARK_TYPES = [
+  "bbox-top",
+  "bbox-bottom",
+  "bbox-left",
+  "bbox-right",
+  "point",
+  "scan-vertical",
+  "scan-horizontal",
+  "boundary"
+];
+function probeSchema(description) {
+  return {
+    type: "object",
+    description,
+    properties: {
+      channel: {
+        type: "string",
+        enum: [...SCAN_CHANNELS],
+        description: "\u901A\u9053\uFF1Ar/g/b/alpha \u53D6\u539F\u503C\uFF0Cluma=0.299r+0.587g+0.114b\uFF0Cblue-minus-red=b-r\uFF0Csaturation=max-min"
+      },
+      op: { type: "string", enum: [...SCAN_OPS], description: "\u6BD4\u8F83\u65B9\u5F0F" },
+      value: { type: "number", description: "\u9608\u503C\uFF08\u901A\u9053\u53D6\u503C\u4E0E\u5B83\u6BD4\u8F83\uFF09" },
+      minRun: { type: "number", description: "\u8FDE\u7EED\u547D\u4E2D\u591A\u5C11\u884C\u624D\u7B97\u6570\uFF0C\u9ED8\u8BA4 1" }
+    },
+    required: ["channel", "op", "value"]
+  };
+}
 function buildTools(service) {
   return [
     {
@@ -39703,17 +39732,20 @@ function buildTools(service) {
           source: { type: "string", enum: ["keyed", "raw"], description: "\u91CF\u62A0\u56FE\u7ED3\u679C\uFF08\u9ED8\u8BA4 keyed\uFF09\u8FD8\u662F\u539F\u59CB\u5E27\uFF08raw\uFF09" },
           landmarks: {
             type: "array",
-            description: "\u8981\u91CF\u7684\u57FA\u51C6\u70B9\uFF1B\u4E0D\u4F20\u5C31\u53EA\u7ED9\u51E0\u4F55\u7EDF\u8BA1",
+            description: "\u8981\u91CF\u7684\u57FA\u51C6\u70B9\uFF1B\u4E0D\u4F20\u5C31\u53EA\u7ED9\u51E0\u4F55\u7EDF\u8BA1\u3002\u91CF\u989C\u8272\u4EA4\u754C\uFF08\u4E0D\u9760 alpha\uFF09\u7528\u540E\u4E24\u79CD\uFF1Ascan-horizontal = \u6CBF\u5217 x \u4ECE fromY \u5F80 toY \u627E\u7B2C\u4E00\u4E2A\u8FDE\u7EED\u6EE1\u8DB3 probe \u7684 run\uFF1Bboundary = \u300Ca \u6BB5\u7ED3\u675F\u3001\u7D27\u63A5 b \u6BB5\u300D\u7684\u4EA4\u754C\u884C\uFF08\u8FD4\u56DE\u7684 py \u662F b \u6BB5\u7B2C\u4E00\u884C\uFF09\u3002\u6761\u4EF6\u5168\u7531\u4F60\u7ED9\uFF08channel/op/value\uFF09\uFF0C\u626B\u4E0D\u5230\u6216\u8D8A\u754C\u56DE found:false + reason\uFF0C\u4E0D\u4F1A\u8BA9\u6574\u6B21 measure \u5931\u8D25\u3002",
             items: {
               type: "object",
               properties: {
                 id: { type: "string" },
-                type: { type: "string", enum: ["bbox-top", "bbox-bottom", "bbox-left", "bbox-right", "point", "scan-vertical"] },
+                type: { type: "string", enum: [...LANDMARK_TYPES] },
                 x: { type: "number" },
                 y: { type: "number" },
-                fromY: { type: "number" },
-                toY: { type: "number" },
-                alphaThreshold: { type: "number" }
+                fromY: { type: "number", description: "\u626B\u63CF\u8D77\u70B9\u884C\uFF08\u542B\uFF09\uFF0C\u9ED8\u8BA4 0" },
+                toY: { type: "number", description: "\u626B\u63CF\u7EC8\u70B9\u884C\uFF08\u542B\uFF09\uFF0C\u9ED8\u8BA4 \u5E27\u9AD8 - 1" },
+                alphaThreshold: { type: "number" },
+                probe: probeSchema("scan-horizontal \u7684\u6761\u4EF6\uFF08\u901A\u9053 + \u6BD4\u8F83 + \u9608\u503C + \u53EF\u9009 minRun \u8FDE\u7EED\u957F\u5EA6\uFF09"),
+                a: probeSchema("boundary \u4E0A\u65B9\u90A3\u4E00\u6BB5\uFF08A\uFF09\u7684\u6761\u4EF6"),
+                b: probeSchema("boundary \u4E0B\u65B9\u90A3\u4E00\u6BB5\uFF08B\uFF09\u7684\u6761\u4EF6")
               },
               required: ["id", "type"]
             }

@@ -10,7 +10,7 @@
  */
 import type { SpriteService } from './service.js'
 import { SPRITE_GUIDE } from './guide.js'
-import { KEY_PARAM_KEYS, type KeyParams, type Rect } from './types.js'
+import { KEY_PARAM_KEYS, SCAN_CHANNELS, SCAN_OPS, type KeyParams, type Rect } from './types.js'
 
 const json = (value: unknown): string => JSON.stringify(value)
 const fail = (error: unknown): never => {
@@ -68,6 +68,41 @@ function keySchema(extra: Record<string, unknown> = {}): Record<string, unknown>
 const OUT = {
   schema: { type: 'string' },
   render: (_args: unknown, value: unknown): unknown[] => [{ type: 'text', text: String(value) }],
+}
+
+/**
+ * measure 的 landmarks 类型清单。
+ * 前六种是老原语（行为不许变）；后两种是 P2-5 新增的颜色扫描原语，
+ * 条件由调用方给（`probe` / `a` + `b`），实现见 `src/sprite/scan.ts`。
+ */
+const LANDMARK_TYPES = [
+  'bbox-top',
+  'bbox-bottom',
+  'bbox-left',
+  'bbox-right',
+  'point',
+  'scan-vertical',
+  'scan-horizontal',
+  'boundary',
+] as const
+
+/** 扫描条件的 JSON Schema：`scan-horizontal` 的 probe、`boundary` 的 a/b 共用。 */
+function probeSchema(description: string): Record<string, unknown> {
+  return {
+    type: 'object',
+    description,
+    properties: {
+      channel: {
+        type: 'string',
+        enum: [...SCAN_CHANNELS],
+        description: '通道：r/g/b/alpha 取原值，luma=0.299r+0.587g+0.114b，blue-minus-red=b-r，saturation=max-min',
+      },
+      op: { type: 'string', enum: [...SCAN_OPS], description: '比较方式' },
+      value: { type: 'number', description: '阈值（通道取值与它比较）' },
+      minRun: { type: 'number', description: '连续命中多少行才算数，默认 1' },
+    },
+    required: ['channel', 'op', 'value'],
+  }
 }
 
 export function buildTools(service: SpriteService): Array<Record<string, unknown>> {
@@ -186,17 +221,24 @@ export function buildTools(service: SpriteService): Array<Record<string, unknown
           source: { type: 'string', enum: ['keyed', 'raw'], description: '量抠图结果（默认 keyed）还是原始帧（raw）' },
           landmarks: {
             type: 'array',
-            description: '要量的基准点；不传就只给几何统计',
+            description:
+              '要量的基准点；不传就只给几何统计。' +
+              '量颜色交界（不靠 alpha）用后两种：scan-horizontal = 沿列 x 从 fromY 往 toY 找第一个连续满足 probe 的 run；' +
+              'boundary = 「a 段结束、紧接 b 段」的交界行（返回的 py 是 b 段第一行）。' +
+              '条件全由你给（channel/op/value），扫不到或越界回 found:false + reason，不会让整次 measure 失败。',
             items: {
               type: 'object',
               properties: {
                 id: { type: 'string' },
-                type: { type: 'string', enum: ['bbox-top', 'bbox-bottom', 'bbox-left', 'bbox-right', 'point', 'scan-vertical'] },
+                type: { type: 'string', enum: [...LANDMARK_TYPES] },
                 x: { type: 'number' },
                 y: { type: 'number' },
-                fromY: { type: 'number' },
-                toY: { type: 'number' },
+                fromY: { type: 'number', description: '扫描起点行（含），默认 0' },
+                toY: { type: 'number', description: '扫描终点行（含），默认 帧高 - 1' },
                 alphaThreshold: { type: 'number' },
+                probe: probeSchema('scan-horizontal 的条件（通道 + 比较 + 阈值 + 可选 minRun 连续长度）'),
+                a: probeSchema('boundary 上方那一段（A）的条件'),
+                b: probeSchema('boundary 下方那一段（B）的条件'),
               },
               required: ['id', 'type'],
             },

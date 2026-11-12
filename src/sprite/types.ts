@@ -53,14 +53,90 @@ export interface TrimOptions {
   alphaThreshold?: number
 }
 
+/**
+ * measure 扫描条件能用的通道（P2-5）。
+ * `blue-minus-red` = b-r（判蓝发最快）；`saturation` = max(r,g,b)-min(r,g,b)；
+ * `luma` = 0.299r+0.587g+0.114b。全是与业务无关的通用量。
+ */
+export const SCAN_CHANNELS = ['r', 'g', 'b', 'alpha', 'luma', 'blue-minus-red', 'saturation'] as const
+export type MeasureScanChannel = (typeof SCAN_CHANNELS)[number]
+
+/** 比较方式。条件由调用方给，工具不内置"什么算头发"这类语义。 */
+export const SCAN_OPS = ['>', '>=', '<', '<='] as const
+export type MeasureScanOp = (typeof SCAN_OPS)[number]
+
+/** 一条扫描条件：通道 + 比较 + 阈值（+ 可选"连续多少行才算数"）。 */
+export interface MeasureScanProbe {
+  channel: MeasureScanChannel
+  op: MeasureScanOp
+  value: number
+  /** 连续命中多少行才算一个有效 run（默认 1）。 */
+  minRun?: number
+}
+
 export interface MeasureLandmark {
   id: string
-  type: 'bbox-top' | 'bbox-bottom' | 'bbox-left' | 'bbox-right' | 'point' | 'scan-vertical'
+  type:
+    | 'bbox-top'
+    | 'bbox-bottom'
+    | 'bbox-left'
+    | 'bbox-right'
+    | 'point'
+    | 'scan-vertical'
+    | 'scan-horizontal'
+    | 'boundary'
   x?: number
   y?: number
   fromY?: number
   toY?: number
   alphaThreshold?: number
+  /** `scan-horizontal`：要扫的颜色/亮度条件。 */
+  probe?: MeasureScanProbe
+  /** `boundary`：交界**上方**那一段（A）的条件。 */
+  a?: MeasureScanProbe
+  /** `boundary`：交界**下方**那一段（B）的条件。 */
+  b?: MeasureScanProbe
+}
+
+/**
+ * 一条 landmark 的测量结果。前四个字段是老六种就有的形状（向后兼容），
+ * 其余是按原语补的可选字段——`found:false` + `reason` 表示"没扫到/越界"，
+ * 这时 `px/py` 为 null，整次 measure 不会失败。
+ */
+export interface MeasureLandmarkResult {
+  /** 测完由页面补上；单独调 scan 原语时可能没有。 */
+  id?: string
+  type?: string
+  px: number | null
+  py: number | null
+  confidence: number
+  /** 命中行的坐标（`scan-horizontal` / `boundary` 的 py 同值）；`bbox-*` 用 px 坐标。 */
+  value?: number | null
+  found?: boolean
+  reason?: string
+  /** 连续满足条件的行数；`boundary` 是 A 段 + B 段的合计。 */
+  runLength?: number
+  runStart?: number
+  runEnd?: number
+  /** `scan-horizontal` 的条件回显。 */
+  channel?: string
+  op?: string
+  threshold?: number
+  /** `boundary`：A/B 段各自的连续行数与起止行（`aEnd = py - 1`）。 */
+  aRun?: number
+  bRun?: number
+  aStart?: number
+  aEnd?: number
+  bEnd?: number
+  aChannel?: string
+  bChannel?: string
+  /** 扫的那一列，以及实际生效（可能被帧边界裁过）的 y 区间。 */
+  column?: number
+  fromY?: number
+  toY?: number
+  clipped?: boolean
+  /** 只有 `point` 会给：坐标是否落在帧内。 */
+  inside?: boolean
 }
 
 export interface MeasureResult {
@@ -77,7 +153,7 @@ export interface MeasureResult {
     soleY: { min: number; max: number }
     bboxUnion: { x0: number; y0: number; x1: number; y1: number }
   }
-  landmarks?: Array<{ id: string; px: number | null; py: number | null; confidence: number }>
+  landmarks?: MeasureLandmarkResult[]
   /** 这次量的是抠图结果还是原帧（.58）：绿幕素材的原帧整幅不透明，量原帧只会得到「整幅」。 */
   source?: 'keyed' | 'raw'
   /** bbox 面积 / 帧面积 —— 一眼看出「量的是整幅还是主体」。 */
