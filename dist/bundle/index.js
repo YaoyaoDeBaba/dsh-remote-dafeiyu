@@ -32294,12 +32294,33 @@ import { EventEmitter } from "node:events";
 var subagentBus = new EventEmitter();
 subagentBus.setMaxListeners(64);
 var pending;
-function emitSubagentChange() {
+var queued;
+var lastPayload;
+var hasConsumers = () => subagentBus.listenerCount("change") > 0;
+function setSubagentBusGate(gate) {
+  hasConsumers = gate;
+}
+function resetSubagentBusGate() {
+  hasConsumers = () => subagentBus.listenerCount("change") > 0;
+}
+function emitSubagentChange(payload) {
+  if (!hasConsumers()) return;
+  if (payload === void 0) {
+    queued = "change";
+  } else {
+    if (payload === lastPayload) return;
+    queued = payload;
+  }
   if (pending !== void 0) return;
   pending = setTimeout(() => {
     pending = void 0;
+    const next = queued;
+    queued = void 0;
+    if (next === void 0) return;
+    if (next === lastPayload) return;
+    lastPayload = next;
     try {
-      subagentBus.emit("change");
+      subagentBus.emit("change", next);
     } catch {
     }
   }, 400);
@@ -32363,6 +32384,18 @@ function createServicesKernel(services, options) {
   const subagentTurnStart = /* @__PURE__ */ new Map();
   const subagentActivity = /* @__PURE__ */ new Map();
   const knownSubagentIds = /* @__PURE__ */ new Set();
+  const subagentParentOf = /* @__PURE__ */ new Map();
+  let archivedCache;
+  let sessionsListCache;
+  const CATALOG_TTL_MS = 2e3;
+  const CATALOG_FAIL_TTL_MS = 3e4;
+  const catalogCache = /* @__PURE__ */ new Map();
+  function noteSubagentKnown(id, parent, invalidateCatalog = false) {
+    subagentParentOf.set(id, parent);
+    if (knownSubagentIds.has(id)) return;
+    knownSubagentIds.add(id);
+    if (invalidateCatalog) catalogCache.clear();
+  }
   let lastTouchedSessionId = "";
   const cwdBySession = /* @__PURE__ */ new Map();
   const seenEventTypes = /* @__PURE__ */ new Set();
@@ -32637,6 +32670,18 @@ function createServicesKernel(services, options) {
     return void 0;
   }
   async function subagentCatalog(parentSessionId, descendants) {
+    const key = `${descendants ? "d" : "c"}|${parentSessionId}`;
+    const now = options.clock.now();
+    const cached2 = catalogCache.get(key);
+    if (cached2 !== void 0 && now - cached2.at < cached2.ttl) return cached2.value;
+    const value = await readSubagentCatalog(parentSessionId, descendants);
+    catalogCache.set(key, { at: now, value, ttl: value.trusted ? CATALOG_TTL_MS : CATALOG_FAIL_TTL_MS });
+    if (catalogCache.size > 200) {
+      for (const old of [...catalogCache.keys()].slice(0, 100)) catalogCache.delete(old);
+    }
+    return value;
+  }
+  async function readSubagentCatalog(parentSessionId, descendants) {
     const out = /* @__PURE__ */ new Map();
     const service = services.subagents;
     if (!service) return { entries: out, trusted: false };
@@ -32703,19 +32748,24 @@ function createServicesKernel(services, options) {
     const catalog = catalogRead.entries;
     let records = [];
     if (catalog.size > 0) {
-      const created = /* @__PURE__ */ new Map();
-      const listLive = fn(services.sessions, "list");
-      if (listLive) {
-        try {
-          const rowsLive = listLive.call(services.sessions) ?? [];
-          for (const row of rowsLive) {
-            if (typeof row?.id === "string" && (typeof row.createdAt === "number" || typeof row.createdAt === "string")) {
-              created.set(row.id, row.createdAt);
+      const nowForCache = options.clock.now();
+      if (sessionsListCache === void 0 || nowForCache - sessionsListCache.at > 2e3) {
+        const fresh = /* @__PURE__ */ new Map();
+        const listLive = fn(services.sessions, "list");
+        if (listLive) {
+          try {
+            const rowsLive = listLive.call(services.sessions) ?? [];
+            for (const row of rowsLive) {
+              if (typeof row?.id === "string" && (typeof row.createdAt === "number" || typeof row.createdAt === "string")) {
+                fresh.set(row.id, row.createdAt);
+              }
             }
+          } catch {
           }
-        } catch {
         }
+        sessionsListCache = { at: nowForCache, value: fresh };
       }
+      const created = sessionsListCache.value;
       for (const id of catalog.keys()) {
         const header = liveAgent(id)?.session?.header;
         const fallbackCreated = header?.createdAt ?? created.get(id);
@@ -32777,7 +32827,7 @@ function createServicesKernel(services, options) {
       const name2 = naming === "ok" ? labeled.name : void 0;
       const activity = subagentActivity.get(id);
       const depth = typeof row.header?.delegationDepth === "number" && row.header.delegationDepth > 0 ? row.header.delegationDepth : 1;
-      knownSubagentIds.add(id);
+      noteSubagentKnown(id, String(row.header?.parentSession ?? parentSessionId));
       out.push({
         id,
         parentId: String(row.header?.parentSession ?? ""),
@@ -33369,7 +33419,7 @@ function createServicesKernel(services, options) {
     }
     if (knownSubagentIds.has(sessionId)) {
       try {
-        emitSubagentChange();
+        emitSubagentChange(subagentSnapshot());
       } catch {
       }
     }
@@ -33390,11 +33440,37 @@ function createServicesKernel(services, options) {
       injectedUserMessages.set(kind, (injectedUserMessages.get(kind) ?? 0) + 1);
     }
   }
+  function subagentSnapshot() {
+    let archived = archivedCache?.value;
+    if (archived === void 0 || options.clock.now() - (archivedCache?.at ?? 0) > 1e3) {
+      archived = archivedIds();
+      archivedCache = { at: options.clock.now(), value: archived };
+    }
+    const byParent = /* @__PURE__ */ new Map();
+    for (const id of knownSubagentIds) {
+      const parent = subagentParentOf.get(id);
+      if (parent === void 0) continue;
+      const row = byParent.get(parent) ?? [0, 0];
+      byParent.set(parent, row);
+      if (archived.has(id)) continue;
+      row[0] += 1;
+      if (agentStatus(id) === "running") row[1] += 1;
+    }
+    const s = {};
+    for (const parent of [...byParent.keys()].sort()) {
+      s[parent] = byParent.get(parent);
+    }
+    return JSON.stringify({ s });
+  }
   function translateAgentStatus(onEvent, args) {
     const payload = args.find((arg) => arg && typeof arg === "object");
     const sessionId = payload?.sessionId ?? String(payload?.agent?.session?.id ?? "");
     if (!sessionId) return;
-    emitSubagentChange();
+    const parentOfAgent = String(
+      payload?.agent?.session?.header?.parentSession ?? ""
+    );
+    if (parentOfAgent) noteSubagentKnown(sessionId, parentOfAgent, true);
+    emitSubagentChange(subagentSnapshot());
     const running = payload?.status === "running";
     const now = options.clock.now();
     if (running) {
@@ -37520,10 +37596,13 @@ function startSubagents(ctx, input2) {
   } catch (error62) {
     probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
   }
-  const onBusChange = () => {
+  const onBusChange = (payload) => {
+    const frame = `data: ${payload ?? "change"}
+
+`;
     for (const client of streamClients) {
       try {
-        client.write("data: change\n\n");
+        client.write(frame);
       } catch {
         streamClients.delete(client);
       }
@@ -37531,6 +37610,7 @@ function startSubagents(ctx, input2) {
   };
   try {
     subagentBus.on("change", onBusChange);
+    setSubagentBusGate(() => streamClients.size > 0);
     probe.bus = "subscribed";
   } catch (error62) {
     probe.bus = `subscribe threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
@@ -37542,6 +37622,10 @@ function startSubagents(ctx, input2) {
       stopped = true;
       try {
         subagentBus.removeListener("change", onBusChange);
+      } catch {
+      }
+      try {
+        resetSubagentBusGate();
       } catch {
       }
       try {

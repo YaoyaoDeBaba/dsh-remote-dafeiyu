@@ -315,6 +315,52 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   const subagentActivity = new Map<string, { text: string; at: number }>()
   /** 已识别出来的子代理会话 id（用来判断某条会话事件要不要唤醒监视器）。 */
   const knownSubagentIds = new Set<string>()
+  /**
+   * 子代理 → 父会话。SSE 载荷要按父会话分组建 `{父id: [总数, running数]}`，
+   * 而 `knownSubagentIds` 只是个扁平集合，没有父关系就分不了组。
+   *
+   * 两条填充路径，都是**纯内存**、不碰 catalog 也不碰会话日志：
+   * - `listSubagents()` 投影出成员时（顺带把 parentId 记下）；
+   * - `agent/status` 事件的 agent 会话头（`parentSession`）。
+   * 从没被列过、也没发过状态事件的子代理不在表里——那它本来也不会被界面看见。
+   */
+  const subagentParentOf = new Map<string, string>()
+  /**
+   * 归档 id 集合的 1 秒缓存。`archivedIds()` 每次都要从 workspaceRegistry 读一遍并建 Set，
+   * 而 SSE 载荷会随每条子代理事件重建一次——1 秒内复用同一份就够（归档是人工低频动作）。
+   */
+  let archivedCache: { at: number; value: Set<string> } | undefined
+  /** `sessions.list()` 的 2 秒缓存（只用来兜 createdAt，见 listSubagents）。 */
+  let sessionsListCache: { at: number; value: Map<string, number | string> } | undefined
+  /**
+   * catalog 结果缓存。**这是 2026-11-12 那次性能排查的头号发现**：
+   *
+   * 实测 `subagents.listChildren()` 在"父会话没有活的子代理"时不会返回，一路耗到 4000ms
+   * 超时；随后 `trusted=false` 退回 `sessionQuery.listSessions()`，再耗掉最多 2000ms。
+   * 也就是说**一次面板刷新能吃掉 4~6 秒**（对 127.0.0.1 连测三次：4186 / 4297 / 5547ms），
+   * 而它原本被 SSE 以 2.5 次/秒的频率触发。
+   *
+   * 光把客户端改成"面板关着不请求"还不够——面板打开时每次刷新也不该重交这个钱。
+   * 可信结果缓存 2 秒；不可信（超时/抛错）缓存 30 秒，退避掉那个必然超时的调用。
+   */
+  const CATALOG_TTL_MS = 2_000
+  const CATALOG_FAIL_TTL_MS = 30_000
+  const catalogCache = new Map<string, { at: number; value: { entries: Map<string, { label?: string }>; trusted: boolean }; ttl: number }>()
+
+  /**
+   * 记一个子代理及其父会话。
+   *
+   * `invalidateCatalog` 只在**从别的来源**得知"多了个成员"时才为 true（目前是 `agent/status`）：
+   * 那时缓存里可能正存着"这个父会话没有子代理"，必须立刻作废，否则新派出去的活会等一个 TTL 才出现。
+   * `listSubagents()` 里不要传——它手上的 catalog 就是刚读出来的，清掉等于自己踩自己
+   * （第一版就是这么写的，缓存命中率恒为 0）。
+   */
+  function noteSubagentKnown(id: string, parent: string, invalidateCatalog = false): void {
+    subagentParentOf.set(id, parent)
+    if (knownSubagentIds.has(id)) return
+    knownSubagentIds.add(id)
+    if (invalidateCatalog) catalogCache.clear()
+  }
 
   /**
    * 「最后操作的那个会话」与它的目录（2026-10-06 用户："新建要落在最后操作的分组里"）。
@@ -801,6 +847,24 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     parentSessionId: string,
     descendants: boolean,
   ): Promise<{ entries: Map<string, { label?: string }>; trusted: boolean }> {
+    const key = `${descendants ? 'd' : 'c'}|${parentSessionId}`
+    const now = options.clock.now()
+    const cached = catalogCache.get(key)
+    if (cached !== undefined && now - cached.at < cached.ttl) return cached.value
+    const value = await readSubagentCatalog(parentSessionId, descendants)
+    // 失败/超时也缓存，而且缓存更久：一次超时要 4 秒，不记住就意味着每次刷新都再交一遍。
+    catalogCache.set(key, { at: now, value, ttl: value.trusted ? CATALOG_TTL_MS : CATALOG_FAIL_TTL_MS })
+    if (catalogCache.size > 200) {
+      // 键是"父会话 × 是否含后代"，正常规模就是几十条；防的是长跑进程里无界增长。
+      for (const old of [...catalogCache.keys()].slice(0, 100)) catalogCache.delete(old)
+    }
+    return value
+  }
+
+  async function readSubagentCatalog(
+    parentSessionId: string,
+    descendants: boolean,
+  ): Promise<{ entries: Map<string, { label?: string }>; trusted: boolean }> {
     const out = new Map<string, { label?: string }>()
     const service = services.subagents
     if (!service) return { entries: out, trusted: false }
@@ -892,20 +956,32 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     let records: SessionRecordLike[] = []
     if (catalog.size > 0) {
       // catalog 给成员 id + label；创建时间/运行态再按需从活 agent 的会话头拿。
-      const created = new Map<string, number | string>()
-      const listLive = fn(services.sessions, 'list')
-      if (listLive) {
-        try {
-          const rowsLive = (listLive.call(services.sessions) ?? []) as Array<{ id?: unknown; createdAt?: unknown }>
-          for (const row of rowsLive) {
-            if (typeof row?.id === 'string' && (typeof row.createdAt === 'number' || typeof row.createdAt === 'string')) {
-              created.set(row.id, row.createdAt)
+      //
+      // `sessions.list()` 是**全量**建对象（会话越多越贵），而它只用来兜一个 createdAt：
+      // 面板每 400ms 被唤醒一次就重跑一遍纯属浪费。2 秒 TTL 足够——新建会话的
+      // createdAt 不会在 2 秒内"变"，它只会多一条（下个窗口就能看到）。
+      const nowForCache = options.clock.now()
+      if (sessionsListCache === undefined || nowForCache - sessionsListCache.at > 2_000) {
+        const fresh = new Map<string, number | string>()
+        const listLive = fn(services.sessions, 'list')
+        if (listLive) {
+          try {
+            const rowsLive = (listLive.call(services.sessions) ?? []) as Array<{ id?: unknown; createdAt?: unknown }>
+            for (const row of rowsLive) {
+              if (
+                typeof row?.id === 'string' &&
+                (typeof row.createdAt === 'number' || typeof row.createdAt === 'string')
+              ) {
+                fresh.set(row.id, row.createdAt)
+              }
             }
+          } catch {
+            /* ignore */
           }
-        } catch {
-          /* ignore */
         }
+        sessionsListCache = { at: nowForCache, value: fresh }
       }
+      const created = sessionsListCache.value
       for (const id of catalog.keys()) {
         const header = (liveAgent(id)?.session as { header?: { createdAt?: number | string; cwd?: string } } | undefined)?.header
         const fallbackCreated = header?.createdAt ?? created.get(id)
@@ -983,7 +1059,9 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         typeof row.header?.delegationDepth === 'number' && row.header.delegationDepth > 0
           ? row.header.delegationDepth
           : 1
-      knownSubagentIds.add(id)
+      // 父关系也记一份：SSE 载荷要按父会话分组，只靠 `knownSubagentIds` 那个扁平集合分不了。
+      // `noteSubagentKnown` 还会在"这是个新成员"时让 catalog 缓存立刻失效。
+      noteSubagentKnown(id, String(row.header?.parentSession ?? parentSessionId))
       out.push({
         id,
         parentId: String(row.header?.parentSession ?? ''),
@@ -2021,7 +2099,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
     if (knownSubagentIds.has(sessionId)) {
       try {
-        emitSubagentChange()
+        emitSubagentChange(subagentSnapshot())
       } catch {
         /* 订阅方异常不影响事件分发 */
       }
@@ -2052,13 +2130,55 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
   }
 
+  /**
+   * SSE 载荷：按父会话分组的轻量快照 `{ "s": { "<父会话id>": [总数, running数] } }`。
+   *
+   * 为什么不是「全量列表」：一条在跑的子代理会让 `agent/status` 与它的会话事件反复触发，
+   * 每次塞整张表等于把 `listSubagents()` 的活搬到推送里，比现在更糟。
+   * 面板要的只有两件事——**徽标显示几**、**要不要重新拉一次**，这两件都在这两个数里。
+   *
+   * 键排序后序列化：Map 的插入顺序不稳定，不排序会让"其实没变"的两次快照产生不同字符串，
+   * 去重就失效了（总线那边靠逐字节比较）。
+   */
+  function subagentSnapshot(): string {
+    let archived = archivedCache?.value
+    if (archived === undefined || options.clock.now() - (archivedCache?.at ?? 0) > 1_000) {
+      archived = archivedIds()
+      archivedCache = { at: options.clock.now(), value: archived }
+    }
+    const byParent = new Map<string, [number, number]>()
+    for (const id of knownSubagentIds) {
+      const parent = subagentParentOf.get(id)
+      if (parent === undefined) continue
+      // 先占位再判断：父会话的键必须存在，**哪怕它的子代理全归档了**。
+      // 否则"全部归档"在载荷里表现为"这个键消失"，面板分不清「清零」和「没这条数据」。
+      const row = byParent.get(parent) ?? [0, 0]
+      byParent.set(parent, row)
+      if (archived.has(id)) continue
+      row[0] += 1
+      if (agentStatus(id) === 'running') row[1] += 1
+    }
+    const s: Record<string, [number, number]> = {}
+    for (const parent of [...byParent.keys()].sort()) {
+      s[parent] = byParent.get(parent) as [number, number]
+    }
+    return JSON.stringify({ s })
+  }
+
   function translateAgentStatus(onEvent: (event: KernelEvent) => void, args: unknown[]): void {
     const payload = args.find((arg) => arg && typeof arg === 'object') as
       { agent?: LooseObject; status?: string; sessionId?: string } | undefined
     const sessionId = payload?.sessionId ?? String((payload?.agent as { session?: { id?: string } })?.session?.id ?? '')
     if (!sessionId) return
-    // 状态变化 → 唤醒订阅者（客户端不再定时轮询）
-    emitSubagentChange()
+    // 顺手记下父子关系（说话的是子代理的话）。以前这里什么都不记，所以只有「被列过」
+    // 的子代理才认识；而面板关着时不列，徽标就永远是旧的。这条纯内存，没有额外开销。
+    const parentOfAgent = String(
+      ((payload?.agent as { session?: { header?: { parentSession?: unknown } } } | undefined)?.session?.header
+        ?.parentSession) ?? '',
+    )
+    if (parentOfAgent) noteSubagentKnown(sessionId, parentOfAgent, true)
+    // 状态变化 → 唤醒订阅者（客户端不再定时轮询）。载荷没变的话总线会直接丢掉这条。
+    emitSubagentChange(subagentSnapshot())
     const running = payload?.status === 'running'
     // 顺带记一笔子代理的工作时间：running 起点 / idle 时结算。普通会话也记，开销只是两个 Map。
     const now = options.clock.now()

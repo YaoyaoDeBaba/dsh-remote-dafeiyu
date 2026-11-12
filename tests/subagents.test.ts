@@ -15,7 +15,7 @@ import { createServicesKernel, type ServicesBundle } from '../src/platform/carri
 import { readSubagentsConfig, writeSubagentsConfig } from '../src/subagents/config.js'
 import { createGuidancePusher } from '../src/subagents/pusher.js'
 import { startSubagents } from '../src/subagents/start.js'
-import { emitSubagentChange } from '../src/subagents/bus.js'
+import { emitSubagentChange, resetSubagentBusGate, resetSubagentBusState, setSubagentBusGate, subagentBus } from '../src/subagents/bus.js'
 import { streamClients } from '../src/subagents/routes.js'
 
 const NOW = 1_800_000_000_000
@@ -309,4 +309,124 @@ test('guidance pusher：agents 服务缺失时 total=0 不抛', async () => {
   const result = await push('x', 'y')
   assert.equal(result.total, 0)
   assert.equal(result.pushed, 0)
+})
+
+// ── 2026-11-12 性能优化：catalog 缓存 与 总线去重 ──────────────────────────────
+//
+// 背景（实测）：`subagents.listChildren()` 在"父会话没有活的子代理"时不会返回，
+// 一路耗到 4000ms 超时，随后退回 `sessionQuery.listSessions()` 再耗最多 2000ms。
+// 也就是**一次刷新 4~6 秒**，而它当时被 SSE 以 2.5 次/秒触发。下面几条钉住修复。
+
+/** 可推进的时钟：TTL 相关的用例必须能控制"现在几点"。 */
+function kernelWithClock(bundle: ServicesBundle, state: { now: number }) {
+  const clock = {
+    now: () => state.now,
+    setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms) as unknown as number,
+    clearTimeout: (handle: number) => clearTimeout(handle as unknown as NodeJS.Timeout),
+  }
+  return createServicesKernel(bundle, { clock, log: () => {} })
+}
+
+test('catalog 缓存：2 秒内重复刷新只打一次 listChildren（4 秒的超时不能每次都交）', async () => {
+  const bundle = services()
+  const inner = (bundle as unknown as { subagents: { listChildren: (id: string) => Promise<unknown> } }).subagents
+  let calls = 0
+  const raw = inner.listChildren.bind(inner)
+  inner.listChildren = (id: string) => {
+    calls += 1
+    return raw(id)
+  }
+  const state = { now: NOW }
+  const port = kernelWithClock(bundle, state)
+
+  await port.listSubagents!('session-p')
+  assert.equal(calls, 1, '第一次必须真的去问 catalog')
+
+  state.now += 500
+  await port.listSubagents!('session-p')
+  assert.equal(calls, 1, '2 秒内是缓存窗口，不该再问一次')
+
+  state.now += 3_000
+  await port.listSubagents!('session-p')
+  assert.equal(calls, 2, '过期之后必须重新取，否则新建的子代理永远不出现')
+})
+
+test('catalog 失败要退避 30 秒：一次超时不许变成每次刷新都超时', async () => {
+  const bundle = services({ withQuery: false })
+  const inner = (bundle as unknown as { subagents: Record<string, unknown> }).subagents
+  let calls = 0
+  inner.listChildren = () => {
+    calls += 1
+    return Promise.reject(new Error('listChildren 超时'))
+  }
+  const state = { now: NOW }
+  const port = kernelWithClock(bundle, state)
+
+  await port.listSubagents!('session-p').catch(() => undefined)
+  assert.equal(calls, 1)
+
+  state.now += 1_000
+  await port.listSubagents!('session-p').catch(() => undefined)
+  assert.equal(calls, 1, '失败结果要缓存 30 秒：这条路径每次都要 4 秒，不能 2 秒就重试')
+
+  state.now += 40_000
+  await port.listSubagents!('session-p').catch(() => undefined)
+  assert.equal(calls, 2, '退避期过了才许再试一次')
+})
+
+const settle = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+test('总线：相同载荷不发第二帧（没变化就不推，这是 dsh-agent-team 的核心纪律）', async () => {
+  resetSubagentBusState()
+  setSubagentBusGate(() => true)
+  const seen: string[] = []
+  const listener = (payload: string): void => void seen.push(payload)
+  subagentBus.on('change', listener)
+  try {
+    emitSubagentChange('{"s":{"p":[1,0]}}')
+    await settle(600)
+    emitSubagentChange('{"s":{"p":[1,0]}}')
+    await settle(600)
+    assert.deepEqual(seen, ['{"s":{"p":[1,0]}}'], '状态没变就不该再唤醒客户端')
+  } finally {
+    subagentBus.removeListener('change', listener)
+    resetSubagentBusGate()
+    resetSubagentBusState()
+  }
+})
+
+test('总线：窗口内合并成最后一帧（中间态可以丢，最后态不能丢）', async () => {
+  resetSubagentBusState()
+  setSubagentBusGate(() => true)
+  const seen: string[] = []
+  const listener = (payload: string): void => void seen.push(payload)
+  subagentBus.on('change', listener)
+  try {
+    emitSubagentChange('{"s":{"p":[1,0]}}')
+    emitSubagentChange('{"s":{"p":[2,0]}}')
+    emitSubagentChange('{"s":{"p":[3,0]}}')
+    await settle(600)
+    assert.deepEqual(seen, ['{"s":{"p":[3,0]}}'], '只发最后一次；发中间态会让界面停在旧值')
+  } finally {
+    subagentBus.removeListener('change', listener)
+    resetSubagentBusGate()
+    resetSubagentBusState()
+  }
+})
+
+test('总线：一条 SSE 连接都没有时连定时器都不排', async () => {
+  resetSubagentBusState()
+  setSubagentBusGate(() => false)
+  const seen: string[] = []
+  const listener = (payload: string): void => void seen.push(payload)
+  subagentBus.on('change', listener)
+  try {
+    emitSubagentChange('{"s":{"p":[1,0]}}')
+    await settle(600)
+    assert.equal(seen.length, 0, '没人在听就别干活')
+  } finally {
+    subagentBus.removeListener('change', listener)
+    resetSubagentBusGate()
+    resetSubagentBusState()
+  }
 })

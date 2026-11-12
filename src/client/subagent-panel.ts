@@ -470,6 +470,55 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     render()
   }
 
+  /**
+   * 解析 SSE 帧里的计数快照。老宿主推的是 `change`（无数据），新宿主推 JSON。
+   * 解析不出来一律返回 undefined，走"老行为"——不能让一个新格式把面板打死。
+   */
+  const parseCounts = (raw: string): Record<string, [number, number]> | undefined => {
+    if (raw === 'change') return undefined
+    try {
+      const parsed = JSON.parse(raw) as { s?: Record<string, unknown> } | undefined
+      const s = parsed?.s
+      if (!s || typeof s !== 'object') return undefined
+      const out: Record<string, [number, number]> = {}
+      for (const [key, value] of Object.entries(s)) {
+        if (!Array.isArray(value)) continue
+        const total = Number(value[0])
+        const running = Number(value[1])
+        out[key] = [Number.isFinite(total) ? total : 0, Number.isFinite(running) ? running : 0]
+      }
+      return out
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * 只用推送带来的计数更新徽标。
+   *
+   * 这是"面板关着也刷"的正解：徽标要的只是**一个数**，为它发一次全量 GET
+   * （宿主那边要跑 catalog + 每个 id 一次 liveAgent + 一次 sessions.list）毫无道理。
+   * 以前 SSE 帧只有一个字 `change`，所以只能靠 GET 反推——现在帧里带数了。
+   */
+  const applyCounts = (count: number): void => {
+    const has = count > 0
+    fab.classList.toggle('has-items', has)
+    badge.hidden = !has
+    badge.textContent = String(count)
+  }
+
+  // 打开态下的刷新合并：最多每 500ms 一次。人眼看列表，500ms 足够；
+  // 而在跑的子代理原本能推到 2.5 次/秒，每次都是一发全量 GET。
+  // 尾随合并（保留最后一次）而不是"窗口内全丢"——丢最后一次会让界面停在旧状态。
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined
+  const scheduleRefresh = (): void => {
+    if (refreshTimer !== undefined) return
+    refreshTimer = (globalThis as { setTimeout?: (fn: () => void, ms: number) => number }).setTimeout?.(() => {
+      refreshTimer = undefined
+      void refresh()
+    }, 500) ?? 0
+  }
+
   const refresh = async (): Promise<void> => {
     if (busy) return
     const current = deps.getCurrentSession()
@@ -667,7 +716,27 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
           fallbackTimer = undefined
         }
       }
-      stream.onmessage = () => void refresh()
+      /**
+       * 收到一帧：
+       * - 新协议（JSON：`{s:{父会话:[总数,running]}}`）→ 先更新徽标，**面板打开才拉全量**；
+       * - 旧协议（`change`）或解析失败 → 退回老行为：只有面板打开才刷。
+       *
+       * 关键点：**关着的时候一个请求都不发**。以前这里是无条件 `void refresh()`，
+       * 一条子代理在跑就等于 2.5 次/秒的全量拉取，面板还根本没人看。
+       */
+      stream.onmessage = (event: MessageEvent): void => {
+        const raw = String((event as { data?: unknown })?.data ?? '')
+        if (raw !== '') {
+          const counts = parseCounts(raw)
+          if (counts !== undefined) {
+            const sid = deps.getCurrentSession()
+            if (sid && Object.prototype.hasOwnProperty.call(counts, sid)) {
+              applyCounts(Number(counts[sid]?.[0] ?? 0))
+            }
+          }
+        }
+        if (opened) scheduleRefresh()
+      }
       stream.onerror = () => scheduleFallback()
     } catch {
       scheduleFallback()
@@ -684,6 +753,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
 
   return () => {
     if (fallbackTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(fallbackTimer as unknown as number)
+    if (refreshTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(refreshTimer as unknown as number)
     try {
       stream?.close()
     } catch {

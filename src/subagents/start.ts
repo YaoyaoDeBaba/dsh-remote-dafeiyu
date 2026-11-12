@@ -23,7 +23,7 @@ import { readSubagentsConfig, resolveSubagentsConfigFile, writeSubagentsConfig, 
 import type { KernelSubagent } from '../ports/index.js'
 import { SUBAGENT_GUIDANCE, subagentGuidance } from './guidance.js'
 import { createGuidancePusher, type GuidancePushResult } from './pusher.js'
-import { subagentBus } from './bus.js'
+import { resetSubagentBusGate, setSubagentBusGate, subagentBus } from './bus.js'
 import { readXyqConfig, resolveXyqConfigFile } from '../xyq/config.js'
 import { xyqGuidance } from '../xyq/guidance.js'
 
@@ -229,12 +229,19 @@ export function startSubagents(
    * 2026-11-11 之前这座桥是**断的**：`emitSubagentChange()` 在内核事件里被调用，
    * 但没有任何地方订阅它，`streamClients` 也就永远收不到数据。表现是面板的 EventSource
    * 连上了却不刷新（连上就不会触发退化轮询），"事件驱动"名存实亡。
-   * 总线本身 400ms 合并一次，这里只负责写给订阅者；写失败（客户端已断）就把它摘掉。
+   * 总线本身 400ms 合并一次（窗口内只保留最后一次），这里只负责写给订阅者；
+   * 写失败（客户端已断）就把它摘掉。
+   *
+   * 2026-11-12：帧体从固定的 `change` 改成**总线递过来的载荷**。以前的帧不带任何数据，
+   * 客户端收到就必须再发一次 `GET /subagents` 才知道发生了什么——一条在跑的子代理
+   * 稳态就是 2.5 次/秒的「推送→全量拉取」循环。现在帧里带轻量快照，面板关着时
+   * 只用它更新徽标，一次请求都不发。
    */
-  const onBusChange = (): void => {
+  const onBusChange = (payload?: string): void => {
+    const frame = `data: ${payload ?? 'change'}\n\n`
     for (const client of streamClients) {
       try {
-        client.write('data: change\n\n')
+        client.write(frame)
       } catch {
         streamClients.delete(client)
       }
@@ -242,6 +249,9 @@ export function startSubagents(
   }
   try {
     subagentBus.on('change', onBusChange)
+    // 闸门接上 SSE 客户端集合：一条连接都没有时，总线连 400ms 的定时器都不排。
+    // 光订阅总线是不够的——只要插件活着，`listenerCount` 就恒 > 0，闸门形同虚设。
+    setSubagentBusGate(() => streamClients.size > 0)
     probe.bus = 'subscribed'
   } catch (error) {
     probe.bus = `subscribe threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
@@ -256,6 +266,12 @@ export function startSubagents(
         subagentBus.removeListener('change', onBusChange)
       } catch {
         /* 退不掉也不许拖住停机 */
+      }
+      // 闸门也要收回去：否则停机后它还指着这个实例的 streamClients。
+      try {
+        resetSubagentBusGate()
+      } catch {
+        /* ignore */
       }
       try {
         unregister?.()
