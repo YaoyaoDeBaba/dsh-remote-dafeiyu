@@ -289,6 +289,15 @@ export class HostRuntime {
   private started = false
   private stopped = false
   private lastPushAt = 0
+  /**
+   * 是否正在读内核列表。
+   *
+   * 为什么需要它：同一 tick 里连发好几条状态变化（手机断线重连时最常见，一次补发十几条），
+   * 这几次调用会**在第一次的 `await` 让出之前**全部越过后面的合并窗口判断，
+   * 于是一次重连就把全量会话列表扫十几遍。这个闸门保证"同一时刻只有一个扫描在跑"，
+   * 其余的合并成一条尾随推送（那一条会拿到最新数据，不会丢状态）。
+   */
+  private pushInFlight = false
   /** 工具步数（M2 状态摘要的 `steps`）：进程启动以来的累计，只加不减。 */
   private stepsDone = 0
 
@@ -713,6 +722,17 @@ export class HostRuntime {
             reply(false, { message: '主机这一代不支持子代理列表（内核端口没有 listSubagents 能力）' })
             return
           }
+          // `lite`（0.52）本来只省了带宽：数字对得上，但**每次仍然要读内核 catalog**
+          // （新宿主上还得遍历整棵子树）。手机每 5 秒拉一轮，等于每分钟十几次枚举。
+          // .69 起优先走纯内存的 `subagentCounts`；认不出这个父会话时（还没学到任何
+          // 子代理）才回退去列一次 —— 那次会把索引填上，之后都是纯内存。
+          if (cmd.lite === true) {
+            const counts = this.kernel.subagentCounts?.call(this.kernel, cmd.sessionId)
+            if (counts !== undefined) {
+              reply(true, { data: { lite: true, count: counts.count, running: counts.running } })
+              return
+            }
+          }
           const items = await list.call(this.kernel, cmd.sessionId, { descendants: cmd.descendants === true })
           // `lite`（0.52）：手机端面板关着时只为了保住 🐝 徽标数字，不需要整张表。
           // 整表实测 24 个子代理 ≈ 6KB，5 秒一轮 ≈ 4MB/小时；这里只回两个整数（≈60 字节）。
@@ -1104,6 +1124,31 @@ export class HostRuntime {
      * 等于用一次状态推送把用户的宿主带崩（违反 apply() 的头号红线）。
      */
     try {
+      /**
+       * **先判合并窗口，再读内核**（0.69）。
+       *
+       * 原来顺序是反的：先 `listSessions` 再判窗口。内核那个 `listSessions()` 是
+       * **全量枚举**（没有 limit 下推，`LISTING_LIMIT=100` 是我们拿到之后自己截的），
+       * 于是 500ms 窗口里来 5 条事件就等于把全量列表扫 5 遍——而后面 4 遍的结果
+       * 会被合并逻辑直接丢掉。手机上一次断线重连可能一次补发十几条状态，这就是纯浪费。
+       *
+       * 窗口判断改用"进入函数的时刻"没有副作用：真正要发的那一条仍会在读完之后
+       * 把 `lastPushAt` 更新成"数据到手"的时刻（见下面），所以慢读照样能触发尾随合并。
+       */
+      const windowNow = this.clock.now()
+      const sinceLast = windowNow - this.lastPushAt
+      // 正在扫 / 窗口内：合并成一条尾随推送，不再重复扫全量列表。
+      if (this.pushInFlight || (sinceLast < SESSION_MERGE_MS && reason !== 'start' && reason !== 'list')) {
+        this.mergePendingReason = reason
+        if (this.mergeTimer === undefined) {
+          this.mergeTimer = this.clock.setTimeout(() => {
+            this.mergeTimer = undefined
+            void this.pushSessions(this.mergePendingReason).catch(() => {})
+          }, Math.max(1, SESSION_MERGE_MS - sinceLast))
+        }
+        return this.sessions
+      }
+      this.pushInFlight = true
       try {
         const listed = await this.kernel.listSessions(LISTING_LIMIT)
         this.sessions = listed.map((item) => item.summary)
@@ -1111,22 +1156,12 @@ export class HostRuntime {
         // 读失败时**保留上一次已知的快照**再照常广播：把列表清成空白比停在旧状态更糟
         // （手机会以为会话全没了），而 keep_awake 那一侧的状态仍然必须送达（M25）。
         this.log('list sessions failed', { message: messageOf(error), reason })
+      } finally {
+        this.pushInFlight = false
       }
       // 判窗口用的是"数据到手"的时刻，不是进入函数的时刻：内核读列表可能很慢，
       // 用进入时刻会让一次 400ms 的读直接吃掉整个合并窗口。
-      const now = this.clock.now()
-      const sinceLast = now - this.lastPushAt
-      if (sinceLast < SESSION_MERGE_MS && reason !== 'start' && reason !== 'list') {
-        this.mergePendingReason = reason
-        if (this.mergeTimer === undefined) {
-          this.mergeTimer = this.clock.setTimeout(() => {
-            this.mergeTimer = undefined
-            void this.pushSessions(this.mergePendingReason).catch(() => {})
-          }, SESSION_MERGE_MS - sinceLast)
-        }
-        return this.sessions
-      }
-      this.lastPushAt = now
+      this.lastPushAt = this.clock.now()
       if (this.mergeTimer !== undefined) {
         // 这一条全量快照已经把待推的内容覆盖到了，尾随推送不必再发（否则会多发一条重复列表）。
         this.clock.clearTimeout(this.mergeTimer)

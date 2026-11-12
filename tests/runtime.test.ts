@@ -4346,3 +4346,68 @@ test('cmd.list_subagents：lite=true 只回 count/running，不回整张表（�
   assert.equal(fullData.items?.length, liteData.count)
   assert.equal(fullData.items?.filter((row) => row.status === 'running').length, liteData.running)
 })
+
+test('同一 tick 连发多条状态变化只扫一次全量会话列表（.69：合并窗口原先判在扫描之后）', async () => {
+  const { runtime, kernel, clock } = fixture()
+  runtime.start()
+  await settle()
+  await clock.advance(600) // 先越过启动那次推送的合并窗口
+  kernel.calls.listSessions.length = 0
+  // 手机断线重连时最常见：一次补发十几条状态变化，全都落在同一个 tick。
+  for (let i = 0; i < 6; i += 1) void runtime.pushSessions('run-state')
+  await settle()
+  assert.equal(
+    kernel.calls.listSessions.length,
+    1,
+    `窗口内应只扫一次全量会话列表，实际扫了 ${kernel.calls.listSessions.length} 次`,
+  )
+})
+
+test('cmd.list_subagents lite：有内存计数就不读内核（手机每 5 秒一轮，不许每次都列整棵树）', async () => {
+  const { runtime, kernel, transport } = fixture()
+  runtime.start()
+  await settle()
+  let listed = 0
+  ;(kernel as unknown as { listSubagents?: unknown }).listSubagents = async () => {
+    listed += 1
+    return []
+  }
+  ;(kernel as unknown as { subagentCounts?: unknown }).subagentCounts = () => ({ count: 3, running: 1 })
+  type ResultPayload = Extract<EvPayload, { t: 'ev.result' }>
+  const lite = cmd(PAYLOAD_TYPES.cmdListSubagents, { sessionId: 'a1', lite: true })
+  await runtime.handleCommand(lite, 'c_sub_mem')
+  await settle()
+  const answer = transport.replies
+    .map((item) => item.payload)
+    .filter((p): p is ResultPayload => p.t === PAYLOAD_TYPES.evResult && p.cmdId === lite.cmdId)
+    .at(-1)
+  assert.ok(answer)
+  const data = answer.data as { count?: number; running?: number; lite?: boolean }
+  assert.equal(data.lite, true)
+  assert.equal(data.count, 3)
+  assert.equal(data.running, 1)
+  assert.equal(listed, 0, '内存里答得出来时，绝不能再列一次子代理（那是整棵子树）')
+})
+
+test('cmd.list_subagents lite：内存认不出这个父会话时回退去列一次（不能凭空回 0）', async () => {
+  const { runtime, kernel, transport } = fixture()
+  runtime.start()
+  await settle()
+  let listed = 0
+  ;(kernel as unknown as { listSubagents?: unknown }).listSubagents = async (sessionId: string) => {
+    listed += 1
+    return [{ id: 'child-1', parentId: sessionId, depth: 1, status: 'running', workMs: 1, idleMs: 1 }]
+  }
+  ;(kernel as unknown as { subagentCounts?: unknown }).subagentCounts = () => undefined
+  type ResultPayload = Extract<EvPayload, { t: 'ev.result' }>
+  const lite = cmd(PAYLOAD_TYPES.cmdListSubagents, { sessionId: 'a1', lite: true })
+  await runtime.handleCommand(lite, 'c_sub_fb')
+  await settle()
+  const answer = transport.replies
+    .map((item) => item.payload)
+    .filter((p): p is ResultPayload => p.t === PAYLOAD_TYPES.evResult && p.cmdId === lite.cmdId)
+    .at(-1)
+  assert.ok(answer)
+  assert.equal((answer.data as { count?: number }).count, 1)
+  assert.equal(listed, 1, '认不出时必须真的去列一次，不能凭空回 0')
+})

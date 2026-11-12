@@ -28688,6 +28688,15 @@ var HostRuntime = class {
   started = false;
   stopped = false;
   lastPushAt = 0;
+  /**
+   * 是否正在读内核列表。
+   *
+   * 为什么需要它：同一 tick 里连发好几条状态变化（手机断线重连时最常见，一次补发十几条），
+   * 这几次调用会**在第一次的 `await` 让出之前**全部越过后面的合并窗口判断，
+   * 于是一次重连就把全量会话列表扫十几遍。这个闸门保证"同一时刻只有一个扫描在跑"，
+   * 其余的合并成一条尾随推送（那一条会拿到最新数据，不会丢状态）。
+   */
+  pushInFlight = false;
   /** 工具步数（M2 状态摘要的 `steps`）：进程启动以来的累计，只加不减。 */
   stepsDone = 0;
   /** 挂接内核。任何一步失败都只降级，不抛（外层 apply() 的红线）。 */
@@ -28976,6 +28985,13 @@ var HostRuntime = class {
           if (!list) {
             reply(false, { message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5B50\u4EE3\u7406\u5217\u8868\uFF08\u5185\u6838\u7AEF\u53E3\u6CA1\u6709 listSubagents \u80FD\u529B\uFF09" });
             return;
+          }
+          if (cmd.lite === true) {
+            const counts = this.kernel.subagentCounts?.call(this.kernel, cmd.sessionId);
+            if (counts !== void 0) {
+              reply(true, { data: { lite: true, count: counts.count, running: counts.running } });
+              return;
+            }
           }
           const items = await list.call(this.kernel, cmd.sessionId, { descendants: cmd.descendants === true });
           if (cmd.lite === true) {
@@ -29298,26 +29314,29 @@ var HostRuntime = class {
   async pushSessions(reason) {
     if (this.stopped) return this.sessions;
     try {
-      try {
-        const listed = await this.kernel.listSessions(LISTING_LIMIT);
-        this.sessions = listed.map((item) => item.summary);
-      } catch (error62) {
-        this.log("list sessions failed", { message: messageOf(error62), reason });
-      }
-      const now = this.clock.now();
-      const sinceLast = now - this.lastPushAt;
-      if (sinceLast < SESSION_MERGE_MS && reason !== "start" && reason !== "list") {
+      const windowNow = this.clock.now();
+      const sinceLast = windowNow - this.lastPushAt;
+      if (this.pushInFlight || sinceLast < SESSION_MERGE_MS && reason !== "start" && reason !== "list") {
         this.mergePendingReason = reason;
         if (this.mergeTimer === void 0) {
           this.mergeTimer = this.clock.setTimeout(() => {
             this.mergeTimer = void 0;
             void this.pushSessions(this.mergePendingReason).catch(() => {
             });
-          }, SESSION_MERGE_MS - sinceLast);
+          }, Math.max(1, SESSION_MERGE_MS - sinceLast));
         }
         return this.sessions;
       }
-      this.lastPushAt = now;
+      this.pushInFlight = true;
+      try {
+        const listed = await this.kernel.listSessions(LISTING_LIMIT);
+        this.sessions = listed.map((item) => item.summary);
+      } catch (error62) {
+        this.log("list sessions failed", { message: messageOf(error62), reason });
+      } finally {
+        this.pushInFlight = false;
+      }
+      this.lastPushAt = this.clock.now();
       if (this.mergeTimer !== void 0) {
         this.clock.clearTimeout(this.mergeTimer);
         this.mergeTimer = void 0;
@@ -33471,6 +33490,20 @@ function createServicesKernel(services, options) {
       injectedUserMessages.set(kind, (injectedUserMessages.get(kind) ?? 0) + 1);
     }
   }
+  function subagentCounts(parentSessionId) {
+    const archived = archivedIds();
+    let seen = false;
+    let count = 0;
+    let running = 0;
+    for (const id of knownSubagentIds) {
+      if (subagentParentOf.get(id) !== parentSessionId) continue;
+      seen = true;
+      if (archived.has(id)) continue;
+      count += 1;
+      if (agentStatus(id) === "running") running += 1;
+    }
+    return seen ? { count, running } : void 0;
+  }
   function subagentSnapshot() {
     let archived = archivedCache?.value;
     if (archived === void 0 || options.clock.now() - (archivedCache?.at ?? 0) > 1e3) {
@@ -33718,6 +33751,7 @@ function createServicesKernel(services, options) {
     avatarManifest,
     avatarSheet,
     listSubagents,
+    subagentCounts,
     newSession,
     subscribe,
     /**

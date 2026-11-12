@@ -384,6 +384,13 @@ export interface KernelPort {
    * 桌面监视器要显示"已归档 N 个"和恢复入口时才显式传 true。
    */
   listSubagents?(sessionId: string, options?: { descendants?: boolean; includeArchived?: boolean }): Promise<KernelSubagent[]>
+  /**
+   * 只要「几个 / 几个在跑」，**纯内存、零 I/O**。
+   *
+   * 手机端面板关着时每 5 秒拉一次列表，只为保住 🐝 徽标数字；走 `listSubagents` 的话
+   * 每次都要读内核 catalog（新宿主上还得遍历整棵子树）。这个口子直接答那两个数。
+   */
+  subagentCounts?(sessionId: string): { count: number; running: number } | undefined
   /** 虚拟形象素材清单（sprite sheet 元数据）；未安装素材时返回 null。 */
   avatarManifest?(): Promise<{ version: number; states: Array<Record<string, unknown>> } | null>
   /** 取一张 sprite sheet（webp）的 base64；id 非法/文件缺失返回 null。 */

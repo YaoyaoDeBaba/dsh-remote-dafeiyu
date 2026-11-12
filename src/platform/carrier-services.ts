@@ -2196,6 +2196,31 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * 键排序后序列化：Map 的插入顺序不稳定，不排序会让"其实没变"的两次快照产生不同字符串，
    * 去重就失效了（总线那边靠逐字节比较）。
    */
+  /**
+   * 纯内存的「几个 / 几个在跑」，给手机端面板关着时的 🐝 徽标用。
+   *
+   * 手机每 5 秒拉一次；走 `listSubagents()` 的话每次都要读内核 catalog（新宿主上还得
+   * 遍历整棵子树）。这里直接数内存里的父→子索引，零 I/O，且与 SSE 载荷**同源**，
+   * 所以手机徽标和桌面徽标永远对得上。
+   *
+   * 认不出这个父会话时返回 `undefined`，让调用方回退去列一次（那次会把索引填上，
+   * 之后的 lite 调用就是纯内存了）。
+   */
+  function subagentCounts(parentSessionId: string): { count: number; running: number } | undefined {
+    const archived = archivedIds()
+    let seen = false
+    let count = 0
+    let running = 0
+    for (const id of knownSubagentIds) {
+      if (subagentParentOf.get(id) !== parentSessionId) continue
+      seen = true
+      if (archived.has(id)) continue
+      count += 1
+      if (agentStatus(id) === 'running') running += 1
+    }
+    return seen ? { count, running } : undefined
+  }
+
   function subagentSnapshot(): string {
     let archived = archivedCache?.value
     if (archived === undefined || options.clock.now() - (archivedCache?.at ?? 0) > 1_000) {
@@ -2579,6 +2604,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     avatarManifest,
     avatarSheet,
     listSubagents,
+    subagentCounts,
     newSession,
     subscribe,
     /**
