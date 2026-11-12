@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { SPRITE_PAGE_ROUTE, spritePageHandler } from './routes.js'
 import { createSpriteService, type SpriteService } from './service.js'
+import { sweepOrphanBrowsers } from './orphans.js'
 import { buildTools } from './tools.js'
 import { SPRITE_GUIDANCE } from './guide.js'
 
@@ -70,6 +71,13 @@ export function startSprite(ctx: LooseContext, deps: SpriteStartDeps): SpriteHan
     try {
       service = createSpriteService({ toolHtmlPath, outDir, log: deps.log })
       probe.service = 'ready'
+      // 启动清理：宿主上次被强杀时留下的无头浏览器，父进程已经没了，这里收掉。
+      // 判据是"父进程不存在"，所以不会误杀另一个还在跑的 DSH 实例里的浏览器。
+      void sweepOrphanBrowsers(deps.log)
+        .then((count) => {
+          if (count > 0) probe.orphansSwept = String(count)
+        })
+        .catch(() => undefined)
     } catch (error) {
       service = undefined
       probe.service = `threw: ${String((error as Error)?.message ?? error).slice(0, 120)}`

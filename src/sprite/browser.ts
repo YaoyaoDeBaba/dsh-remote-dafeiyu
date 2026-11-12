@@ -20,6 +20,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { WebSocket } from 'ws'
+import { killProcessTree, startParentWatchdog } from './orphans.js'
 
 export interface CdpSession {
   /** 在页面里求值（awaitPromise + returnByValue），超时抛错。 */
@@ -137,15 +138,18 @@ export async function launchBrowser(options: LaunchOptions): Promise<CdpSession>
   // 把它钉在临时 profile 目录里，既不影响功能，也绝不再站进任何安装路径。
   const child: ChildProcess = spawn(executable, args, { stdio: 'ignore', windowsHide: true, cwd: profileDir })
 
+  // 宿主崩溃时没人会来关它：给这个浏览器挂一个看门狗，父进程一消失就整棵树 kill。
+  if (typeof child.pid === 'number') {
+    startParentWatchdog({ browserPid: child.pid, parentPid: process.pid, profileDir, log })
+  }
+
   let closed = false
   const cleanup = async (): Promise<void> => {
     if (closed) return
     closed = true
-    try {
-      child.kill()
-    } catch {
-      /* 已经退出 */
-    }
+    // ⚠️ 必须是「整棵树」：`child.kill()` 只杀 broker，Edge 的 renderer/gpu/utility
+    // 会留下来继续占端口和 profile —— 攒多了一次 cleanup 能卡到 240 秒。
+    if (typeof child.pid === 'number') killProcessTree(child.pid, log)
     // 给进程一点时间落盘，再删临时 profile（删不掉也不许抛）
     await wait(120)
     try {

@@ -87,6 +87,7 @@ export const SPRITE_GUIDE = `# 序列帧精灵图：agent 快速上手
 | 报了 \`maskRect\` 但不确定对不对 | 低置信度兜底（confidence < 0.8）会**真的**去遮 | 先 \`maskAuto\` 只拿候选：看 \`watermarkCandidates[].selected\` 与 \`rejectedReason\`，确认没吃掉角色再继续 |
 | 取 \`rects[0]\` 结果遮到了 1px 高的残片 | 候选现在**全部**吐出，含 \`selected:false\` 的 | 用 \`selected===true\`，或看 \`selectedCount\` / \`path\` |
 | 报"会话已空闲回收" | 超过 5 分钟没操作，帧数据被释放了（**没有 \`extract()\` 这个工具**） | 重新 \`sprite_prepare\`，前面的抠图参数要重来 |
+| \`sprite_*\` 突然卡几分钟 | 多半是宿主崩过／被强杀留下的**孤儿无头浏览器**在抢端口和 profile | 重启宿主即可：新版本启动时会自动清掉"父进程已不在"的浏览器；正常关闭也会**整棵进程树**一起收 |
 
 ## 五、锚点口径（最容易踩）
 
