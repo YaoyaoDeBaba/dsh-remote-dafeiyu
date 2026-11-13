@@ -265,6 +265,33 @@ export interface ScaleResult {
   error?: string
 }
 
+/**
+ * `measured.charHeightPx` 用的是哪个口径（P1-5）。
+ *
+ * - `semantic`：调用方给了 `span`（身高上端→身高下端），并且声明它是语义 span ⇒ 最可信；
+ * - `guessed`：没给 span，用 `whiteness` / `luma<110` 的默认判据在一格上猜出来的；
+ * - `bbox`：猜不到，只能退回 alpha 包围盒（会把呆毛/尾巴/挂件算进身高，差 4~6%）。
+ */
+export type MeasuredBasis = 'semantic' | 'bbox' | 'guessed'
+
+/**
+ * 一次收敛闭环的回执（任务 B）。
+ *
+ * `passes:1` 表示"量完发现偏了、按 `target/measured` 修正后重导了一次"；
+ * **最多一次**（`exportSheet` 里没有循环），所以不会振荡。
+ */
+export interface ExportCorrection {
+  passes: 0 | 1
+  /** 收敛对齐的那个基准（语义 / 猜测 / bbox）。 */
+  basis: MeasuredBasis
+  /** 校正前实测（px，格子空间）。 */
+  before: number
+  /** 校正后实测（px）；`passes:0` 时等于 `before`。 */
+  after: number
+  /** 你要的值（`charHeightPx`）。 */
+  target: number
+}
+
 export interface ExportOptions {
   cols?: number
   rows?: number
@@ -273,6 +300,20 @@ export interface ExportOptions {
   /** 新语义（推荐）：角色/内容净高，配合 span 使用。 */
   charHeightPx?: number
   span?: { fromY: number; toY: number }
+  /**
+   * `span` 的**口径**（默认 `semantic`）：
+   * - `semantic` = 调用方给的 span 就是"身高上端→身高下端"（可信，`measured.basis` 会跟着变 semantic）；
+   * - `bbox` = 这个 span 其实是 alpha 包围盒（`sprite_auto` / `sprite_batch` 就是这种：它们把
+   *   `measure.alphaBBox` 直接当 span 用）。标成 bbox 之后 `measured.basis` 不会谎称 semantic，
+   *   下游按语义身高对齐时才不会被呆毛/尾巴骗（P1-5）。
+   */
+  spanBasis?: 'semantic' | 'bbox'
+  /**
+   * 一次收敛闭环（默认**开启**）：量完成品 `measured` 后，若给了 `charHeightPx` 且实测与目标
+   * 差超过容差（相对 1% / 绝对 2px 取宽松），就按 `target/measured` 修正一次缩放、**重导一次**。
+   * 只一次（不迭代）；`false` = 关掉，行为与以前完全一致（不重导，返回里也不出现 `correction`）。
+   */
+  correction?: boolean
   anchorX?: number
   anchorY?: number
   outDir?: string
@@ -327,6 +368,11 @@ export interface ExportResult {
    * 首尾差 ≈0 = 还有重复帧、明显大于相邻帧差 = 跳变。不 ok 时会进 `warnings`。
    */
   loopCheck?: { firstLastDiff: number; adjacentDiff: number; ok: boolean }
+  /**
+   * 一次收敛闭环的回执（任务 B）：只有"给了 `charHeightPx` + 量到了成品 + 没被
+   * `correction:false` 关掉"时才会出现。`passes:1` = 重导过（耗时约翻倍）。
+   */
+  correction?: ExportCorrection
   warnings: string[]
   error?: string
 }

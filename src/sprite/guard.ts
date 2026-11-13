@@ -101,7 +101,71 @@ export function measuredMismatchWarning(
   )
 }
 
-/** 默认产物名：`<name>_<cols>x<rows>.<format>`（与 Unity SheetPath 一个习惯）。 */export function defaultFileNames(args: {
+/**
+ * 收敛闭环的容差：**相对目标 1%**，再拿绝对 2px 兜取整噪声（与 `measuredMismatchWarning` 同一套口径）。
+ * 口径是相对 **target**（验收要求 `|after−target|/target ≤ 1%`），不是相对实测。
+ */
+export const CORRECTION_REL_TOLERANCE = 0.01
+export const CORRECTION_ABS_TOLERANCE_PX = 2
+
+/**
+ * 任务 B 的第一步判断：目标与实测差到该校正了吗？差到了就回**要乘的系数**，否则 null。
+ *
+ * 这个函数只回一个数，**它不知道"下一轮"是什么**——调用方只许用一次
+ * （`exportSheet` 里是一个 `if`，不是 `while`），这就是"只修正一次、不振荡"的落点。
+ */
+export function correctionFactorOf(
+  target: number | undefined,
+  measured: number | undefined,
+  relTolerance = CORRECTION_REL_TOLERANCE,
+  absolutePx = CORRECTION_ABS_TOLERANCE_PX,
+): number | null {
+  if (typeof target !== 'number' || !Number.isFinite(target) || target <= 0) return null
+  if (typeof measured !== 'number' || !Number.isFinite(measured) || measured <= 0) return null
+  const delta = Math.abs(measured - target)
+  // 容差取"相对 1%（按 target）"与"绝对 2px"里宽松的那个：小目标上 2px 就是 1%，大目标上 2px 只是噪声。
+  if (!(delta > Math.max(absolutePx, target * relTolerance))) return null
+  return target / measured
+}
+
+/**
+ * 校正过一次之后仍超容差：**不再重导**，但必须把两个数并排写清楚（兜底，不许静默）。
+ * 返回 null 表示已经收敛（或在容差内）。
+ */
+export function correctionResidualWarning(
+  target: number,
+  after: number,
+  relTolerance = CORRECTION_REL_TOLERANCE,
+  absolutePx = CORRECTION_ABS_TOLERANCE_PX,
+): string | null {
+  if (!Number.isFinite(target) || target <= 0 || !Number.isFinite(after) || after <= 0) return null
+  const delta = Math.abs(after - target)
+  if (!(delta > Math.max(absolutePx, target * relTolerance))) return null
+  const percent = Math.round((delta / target) * 1000) / 10
+  return (
+    `校正一次后仍差 ${percent}%：目标 ${Math.round(target)}px / 实测 ${Math.round(after)}px` +
+    `（差 ${Math.round(delta)}px，容差 1%/2px）。**不再重导**（闭环只跑一次，避免振荡）——` +
+    '还可能的原因：缩放撞上 300% 上限、span 与素材的语义点对不上、或这一批各帧身高本身就不一致。'
+  )
+}
+
+/**
+ * P0-1 的显形：**锚点没写进 meta** 时必须主动说出来。
+ *
+ * 为什么单拎成函数：以前 `sprite_auto` 的 schema 里根本没有 anchorX/anchorY，于是每次 auto 都
+ * `anchorWritten:false`、meta 里落的是页面默认锚点（下游读到 0.5/0，角色横向偏 20~40px），
+ * 而返回里除了一个布尔字段什么都没有——用户只能自己去手改 6 份 meta。这条文案就是那个坑的判据。
+ */
+export function anchorNotWrittenWarning(anchor: { anchorX: number; anchorY: number }): string {
+  return (
+    `锚点没写进 meta（anchorWritten:false）：这次用的是页面当前锚点 (anchorX=${anchor.anchorX}, anchorY=${anchor.anchorY})，` +
+    '不传 anchorX/anchorY 时下游常读到默认 0.5/0（角色可能横向偏 20~40px）——' +
+    '传 anchorX/anchorY（0~1，anchorY 是 y-from-bottom）或先 sprite_set_anchor。'
+  )
+}
+
+/** 默认产物名：`<name>_<cols>x<rows>.<format>`（与 Unity SheetPath 一个习惯）。 */
+export function defaultFileNames(args: {
   name: string
   cols: number
   rows: number

@@ -634,10 +634,17 @@ export function buildTools(
         '拼成精灵图并导出（PNG 或 webp）+ meta.json。**导出前必须有抠图缓存**：如果刚跑过 preview 或改过参数，' +
         '它会直接报错让你先 apply（以前这里会静默拼原帧，交出绿底图）。' +
         '命名默认 <name>_<cols>x<rows>.<format>，dirPerAction 时放进 <outDir>/<name>/。' +
-        '返回里 `measured` 是**成品实测**（解自己导出的 PNG → 按格切 → alpha 包围盒 → 取中位数）：' +
-        'charHeightPx/headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"，' +
-        '格子数 >48 时只等间隔抽 12 格并给 sampled:true。**判成品对不对看 measured，别看 achievedPx**——' +
-        'achievedPx 只是"你给的 span/整格高被缩到了多少"的参数回显；两者差 >1% 会在 warnings 里点名。' +
+        '返回里 `measured` 是**成品实测**（解自己导出的 PNG → 按格切 → 量身高 → 取中位数）：' +
+        'charHeightPx（本次采用的基准）/ bboxHeight（alpha 包围盒口径）/ semanticHeight（身高上端→下端，' +
+        '给的 span 或猜出来的）/ basis（semantic | guessed | bbox）/ headTopY/soleY/cellWidth/cellHeight/' +
+        'perCell/min/max/source:"sheet-rgba"，格子数 >48 时只等间隔抽 12 格并给 sampled:true。' +
+        '**判成品对不对看 measured，别看 achievedPx**——achievedPx 只是"你给的 span/整格高被缩到了多少"的参数回显。' +
+        '给了 charHeightPx 时默认跑**一次**收敛闭环：量完发现与目标差超过容差（相对 1% / 绝对 2px）就按 ' +
+        '目标/实测 修正一次缩放、**重导一次**（只一次、不循环；耗时约翻倍），回执在 correction ' +
+        '{passes,basis,before,after,target}；第二次仍不准只写 warning、不再重导。' +
+        'correction:false 可关（关掉时行为与以前完全一致、返回里没有 correction）。' +
+        '**anchorX/anchorY 建议每次都传**（0~1，anchorY 是 y-from-bottom，0=格底）：不传时 meta 的 anchorWritten 是 false' +
+        '（下游常读到默认 0.5/0，角色横向偏 20~40px），并会有一条告警。' +
         'debugOverlay:true 再出一张 <outDir>/_debug/<name>-overlay.png（品红=实测头顶、青=实测脚底、' +
         '白十字=锚点；身高偏离中位数 >5% 的格整格标黄），路径在 overlayPath。' +
         '`loop:true`（或本次会话是 sprite_prepare({loop}) 采的）时额外给 loopCheck ' +
@@ -655,8 +662,14 @@ export function buildTools(
             description: '两个基准行（帧像素）；来自 sprite_measure 的 alphaBBox',
             properties: { fromY: { type: 'number' }, toY: { type: 'number' } },
           },
-          anchorX: { type: 'number', description: '锚点 x（0~1，按帧宽比例）' },
-          anchorY: { type: 'number', description: '锚点 y（0~1，**y-from-bottom**）' },
+          anchorX: { type: 'number', description: '锚点 x（0~1，按**输出格**宽比例）；传了 meta 里 anchorWritten=true' },
+          anchorY: { type: 'number', description: '锚点 y（0~1，**y-from-bottom**，0=格底）；传了 meta 里 anchorWritten=true' },
+          correction: {
+            type: 'boolean',
+            description:
+              '默认 true = 给了 charHeightPx 就量完再校正**一次**（偏超过 1%/2px 时重导一次，耗时约翻倍）；' +
+              'false = 不重导（行为与以前完全一致，返回里也没有 correction）',
+          },
           outDir: { type: 'string', description: '输出目录（默认 storages/.../sprite-out）' },
           fileName: { type: 'string', description: '图片文件名（含扩展名）' },
           metaName: { type: 'string', description: 'meta 文件名' },
@@ -711,6 +724,7 @@ export function buildTools(
               ...(typeof args.name === 'string' ? { name: args.name } : {}),
               ...(typeof args.debugOverlay === 'boolean' ? { debugOverlay: args.debugOverlay } : {}),
               ...(typeof args.loop === 'boolean' ? { loop: args.loop } : {}),
+              ...(typeof args.correction === 'boolean' ? { correction: args.correction } : {}),
             }),
           )
         } catch (error) {
@@ -775,7 +789,11 @@ export function buildTools(
       name: 'sprite_batch',
       description:
         '批量：一个 items 数组跑完整管线（prepare→采色→measure→apply→cleanup→export），单条失败不影响其他条。' +
-        '每条占一个子目录 <outRoot>/<name>/。当前串行执行（并发需要会话隔离）。',
+        '每条占一个子目录 <outRoot>/<name>/。当前串行执行（并发需要会话隔离）。' +
+        '**每条都要传 anchorX/anchorY**（0~1，anchorY 是 y-from-bottom）：不传就只有 anchorWritten:false 的告警，' +
+        'meta 里落的是页面当前锚点（下游常读到默认 0.5/0，角色横向偏 20~40px）。' +
+        '给了 targetCharHeight 时每条都会跑一次收敛闭环（量完偏了就按 目标/实测 再导一次，**最多一次**，' +
+        '那一条的耗时约翻倍）；不想闭环就在单条里看 measured 自己决定。',
       parameters: {
         type: 'object',
         properties: {
@@ -802,6 +820,8 @@ export function buildTools(
                 cols: { type: 'number' },
                 rows: { type: 'number' },
                 format: { type: 'string', enum: ['png', 'webp'] },
+                anchorX: { type: 'number', description: '锚点 x（0~1，按输出格宽）。不传 meta 里就没有这次设的锚点' },
+                anchorY: { type: 'number', description: '锚点 y（0~1，**y-from-bottom**，0=格底）' },
               },
               required: ['videoPath', 'action'],
             },
@@ -838,6 +858,8 @@ export function buildTools(
                   ...(typeof item.cols === 'number' ? { cols: item.cols } : {}),
                   ...(typeof item.rows === 'number' ? { rows: item.rows } : {}),
                   ...(item.format === 'png' || item.format === 'webp' ? { format: item.format } : {}),
+                  ...(typeof item.anchorX === 'number' ? { anchorX: item.anchorX } : {}),
+                  ...(typeof item.anchorY === 'number' ? { anchorY: item.anchorY } : {}),
                 }
               }),
               ...(typeof args.concurrency === 'number' ? { concurrency: args.concurrency } : {}),
@@ -853,19 +875,26 @@ export function buildTools(
       name: 'sprite_auto',
       description:
         '一段素材的一条龙：prepare → 自动采色 → measure → autotune → apply → cleanup → export。' +
-        '返回和 sprite_export 一样的字段，外加 stages（每步一句话，出问题时先看它）。',
+        '返回和 sprite_export 一样的字段，外加 stages（每步一句话，出问题时先看它）。' +
+        '**传 anchorX/anchorY**（0~1，anchorY 是 y-from-bottom）：不传就一定会有一条 anchorWritten:false 的告警，' +
+        'meta 里落的是页面当前锚点（下游常读到默认 0.5/0，角色横向偏 20~40px）。' +
+        '给了 targetCharHeight 时会跑一次收敛闭环：量完成品发现与目标差超过容差（相对 1% / 绝对 2px）就按 ' +
+        '目标/实测 修正一次缩放、**重导一次**（只一次、不循环；那一条耗时约翻倍），回执在 correction ' +
+        '{passes,basis,before,after,target} 里；第二次仍不准只写 warning、不再重导。',
       parameters: {
         type: 'object',
         properties: {
           videoPath: { type: 'string' },
           name: { type: 'string', description: '产物名，默认用文件名' },
           outDir: { type: 'string' },
-          targetCharHeight: { type: 'number' },
+          targetCharHeight: { type: 'number', description: '角色/内容净高（像素）；会触发一次收敛闭环' },
           cols: { type: 'number' },
           rows: { type: 'number' },
           format: { type: 'string', enum: ['png', 'webp'] },
           trimMode: { type: 'string', enum: ['union', 'first-frame'] },
           maskAuto: { type: 'boolean', description: 'true = 自动去水印' },
+          anchorX: { type: 'number', description: '锚点 x（0~1，按输出格宽）；写了 meta 里 anchorWritten=true' },
+          anchorY: { type: 'number', description: '锚点 y（0~1，**y-from-bottom**，0=格底）；写了 meta 里 anchorWritten=true' },
         },
         required: ['videoPath'],
       },
@@ -886,6 +915,8 @@ export function buildTools(
               ...(args.format === 'png' || args.format === 'webp' ? { format: args.format } : {}),
               ...(args.trimMode === 'union' || args.trimMode === 'first-frame' ? { trimMode: args.trimMode } : {}),
               ...(args.maskAuto === true ? { maskRect: 'auto' as const } : {}),
+              ...(typeof args.anchorX === 'number' ? { anchorX: args.anchorX } : {}),
+              ...(typeof args.anchorY === 'number' ? { anchorY: args.anchorY } : {}),
             }),
           )
         } catch (error) {

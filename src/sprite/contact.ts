@@ -12,6 +12,7 @@
  *    不拿 0 冒充"身高 0px 也是成功"。
  */
 import type { RgbaImage } from './match.js'
+import type { MeasuredBasis } from './types.js'
 
 /** 判「这个像素算内容」的 alpha 阈值，与 `analyze.ts` / `sprite_measure` 同口径。 */
 export const CONTENT_ALPHA_CUT = 32
@@ -50,8 +51,20 @@ export interface CellContent {
 
 /** `measureSheet` 的口径与聚合结果。 */
 export interface SheetMeasurement {
-  /** 抽样格子里内容高的**中位数**（个别帧的手/特效不该把结论带跑）。 */
+  /**
+   * **本次采用的身高基准**（P1-5）：`basis` 是 `semantic`/`guessed` 时是语义身高，
+   * 是 `bbox` 时等于 `bboxHeight`（旧行为）。
+   */
   charHeightPx: number
+  /**
+   * **alpha 包围盒**口径的内容高中位数：呆毛/尾巴/挂件都算进去，同一组素材与语义身高能差 4~6%。
+   * 它永远都有（就是老的 `charHeightPx`），用来和 `semanticHeight` 并排看。
+   */
+  bboxHeight?: number
+  /** 语义身高（身高上端→身高下端，格子 px）；没给 span 也没猜到就是 null。 */
+  semanticHeight?: number | null
+  /** `charHeightPx` 用的是哪个口径（口径与 warning 由 `semantic.ts` 的 `resolveMeasuredBasis` 定）。 */
+  basis?: MeasuredBasis
   /**
    * 取「最接近中位数」的那一格的头顶/脚底行；偶数格时中位数可能落在两格中间，
    * 这时允许 `soleY − headTopY + 1` 与 `charHeightPx` 差 1px（perCell 里有逐格真值可对账）。
@@ -226,6 +239,9 @@ export function measureSheet(image: RgbaImage, options: MeasureSheetOptions): Sh
   if (filled.length === 0) {
     return {
       charHeightPx: 0,
+      bboxHeight: 0,
+      semanticHeight: null,
+      basis: 'bbox',
       headTopY: null,
       soleY: null,
       cellWidth,
@@ -251,6 +267,11 @@ export function measureSheet(image: RgbaImage, options: MeasureSheetOptions): Sh
   }
   return {
     charHeightPx: median,
+    // 这里只量了 alpha 包围盒：先如实标成 bbox（`semanticHeight` 未知）。
+    // 谁要是给了 span 或者猜出了语义身高，由 `semantic.ts` 的 resolveMeasuredBasis 覆盖这两项。
+    bboxHeight: median,
+    semanticHeight: null,
+    basis: 'bbox',
     headTopY: representative.headTopY,
     soleY: representative.soleY,
     cellWidth,

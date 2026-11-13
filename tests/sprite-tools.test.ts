@@ -33,8 +33,8 @@ function stubService() {
     exportSheet: record('exportSheet'),
     baseline: record('baseline'),
     autotune: async () => ({ ok: true, params: {}, trace: [], reachedGoal: true }),
-    batch: async () => ({ ok: true, results: [], failures: [] }),
-    auto: async () => ({ ok: true, warnings: [], stages: [] }),
+    batch: record('batch'),
+    auto: record('auto'),
     stop: async () => undefined,
     busy: false,
   } as unknown as SpriteService
@@ -317,3 +317,52 @@ test('sprite_guide 的正文来自 skill 真源；内置兜底够干活、常驻
   assert.ok(SPRITE_GUIDANCE.length < SPRITE_GUIDE.length, '系统提示那一段要短于兜底正文')
   assert.ok(SPRITE_GUIDANCE.includes('dafeiyu-sprite'), '常驻引导必须点名 skill')
 })
+
+test('P0-1：sprite_auto / sprite_batch 的锚点与 sprite_export 的 correction 都原样转给 service', async () => {
+  const { service, calls } = stubService()
+  const tools = new Map(buildTools(service).map((tool) => [String(tool.name), tool]))
+  const run = (name: string, args: unknown): Promise<unknown> =>
+    (tools.get(name)!.execute as (a: unknown) => Promise<unknown>)(args)
+
+  // ① 传了锚点就必须转到 service.auto（以前 schema 里根本没有这两个键 ⇒ auto 永远 anchorWritten:false）
+  await run('sprite_auto', { videoPath: 'D:\\v.mp4', anchorX: 0.4164, anchorY: 0.9375 })
+  const auto = calls.find((call) => call.name === 'auto')!
+  assert.deepEqual(auto.args, { videoPath: 'D:\\v.mp4', anchorX: 0.4164, anchorY: 0.9375 })
+
+  // 不传时就一个键都不许出现（默认值只许有一处）
+  await run('sprite_auto', { videoPath: 'D:\\v.mp4' })
+  assert.deepEqual(calls.filter((call) => call.name === 'auto').at(-1)!.args, { videoPath: 'D:\\v.mp4' })
+
+  // ② batch 的每一项也要带得上（否则批量重出的 6 条全是默认锚点）
+  await run('sprite_batch', {
+    outRoot: 'D:\\out',
+    items: [{ videoPath: 'D:\\walk.mp4', action: 'walk', anchorX: 0.4, anchorY: 0.9 }],
+  })
+  const batch = calls.find((call) => call.name === 'batch')! as { args: { items: Array<Record<string, unknown>> } }
+  assert.deepEqual(batch.args.items, [{ videoPath: 'D:\\walk.mp4', action: 'walk', anchorX: 0.4, anchorY: 0.9 }])
+
+  // ③ 闭环开关：不传不出现（默认开），传了原样下去
+  await run('sprite_export', { name: 'Idle' })
+  assert.deepEqual(calls.filter((call) => call.name === 'exportSheet').at(-1)!.args, { name: 'Idle' })
+  await run('sprite_export', { name: 'Idle', correction: false })
+  assert.deepEqual(calls.filter((call) => call.name === 'exportSheet').at(-1)!.args, { name: 'Idle', correction: false })
+})
+
+test('P0-1/P0-2 的语义写进了工具描述（否则模型还是不知道要传锚点、也不知道会重导一次）', () => {
+  const { service } = stubService()
+  const byName = new Map(buildTools(service).map((tool) => [String(tool.name), tool]))
+  for (const name of ['sprite_auto', 'sprite_batch', 'sprite_export']) {
+    const description = String(byName.get(name)!.description)
+    assert.match(description, /anchorX/, `${name} 的描述要交代锚点`)
+    assert.match(description, /y-from-bottom/, `${name} 的描述要交代 anchorY 口径`)
+  }
+  const auto = String(byName.get('sprite_auto')!.description)
+  assert.match(auto, /correction/, 'auto 会跑闭环，描述要说清回执在哪')
+  assert.match(auto, /翻倍|重导一次/, 'auto 要把"重导一次≈翻倍耗时"写明')
+  const exported = String(byName.get('sprite_export')!.description)
+  assert.match(exported, /semanticHeight/)
+  assert.match(exported, /bboxHeight/)
+  assert.match(exported, /basis/)
+  assert.match(exported, /correction:false/)
+})
+

@@ -26,9 +26,12 @@ import {
 import path from 'node:path'
 import { analyzeSpritePng, borderOpaqueRatio, borderOpaqueWarning, type SpriteStats } from './analyze.js'
 import {
+  anchorNotWrittenWarning,
   assertKeyedPresent,
   assertNotOpaque,
   checkGridCapacity,
+  correctionFactorOf,
+  correctionResidualWarning,
   defaultFileNames,
   gridFor,
   measuredMismatchWarning,
@@ -67,7 +70,13 @@ import {
 
   multipleSuspectWarning
 } from './loop.js'
-import { decodePng } from './png.js'
+import { decodePng, type DecodedPng } from './png.js'
+import {
+  guessSemanticHeight,
+  resolveMeasuredBasis,
+  type MeasuredBasisResult,
+  type SemanticGuess,
+} from './semantic.js'
 import type {
   AnchorInfo,
   AutotuneGoal,
@@ -75,6 +84,7 @@ import type {
   AutotuneTraceStep,
   BaselineArgs,
   BaselineResult,
+  ExportCorrection,
   ExportOptions,
   ExportResult,
   FeatureFitInput,
@@ -225,6 +235,9 @@ export interface BatchItem {
   cols?: number
   rows?: number
   format?: 'png' | 'webp'
+  /** 归一化锚点（`anchorY` 是 y-from-bottom）：透传给 export ⇒ meta 里 `anchorWritten:true`（P0-1）。 */
+  anchorX?: number
+  anchorY?: number
 }
 
 export interface BatchOptions {
@@ -247,6 +260,8 @@ export interface BatchResultItem {
   charHeightPx?: number
   anchorX?: number
   anchorY?: number
+  /** meta 里这次到底写没写锚点（false = 用的是页面当前值，下游会读到默认 0.5/0）。 */
+  anchorWritten?: boolean
   stats?: { worst?: WorstFrame }
   overlayPath?: string
   /** 成品实测（见 `ExportResult.measured`）；batch 透传每条自己的实测。 */
@@ -323,6 +338,9 @@ export interface SpriteService {
     format?: 'png' | 'webp'
     trimMode?: 'union' | 'first-frame'
     maskRect?: Rect | 'auto'
+    /** 归一化锚点（`anchorY` 是 y-from-bottom）：透传给 export ⇒ meta 里 `anchorWritten:true`（P0-1）。 */
+    anchorX?: number
+    anchorY?: number
   }): Promise<ExportResult & { stages: string[] }>
   stop(): Promise<void>
   readonly busy: boolean
@@ -497,8 +515,254 @@ export function buildExportMeta(input: ExportMetaInput): Record<string, unknown>
   }
 }
 
-export function createSpriteService(options: SpriteServiceOptions): SpriteService {
-  const log = options.log
+// ─────────────────────────── 一次导出 pass（导出 = 最多两次它） ───────────────────────────
+
+/**
+ * 一次导出 pass 的入参：**不碰文件系统、不碰浏览器**——页面调用走注入的 `call`。
+ *
+ * 为什么要抽出来（任务 B）：收敛闭环要"导一次 → 量 → 偏了就修正再导一次"，
+ * 而 `exportSheet` 里的落盘/命名/核对图都跟"第几遍"无关。抽成纯编排之后
+ * 单测能拿**页面桩 + 真 PNG** 把闭环跑通，不用起无头浏览器。
+ */
+export interface ExportPassArgs {
+  call: BridgeCall
+  cols: number
+  rows: number
+  format: 'png' | 'webp'
+  quality?: number
+  /** 本次请求的**内容净高**（`charHeightPx`）与**整格高**（`targetHeight`），二选一。 */
+  charHeightPx?: number
+  targetHeight?: number
+  /** 身高两端的帧像素坐标（给了才可能量出语义身高）。 */
+  span?: { fromY: number; toY: number }
+  /** span 的口径，默认 `semantic`。 */
+  spanBasis?: 'semantic' | 'bbox'
+  anchorX?: number
+  anchorY?: number
+}
+
+export interface ExportPassResult {
+  scaled: ScaleResult
+  anchor: AnchorInfo
+  /** 这次到底写没写锚点（false = 用的是页面当前值）。 */
+  anchorWritten: boolean
+  built: { ok: boolean; dataURL?: string; mime?: string; meta?: Record<string, unknown>; width?: number; height?: number }
+  buffer: Buffer
+  decoded?: DecodedPng
+  /** 成品实测（webp / 量失败时没有）。 */
+  measured?: SheetMeasurement
+  cellWidth: number | null
+  cellHeight: number | null
+  warnings: string[]
+}
+
+/** 一格（`perCell` 里的第一格非空）从图集里裁出来，喂给语义身高的猜测原语。 */
+function firstNonEmptyCell(decoded: DecodedPng, measured: SheetMeasurement): RgbaImage | undefined {
+  const cell = measured.perCell.find((one) => one.empty !== true)
+  if (!cell) return undefined
+  try {
+    return cropRgba(decoded, {
+      x: cell.col * measured.cellWidth,
+      y: cell.row * measured.cellHeight,
+      w: measured.cellWidth,
+      h: measured.cellHeight,
+    })
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 定 `measured` 的口径（P1-5）：
+ * - 给了**语义 span** ⇒ 直接用 span（不需要猜）；
+ * - 否则（没 span / span 是 bbox 口径）⇒ 在第一格非空上猜一次身高上下端；
+ * - 猜不到就如实退回 bbox 并由 `resolveMeasuredBasis` 写 warning。
+ */
+function measuredBasisOf(
+  raw: SheetMeasurement,
+  decoded: DecodedPng,
+  pass: Pick<ExportPassArgs, 'span' | 'spanBasis'> & { scaled: ScaleResult },
+): MeasuredBasisResult {
+  const bboxHeight = raw.bboxHeight ?? raw.charHeightPx
+  const spanBasis: 'semantic' | 'bbox' = pass.spanBasis === 'bbox' ? 'bbox' : 'semantic'
+  const needGuess = !(pass.span && spanBasis === 'semantic')
+  let guess: SemanticGuess | undefined
+  if (needGuess) {
+    const cell = firstNonEmptyCell(decoded, raw)
+    if (cell) {
+      try {
+        guess = guessSemanticHeight({ width: cell.width, height: cell.height, rgba: cell.rgba })
+      } catch {
+        // 猜身高失败绝不能把整次导出带崩：没有语义身高而已，bbox 还在。
+        guess = undefined
+      }
+    }
+  }
+  // 缩放比用 achievedPx/sourcePx 现算——`scaleTo.scale` 的单位是百分比（100 = 1:1），拿它乘会错 100 倍。
+  const ratio =
+    Number.isFinite(pass.scaled.sourcePx) && pass.scaled.sourcePx > 0 && Number.isFinite(pass.scaled.achievedPx)
+      ? pass.scaled.achievedPx / pass.scaled.sourcePx
+      : undefined
+  return resolveMeasuredBasis({
+    bboxHeight,
+    ...(pass.span ? { span: pass.span } : {}),
+    spanBasis,
+    ...(ratio !== undefined ? { ratio } : {}),
+    guessedHeight: guess?.ok === true ? guess.height : null,
+    ...(guess && guess.ok !== true && guess.reason ? { guessReason: guess.reason } : {}),
+  })
+}
+
+/**
+ * 导一次：反推缩放 → 设/读锚点 → 让页面拼图 → 落成 Buffer → 解回来量成品。
+ *
+ * 这一遍**只回数据**（Buffer + measured + warnings），落盘由 `exportSheet` 做——
+ * 所以"要被丢掉的第一遍"不会留下半个文件。
+ */
+export async function runExportPass(args: ExportPassArgs): Promise<ExportPassResult> {
+  const warnings: string[] = []
+  const scaled = await args.call<ScaleResult>('scaleTo', {
+    ...(typeof args.charHeightPx === 'number' ? { charHeightPx: args.charHeightPx } : {}),
+    ...(typeof args.targetHeight === 'number' ? { targetCellHeight: args.targetHeight } : {}),
+    ...(args.span ? { span: args.span } : {}),
+  })
+  // 归一化锚点先走 setAnchor（页面的 state.anchor 就是归一化的，按**输出格**算），
+  // 不要拿原帧尺寸去换算成像素——裁剪之后帧变小了，那个换算会错。
+  // 设完之后必须 getAnchor 回读：setAnchor 只回 {ok,x,y}，不是 AnchorInfo（P0-1）。
+  const anchorOut = await resolveExportAnchor(args.call, args)
+  // P0-1 的显形：这一遍到底写没写锚点，必须出现在 warnings 里——auto / batch / export 都走这里。
+  if (!anchorOut.written) warnings.push(anchorNotWrittenWarning(anchorOut.anchor))
+  const built = await args.call<ExportPassResult['built']>('buildSheetDataURL', {
+    cols: args.cols,
+    rows: args.rows,
+    format: args.format,
+    ...(typeof args.quality === 'number' ? { quality: args.quality } : {}),
+  })
+  const buffer = dataUrlToBuffer(built.dataURL)
+  if (!buffer) throw new Error('页面没返回精灵图（dataURL 为空）')
+  // 后置断言：alpha 全不透 = 大概率退回了原帧（绿底）。
+  if (args.format === 'png') assertNotOpaque(analyzeSpritePng(buffer))
+  // 格子尺寸从最终图集反推：图集一定是 cols×cellW 宽、rows×cellH 高。
+  // 除不尽说明页面缩放时有亚像素漂移，按整数给并留一条 warning（宁可显式，不静默）。
+  const sheetWidthOut = built.width ?? 0
+  const sheetHeightOut = built.height ?? 0
+  const cellWidth = sheetWidthOut > 0 ? Math.round(sheetWidthOut / args.cols) : null
+  const cellHeight = sheetHeightOut > 0 ? Math.round(sheetHeightOut / args.rows) : null
+  if (cellWidth !== null && cellWidth * args.cols !== sheetWidthOut) {
+    warnings.push(
+      `cellWidth*cols=${cellWidth * args.cols} 与图集宽 ${sheetWidthOut} 差 ${sheetWidthOut - cellWidth * args.cols}px（缩放取整）`,
+    )
+  }
+  if (cellHeight !== null && cellHeight * args.rows !== sheetHeightOut) {
+    warnings.push(
+      `cellHeight*rows=${cellHeight * args.rows} 与图集高 ${sheetHeightOut} 差 ${sheetHeightOut - cellHeight * args.rows}px（缩放取整）`,
+    )
+  }
+  // **成品实测**：把"自己导出的这张图"解回来，按格切、量 alpha 包围盒、取中位数。
+  // achievedPx 只是参数回显（用户实测三次：回显 300，成品 382/341/303），
+  // 这里量到的才是成品里角色真有高——两个数对不上就写进 warnings。
+  let measured: SheetMeasurement | undefined
+  let decoded: DecodedPng | undefined
+  if (args.format === 'png') {
+    try {
+      decoded = decodePng(buffer)
+      const raw = measureSheet(
+        { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
+        {
+          cols: args.cols,
+          rows: args.rows,
+          cellWidth: cellWidth ?? Math.max(1, Math.round(decoded.width / args.cols)),
+          cellHeight: cellHeight ?? Math.max(1, Math.round(decoded.height / args.rows)),
+        },
+      )
+      warnings.push(...raw.warnings)
+      const basis = measuredBasisOf(raw, decoded, { ...(args.span ? { span: args.span } : {}), ...(args.spanBasis ? { spanBasis: args.spanBasis } : {}), scaled })
+      warnings.push(...basis.warnings)
+      measured = {
+        ...raw,
+        bboxHeight: basis.bboxHeight,
+        semanticHeight: basis.semanticHeight,
+        basis: basis.basis,
+        charHeightPx: basis.charHeightPx,
+      }
+      // 参数回显 vs **成品包围盒**：永远拿 bbox 比（口径与以前一字不差），
+      // 语义身高是另一码事，不参与这条告警。
+      const mismatch = measuredMismatchWarning(scaled.achievedPx, basis.bboxHeight)
+      if (mismatch) warnings.push(mismatch)
+    } catch (error) {
+      // 量不出就明说：不许让调用方以为"没有 measured 就是没问题"。
+      warnings.push(
+        `成品实测失败（${String((error as Error)?.message ?? error).slice(0, 120)}）：这张图没能自证，别只信 achievedPx`,
+      )
+      measured = undefined
+    }
+  } else {
+    warnings.push('format=webp 解不回像素：这次没有 measured（成品实测），要验身高请用 png 导出')
+  }
+  return {
+    scaled,
+    anchor: anchorOut.anchor,
+    anchorWritten: anchorOut.written,
+    built,
+    buffer,
+    ...(decoded ? { decoded } : {}),
+    ...(measured ? { measured } : {}),
+    cellWidth,
+    cellHeight,
+    warnings,
+  }
+}
+
+/** `correctOnce` 的回执：**最终**交付的那一遍 + 闭环回执（没闭环时 `correction` 不出现）。 */
+export interface CorrectionOutcome {
+  pass: ExportPassResult
+  correction?: ExportCorrection
+}
+
+/**
+ * 一次收敛闭环（任务 B）：拿第一遍的结果判断"要不要再导一遍"，**最多再导一次**。
+ *
+ * 为什么单独一个函数：这是"只修正一次、不振荡"的唯一落点——这里没有任何 `while`/递归，
+ * 再导一遍之后就返回，剩下的差距交给 `correctionResidualWarning`。
+ * `run` 用注入是为了能测：真实现就是 `runExportPass`，测试里可以喂一个受控的页面桩。
+ *
+ * 不对 `targetHeight`（整格高）做闭环：整格高由缩放标量直接决定、本来就精确，
+ * 拿"内容高"去对"整格高"是两种量纲，硬套只会把语义搞乱。
+ */
+export async function correctOnce(args: {
+  first: ExportPassResult
+  /** 目标内容净高（px）。 */
+  target: number
+  format: 'png' | 'webp'
+  /** `false` = 关掉闭环（不重导、也不回 correction，返回形状与旧版一致）。 */
+  correctionEnabled?: boolean
+  run: (requested: number) => Promise<ExportPassResult>
+}): Promise<CorrectionOutcome> {
+  const { first, target } = args
+  if (args.correctionEnabled === false) return { pass: first }
+  // webp 解不回像素 ⇒ 没有 measured ⇒ 无从判断（不拿 achievedPx 自欺）。
+  if (args.format !== 'png' || !first.measured) return { pass: first }
+  const before = first.measured.charHeightPx
+  const factor = correctionFactorOf(target, before)
+  if (factor === null) {
+    return { pass: first, correction: { passes: 0, basis: first.measured.basis ?? 'bbox', before, after: before, target } }
+  }
+  const requested = Math.max(1, Math.round(target * factor))
+  const second = await args.run(requested)
+  const after = second.measured?.charHeightPx ?? before
+  const correction: ExportCorrection = {
+    passes: 1,
+    basis: second.measured?.basis ?? first.measured.basis ?? 'bbox',
+    before,
+    after,
+    target,
+  }
+  const residual = correctionResidualWarning(target, after)
+  if (residual) second.warnings.push(residual)
+  return { pass: second, correction }
+}
+
+export function createSpriteService(options: SpriteServiceOptions): SpriteService {  const log = options.log
   const idleMs = options.idleMs ?? 5 * 60 * 1000
   const videos = new Map<string, string>()
   let session: CdpSession | undefined
@@ -1722,17 +1986,27 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       // 1) 前置断言：没有抠图缓存就 export，会静默拼出原帧（绿底）——这是 P2 那个坑。
       const state = await keytedParamsOf()
       assertKeyedPresent(state.keyedCount)
-      // 2) 反推缩放：优先"目标物理量"，其次旧语义（整格高）。
-      const scaled = await bridge<ScaleResult>('scaleTo', {
-        ...(typeof args.charHeightPx === 'number' ? { charHeightPx: args.charHeightPx } : {}),
-        ...(typeof args.targetHeight === 'number' ? { targetCellHeight: args.targetHeight } : {}),
+      // 2) 第一遍：按调用方的目标导一次（不传目标 = 页面当前缩放，行为与以前一致）。
+      const target =
+        typeof args.charHeightPx === 'number' && Number.isFinite(args.charHeightPx) && args.charHeightPx > 0
+          ? args.charHeightPx
+          : undefined
+      const passArgs: ExportPassArgs = {
+        call: bridge,
+        cols,
+        rows,
+        format,
+        ...(typeof args.quality === 'number' ? { quality: args.quality } : {}),
         ...(args.span ? { span: args.span } : {}),
+        ...(args.spanBasis === 'bbox' ? { spanBasis: 'bbox' as const } : {}),
+        ...(typeof args.anchorX === 'number' ? { anchorX: args.anchorX } : {}),
+        ...(typeof args.anchorY === 'number' ? { anchorY: args.anchorY } : {}),
+      }
+      let pass = await runExportPass({
+        ...passArgs,
+        ...(target !== undefined ? { charHeightPx: target } : {}),
+        ...(typeof args.targetHeight === 'number' ? { targetHeight: args.targetHeight } : {}),
       })
-      // 归一化锚点先走 setAnchor（页面的 state.anchor 就是归一化的，按**输出格**算），
-      // 不要拿原帧尺寸去换算成像素——裁剪之后帧变小了，那个换算会错。
-      // 设完之后必须 getAnchor 回读：setAnchor 只回 {ok,x,y}，不是 AnchorInfo（P0-1）。
-      const anchorOut = await resolveExportAnchor(bridge, args)
-      const anchor = anchorOut.anchor
       const names = defaultFileNames({
         name,
         cols,
@@ -1751,73 +2025,33 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         if (existsSync(pngPath)) throw new Error(`目标文件已存在，且 overwrite=false：${pngPath}`)
         if (existsSync(metaPath)) throw new Error(`目标文件已存在，且 overwrite=false：${metaPath}`)
       }
-      // 3) 拼图（format/quality 走页面编码，PNG 与 webp 同一条路径）。
-      const built = await bridge<{
-        ok: boolean
-        dataURL?: string
-        mime?: string
-        meta?: Record<string, unknown>
-        width?: number
-        height?: number
-      }>('buildSheetDataURL', {
-        cols,
-        rows,
-        format,
-        ...(typeof args.quality === 'number' ? { quality: args.quality } : {}),
-      })
-      const buffer = dataUrlToBuffer(built.dataURL)
-      if (!buffer) throw new Error('页面没返回精灵图（dataURL 为空）')
-      // 4) 后置断言：alpha 全不透 = 大概率退回了原帧（绿底）。
-      const warnings: string[] = [...gridWarnings]
-      if (format === 'png') assertNotOpaque(analyzeSpritePng(buffer))
+      // 3) 一次收敛闭环（默认开）：量完成品发现偏了就"按 目标/实测 修正一次、重导一次"。
+      //    **`correctOnce` 里没有循环**——第二次导完无论准不准都收工（差得还多就进 warnings）。
+      //    只在「给了 charHeightPx + 量到了成品 + png」时触发，所以正常情况零额外开销。
+      let correction: ExportCorrection | undefined
+      if (target !== undefined) {
+        const outcome = await correctOnce({
+          first: pass,
+          target,
+          format,
+          ...(args.correction === false ? { correctionEnabled: false } : {}),
+          run: (requested) =>
+            runExportPass({
+              ...passArgs,
+              charHeightPx: requested,
+              ...(typeof args.targetHeight === 'number' ? { targetHeight: args.targetHeight } : {}),
+            }),
+        })
+        pass = outcome.pass
+        correction = outcome.correction
+      }
+      const { scaled, built, buffer, decoded: decodedSheet, measured, anchor } = pass
+      const cellWidthOut = pass.cellWidth
+      const cellHeightOut = pass.cellHeight
+      const warnings: string[] = [...gridWarnings, ...pass.warnings]
       const tmpPng = `${pngPath}.tmp-${process.pid}`
       writeFileSync(tmpPng, buffer)
       renameSync(tmpPng, pngPath)
-      // 格子尺寸从最终图集反推：图集一定是 cols×cellW 宽、rows×cellH 高。
-      // 除不尽说明页面缩放时有亚像素漂移，按整数给并留一条 warning（宁可显式，不静默）。
-      const sheetWidthOut = built.width ?? 0
-      const sheetHeightOut = built.height ?? 0
-      const cellWidthOut = sheetWidthOut > 0 ? Math.round(sheetWidthOut / cols) : null
-      const cellHeightOut = sheetHeightOut > 0 ? Math.round(sheetHeightOut / rows) : null
-      if (cellWidthOut !== null && cellWidthOut * cols !== sheetWidthOut) {
-        warnings.push(
-          `cellWidth*cols=${cellWidthOut * cols} 与图集宽 ${sheetWidthOut} 差 ${sheetWidthOut - cellWidthOut * cols}px（缩放取整）`,
-        )
-      }
-      if (cellHeightOut !== null && cellHeightOut * rows !== sheetHeightOut) {
-        warnings.push(
-          `cellHeight*rows=${cellHeightOut * rows} 与图集高 ${sheetHeightOut} 差 ${sheetHeightOut - cellHeightOut * rows}px（缩放取整）`,
-        )
-      }
-      // 4.5) **成品实测**：把"自己导出的这张图"解回来，按格切、量 alpha 包围盒、取中位数。
-      //      achievedPx 只是参数回显（用户实测三次：回显 300，成品 382/341/303），
-      //      这里量到的才是成品里角色真有高——两个数对不上就写进 warnings。
-      let measured: SheetMeasurement | undefined
-      let decodedSheet: ReturnType<typeof decodePng> | undefined
-      if (format === 'png') {
-        try {
-          decodedSheet = decodePng(buffer)
-          measured = measureSheet(
-            { width: decodedSheet.width, height: decodedSheet.height, rgba: decodedSheet.rgba },
-            {
-              cols,
-              rows,
-              cellWidth: cellWidthOut ?? Math.max(1, Math.round(decodedSheet.width / cols)),
-              cellHeight: cellHeightOut ?? Math.max(1, Math.round(decodedSheet.height / rows)),
-            },
-          )
-          warnings.push(...measured.warnings)
-          const mismatch = measuredMismatchWarning(scaled.achievedPx, measured.charHeightPx)
-          if (mismatch) warnings.push(mismatch)
-        } catch (error) {
-          // 量不出就明说：不许让调用方以为"没有 measured 就是没问题"。
-          warnings.push(
-            `成品实测失败（${String((error as Error)?.message ?? error).slice(0, 120)}）：这张图没能自证，别只信 achievedPx`,
-          )
-        }
-      } else {
-        warnings.push('format=webp 解不回像素：这次没有 measured（成品实测），要验身高请用 png 导出')
-      }
       // 4.55) 循环闭合校验：用**已经解好的图集格子**比首尾，不额外解码（D 的要求）。
       //       只对循环动作给——`loop:true` 显式声明，或这次会话是 prepare({loop}) 采出来的；
       //       一次性动作首尾本来就不该闭合，报了只会是噪音。
@@ -1861,7 +2095,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         cellWidth: cellWidthOut,
         cellHeight: cellHeightOut,
         anchor,
-        anchorWritten: anchorOut.written,
+        anchorWritten: pass.anchorWritten,
         fps: lastPrepare?.fps ?? 12,
         scaled,
         appliedParams: state.params ?? null,
@@ -1922,6 +2156,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         ...(measured ? { measured } : {}),
         ...(overlayPath ? { overlayPath } : {}),
         ...(loopCheck ? { loopCheck } : {}),
+        ...(correction ? { correction } : {}),
         reported: { meta },
         warnings,
       }
@@ -2041,12 +2276,20 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
             ...(typeof item.cols === 'number' ? { cols: item.cols } : {}),
             ...(typeof item.rows === 'number' ? { rows: item.rows } : {}),
             ...(item.targetCharHeight ? { charHeightPx: item.targetCharHeight, ...(span ? { span } : {}) } : {}),
+            // 这个 span 是 alphaBBox（包围盒口径），不是"身高上端→下端"的语义 span：
+            // 标成 bbox，measured.basis 才不会谎称 semantic（P1-5）。
+            ...(span ? { spanBasis: 'bbox' as const } : {}),
+            ...(typeof item.anchorX === 'number' ? { anchorX: item.anchorX } : {}),
+            ...(typeof item.anchorY === 'number' ? { anchorY: item.anchorY } : {}),
             format: item.format ?? 'png',
             outDir: args.outRoot,
             name,
             dirPerAction: true,
             overwrite: args.overwrite ?? true,
           })
+          // 锚点是 P0-1：meta 里写没写、写成多少，batch 也要能一眼看到（BatchResultItem 里本来就有这两个字段，
+          // 以前只是从来没填过）。
+          const metaAnchor = (exported.reported?.meta ?? {}) as Record<string, unknown>
           results.push({
             action: item.action,
             name,
@@ -2056,6 +2299,9 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
             ...(exported.cell ? { cellW: exported.cell.width, cellH: exported.cell.height } : {}),
             ...(typeof exported.scale === 'number' ? { scale: exported.scale } : {}),
             ...(typeof exported.achievedPx === 'number' ? { charHeightPx: exported.achievedPx } : {}),
+            ...(typeof metaAnchor.anchorX === 'number' ? { anchorX: metaAnchor.anchorX } : {}),
+            ...(typeof metaAnchor.anchorY === 'number' ? { anchorY: metaAnchor.anchorY } : {}),
+            ...(typeof metaAnchor.anchorWritten === 'boolean' ? { anchorWritten: metaAnchor.anchorWritten } : {}),
             ...(applied.stats || applied.worst
               ? { stats: { ...(applied.worst ? { worst: applied.worst } : {}), ...(applied.stats ? { first: applied.stats } : {}) } as never }
               : {}),
@@ -2101,6 +2347,12 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         ...(typeof args.cols === 'number' ? { cols: args.cols } : {}),
         ...(typeof args.rows === 'number' ? { rows: args.rows } : {}),
         ...(args.targetCharHeight ? { charHeightPx: args.targetCharHeight, span } : {}),
+        // span 是 alphaBBox（包围盒口径）⇒ 标 bbox；measured 才不会把它当成语义身高（P1-5）。
+        spanBasis: 'bbox',
+        // P0-1：锚点必须由 auto 转下去，否则 meta 里 anchorWritten 永远是 false，
+        // 下游只能读到默认 0.5/0（角色横向偏 20~40px）。
+        ...(typeof args.anchorX === 'number' ? { anchorX: args.anchorX } : {}),
+        ...(typeof args.anchorY === 'number' ? { anchorY: args.anchorY } : {}),
         format: args.format ?? 'png',
         ...(args.outDir ? { outDir: args.outDir } : {}),
         name: args.name ?? path.basename(args.videoPath).replace(/\.[^.]+$/, ''),

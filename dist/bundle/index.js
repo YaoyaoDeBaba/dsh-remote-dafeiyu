@@ -38897,6 +38897,25 @@ function measuredMismatchWarning(achievedPx, measuredPx, tolerance = MEASURED_RE
   const direction = measuredPx > achievedPx ? "\u5927" : "\u5C0F";
   return `\u53C2\u6570\u56DE\u663E\u4E0E\u6210\u54C1\u5B9E\u6D4B\u4E0D\u4E00\u81F4\uFF1A\u53C2\u6570 ${Math.round(achievedPx)}px / \u5B9E\u6D4B ${Math.round(measuredPx)}px\uFF08\u504F ${percent}%\uFF0C\u5DEE ${Math.round(delta)}px\uFF09\u3002achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\uFF0C\u6210\u54C1\u91CC alpha \u7684\u5185\u5BB9\u9AD8\u662F ${Math.round(measuredPx)}px\uFF08\u6BD4\u53C2\u6570${direction}\uFF09\u2014\u2014\u6309\u6210\u54C1\u8EAB\u9AD8\u5BF9\u9F50\u8BF7\u7528 measured.charHeightPx \u91CD\u7B97\uFF0C\u522B\u4FE1 achievedPx\u3002`;
 }
+var CORRECTION_REL_TOLERANCE = 0.01;
+var CORRECTION_ABS_TOLERANCE_PX = 2;
+function correctionFactorOf(target, measured, relTolerance = CORRECTION_REL_TOLERANCE, absolutePx = CORRECTION_ABS_TOLERANCE_PX) {
+  if (typeof target !== "number" || !Number.isFinite(target) || target <= 0) return null;
+  if (typeof measured !== "number" || !Number.isFinite(measured) || measured <= 0) return null;
+  const delta = Math.abs(measured - target);
+  if (!(delta > Math.max(absolutePx, target * relTolerance))) return null;
+  return target / measured;
+}
+function correctionResidualWarning(target, after, relTolerance = CORRECTION_REL_TOLERANCE, absolutePx = CORRECTION_ABS_TOLERANCE_PX) {
+  if (!Number.isFinite(target) || target <= 0 || !Number.isFinite(after) || after <= 0) return null;
+  const delta = Math.abs(after - target);
+  if (!(delta > Math.max(absolutePx, target * relTolerance))) return null;
+  const percent = Math.round(delta / target * 1e3) / 10;
+  return `\u6821\u6B63\u4E00\u6B21\u540E\u4ECD\u5DEE ${percent}%\uFF1A\u76EE\u6807 ${Math.round(target)}px / \u5B9E\u6D4B ${Math.round(after)}px\uFF08\u5DEE ${Math.round(delta)}px\uFF0C\u5BB9\u5DEE 1%/2px\uFF09\u3002**\u4E0D\u518D\u91CD\u5BFC**\uFF08\u95ED\u73AF\u53EA\u8DD1\u4E00\u6B21\uFF0C\u907F\u514D\u632F\u8361\uFF09\u2014\u2014\u8FD8\u53EF\u80FD\u7684\u539F\u56E0\uFF1A\u7F29\u653E\u649E\u4E0A 300% \u4E0A\u9650\u3001span \u4E0E\u7D20\u6750\u7684\u8BED\u4E49\u70B9\u5BF9\u4E0D\u4E0A\u3001\u6216\u8FD9\u4E00\u6279\u5404\u5E27\u8EAB\u9AD8\u672C\u8EAB\u5C31\u4E0D\u4E00\u81F4\u3002`;
+}
+function anchorNotWrittenWarning(anchor2) {
+  return `\u951A\u70B9\u6CA1\u5199\u8FDB meta\uFF08anchorWritten:false\uFF09\uFF1A\u8FD9\u6B21\u7528\u7684\u662F\u9875\u9762\u5F53\u524D\u951A\u70B9 (anchorX=${anchor2.anchorX}, anchorY=${anchor2.anchorY})\uFF0C\u4E0D\u4F20 anchorX/anchorY \u65F6\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF08\u89D2\u8272\u53EF\u80FD\u6A2A\u5411\u504F 20~40px\uFF09\u2014\u2014\u4F20 anchorX/anchorY\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF09\u6216\u5148 sprite_set_anchor\u3002`;
+}
 function defaultFileNames(args) {
   const safeName = (args.name || "sheet").replace(/[\\/:*?"<>|]/g, "_");
   const base = args.fileName ?? `${safeName}_${args.cols}x${args.rows}`;
@@ -39034,6 +39053,9 @@ function measureSheet(image, options) {
   if (filled.length === 0) {
     return {
       charHeightPx: 0,
+      bboxHeight: 0,
+      semanticHeight: null,
+      basis: "bbox",
       headTopY: null,
       soleY: null,
       cellWidth,
@@ -39057,6 +39079,11 @@ function measureSheet(image, options) {
   }
   return {
     charHeightPx: median2,
+    // 这里只量了 alpha 包围盒：先如实标成 bbox（`semanticHeight` 未知）。
+    // 谁要是给了 span 或者猜出了语义身高，由 `semantic.ts` 的 resolveMeasuredBasis 覆盖这两项。
+    bboxHeight: median2,
+    semanticHeight: null,
+    basis: "bbox",
     headTopY: representative.headTopY,
     soleY: representative.soleY,
     cellWidth,
@@ -40960,6 +40987,610 @@ function scanRangeFor(frames, preFps, minPeriodSec) {
   return { lo, hi, warnings };
 }
 
+// src/sprite/types.ts
+var KEY_PARAM_KEYS = [
+  "mode",
+  "colorHex",
+  "intensity",
+  "feather",
+  "cleanup",
+  "softness",
+  "despill",
+  "greenToAlpha",
+  "aggressive",
+  "autoPlate",
+  "advIntensity",
+  "advFeather"
+];
+var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation", "whiteness"];
+var SCAN_OPS = [">", ">=", "<", "<="];
+var SCAN_AGGREGATES = ["min", "max", "median", "mode"];
+var PIXEL_SOURCES = ["keyed", "raw"];
+
+// src/sprite/scan.ts
+var MARGIN_SCALE = 63.75;
+var MAX_SCAN_COLUMNS = 200;
+var MIN_RUN_FLOOR = 8;
+var WHITENESS_MAX_SATURATION = 25;
+var WHITENESS_MIN_LUMA = 210;
+function frameDimsOf(grid) {
+  const width = grid ? toNum(grid.width) : Number.NaN;
+  const height = grid ? toNum(grid.height) : Number.NaN;
+  if (Number.isNaN(width) || Number.isNaN(height) || width <= 0 || height <= 0) return null;
+  return { width, height };
+}
+var clamp01 = (value) => value < 0 ? 0 : value > 1 ? 1 : value;
+var round3 = (value) => Math.round(value * 1e3) / 1e3;
+function toNum(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+  return Number.NaN;
+}
+function channelValue(rgba, channel) {
+  const r = Number(rgba[0]);
+  const g = Number(rgba[1]);
+  const b = Number(rgba[2]);
+  const a = Number(rgba[3]);
+  switch (channel) {
+    case "r":
+      return r;
+    case "g":
+      return g;
+    case "b":
+      return b;
+    case "alpha":
+      return a;
+    case "luma":
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    case "blue-minus-red":
+      return b - r;
+    case "saturation":
+      return Math.max(r, g, b) - Math.min(r, g, b);
+    /* 白 = 低饱和 + 高亮度：够白返回 luma（亮度仍可当阈值用），不够白返回 0
+       （0 永远过不了 `op:">", value:0`，也就不会被 `>` 阈值误判成白）。 */
+    case "whiteness": {
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+      const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+      return saturation < WHITENESS_MAX_SATURATION && luma > WHITENESS_MIN_LUMA ? luma : 0;
+    }
+    default:
+      return Number.NaN;
+  }
+}
+function compareOp(value, op, target) {
+  if (!Number.isFinite(value) || !Number.isFinite(target)) return false;
+  switch (op) {
+    case ">":
+      return value > target;
+    case ">=":
+      return value >= target;
+    case "<":
+      return value < target;
+    case "<=":
+      return value <= target;
+    default:
+      return false;
+  }
+}
+function normalizeProbe(raw) {
+  if (!raw || typeof raw !== "object") {
+    return { probe: null, reason: "probe \u7F3A\u5931\uFF1A\u8981 {channel, op, value}\uFF08\u53EF\u9009 minRun\uFF09" };
+  }
+  const spec = raw;
+  const channel = typeof spec.channel === "string" ? spec.channel.trim() : "";
+  if (!SCAN_CHANNELS.includes(channel)) {
+    return { probe: null, reason: "channel \u4E0D\u652F\u6301\uFF1A" + (channel || "(\u7A7A)") + "\uFF08\u53EF\u7528 " + SCAN_CHANNELS.join(" / ") + "\uFF09" };
+  }
+  const op = typeof spec.op === "string" ? spec.op.trim() : "";
+  if (!SCAN_OPS.includes(op)) {
+    return { probe: null, reason: "op \u4E0D\u652F\u6301\uFF1A" + (op || "(\u7A7A)") + "\uFF08\u53EF\u7528 " + SCAN_OPS.join(" ") + "\uFF09" };
+  }
+  const value = toNum(spec.value);
+  if (Number.isNaN(value)) {
+    return { probe: null, reason: "value \u5FC5\u987B\u662F\u6570\u5B57\uFF08\u6536\u5230 " + String(spec.value) + "\uFF09" };
+  }
+  const minRun = Number.isNaN(toNum(spec.minRun)) ? 1 : Math.max(1, Math.round(toNum(spec.minRun)));
+  return { probe: { channel, op, value, minRun } };
+}
+function resolveYRange(grid, req) {
+  const dims = frameDimsOf(grid);
+  if (!dims) return { range: null, reason: "\u5E27\u5C3A\u5BF8\u65E0\u6548\uFF08width/height \u5FC5\u987B\u4E3A\u6B63\uFF09" };
+  const height = dims.height;
+  const fromRaw = toNum(req ? req.fromY : void 0);
+  const toRaw = toNum(req ? req.toY : void 0);
+  const fromY = Number.isNaN(fromRaw) ? 0 : Math.round(fromRaw);
+  const toY = Number.isNaN(toRaw) ? height - 1 : Math.round(toRaw);
+  if (toY < fromY) {
+    return { range: null, reason: "toY(" + toY + ") \u5C0F\u4E8E fromY(" + fromY + ")\uFF0C\u626B\u63CF\u533A\u95F4\u4E3A\u7A7A" };
+  }
+  if (fromY > height - 1 || toY < 0) {
+    return { range: null, reason: "\u626B\u63CF\u533A\u95F4 y=[" + fromY + "," + toY + "] \u6574\u6BB5\u843D\u5728\u5E27\u5916\uFF08\u5E27\u9AD8 " + height + "\uFF09" };
+  }
+  const y0 = Math.max(0, fromY);
+  const y1 = Math.min(height - 1, toY);
+  return { range: { fromY: y0, toY: y1, clipped: y0 !== fromY || y1 !== toY } };
+}
+var condText = (probe) => probe.channel + " " + probe.op + " " + String(probe.value);
+var COLUMNS_SYNTAX_HINT = '\u5408\u6CD5\u5199\u6CD5\u53EA\u6709\u4E24\u79CD\uFF1A\u50CF\u7D20\u6570\u7EC4 [200,260,320,380]\uFF1B\u6216\u6BD4\u4F8B\u5B57\u7B26\u4E32 "0.30..0.70 step 0.05"\uFF08a / b / step \u4E09\u4E2A\u6570\u90FD\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF0C\u4E0D\u662F\u50CF\u7D20\uFF1Bstep \u5FC5\u987B\u5199\uFF0C\u4E0D\u80FD\u7701\uFF09';
+function recommendMinRun(frameHeight) {
+  const height = toNum(frameHeight);
+  if (!Number.isFinite(height) || height <= 0) return MIN_RUN_FLOOR;
+  const raw = Math.round(height * 0.2);
+  return Math.max(MIN_RUN_FLOOR, Math.ceil(raw / 5) * 5);
+}
+function normalizeAggregate(raw, fallback = "median") {
+  if (raw === void 0 || raw === null || raw === "") return fallback;
+  const text = typeof raw === "string" ? raw.trim() : "";
+  return SCAN_AGGREGATES.includes(text) ? text : null;
+}
+function aggregateValues(values, aggregate) {
+  if (!values.length) return Number.NaN;
+  const sorted = [...values].sort((a, b) => a - b);
+  switch (aggregate) {
+    case "min":
+      return sorted[0];
+    case "max":
+      return sorted[sorted.length - 1];
+    case "median": {
+      const n = sorted.length;
+      if (n % 2 === 1) return sorted[(n - 1) / 2];
+      return Math.round((sorted[n / 2 - 1] + sorted[n / 2]) / 2);
+    }
+    case "mode": {
+      const counts = /* @__PURE__ */ new Map();
+      for (const value of sorted) counts.set(value, (counts.get(value) || 0) + 1);
+      let best = sorted[0];
+      let bestCount = 0;
+      for (const value of sorted) {
+        const count = counts.get(value) || 0;
+        if (count > bestCount) {
+          best = value;
+          bestCount = count;
+        }
+      }
+      return best;
+    }
+    default:
+      return Number.NaN;
+  }
+}
+function parseColumnsSpec(raw, frameWidth) {
+  const width = toNum(frameWidth);
+  if (Number.isNaN(width) || width <= 0) return { columns: null, reason: "\u5E27\u5BBD\u65E0\u6548\uFF08width \u5FC5\u987B\u4E3A\u6B63\uFF09" };
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) return { columns: null, reason: "columns \u662F\u7A7A\u6570\u7EC4\uFF08\u81F3\u5C11\u8981\u4E00\u5217\uFF09" };
+    const out = [];
+    for (let i = 0; i < raw.length; i++) {
+      const value = Math.round(toNum(raw[i]));
+      if (Number.isNaN(value)) {
+        return { columns: null, reason: "columns[" + i + "] \u4E0D\u662F\u6570\u5B57\uFF08\u6536\u5230 " + String(raw[i]) + "\uFF09" };
+      }
+      if (value < 0 || value > width - 1) {
+        return {
+          columns: null,
+          reason: "columns[" + i + "]=" + value + " \u8D85\u51FA\u53EF\u7528\u5217 [0," + (width - 1) + "]\uFF08\u8FD9\u91CC\u662F**\u50CF\u7D20**\uFF1B\u8981\u6309\u6BD4\u4F8B\u5199\u8BF7\u7528\u5B57\u7B26\u4E32\u5F62\u5F0F\uFF09"
+        };
+      }
+      out.push(value);
+    }
+    const uniq = [...new Set(out)].sort((a, b) => a - b);
+    if (uniq.length > MAX_SCAN_COLUMNS) {
+      return { columns: null, reason: "columns \u53BB\u91CD\u540E\u8FD8\u6709 " + uniq.length + " \u5217\uFF0C\u8D85\u8FC7\u4E0A\u9650 " + MAX_SCAN_COLUMNS };
+    }
+    return { columns: uniq };
+  }
+  if (typeof raw === "string") {
+    const text = raw.trim();
+    if (text === "") return { columns: null, reason: "columns \u662F\u7A7A\u5B57\u7B26\u4E32\u3002" + COLUMNS_SYNTAX_HINT };
+    const match = /^([0-9]*\.?[0-9]+)\.\.([0-9]*\.?[0-9]+)(?:\s*step\s*([0-9]*\.?[0-9]+))?$/.exec(text);
+    if (!match) return { columns: null, reason: "columns \u89E3\u6790\u4E0D\u4E86\uFF1A" + text + "\u3002" + COLUMNS_SYNTAX_HINT };
+    if (match[3] === void 0) {
+      return { columns: null, reason: "columns \u5B57\u7B26\u4E32\u7F3A step\uFF08\u4E0D\u77E5\u9053\u9694\u591A\u5C11\u5217\uFF09\uFF1B" + COLUMNS_SYNTAX_HINT };
+    }
+    const a = Number(match[1]);
+    const b = Number(match[2]);
+    const step = Number(match[3]);
+    if (![a, b, step].every((value) => Number.isFinite(value))) {
+      return { columns: null, reason: "columns \u91CC\u7684\u6570\u5B57\u89E3\u6790\u5931\u8D25\u3002" + COLUMNS_SYNTAX_HINT };
+    }
+    if (a < 0 || b < 0 || a > 1 || b > 1) {
+      return {
+        columns: null,
+        reason: "a=" + a + " / b=" + b + " \u8D85\u51FA 0~1\uFF1A\u5B57\u7B26\u4E32\u91CC\u7684\u4E09\u4E2A\u6570\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF0C\u4E0D\u662F\u50CF\u7D20\uFF08\u50CF\u7D20\u8BF7\u7528\u6570\u7EC4\u5F62\u5F0F\uFF09"
+      };
+    }
+    if (a > b) {
+      return { columns: null, reason: "a=" + a + " \u5927\u4E8E b=" + b + '\uFF0C\u533A\u95F4\u4E3A\u7A7A\uFF08\u5199\u6210 "\u5C0F..\u5927 step s"\uFF09' };
+    }
+    if (!(step > 0)) return { columns: null, reason: "step=" + step + " \u5FC5\u987B\u5927\u4E8E 0\uFF08\u6309\u6BD4\u4F8B\u89E3\u91CA\uFF0C\u901A\u5E38 0.02~0.1\uFF09" };
+    if (step > 1) return { columns: null, reason: "step=" + step + " \u5927\u4E8E 1\uFF1Astep \u4E5F\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF0C\u5FC5\u987B <= 1" };
+    const startPx = Math.min(width - 1, Math.max(0, Math.round(a * width)));
+    const endPx = Math.min(width - 1, Math.max(0, Math.round(b * width)));
+    const stepPx = Math.max(1, Math.round(step * width));
+    const span = endPx - startPx;
+    if (span < 0) return { columns: null, reason: "\u6362\u7B97\u6210\u50CF\u7D20\u540E\u533A\u95F4\u4E3A\u7A7A\uFF08a/b \u56DB\u820D\u4E94\u5165\u5230\u540C\u4E00\u5217\uFF1F\u8BF7\u628A a..b \u62C9\u5F00\uFF09" };
+    const estimate = Math.floor(span / stepPx) + 1;
+    if (estimate > MAX_SCAN_COLUMNS) {
+      const minStepPx = Math.ceil(span / (MAX_SCAN_COLUMNS - 1));
+      const minStep = Math.ceil(minStepPx / width * 1e3) / 1e3;
+      return {
+        columns: null,
+        reason: "\u6309 step=" + step + " \u4F1A\u626B " + estimate + " \u5217\uFF0C\u8D85\u8FC7\u4E0A\u9650 " + MAX_SCAN_COLUMNS + "\uFF08\u5E27\u5BBD " + width + "\uFF0C\u6BCF\u6B65 " + stepPx + "px\uFF09\uFF1B\u628A step \u8C03\u5230 >= " + minStep + " \u518D\u6765"
+      };
+    }
+    const out = [];
+    for (let x = startPx; x <= endPx; x += stepPx) out.push(x);
+    return { columns: out };
+  }
+  return { columns: null, reason: 'columns \u53EA\u652F\u6301\u300C\u50CF\u7D20\u6570\u7EC4\u300D\u6216\u300C"a..b step s" \u6BD4\u4F8B\u5B57\u7B26\u4E32\u300D\uFF08\u6536\u5230 ' + String(raw) + "\uFF09\u3002" + COLUMNS_SYNTAX_HINT };
+}
+var notFound = (reason) => ({
+  found: false,
+  px: null,
+  py: null,
+  confidence: 0,
+  reason: reason || "\u672A\u547D\u4E2D"
+});
+function confidenceOf(runLength, minRun, firstValue, threshold) {
+  const lengthScore = clamp01(runLength / Math.max(1, 3 * minRun));
+  const marginScore = clamp01(Math.abs(firstValue - threshold) / MARGIN_SCALE);
+  return round3(clamp01(0.6 * lengthScore + 0.4 * marginScore));
+}
+function columnRunOf(grid, x, fromY, toY, probe) {
+  const matches = (y2) => compareOp(channelValue(grid.rgbaAt(x, y2), probe.channel), probe.op, probe.value);
+  let y = fromY;
+  while (y <= toY) {
+    if (!matches(y)) {
+      y++;
+      continue;
+    }
+    const start = y;
+    while (y <= toY && matches(y)) y++;
+    const run = y - start;
+    if (run >= probe.minRun) {
+      return { start, run, firstValue: channelValue(grid.rgbaAt(x, start), probe.channel) };
+    }
+  }
+  return null;
+}
+function scanColumns(grid, req) {
+  const raw = req || {};
+  if (raw.columns !== void 0 && raw.columns !== null && raw.x !== void 0 && raw.x !== null) {
+    return notFound(
+      "columns \u4E0E x \u4E92\u65A5\uFF1A\u4E8C\u9009\u4E00\u3002\u7ED9 x = \u5355\u5217\u8001\u7528\u6CD5\uFF08\u884C\u4E3A\u4E0D\u53D8\uFF09\uFF0C\u7ED9 columns = \u591A\u5217\u6295\u7968\uFF1B\u4E0D\u4F1A\u66FF\u4F60\u6311\u4E00\u4E2A\uFF08\u731C\u9519\u4E86\u5C31\u662F\u51E0\u5341 px \u7684\u7CFB\u7EDF\u6027\u504F\u79FB\uFF09"
+    );
+  }
+  const probeOut = normalizeProbe(raw.probe);
+  const probe = probeOut.probe;
+  if (!probe) return notFound(probeOut.reason);
+  const dims = frameDimsOf(grid);
+  if (!dims) return notFound("\u5E27\u5C3A\u5BF8\u65E0\u6548\uFF08width/height \u5FC5\u987B\u4E3A\u6B63\uFF09");
+  const aggregate = normalizeAggregate(raw.aggregate);
+  if (!aggregate) {
+    return notFound("aggregate \u4E0D\u652F\u6301\uFF1A" + String(raw.aggregate) + "\uFF08\u53EF\u7528 " + SCAN_AGGREGATES.join(" / ") + "\uFF09");
+  }
+  const columnsOut = parseColumnsSpec(raw.columns, dims.width);
+  const columns = columnsOut.columns;
+  if (!columns) return notFound(columnsOut.reason);
+  const yOut = resolveYRange(grid, raw);
+  const yRange = yOut.range;
+  if (!yRange) return notFound(yOut.reason);
+  const { fromY, toY, clipped } = yRange;
+  const rawProbe = raw.probe && typeof raw.probe === "object" ? raw.probe : null;
+  const warnings = [];
+  if (!rawProbe || Number.isNaN(toNum(rawProbe.minRun))) {
+    warnings.push(
+      "minRun \u6CA1\u7ED9\uFF0C\u6309\u5E27\u9AD8 20% \u63A8\u8350 " + recommendMinRun(dims.height) + '\uFF08\u5F53\u524D\u6309 1 \u7B97\uFF1A\u4EFB\u4F55\u7EC6\u957F\u9644\u5C5E\u7269\u90FD\u4F1A\u62A2\u7B54\uFF0C\u591A\u5217\u6295\u7968\u4E5F\u6551\u4E0D\u56DE"\u5217\u5217\u90FD\u9519"\uFF09'
+    );
+  }
+  const perColumn = [];
+  const pys = [];
+  const repOf = /* @__PURE__ */ new Map();
+  for (const x of columns) {
+    const hit = columnRunOf(grid, x, fromY, toY, probe);
+    if (!hit) {
+      perColumn.push({
+        x,
+        found: false,
+        py: null,
+        run: null,
+        reason: "\u8FD9\u4E00\u5217\u6CA1\u6709\u8FDE\u7EED >= " + probe.minRun + " \u884C\u7684\u300C" + condText(probe) + "\u300D"
+      });
+      continue;
+    }
+    perColumn.push({
+      x,
+      found: true,
+      py: hit.start,
+      run: hit.run,
+      confidence: confidenceOf(hit.run, probe.minRun, hit.firstValue, probe.value)
+    });
+    pys.push(hit.start);
+    if (!repOf.has(hit.start)) repOf.set(hit.start, x);
+  }
+  const total = columns.length;
+  const hits = pys.length;
+  const confidence = total === 0 ? 0 : round3(hits / total);
+  const base = {
+    found: false,
+    px: null,
+    py: null,
+    confidence,
+    aggregate,
+    columns,
+    perColumn,
+    space: "frame",
+    channel: probe.channel,
+    op: probe.op,
+    threshold: probe.value,
+    fromY,
+    toY
+  };
+  if (warnings.length) base.warnings = warnings;
+  if (clipped) base.clipped = true;
+  if (hits === 0) {
+    base.reason = "\u591A\u5217\u5168\u90E8\u626B\u4E0D\u5230\uFF080/" + total + " \u5217\u547D\u4E2D\uFF09\uFF1A\u6761\u4EF6\u6216 y \u533A\u95F4\u5927\u6982\u7387\u4E0D\u5BF9\uFF0C\u5148\u770B perColumn \u7684 reason";
+    return base;
+  }
+  if (hits / total < 0.5) {
+    base.reason = "\u591A\u6570\u5217\u626B\u4E0D\u5230\uFF08" + hits + "/" + total + " \u5217\u547D\u4E2D\uFF0C\u547D\u4E2D\u7387 " + Math.round(hits / total * 100) + "% < 50%\uFF09\uFF1A\u5148\u786E\u8BA4 probe \u6761\u4EF6\u5BF9\u8FD9\u6279\u5217\u662F\u5426\u6210\u7ACB\uFF0C\u518D\u8C08\u805A\u5408";
+    return base;
+  }
+  const py = aggregateValues(pys, aggregate);
+  const repX = repOf.get(py) ?? columns[0];
+  return { ...base, found: true, px: repX, py, value: py, column: repX };
+}
+function findBodyTop(grid, req) {
+  const raw = req || {};
+  const topMinRun = toNum(raw.minRun);
+  let probeOut = raw.probe;
+  if (!Number.isNaN(topMinRun)) {
+    const baseProbe = raw.probe && typeof raw.probe === "object" ? { ...raw.probe } : {};
+    probeOut = { ...baseProbe, minRun: Math.max(1, Math.round(topMinRun)) };
+  }
+  const result2 = scanColumns(grid, {
+    ...raw,
+    probe: probeOut,
+    aggregate: raw.aggregate === void 0 ? "min" : raw.aggregate
+  });
+  return result2;
+}
+function resolveBand(frameWidth, band) {
+  const width = toNum(frameWidth);
+  if (Number.isNaN(width) || width <= 0) return { reason: "\u5E27\u5BBD\u65E0\u6548\uFF08width \u5FC5\u987B\u4E3A\u6B63\uFF09" };
+  const spec = band && typeof band === "object" ? band : {};
+  const centerFrac = Number.isNaN(toNum(spec.centerFrac)) ? 0.5 : toNum(spec.centerFrac);
+  const widthFrac = Number.isNaN(toNum(spec.widthFrac)) ? 0.4 : toNum(spec.widthFrac);
+  if (!(centerFrac >= 0 && centerFrac <= 1)) return { reason: "band.centerFrac=" + centerFrac + " \u5FC5\u987B\u843D\u5728 0~1\uFF08\u5E27\u5BBD\u6BD4\u4F8B\uFF09" };
+  if (!(widthFrac > 0 && widthFrac <= 1)) return { reason: "band.widthFrac=" + widthFrac + " \u5FC5\u987B\u843D\u5728 (0,1]\uFF08\u5E27\u5BBD\u6BD4\u4F8B\uFF09" };
+  const half = widthFrac / 2;
+  const leftFrac = centerFrac - half;
+  const x0 = Math.max(0, Math.round(leftFrac * width));
+  const x1 = Math.min(width - 1, Math.round((centerFrac + half) * width) - 1);
+  if (x1 < x0) return { reason: "band \u6362\u7B97\u540E\u662F\u7A7A\u533A\u95F4\uFF08x0=" + x0 + " > x1=" + x1 + "\uFF09\uFF1AwidthFrac \u592A\u5C0F\u6216 centerFrac \u8D34\u8FB9" };
+  return { x0, x1, centerFrac, widthFrac };
+}
+function rowRunOf(grid, y, x0, x1, probe) {
+  let best = 0;
+  let bestStart = x0;
+  let x = x0;
+  while (x <= x1) {
+    const value = channelValue(grid.rgbaAt(x, y), probe.channel);
+    if (!compareOp(value, probe.op, probe.value)) {
+      x++;
+      continue;
+    }
+    const start = x;
+    while (x <= x1 && compareOp(channelValue(grid.rgbaAt(x, y), probe.channel), probe.op, probe.value)) x++;
+    const run = x - start;
+    if (run > best) {
+      best = run;
+      bestStart = start;
+    }
+  }
+  if (best === 0) return { run: 0, startX: x0, endX: x0, midValue: Number.NaN };
+  const endX = bestStart + best - 1;
+  const midX = bestStart + Math.floor((best - 1) / 2);
+  return { run: best, startX: bestStart, endX, midValue: channelValue(grid.rgbaAt(midX, y), probe.channel) };
+}
+function findBodyBottom(grid, req) {
+  const raw = req || {};
+  const probeOut = normalizeProbe(raw.probe);
+  const probe = probeOut.probe;
+  if (!probe) return notFound(probeOut.reason);
+  const dims = frameDimsOf(grid);
+  if (!dims) return notFound("\u5E27\u5C3A\u5BF8\u65E0\u6548\uFF08width/height \u5FC5\u987B\u4E3A\u6B63\uFF09");
+  const bandOut = resolveBand(dims.width, raw.band);
+  if ("reason" in bandOut) return notFound(bandOut.reason);
+  const { x0, x1 } = bandOut;
+  const yOut = resolveYRange(grid, raw);
+  const yRange = yOut.range;
+  if (!yRange) return notFound(yOut.reason);
+  const { fromY, toY, clipped } = yRange;
+  const minRunPx = Number.isNaN(toNum(raw.minRunPx)) ? 1 : Math.max(1, Math.round(toNum(raw.minRunPx)));
+  const warnings = [];
+  if (Number.isNaN(toNum(raw.minRunPx))) {
+    warnings.push("minRunPx \u6CA1\u7ED9\uFF0C\u6309 1 \u7B97\uFF1A\u6574\u6761\u5224\u636E\u5F62\u540C\u6CA1\u6709\uFF0C\u6563\u843D\u7684\u9634\u5F71\u4E5F\u80FD\u6EE1\u8DB3\uFF0C\u5B9E\u9645\u7528\u5FC5\u987B\u7ED9");
+  }
+  for (let y = toY; y >= fromY; y--) {
+    const row = rowRunOf(grid, y, x0, x1, probe);
+    if (row.run < minRunPx) continue;
+    const lengthScore = clamp01(row.run / Math.max(1, 2 * minRunPx));
+    const marginScore = clamp01(Math.abs(row.midValue - probe.value) / MARGIN_SCALE);
+    const result2 = {
+      found: true,
+      px: row.startX + Math.floor((row.run - 1) / 2),
+      py: y,
+      value: y,
+      confidence: round3(clamp01(0.6 * lengthScore + 0.4 * marginScore)),
+      run: row.run,
+      runLength: row.run,
+      bandX: [x0, x1],
+      minRunPx,
+      channel: probe.channel,
+      op: probe.op,
+      threshold: probe.value,
+      fromY,
+      toY,
+      space: "frame"
+    };
+    if (warnings.length) result2.warnings = warnings;
+    if (clipped) result2.clipped = true;
+    return result2;
+  }
+  const miss = notFound(
+    "\u5728 y=[" + fromY + "," + toY + "] \u7684\u4E2D\u592E\u5E26 x=[" + x0 + "," + x1 + "] \u91CC\uFF0C\u6CA1\u6709\u4E00\u884C\u5B58\u5728\u8FDE\u7EED >= " + minRunPx + " \u4E2A\u300C" + condText(probe) + "\u300D\u7684\u50CF\u7D20"
+  );
+  miss.bandX = [x0, x1];
+  miss.minRunPx = minRunPx;
+  miss.space = "frame";
+  if (warnings.length) miss.warnings = warnings;
+  if (clipped) miss.clipped = true;
+  return miss;
+}
+
+// src/sprite/semantic.ts
+var GUESS_TOP_PROBE = { channel: "whiteness", op: ">", value: 0 };
+var GUESS_BOTTOM_PROBE = { channel: "luma", op: "<", value: 110 };
+function guessTopMinRun(cellHeight) {
+  const h = Math.max(0, Math.round(Number(cellHeight) || 0));
+  return Math.max(2, Math.round(h * 0.05));
+}
+function guessBottomMinRunPx(cellWidth) {
+  const w = Math.max(0, Math.round(Number(cellWidth) || 0));
+  return Math.max(3, Math.round(w * 0.06));
+}
+function gridOf(image) {
+  return {
+    width: image.width,
+    height: image.height,
+    rgbaAt: (x, y) => {
+      const i = (y * image.width + x) * 4;
+      return [image.rgba[i], image.rgba[i + 1], image.rgba[i + 2], image.rgba[i + 3]];
+    }
+  };
+}
+function maskBBox(mask) {
+  let x0 = mask.width;
+  let y0 = mask.height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < mask.height; y++) {
+    const row = y * mask.width;
+    for (let x = 0; x < mask.width; x++) {
+      if (mask.data[row + x] !== 1) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  return x1 < 0 || y1 < 0 ? null : { x0, y0, x1, y1 };
+}
+function pickColumns(x0, x1) {
+  const width = x1 - x0 + 1;
+  if (width <= 1) return [x0];
+  const out = [];
+  for (let i = 0; i < 5; i++) {
+    const x = Math.round(x0 + (width - 1) * (0.3 + 0.4 * (i / 4)));
+    if (!out.includes(x)) out.push(x);
+  }
+  return out.length > 0 ? out : [x0];
+}
+function guessSemanticHeight(image, options = {}) {
+  const fail3 = (reason, top2, bottom2) => ({
+    ok: false,
+    topY: null,
+    bottomY: null,
+    height: null,
+    ...top2 ? { top: top2 } : {},
+    ...bottom2 ? { bottom: bottom2 } : {},
+    reason
+  });
+  const width = Math.round(Number(image?.width ?? 0));
+  const height = Math.round(Number(image?.height ?? 0));
+  if (!(width > 0 && height > 0)) return fail3(`\u8FD9\u4E00\u683C\u662F\u7A7A\u56FE\uFF08${String(width)}x${String(height)}\uFF09\uFF0C\u6CA1\u6CD5\u731C\u8EAB\u9AD8`);
+  const box = maskBBox(bodyCoreMask(image));
+  if (!box) return fail3("\u8FD9\u4E00\u683C\u91CC\u6CA1\u6709\u4E3B\u4F53\uFF08body-core \u63A9\u819C\u662F\u7A7A\u7684\uFF09\uFF0C\u6CA1\u6CD5\u731C\u8EAB\u9AD8");
+  const grid = gridOf(image);
+  const top = findBodyTop(grid, {
+    columns: pickColumns(box.x0, box.x1),
+    fromY: box.y0,
+    toY: box.y1,
+    probe: { ...options.topProbe ?? GUESS_TOP_PROBE, minRun: options.topMinRun ?? guessTopMinRun(height) },
+    aggregate: "min"
+  });
+  if (top.found !== true || typeof top.py !== "number") {
+    return fail3("\u4E0A\u7AEF\u6CA1\u731C\u51FA\u6765\uFF08whiteness \u5224\u636E\u5728\u8FD9\u683C\u7684\u4E3B\u4F53\u5217\u4E0A\u4E00\u6761\u8FDE\u7EED\u6BB5\u90FD\u6CA1\u547D\u4E2D\uFF09", top);
+  }
+  const bandCenter = width > 0 ? (box.x0 + box.x1) / 2 / width : 0.5;
+  const bottom = findBodyBottom(grid, {
+    fromY: top.py,
+    toY: box.y1,
+    probe: { ...options.bottomProbe ?? GUESS_BOTTOM_PROBE },
+    band: { centerFrac: bandCenter, widthFrac: 0.4 },
+    minRunPx: options.bottomMinRunPx ?? guessBottomMinRunPx(width)
+  });
+  if (bottom.found !== true || typeof bottom.py !== "number") {
+    return fail3("\u4E0B\u7AEF\u6CA1\u731C\u51FA\u6765\uFF08luma<110 \u5728\u4E2D\u592E\u7AD6\u5E26\u91CC\u6CA1\u626B\u5230\u591F\u957F\u7684\u8FDE\u7EED\u6BB5\uFF09", top, bottom);
+  }
+  if (bottom.py <= top.py) {
+    return fail3(`\u4E0B\u7AEF\uFF08\u7B2C ${bottom.py} \u884C\uFF09\u4E0D\u5728\u4E0A\u7AEF\uFF08\u7B2C ${top.py} \u884C\uFF09\u4E0B\u9762\uFF0C\u8FD9\u6B21\u731C\u6D4B\u4E0D\u53EF\u7528`, top, bottom);
+  }
+  return { ok: true, topY: top.py, bottomY: bottom.py, height: bottom.py - top.py + 1, top, bottom };
+}
+var BBOX_BASIS_WARNING = "measured \u7684\u53E3\u5F84\u662F bbox\uFF08alpha \u5305\u56F4\u76D2\uFF09\uFF1A\u5446\u6BDB/\u5C3E\u5DF4/\u6302\u4EF6\u90FD\u4F1A\u88AB\u7B97\u8FDB\u8EAB\u9AD8\uFF0C\u540C\u4E00\u7EC4\u7D20\u6750\u4E0E\u8BED\u4E49\u8EAB\u9AD8\u80FD\u5DEE 4~6%\u2014\u2014\u8981\u6309\u8BED\u4E49\u5BF9\u9F50\u8BF7\u663E\u5F0F\u7ED9 span\uFF08\u8EAB\u9AD8\u4E0A\u7AEF\u2192\u8EAB\u9AD8\u4E0B\u7AEF\uFF0C\u5E27\u50CF\u7D20\uFF09";
+var GUESSED_BASIS_WARNING = "\u8BED\u4E49\u8EAB\u9AD8\u662F\u731C\u7684\uFF08whiteness \u4E0A\u7AEF / luma<110 \u4E0B\u7AEF\uFF0C\u9ED8\u8BA4\u5224\u636E\uFF09\uFF0C\u7D20\u6750\u4E0D\u5339\u914D\u8BF7\u663E\u5F0F\u7ED9 span";
+function resolveMeasuredBasis(input2) {
+  const bboxHeight = Number.isFinite(input2.bboxHeight) ? Math.max(0, Math.round(input2.bboxHeight)) : 0;
+  const guessed = typeof input2.guessedHeight === "number" && Number.isFinite(input2.guessedHeight) && input2.guessedHeight > 0 ? Math.round(input2.guessedHeight) : null;
+  const span = input2.span;
+  const spanSemantic = input2.spanBasis !== "bbox";
+  const ratio = typeof input2.ratio === "number" && Number.isFinite(input2.ratio) && input2.ratio > 0 ? input2.ratio : null;
+  if (span && spanSemantic) {
+    const spanLen = Math.abs(Math.round(span.toY) - Math.round(span.fromY)) + 1;
+    if (ratio !== null && spanLen > 0) {
+      const semanticHeight = Math.round(spanLen * ratio);
+      return { bboxHeight, semanticHeight, basis: "semantic", charHeightPx: semanticHeight, warnings: [] };
+    }
+    return {
+      bboxHeight,
+      semanticHeight: guessed,
+      basis: "bbox",
+      charHeightPx: bboxHeight,
+      warnings: [`\u62FF\u5230\u4E86 span \u4F46\u7B97\u4E0D\u51FA\u7F29\u653E\u6BD4\uFF08scaleTo \u6CA1\u56DE sourcePx/achievedPx\uFF09\uFF0C\u8FD9\u6B21\u6309 bbox \u53E3\u5F84\uFF1A${BBOX_BASIS_WARNING}`]
+    };
+  }
+  if (span && !spanSemantic) {
+    return {
+      bboxHeight,
+      semanticHeight: guessed,
+      basis: "bbox",
+      charHeightPx: bboxHeight,
+      warnings: [BBOX_BASIS_WARNING]
+    };
+  }
+  if (guessed !== null) {
+    return {
+      bboxHeight,
+      semanticHeight: guessed,
+      basis: "guessed",
+      charHeightPx: guessed,
+      warnings: [GUESSED_BASIS_WARNING]
+    };
+  }
+  return {
+    bboxHeight,
+    semanticHeight: null,
+    basis: "bbox",
+    charHeightPx: bboxHeight,
+    warnings: [BBOX_BASIS_WARNING, ...input2.guessReason ? [`\u8BED\u4E49\u8EAB\u9AD8\u6CA1\u731C\u51FA\u6765\uFF1A${input2.guessReason}`] : []]
+  };
+}
+
 // src/sprite/verify.ts
 var DEFAULT_HEIGHT_PCT = 0.01;
 var DEFAULT_ANCHOR_PX = 2;
@@ -41155,6 +41786,148 @@ function buildExportMeta(input2) {
     generatedAt: input2.generatedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
     engine: "dsh-remote-dafeiyu/sprite"
   };
+}
+function firstNonEmptyCell(decoded, measured) {
+  const cell = measured.perCell.find((one) => one.empty !== true);
+  if (!cell) return void 0;
+  try {
+    return cropRgba(decoded, {
+      x: cell.col * measured.cellWidth,
+      y: cell.row * measured.cellHeight,
+      w: measured.cellWidth,
+      h: measured.cellHeight
+    });
+  } catch {
+    return void 0;
+  }
+}
+function measuredBasisOf(raw, decoded, pass) {
+  const bboxHeight = raw.bboxHeight ?? raw.charHeightPx;
+  const spanBasis = pass.spanBasis === "bbox" ? "bbox" : "semantic";
+  const needGuess = !(pass.span && spanBasis === "semantic");
+  let guess;
+  if (needGuess) {
+    const cell = firstNonEmptyCell(decoded, raw);
+    if (cell) {
+      try {
+        guess = guessSemanticHeight({ width: cell.width, height: cell.height, rgba: cell.rgba });
+      } catch {
+        guess = void 0;
+      }
+    }
+  }
+  const ratio = Number.isFinite(pass.scaled.sourcePx) && pass.scaled.sourcePx > 0 && Number.isFinite(pass.scaled.achievedPx) ? pass.scaled.achievedPx / pass.scaled.sourcePx : void 0;
+  return resolveMeasuredBasis({
+    bboxHeight,
+    ...pass.span ? { span: pass.span } : {},
+    spanBasis,
+    ...ratio !== void 0 ? { ratio } : {},
+    guessedHeight: guess?.ok === true ? guess.height : null,
+    ...guess && guess.ok !== true && guess.reason ? { guessReason: guess.reason } : {}
+  });
+}
+async function runExportPass(args) {
+  const warnings = [];
+  const scaled = await args.call("scaleTo", {
+    ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
+    ...typeof args.targetHeight === "number" ? { targetCellHeight: args.targetHeight } : {},
+    ...args.span ? { span: args.span } : {}
+  });
+  const anchorOut = await resolveExportAnchor(args.call, args);
+  if (!anchorOut.written) warnings.push(anchorNotWrittenWarning(anchorOut.anchor));
+  const built = await args.call("buildSheetDataURL", {
+    cols: args.cols,
+    rows: args.rows,
+    format: args.format,
+    ...typeof args.quality === "number" ? { quality: args.quality } : {}
+  });
+  const buffer = dataUrlToBuffer(built.dataURL);
+  if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u7CBE\u7075\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
+  if (args.format === "png") assertNotOpaque(analyzeSpritePng(buffer));
+  const sheetWidthOut = built.width ?? 0;
+  const sheetHeightOut = built.height ?? 0;
+  const cellWidth = sheetWidthOut > 0 ? Math.round(sheetWidthOut / args.cols) : null;
+  const cellHeight = sheetHeightOut > 0 ? Math.round(sheetHeightOut / args.rows) : null;
+  if (cellWidth !== null && cellWidth * args.cols !== sheetWidthOut) {
+    warnings.push(
+      `cellWidth*cols=${cellWidth * args.cols} \u4E0E\u56FE\u96C6\u5BBD ${sheetWidthOut} \u5DEE ${sheetWidthOut - cellWidth * args.cols}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
+    );
+  }
+  if (cellHeight !== null && cellHeight * args.rows !== sheetHeightOut) {
+    warnings.push(
+      `cellHeight*rows=${cellHeight * args.rows} \u4E0E\u56FE\u96C6\u9AD8 ${sheetHeightOut} \u5DEE ${sheetHeightOut - cellHeight * args.rows}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
+    );
+  }
+  let measured;
+  let decoded;
+  if (args.format === "png") {
+    try {
+      decoded = decodePng(buffer);
+      const raw = measureSheet(
+        { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
+        {
+          cols: args.cols,
+          rows: args.rows,
+          cellWidth: cellWidth ?? Math.max(1, Math.round(decoded.width / args.cols)),
+          cellHeight: cellHeight ?? Math.max(1, Math.round(decoded.height / args.rows))
+        }
+      );
+      warnings.push(...raw.warnings);
+      const basis = measuredBasisOf(raw, decoded, { ...args.span ? { span: args.span } : {}, ...args.spanBasis ? { spanBasis: args.spanBasis } : {}, scaled });
+      warnings.push(...basis.warnings);
+      measured = {
+        ...raw,
+        bboxHeight: basis.bboxHeight,
+        semanticHeight: basis.semanticHeight,
+        basis: basis.basis,
+        charHeightPx: basis.charHeightPx
+      };
+      const mismatch = measuredMismatchWarning(scaled.achievedPx, basis.bboxHeight);
+      if (mismatch) warnings.push(mismatch);
+    } catch (error62) {
+      warnings.push(
+        `\u6210\u54C1\u5B9E\u6D4B\u5931\u8D25\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09\uFF1A\u8FD9\u5F20\u56FE\u6CA1\u80FD\u81EA\u8BC1\uFF0C\u522B\u53EA\u4FE1 achievedPx`
+      );
+      measured = void 0;
+    }
+  } else {
+    warnings.push("format=webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF1A\u8FD9\u6B21\u6CA1\u6709 measured\uFF08\u6210\u54C1\u5B9E\u6D4B\uFF09\uFF0C\u8981\u9A8C\u8EAB\u9AD8\u8BF7\u7528 png \u5BFC\u51FA");
+  }
+  return {
+    scaled,
+    anchor: anchorOut.anchor,
+    anchorWritten: anchorOut.written,
+    built,
+    buffer,
+    ...decoded ? { decoded } : {},
+    ...measured ? { measured } : {},
+    cellWidth,
+    cellHeight,
+    warnings
+  };
+}
+async function correctOnce(args) {
+  const { first, target } = args;
+  if (args.correctionEnabled === false) return { pass: first };
+  if (args.format !== "png" || !first.measured) return { pass: first };
+  const before = first.measured.charHeightPx;
+  const factor = correctionFactorOf(target, before);
+  if (factor === null) {
+    return { pass: first, correction: { passes: 0, basis: first.measured.basis ?? "bbox", before, after: before, target } };
+  }
+  const requested = Math.max(1, Math.round(target * factor));
+  const second = await args.run(requested);
+  const after = second.measured?.charHeightPx ?? before;
+  const correction = {
+    passes: 1,
+    basis: second.measured?.basis ?? first.measured.basis ?? "bbox",
+    before,
+    after,
+    target
+  };
+  const residual = correctionResidualWarning(target, after);
+  if (residual) second.warnings.push(residual);
+  return { pass: second, correction };
 }
 function createSpriteService(options) {
   const log = options.log;
@@ -42145,13 +42918,23 @@ function createSpriteService(options) {
       const gridWarnings = framesKnown > 0 ? checkGridCapacity(framesKnown, cols, rows).warnings : [];
       const state = await keytedParamsOf();
       assertKeyedPresent(state.keyedCount);
-      const scaled = await bridge("scaleTo", {
-        ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
-        ...typeof args.targetHeight === "number" ? { targetCellHeight: args.targetHeight } : {},
-        ...args.span ? { span: args.span } : {}
+      const target = typeof args.charHeightPx === "number" && Number.isFinite(args.charHeightPx) && args.charHeightPx > 0 ? args.charHeightPx : void 0;
+      const passArgs = {
+        call: bridge,
+        cols,
+        rows,
+        format,
+        ...typeof args.quality === "number" ? { quality: args.quality } : {},
+        ...args.span ? { span: args.span } : {},
+        ...args.spanBasis === "bbox" ? { spanBasis: "bbox" } : {},
+        ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+        ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {}
+      };
+      let pass = await runExportPass({
+        ...passArgs,
+        ...target !== void 0 ? { charHeightPx: target } : {},
+        ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {}
       });
-      const anchorOut = await resolveExportAnchor(bridge, args);
-      const anchor2 = anchorOut.anchor;
       const names = defaultFileNames({
         name: name2,
         cols,
@@ -42170,58 +42953,29 @@ function createSpriteService(options) {
         if (existsSync3(pngPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${pngPath}`);
         if (existsSync3(metaPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${metaPath}`);
       }
-      const built = await bridge("buildSheetDataURL", {
-        cols,
-        rows,
-        format,
-        ...typeof args.quality === "number" ? { quality: args.quality } : {}
-      });
-      const buffer = dataUrlToBuffer(built.dataURL);
-      if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u7CBE\u7075\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
-      const warnings = [...gridWarnings];
-      if (format === "png") assertNotOpaque(analyzeSpritePng(buffer));
+      let correction;
+      if (target !== void 0) {
+        const outcome = await correctOnce({
+          first: pass,
+          target,
+          format,
+          ...args.correction === false ? { correctionEnabled: false } : {},
+          run: (requested) => runExportPass({
+            ...passArgs,
+            charHeightPx: requested,
+            ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {}
+          })
+        });
+        pass = outcome.pass;
+        correction = outcome.correction;
+      }
+      const { scaled, built, buffer, decoded: decodedSheet, measured, anchor: anchor2 } = pass;
+      const cellWidthOut = pass.cellWidth;
+      const cellHeightOut = pass.cellHeight;
+      const warnings = [...gridWarnings, ...pass.warnings];
       const tmpPng = `${pngPath}.tmp-${process.pid}`;
       writeFileSync3(tmpPng, buffer);
       renameSync2(tmpPng, pngPath);
-      const sheetWidthOut = built.width ?? 0;
-      const sheetHeightOut = built.height ?? 0;
-      const cellWidthOut = sheetWidthOut > 0 ? Math.round(sheetWidthOut / cols) : null;
-      const cellHeightOut = sheetHeightOut > 0 ? Math.round(sheetHeightOut / rows) : null;
-      if (cellWidthOut !== null && cellWidthOut * cols !== sheetWidthOut) {
-        warnings.push(
-          `cellWidth*cols=${cellWidthOut * cols} \u4E0E\u56FE\u96C6\u5BBD ${sheetWidthOut} \u5DEE ${sheetWidthOut - cellWidthOut * cols}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
-        );
-      }
-      if (cellHeightOut !== null && cellHeightOut * rows !== sheetHeightOut) {
-        warnings.push(
-          `cellHeight*rows=${cellHeightOut * rows} \u4E0E\u56FE\u96C6\u9AD8 ${sheetHeightOut} \u5DEE ${sheetHeightOut - cellHeightOut * rows}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
-        );
-      }
-      let measured;
-      let decodedSheet;
-      if (format === "png") {
-        try {
-          decodedSheet = decodePng(buffer);
-          measured = measureSheet(
-            { width: decodedSheet.width, height: decodedSheet.height, rgba: decodedSheet.rgba },
-            {
-              cols,
-              rows,
-              cellWidth: cellWidthOut ?? Math.max(1, Math.round(decodedSheet.width / cols)),
-              cellHeight: cellHeightOut ?? Math.max(1, Math.round(decodedSheet.height / rows))
-            }
-          );
-          warnings.push(...measured.warnings);
-          const mismatch = measuredMismatchWarning(scaled.achievedPx, measured.charHeightPx);
-          if (mismatch) warnings.push(mismatch);
-        } catch (error62) {
-          warnings.push(
-            `\u6210\u54C1\u5B9E\u6D4B\u5931\u8D25\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09\uFF1A\u8FD9\u5F20\u56FE\u6CA1\u80FD\u81EA\u8BC1\uFF0C\u522B\u53EA\u4FE1 achievedPx`
-          );
-        }
-      } else {
-        warnings.push("format=webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF1A\u8FD9\u6B21\u6CA1\u6709 measured\uFF08\u6210\u54C1\u5B9E\u6D4B\uFF09\uFF0C\u8981\u9A8C\u8EAB\u9AD8\u8BF7\u7528 png \u5BFC\u51FA");
-      }
       let loopCheck;
       const wantsLoopCheck = args.loop === true || lastPrepare?.looped === true;
       if (wantsLoopCheck && format === "png" && decodedSheet && cellWidthOut && cellHeightOut) {
@@ -42259,7 +43013,7 @@ function createSpriteService(options) {
         cellWidth: cellWidthOut,
         cellHeight: cellHeightOut,
         anchor: anchor2,
-        anchorWritten: anchorOut.written,
+        anchorWritten: pass.anchorWritten,
         fps: lastPrepare?.fps ?? 12,
         scaled,
         appliedParams: state.params ?? null
@@ -42316,6 +43070,7 @@ function createSpriteService(options) {
         ...measured ? { measured } : {},
         ...overlayPath ? { overlayPath } : {},
         ...loopCheck ? { loopCheck } : {},
+        ...correction ? { correction } : {},
         reported: { meta: meta3 },
         warnings
       };
@@ -42424,12 +43179,18 @@ function createSpriteService(options) {
             ...typeof item.cols === "number" ? { cols: item.cols } : {},
             ...typeof item.rows === "number" ? { rows: item.rows } : {},
             ...item.targetCharHeight ? { charHeightPx: item.targetCharHeight, ...span ? { span } : {} } : {},
+            // 这个 span 是 alphaBBox（包围盒口径），不是"身高上端→下端"的语义 span：
+            // 标成 bbox，measured.basis 才不会谎称 semantic（P1-5）。
+            ...span ? { spanBasis: "bbox" } : {},
+            ...typeof item.anchorX === "number" ? { anchorX: item.anchorX } : {},
+            ...typeof item.anchorY === "number" ? { anchorY: item.anchorY } : {},
             format: item.format ?? "png",
             outDir: args.outRoot,
             name: name2,
             dirPerAction: true,
             overwrite: args.overwrite ?? true
           });
+          const metaAnchor = exported.reported?.meta ?? {};
           results.push({
             action: item.action,
             name: name2,
@@ -42439,6 +43200,9 @@ function createSpriteService(options) {
             ...exported.cell ? { cellW: exported.cell.width, cellH: exported.cell.height } : {},
             ...typeof exported.scale === "number" ? { scale: exported.scale } : {},
             ...typeof exported.achievedPx === "number" ? { charHeightPx: exported.achievedPx } : {},
+            ...typeof metaAnchor.anchorX === "number" ? { anchorX: metaAnchor.anchorX } : {},
+            ...typeof metaAnchor.anchorY === "number" ? { anchorY: metaAnchor.anchorY } : {},
+            ...typeof metaAnchor.anchorWritten === "boolean" ? { anchorWritten: metaAnchor.anchorWritten } : {},
             ...applied.stats || applied.worst ? { stats: { ...applied.worst ? { worst: applied.worst } : {}, ...applied.stats ? { first: applied.stats } : {} } } : {},
             ...measured.overlayPath ? { overlayPath: measured.overlayPath } : {},
             ...exported.measured ? { measured: exported.measured } : {},
@@ -42480,6 +43244,12 @@ function createSpriteService(options) {
         ...typeof args.cols === "number" ? { cols: args.cols } : {},
         ...typeof args.rows === "number" ? { rows: args.rows } : {},
         ...args.targetCharHeight ? { charHeightPx: args.targetCharHeight, span } : {},
+        // span 是 alphaBBox（包围盒口径）⇒ 标 bbox；measured 才不会把它当成语义身高（P1-5）。
+        spanBasis: "bbox",
+        // P0-1：锚点必须由 auto 转下去，否则 meta 里 anchorWritten 永远是 false，
+        // 下游只能读到默认 0.5/0（角色横向偏 20~40px）。
+        ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+        ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
         format: args.format ?? "png",
         ...args.outDir ? { outDir: args.outDir } : {},
         name: args.name ?? path20.basename(args.videoPath).replace(/\.[^.]+$/, ""),
@@ -42570,26 +43340,6 @@ var SPRITE_GUIDE = `# \u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\uFF08\u515C\u5E95\u90
 \`name / cols / rows / cellWidth / cellHeight / charHeightPx / scale / anchorX / anchorY / anchorYTopDown / anchorConvention / fps\`\uFF1B
 \`anchorY\` \u662F y-from-bottom\uFF0C\`anchorYTopDown\` \u662F\u9876\u53E3\u5F84\uFF0C\u76F4\u63A5\u8BFB\u5B57\u6BB5\u522B\u81EA\u5DF1\u6362\u7B97\u3002
 `;
-
-// src/sprite/types.ts
-var KEY_PARAM_KEYS = [
-  "mode",
-  "colorHex",
-  "intensity",
-  "feather",
-  "cleanup",
-  "softness",
-  "despill",
-  "greenToAlpha",
-  "aggressive",
-  "autoPlate",
-  "advIntensity",
-  "advFeather"
-];
-var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation", "whiteness"];
-var SCAN_OPS = [">", ">=", "<", "<="];
-var SCAN_AGGREGATES = ["min", "max", "median", "mode"];
-var PIXEL_SOURCES = ["keyed", "raw"];
 
 // src/sprite/tools.ts
 var json9 = (value) => JSON.stringify(value);
@@ -43099,7 +43849,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_export",
-      description: '\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002\u8FD4\u56DE\u91CC `measured` \u662F**\u6210\u54C1\u5B9E\u6D4B**\uFF08\u89E3\u81EA\u5DF1\u5BFC\u51FA\u7684 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2 \u2192 \u53D6\u4E2D\u4F4D\u6570\uFF09\uFF1AcharHeightPx/headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"\uFF0C\u683C\u5B50\u6570 >48 \u65F6\u53EA\u7B49\u95F4\u9694\u62BD 12 \u683C\u5E76\u7ED9 sampled:true\u3002**\u5224\u6210\u54C1\u5BF9\u4E0D\u5BF9\u770B measured\uFF0C\u522B\u770B achievedPx**\u2014\u2014achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\u7684\u53C2\u6570\u56DE\u663E\uFF1B\u4E24\u8005\u5DEE >1% \u4F1A\u5728 warnings \u91CC\u70B9\u540D\u3002debugOverlay:true \u518D\u51FA\u4E00\u5F20 <outDir>/_debug/<name>-overlay.png\uFF08\u54C1\u7EA2=\u5B9E\u6D4B\u5934\u9876\u3001\u9752=\u5B9E\u6D4B\u811A\u5E95\u3001\u767D\u5341\u5B57=\u951A\u70B9\uFF1B\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5% \u7684\u683C\u6574\u683C\u6807\u9EC4\uFF09\uFF0C\u8DEF\u5F84\u5728 overlayPath\u3002`loop:true`\uFF08\u6216\u672C\u6B21\u4F1A\u8BDD\u662F sprite_prepare({loop}) \u91C7\u7684\uFF09\u65F6\u989D\u5916\u7ED9 loopCheck {firstLastDiff,adjacentDiff,ok}\uFF1A\u7528**\u5DF2\u89E3\u597D\u7684\u56FE\u96C6\u683C\u5B50**\u6BD4\u9996\u5C3E\uFF0C\u4E0D\u989D\u5916\u89E3\u7801\uFF1Bok = |\u9996\u5C3E\u5DEE\u2212\u76F8\u90BB\u5E27\u5DEE|/\u76F8\u90BB\u5E27\u5DEE < 0.5\uFF0C\u4E0D ok \u65F6\u8FDB warnings\u3002\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20 loop\u3002',
+      description: '\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002\u8FD4\u56DE\u91CC `measured` \u662F**\u6210\u54C1\u5B9E\u6D4B**\uFF08\u89E3\u81EA\u5DF1\u5BFC\u51FA\u7684 PNG \u2192 \u6309\u683C\u5207 \u2192 \u91CF\u8EAB\u9AD8 \u2192 \u53D6\u4E2D\u4F4D\u6570\uFF09\uFF1AcharHeightPx\uFF08\u672C\u6B21\u91C7\u7528\u7684\u57FA\u51C6\uFF09/ bboxHeight\uFF08alpha \u5305\u56F4\u76D2\u53E3\u5F84\uFF09/ semanticHeight\uFF08\u8EAB\u9AD8\u4E0A\u7AEF\u2192\u4E0B\u7AEF\uFF0C\u7ED9\u7684 span \u6216\u731C\u51FA\u6765\u7684\uFF09/ basis\uFF08semantic | guessed | bbox\uFF09/ headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"\uFF0C\u683C\u5B50\u6570 >48 \u65F6\u53EA\u7B49\u95F4\u9694\u62BD 12 \u683C\u5E76\u7ED9 sampled:true\u3002**\u5224\u6210\u54C1\u5BF9\u4E0D\u5BF9\u770B measured\uFF0C\u522B\u770B achievedPx**\u2014\u2014achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\u7684\u53C2\u6570\u56DE\u663E\u3002\u7ED9\u4E86 charHeightPx \u65F6\u9ED8\u8BA4\u8DD1**\u4E00\u6B21**\u6536\u655B\u95ED\u73AF\uFF1A\u91CF\u5B8C\u53D1\u73B0\u4E0E\u76EE\u6807\u5DEE\u8D85\u8FC7\u5BB9\u5DEE\uFF08\u76F8\u5BF9 1% / \u7EDD\u5BF9 2px\uFF09\u5C31\u6309 \u76EE\u6807/\u5B9E\u6D4B \u4FEE\u6B63\u4E00\u6B21\u7F29\u653E\u3001**\u91CD\u5BFC\u4E00\u6B21**\uFF08\u53EA\u4E00\u6B21\u3001\u4E0D\u5FAA\u73AF\uFF1B\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF0C\u56DE\u6267\u5728 correction {passes,basis,before,after,target}\uFF1B\u7B2C\u4E8C\u6B21\u4ECD\u4E0D\u51C6\u53EA\u5199 warning\u3001\u4E0D\u518D\u91CD\u5BFC\u3002correction:false \u53EF\u5173\uFF08\u5173\u6389\u65F6\u884C\u4E3A\u4E0E\u4EE5\u524D\u5B8C\u5168\u4E00\u81F4\u3001\u8FD4\u56DE\u91CC\u6CA1\u6709 correction\uFF09\u3002**anchorX/anchorY \u5EFA\u8BAE\u6BCF\u6B21\u90FD\u4F20**\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF0C0=\u683C\u5E95\uFF09\uFF1A\u4E0D\u4F20\u65F6 meta \u7684 anchorWritten \u662F false\uFF08\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF0C\u89D2\u8272\u6A2A\u5411\u504F 20~40px\uFF09\uFF0C\u5E76\u4F1A\u6709\u4E00\u6761\u544A\u8B66\u3002debugOverlay:true \u518D\u51FA\u4E00\u5F20 <outDir>/_debug/<name>-overlay.png\uFF08\u54C1\u7EA2=\u5B9E\u6D4B\u5934\u9876\u3001\u9752=\u5B9E\u6D4B\u811A\u5E95\u3001\u767D\u5341\u5B57=\u951A\u70B9\uFF1B\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5% \u7684\u683C\u6574\u683C\u6807\u9EC4\uFF09\uFF0C\u8DEF\u5F84\u5728 overlayPath\u3002`loop:true`\uFF08\u6216\u672C\u6B21\u4F1A\u8BDD\u662F sprite_prepare({loop}) \u91C7\u7684\uFF09\u65F6\u989D\u5916\u7ED9 loopCheck {firstLastDiff,adjacentDiff,ok}\uFF1A\u7528**\u5DF2\u89E3\u597D\u7684\u56FE\u96C6\u683C\u5B50**\u6BD4\u9996\u5C3E\uFF0C\u4E0D\u989D\u5916\u89E3\u7801\uFF1Bok = |\u9996\u5C3E\u5DEE\u2212\u76F8\u90BB\u5E27\u5DEE|/\u76F8\u90BB\u5E27\u5DEE < 0.5\uFF0C\u4E0D ok \u65F6\u8FDB warnings\u3002\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20 loop\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -43112,8 +43862,12 @@ function buildTools(service, options) {
             description: "\u4E24\u4E2A\u57FA\u51C6\u884C\uFF08\u5E27\u50CF\u7D20\uFF09\uFF1B\u6765\u81EA sprite_measure \u7684 alphaBBox",
             properties: { fromY: { type: "number" }, toY: { type: "number" } }
           },
-          anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309\u5E27\u5BBD\u6BD4\u4F8B\uFF09" },
-          anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF09" },
+          anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309**\u8F93\u51FA\u683C**\u5BBD\u6BD4\u4F8B\uFF09\uFF1B\u4F20\u4E86 meta \u91CC anchorWritten=true" },
+          anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C0=\u683C\u5E95\uFF09\uFF1B\u4F20\u4E86 meta \u91CC anchorWritten=true" },
+          correction: {
+            type: "boolean",
+            description: "\u9ED8\u8BA4 true = \u7ED9\u4E86 charHeightPx \u5C31\u91CF\u5B8C\u518D\u6821\u6B63**\u4E00\u6B21**\uFF08\u504F\u8D85\u8FC7 1%/2px \u65F6\u91CD\u5BFC\u4E00\u6B21\uFF0C\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF1Bfalse = \u4E0D\u91CD\u5BFC\uFF08\u884C\u4E3A\u4E0E\u4EE5\u524D\u5B8C\u5168\u4E00\u81F4\uFF0C\u8FD4\u56DE\u91CC\u4E5F\u6CA1\u6709 correction\uFF09"
+          },
           outDir: { type: "string", description: "\u8F93\u51FA\u76EE\u5F55\uFF08\u9ED8\u8BA4 storages/.../sprite-out\uFF09" },
           fileName: { type: "string", description: "\u56FE\u7247\u6587\u4EF6\u540D\uFF08\u542B\u6269\u5C55\u540D\uFF09" },
           metaName: { type: "string", description: "meta \u6587\u4EF6\u540D" },
@@ -43158,7 +43912,8 @@ function buildTools(service, options) {
               ...typeof args.quality === "number" ? { quality: args.quality } : {},
               ...typeof args.name === "string" ? { name: args.name } : {},
               ...typeof args.debugOverlay === "boolean" ? { debugOverlay: args.debugOverlay } : {},
-              ...typeof args.loop === "boolean" ? { loop: args.loop } : {}
+              ...typeof args.loop === "boolean" ? { loop: args.loop } : {},
+              ...typeof args.correction === "boolean" ? { correction: args.correction } : {}
             })
           );
         } catch (error62) {
@@ -43217,7 +43972,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_batch",
-      description: "\u6279\u91CF\uFF1A\u4E00\u4E2A items \u6570\u7EC4\u8DD1\u5B8C\u6574\u7BA1\u7EBF\uFF08prepare\u2192\u91C7\u8272\u2192measure\u2192apply\u2192cleanup\u2192export\uFF09\uFF0C\u5355\u6761\u5931\u8D25\u4E0D\u5F71\u54CD\u5176\u4ED6\u6761\u3002\u6BCF\u6761\u5360\u4E00\u4E2A\u5B50\u76EE\u5F55 <outRoot>/<name>/\u3002\u5F53\u524D\u4E32\u884C\u6267\u884C\uFF08\u5E76\u53D1\u9700\u8981\u4F1A\u8BDD\u9694\u79BB\uFF09\u3002",
+      description: "\u6279\u91CF\uFF1A\u4E00\u4E2A items \u6570\u7EC4\u8DD1\u5B8C\u6574\u7BA1\u7EBF\uFF08prepare\u2192\u91C7\u8272\u2192measure\u2192apply\u2192cleanup\u2192export\uFF09\uFF0C\u5355\u6761\u5931\u8D25\u4E0D\u5F71\u54CD\u5176\u4ED6\u6761\u3002\u6BCF\u6761\u5360\u4E00\u4E2A\u5B50\u76EE\u5F55 <outRoot>/<name>/\u3002\u5F53\u524D\u4E32\u884C\u6267\u884C\uFF08\u5E76\u53D1\u9700\u8981\u4F1A\u8BDD\u9694\u79BB\uFF09\u3002**\u6BCF\u6761\u90FD\u8981\u4F20 anchorX/anchorY**\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF09\uFF1A\u4E0D\u4F20\u5C31\u53EA\u6709 anchorWritten:false \u7684\u544A\u8B66\uFF0Cmeta \u91CC\u843D\u7684\u662F\u9875\u9762\u5F53\u524D\u951A\u70B9\uFF08\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF0C\u89D2\u8272\u6A2A\u5411\u504F 20~40px\uFF09\u3002\u7ED9\u4E86 targetCharHeight \u65F6\u6BCF\u6761\u90FD\u4F1A\u8DD1\u4E00\u6B21\u6536\u655B\u95ED\u73AF\uFF08\u91CF\u5B8C\u504F\u4E86\u5C31\u6309 \u76EE\u6807/\u5B9E\u6D4B \u518D\u5BFC\u4E00\u6B21\uFF0C**\u6700\u591A\u4E00\u6B21**\uFF0C\u90A3\u4E00\u6761\u7684\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF1B\u4E0D\u60F3\u95ED\u73AF\u5C31\u5728\u5355\u6761\u91CC\u770B measured \u81EA\u5DF1\u51B3\u5B9A\u3002",
       parameters: {
         type: "object",
         properties: {
@@ -43243,7 +43998,9 @@ function buildTools(service, options) {
                 trimMode: { type: "string", enum: ["union", "first-frame"] },
                 cols: { type: "number" },
                 rows: { type: "number" },
-                format: { type: "string", enum: ["png", "webp"] }
+                format: { type: "string", enum: ["png", "webp"] },
+                anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309\u8F93\u51FA\u683C\u5BBD\uFF09\u3002\u4E0D\u4F20 meta \u91CC\u5C31\u6CA1\u6709\u8FD9\u6B21\u8BBE\u7684\u951A\u70B9" },
+                anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C0=\u683C\u5E95\uFF09" }
               },
               required: ["videoPath", "action"]
             }
@@ -43279,7 +44036,9 @@ function buildTools(service, options) {
                   ...item.trimMode === "union" || item.trimMode === "first-frame" ? { trimMode: item.trimMode } : {},
                   ...typeof item.cols === "number" ? { cols: item.cols } : {},
                   ...typeof item.rows === "number" ? { rows: item.rows } : {},
-                  ...item.format === "png" || item.format === "webp" ? { format: item.format } : {}
+                  ...item.format === "png" || item.format === "webp" ? { format: item.format } : {},
+                  ...typeof item.anchorX === "number" ? { anchorX: item.anchorX } : {},
+                  ...typeof item.anchorY === "number" ? { anchorY: item.anchorY } : {}
                 };
               }),
               ...typeof args.concurrency === "number" ? { concurrency: args.concurrency } : {},
@@ -43293,19 +44052,21 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_auto",
-      description: "\u4E00\u6BB5\u7D20\u6750\u7684\u4E00\u6761\u9F99\uFF1Aprepare \u2192 \u81EA\u52A8\u91C7\u8272 \u2192 measure \u2192 autotune \u2192 apply \u2192 cleanup \u2192 export\u3002\u8FD4\u56DE\u548C sprite_export \u4E00\u6837\u7684\u5B57\u6BB5\uFF0C\u5916\u52A0 stages\uFF08\u6BCF\u6B65\u4E00\u53E5\u8BDD\uFF0C\u51FA\u95EE\u9898\u65F6\u5148\u770B\u5B83\uFF09\u3002",
+      description: "\u4E00\u6BB5\u7D20\u6750\u7684\u4E00\u6761\u9F99\uFF1Aprepare \u2192 \u81EA\u52A8\u91C7\u8272 \u2192 measure \u2192 autotune \u2192 apply \u2192 cleanup \u2192 export\u3002\u8FD4\u56DE\u548C sprite_export \u4E00\u6837\u7684\u5B57\u6BB5\uFF0C\u5916\u52A0 stages\uFF08\u6BCF\u6B65\u4E00\u53E5\u8BDD\uFF0C\u51FA\u95EE\u9898\u65F6\u5148\u770B\u5B83\uFF09\u3002**\u4F20 anchorX/anchorY**\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF09\uFF1A\u4E0D\u4F20\u5C31\u4E00\u5B9A\u4F1A\u6709\u4E00\u6761 anchorWritten:false \u7684\u544A\u8B66\uFF0Cmeta \u91CC\u843D\u7684\u662F\u9875\u9762\u5F53\u524D\u951A\u70B9\uFF08\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF0C\u89D2\u8272\u6A2A\u5411\u504F 20~40px\uFF09\u3002\u7ED9\u4E86 targetCharHeight \u65F6\u4F1A\u8DD1\u4E00\u6B21\u6536\u655B\u95ED\u73AF\uFF1A\u91CF\u5B8C\u6210\u54C1\u53D1\u73B0\u4E0E\u76EE\u6807\u5DEE\u8D85\u8FC7\u5BB9\u5DEE\uFF08\u76F8\u5BF9 1% / \u7EDD\u5BF9 2px\uFF09\u5C31\u6309 \u76EE\u6807/\u5B9E\u6D4B \u4FEE\u6B63\u4E00\u6B21\u7F29\u653E\u3001**\u91CD\u5BFC\u4E00\u6B21**\uFF08\u53EA\u4E00\u6B21\u3001\u4E0D\u5FAA\u73AF\uFF1B\u90A3\u4E00\u6761\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF0C\u56DE\u6267\u5728 correction {passes,basis,before,after,target} \u91CC\uFF1B\u7B2C\u4E8C\u6B21\u4ECD\u4E0D\u51C6\u53EA\u5199 warning\u3001\u4E0D\u518D\u91CD\u5BFC\u3002",
       parameters: {
         type: "object",
         properties: {
           videoPath: { type: "string" },
           name: { type: "string", description: "\u4EA7\u7269\u540D\uFF0C\u9ED8\u8BA4\u7528\u6587\u4EF6\u540D" },
           outDir: { type: "string" },
-          targetCharHeight: { type: "number" },
+          targetCharHeight: { type: "number", description: "\u89D2\u8272/\u5185\u5BB9\u51C0\u9AD8\uFF08\u50CF\u7D20\uFF09\uFF1B\u4F1A\u89E6\u53D1\u4E00\u6B21\u6536\u655B\u95ED\u73AF" },
           cols: { type: "number" },
           rows: { type: "number" },
           format: { type: "string", enum: ["png", "webp"] },
           trimMode: { type: "string", enum: ["union", "first-frame"] },
-          maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u53BB\u6C34\u5370" }
+          maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u53BB\u6C34\u5370" },
+          anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309\u8F93\u51FA\u683C\u5BBD\uFF09\uFF1B\u5199\u4E86 meta \u91CC anchorWritten=true" },
+          anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C0=\u683C\u5E95\uFF09\uFF1B\u5199\u4E86 meta \u91CC anchorWritten=true" }
         },
         required: ["videoPath"]
       },
@@ -43325,7 +44086,9 @@ function buildTools(service, options) {
               ...typeof args.rows === "number" ? { rows: args.rows } : {},
               ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
               ...args.trimMode === "union" || args.trimMode === "first-frame" ? { trimMode: args.trimMode } : {},
-              ...args.maskAuto === true ? { maskRect: "auto" } : {}
+              ...args.maskAuto === true ? { maskRect: "auto" } : {},
+              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {}
             })
           );
         } catch (error62) {
