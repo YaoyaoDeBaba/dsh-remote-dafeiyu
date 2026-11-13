@@ -57,6 +57,21 @@ test('channelValue：r/g/b/alpha/luma/blue-minus-red/saturation 的定义与口�
   assert.ok(Number.isNaN(channelValue(rgba, 'hue')), '未知通道给 NaN，不能瞎猜一个数')
 })
 
+test('channelValue whiteness：低饱和(<25) 且 luma>210 才算白，肤色必须被排除', () => {
+  const white: [number, number, number, number] = [255, 255, 255, 255]
+  const skin: [number, number, number, number] = [240, 220, 207, 255]
+  const lightGray: [number, number, number, number] = [230, 230, 230, 255]
+  const darkWhite: [number, number, number, number] = [205, 205, 208, 255]
+  assert.equal(channelValue(white, 'whiteness'), 255, '纯白：低饱和 + luma 255 → 返回 luma')
+  assert.equal(channelValue(skin, 'whiteness'), 0, '肤色 (240,220,207)：饱和度 33 → 不是白（r,g,b>200 就会漏）')
+  assert.ok(Math.abs(channelValue(lightGray, 'whiteness') - 230) < 1e-9, '浅灰：饱和度 0、luma 230 → 算白')
+  assert.equal(channelValue(darkWhite, 'whiteness'), 0, '深白：低饱和但 luma 205 < 210 → 不算白')
+  // 判据的两种等价写法：>0（有没有白）与 >210（亮度门槛）都必须把肤色挡在外面
+  assert.equal(compareOp(channelValue(skin, 'whiteness'), '>', 0), false)
+  assert.equal(compareOp(channelValue(skin, 'whiteness'), '>', 210), false)
+  assert.equal(compareOp(channelValue(white, 'whiteness'), '>', 210), true)
+})
+
 test('compareOp：四种比较；非有限数/未知 op 一律 false（不抛异常）', () => {
   assert.equal(compareOp(26, '>', 25), true)
   assert.equal(compareOp(25, '>', 25), false)
@@ -274,6 +289,23 @@ test('HTML 里的 spriteScanPrimitives 与 src/sprite/scan.ts 逐字段一致（
       if (Number.isNaN(tsValue)) assert.equal(Number.isNaN(htmlValue), true, `${channel} 应为 NaN`)
       else assert.equal(htmlValue, tsValue, `${channel} 的取值漂了`)
     }
+  }
+
+  // whiteness 的定值向量：纯白 / 肤色 / 浅灰 / 深白 / 真实白发带 / 蓝发——
+  // 两份实现必须给出同一组判据（尤其是肤色那份，绝不能是白）
+  for (const rgba of [
+    [255, 255, 255, 255],
+    [240, 220, 207, 255],
+    [230, 230, 230, 255],
+    [205, 205, 208, 255],
+    [248, 249, 251, 255],
+    [60, 90, 200, 255],
+  ]) {
+    assert.equal(
+      page.channelValue(rgba, 'whiteness'),
+      channelValue(rgba, 'whiteness'),
+      'whiteness 漂了：' + JSON.stringify(rgba),
+    )
   }
   for (const op of [...SCAN_OPS, '!=', '==']) {
     const pairs: Array<[number, number]> = [

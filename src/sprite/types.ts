@@ -57,8 +57,11 @@ export interface TrimOptions {
  * measure 扫描条件能用的通道（P2-5）。
  * `blue-minus-red` = b-r（判蓝发最快）；`saturation` = max(r,g,b)-min(r,g,b)；
  * `luma` = 0.299r+0.587g+0.114b。全是与业务无关的通用量。
+ * `whiteness` = 「低饱和 + 高亮度」的白色判据（定义见 `scan.ts` 的 WHITENESS_* 常量）：
+ *   返回 luma（够白）或 0（不够白），判断写成 `op:">", value:0` 即可，别再用 r,g,b>200——
+ *   肤色 (240,220,207) 会从那个老判据里漏过去。
  */
-export const SCAN_CHANNELS = ['r', 'g', 'b', 'alpha', 'luma', 'blue-minus-red', 'saturation'] as const
+export const SCAN_CHANNELS = ['r', 'g', 'b', 'alpha', 'luma', 'blue-minus-red', 'saturation', 'whiteness'] as const
 export type MeasureScanChannel = (typeof SCAN_CHANNELS)[number]
 
 /** 比较方式。条件由调用方给，工具不内置"什么算头发"这类语义。 */

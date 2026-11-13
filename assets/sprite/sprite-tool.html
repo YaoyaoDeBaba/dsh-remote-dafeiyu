@@ -4683,7 +4683,23 @@ $('statusText').textContent = '就绪 — 导入素材开始';
           /* 脏标记是增强项，打不上也不许影响定位 */
         }
       }
-      return { ok: true, x: state.anchor.x, y: state.anchor.y };
+      /* P0-1：这里以前只回 {ok,x,y}，但 export 那边按 AnchorInfo 读它 → anchorX/anchorY 是
+         undefined、JSON.stringify 直接把键丢掉。补齐完整字段（像素口径与 getAnchor 一致：
+         最终格），x/y 保留给老调用方（sprite_export 早期版本/测试在用）。 */
+      let cell = null;
+      try { cell = typeof anchorCellFrame === 'function' ? anchorCellFrame() : null; } catch (_) { cell = null; }
+      const W = cell ? cell.frame.width : 0;
+      const H = cell ? cell.frame.height : 0;
+      const ax = state.anchor.x, ay = state.anchor.y;
+      return {
+        ok: true,
+        x: ax,
+        y: ay,
+        anchorX: ax,
+        anchorY: ay,
+        convention: 'y-from-bottom',
+        pixels: { x: Math.round(ax * W), y: Math.round(ay * H) },
+      };
     } catch (e) {
       return fail(e);
     }
@@ -5024,7 +5040,11 @@ $('statusText').textContent = '就绪 — 导入素材开始';
     'use strict';
     /* 阈值"果断程度"的归一化尺度：通道差超过 255 的四分之一就算笃定 */
     var MARGIN_SCALE = 63.75;
-    var CHANNELS = ['r', 'g', 'b', 'alpha', 'luma', 'blue-minus-red', 'saturation'];
+    /* whiteness 的两个判据（与 src/sprite/scan.ts 的 WHITENESS_* 同值）：
+       饱和度 < 25 挡住暖色（肤色 240,220,207 的饱和度 33），luma > 210 挡住浅灰/深白。 */
+    var WHITENESS_MAX_SATURATION = 25;
+    var WHITENESS_MIN_LUMA = 210;
+    var CHANNELS = ['r', 'g', 'b', 'alpha', 'luma', 'blue-minus-red', 'saturation', 'whiteness'];
     var OPS = ['>', '>=', '<', '<='];
 
     function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
@@ -5049,6 +5069,12 @@ $('statusText').textContent = '就绪 — 导入素材开始';
         case 'luma': return 0.299 * r + 0.587 * g + 0.114 * b;
         case 'blue-minus-red': return b - r;
         case 'saturation': return Math.max(r, g, b) - Math.min(r, g, b);
+        /* 白 = 低饱和 + 高亮度：够白返回 luma，不够白返回 0（过不了 op:">", value:0） */
+        case 'whiteness': {
+          var saturation = Math.max(r, g, b) - Math.min(r, g, b);
+          var luma = 0.299 * r + 0.587 * g + 0.114 * b;
+          return (saturation < WHITENESS_MAX_SATURATION && luma > WHITENESS_MIN_LUMA) ? luma : 0;
+        }
         default: return NaN;
       }
     }

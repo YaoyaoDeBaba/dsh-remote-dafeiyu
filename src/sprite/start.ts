@@ -8,13 +8,14 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { SPRITE_PAGE_ROUTE, spritePageHandler } from './routes.js'
 import { createSpriteService, type SpriteService } from './service.js'
 import { sweepOrphanBrowsers } from './orphans.js'
 import { buildTools } from './tools.js'
 import { SPRITE_GUIDANCE } from './guide.js'
+import { installSpriteSkill, readSpriteSkillBody, SPRITE_SKILL_NAME } from './skill.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -45,6 +46,17 @@ function packageRoot(): string {
   }
 }
 
+/** 插件版本：写进 skill 的版本标记，升级时据此重铺。读不到就用 unknown（重铺一次无害）。 */
+function packageVersion(): string {
+  try {
+    const raw = readFileSync(path.join(packageRoot(), 'package.json'), 'utf8')
+    const parsed = JSON.parse(raw) as { version?: unknown }
+    return typeof parsed.version === 'string' ? parsed.version : 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+
 export interface SpriteStartDeps {
   dshHome: string
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
@@ -60,6 +72,8 @@ export function startSprite(ctx: LooseContext, deps: SpriteStartDeps): SpriteHan
   const probe: Record<string, string> = {}
   const toolHtmlPath = deps.toolHtmlPath ?? path.join(packageRoot(), 'assets', 'sprite', 'sprite-tool.html')
   const outDir = deps.outDir ?? path.join(deps.dshHome, 'storages', 'dsh-remote-dafeiyu', 'sprite-out')
+  // 指南真源（skill 的 SKILL.md 就躺在这里）。声明在外面：注册工具时也要用它读正文。
+  const skillAssetsRoot = path.join(packageRoot(), 'assets', 'skills', SPRITE_SKILL_NAME)
 
   let service: SpriteService | undefined
   if (deps.enabled === false) {
@@ -71,6 +85,19 @@ export function startSprite(ctx: LooseContext, deps: SpriteStartDeps): SpriteHan
     try {
       service = createSpriteService({ toolHtmlPath, outDir, log: deps.log })
       probe.service = 'ready'
+      // 指南落成 DSH skill（单一真源见 assets/skills/<name>/SKILL.md）。
+      // 版本没变就是空操作；失败只写 probe，不影响工具本身。
+      try {
+        const installed = installSpriteSkill({
+          dshHome: deps.dshHome,
+          assetsRoot: skillAssetsRoot,
+          version: packageVersion(),
+          log: deps.log,
+        })
+        probe.skill = installed.ok ? 'installed' : `skipped: ${installed.reason ?? 'unknown'}`
+      } catch (error) {
+        probe.skill = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+      }
       // 启动清理：宿主上次被强杀时留下的无头浏览器，父进程已经没了，这里收掉。
       // 判据是"父进程不存在"，所以不会误杀另一个还在跑的 DSH 实例里的浏览器。
       void sweepOrphanBrowsers(deps.log)
@@ -92,7 +119,8 @@ export function startSprite(ctx: LooseContext, deps: SpriteStartDeps): SpriteHan
         | { register?: (definition: Record<string, unknown>) => unknown }
         | undefined
       if (tools && typeof tools.register === 'function') {
-        const definitions = buildTools(service)
+        // `sprite_guide` 读的就是 skill 那份 SKILL.md —— 单一真源，别再复制一份文案。
+        const definitions = buildTools(service, { guideBody: () => readSpriteSkillBody(skillAssetsRoot) })
         for (const definition of definitions) tools.register(definition)
         toolCount = definitions.length
         probe.tools = `registered(${toolCount})`

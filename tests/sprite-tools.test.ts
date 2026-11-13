@@ -178,10 +178,12 @@ test('sprite_cleanup 的 trim 策略与 maskRect=auto 能过到 service', async 
   })
 })
 
-test('sprite_guide 直接返回指南正文，覆盖六步与两大表', () => {
+test('sprite_guide 的正文来自 skill 真源；内置兜底够干活、常驻引导只指路', () => {
+  // 2026-11-13：正文搬到 assets/skills/dafeiyu-sprite/（SKILL.md + references），
+  // SPRITE_GUIDE 只是读不到那份文件时的兜底，所以这里只验"能干活 + 不重复长文案"。
   assert.ok(SPRITE_GUIDE.includes('sprite_probe_color'))
   assert.ok(SPRITE_GUIDE.includes('y-from-bottom'))
-  assert.match(SPRITE_GUIDE, /\| 参数 \|/)
-  assert.match(SPRITE_GUIDE, /症状/)
-  assert.ok(SPRITE_GUIDANCE.length < SPRITE_GUIDE.length, '系统提示那一段要短于完整指南')
+  assert.match(SPRITE_GUIDE, /minRun/)
+  assert.ok(SPRITE_GUIDANCE.length < SPRITE_GUIDE.length, '系统提示那一段要短于兜底正文')
+  assert.ok(SPRITE_GUIDANCE.includes('dafeiyu-sprite'), '常驻引导必须点名 skill')
 })

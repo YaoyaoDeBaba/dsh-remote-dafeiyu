@@ -299,6 +299,96 @@ function startToolServer(
   })
 }
 
+/** 调页面桥接的函数形状：名字 + JSON 参数。exportSheet 与测试桩共用这一条路径。 */
+export type BridgeCall = <T>(name: string, ...args: unknown[]) => Promise<T>
+
+/**
+ * export 要写进 meta 的锚点：**与 `sprite_set_anchor` 同一条读回路径**。
+ *
+ * 为什么不能直接拿 `setAnchor` 的返回值：页面 `setAnchor(x,y)` 只回 `{ok,x,y}`（归一化后的值），
+ * 并不是 `AnchorInfo`。上一版按 `AnchorInfo` 读它写 meta，`anchorX/anchorY` 全是 undefined，
+ * `JSON.stringify` 直接把这两个键丢掉（`anchorYTopDown` 变成 NaN → 落盘成 null）。
+ * 现在要设就先 `setAnchor`，然后一律 `getAnchor` 回读完整值，meta 只用回读值。
+ */
+export async function resolveExportAnchor(
+  call: BridgeCall,
+  args: Pick<ExportOptions, 'anchorX' | 'anchorY'>,
+): Promise<{ anchor: AnchorInfo; written: boolean }> {
+  const written = typeof args.anchorX === 'number' || typeof args.anchorY === 'number'
+  if (written) {
+    await call('setAnchor', {
+      ...(typeof args.anchorX === 'number' ? { x: args.anchorX } : {}),
+      ...(typeof args.anchorY === 'number' ? { y: args.anchorY } : {}),
+    })
+  }
+  const anchor = await call<AnchorInfo>('getAnchor')
+  if (typeof anchor?.anchorX !== 'number' || typeof anchor?.anchorY !== 'number') {
+    // 宁可报错也不写半份 meta：静默丢键正是上一版的坑。
+    throw new Error('页面 getAnchor 没有返回 anchorX/anchorY（桥接版本过旧？），这次不写 meta 里的锚点')
+  }
+  return {
+    anchor: {
+      ...anchor,
+      anchorX: anchor.anchorX,
+      anchorY: anchor.anchorY,
+      convention: anchor.convention === 'y-from-top' ? 'y-from-top' : 'y-from-bottom',
+    },
+    written,
+  }
+}
+
+/** `buildExportMeta` 的入参：exportSheet 里除锚点外的那些已算好的值。 */
+export interface ExportMetaInput {
+  built: { meta?: Record<string, unknown>; width?: number; height?: number }
+  name: string
+  format: 'png' | 'webp'
+  cellWidth: number | null
+  cellHeight: number | null
+  anchor: AnchorInfo
+  /** 这次到底写没写锚点：false = 调用方没传，meta 里是页面当前值。 */
+  anchorWritten: boolean
+  fps: number
+  scaled: Pick<ScaleResult, 'scale' | 'achievedPx'>
+  appliedParams: KeyParams | null
+  generatedAt?: string
+}
+
+/**
+ * 组装 meta.json 的内容。exportSheet 落盘前**唯一**一处拼装；
+ * 单测直接拿这份对象做 JSON 往返，钉住"键不会被 stringify 吃掉"。
+ */
+export function buildExportMeta(input: ExportMetaInput): Record<string, unknown> {
+  return {
+    ...(input.built.meta ?? {}),
+    // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
+    // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
+    name: input.name,
+    format: input.format,
+    width: input.built.width ?? null,
+    height: input.built.height ?? null,
+    sheetWidth: input.built.width ?? null,
+    sheetHeight: input.built.height ?? null,
+    // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
+    // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
+    cellWidth: input.cellWidth,
+    cellHeight: input.cellHeight,
+    anchorX: input.anchor.anchorX,
+    anchorY: input.anchor.anchorY,
+    anchorConvention: input.anchor.convention,
+    // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
+    anchorYTopDown: Number((1 - input.anchor.anchorY).toFixed(6)),
+    // P0-1：明确告诉调用方"这次到底写没写锚点"——没传锚点参数时是 false（meta 里是页面当前值）。
+    anchorWritten: input.anchorWritten,
+    // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
+    fps: input.fps,
+    scale: input.scaled.scale,
+    charHeightPx: input.scaled.achievedPx,
+    appliedParams: input.appliedParams,
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    engine: 'dsh-remote-dafeiyu/sprite',
+  }
+}
+
 export function createSpriteService(options: SpriteServiceOptions): SpriteService {
   const log = options.log
   const idleMs = options.idleMs ?? 5 * 60 * 1000
@@ -752,15 +842,11 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         ...(typeof args.targetHeight === 'number' ? { targetCellHeight: args.targetHeight } : {}),
         ...(args.span ? { span: args.span } : {}),
       })
-      // 归一化锚点直接走 setAnchor（页面的 state.anchor 就是归一化的，按**输出格**算），
+      // 归一化锚点先走 setAnchor（页面的 state.anchor 就是归一化的，按**输出格**算），
       // 不要拿原帧尺寸去换算成像素——裁剪之后帧变小了，那个换算会错。
-      const anchor =
-        typeof args.anchorX === 'number' || typeof args.anchorY === 'number'
-          ? await bridge<AnchorInfo>('setAnchor', {
-              ...(typeof args.anchorX === 'number' ? { x: args.anchorX } : {}),
-              ...(typeof args.anchorY === 'number' ? { y: args.anchorY } : {}),
-            })
-          : await bridge<AnchorInfo>('getAnchor')
+      // 设完之后必须 getAnchor 回读：setAnchor 只回 {ok,x,y}，不是 AnchorInfo（P0-1）。
+      const anchorOut = await resolveExportAnchor(bridge, args)
+      const anchor = anchorOut.anchor
       const names = defaultFileNames({
         name,
         cols,
@@ -817,33 +903,18 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
           `cellHeight*rows=${cellHeightOut * rows} 与图集高 ${sheetHeightOut} 差 ${sheetHeightOut - cellHeightOut * rows}px（缩放取整）`,
         )
       }
-      const meta = {
-        ...(built.meta ?? {}),
-        // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
-        // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
+      const meta = buildExportMeta({
+        built,
         name,
         format,
-        width: built.width ?? null,
-        height: built.height ?? null,
-        sheetWidth: built.width ?? null,
-        sheetHeight: built.height ?? null,
-        // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
-        // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
         cellWidth: cellWidthOut,
         cellHeight: cellHeightOut,
-        anchorX: anchor.anchorX,
-        anchorY: anchor.anchorY,
-        anchorConvention: anchor.convention,
-        // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
-        anchorYTopDown: Number((1 - anchor.anchorY).toFixed(6)),
-        // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
+        anchor,
+        anchorWritten: anchorOut.written,
         fps: lastPrepare?.fps ?? 12,
-        scale: scaled.scale,
-        charHeightPx: scaled.achievedPx,
+        scaled,
         appliedParams: state.params ?? null,
-        generatedAt: new Date().toISOString(),
-        engine: 'dsh-remote-dafeiyu/sprite',
-      }
+      })
       writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8')
       if (scaled.clamped) {
         warnings.push(

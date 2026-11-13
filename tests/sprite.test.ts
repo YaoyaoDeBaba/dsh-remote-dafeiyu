@@ -10,9 +10,10 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { SPRITE_PAGE_ROUTE, spritePageHandler } from '../src/sprite/routes.js'
 import { startSprite } from '../src/sprite/start.js'
@@ -148,26 +149,42 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
   }
 })
 
-test('引导语点名了整条流程与关键纪律（模型看不到就会乱试）', () => {
-  for (const token of ['sprite_prepare', 'sprite_probe_color', 'sprite_key_apply', 'sprite_cleanup', 'sprite_export']) {
-    assert.ok(SPRITE_GUIDANCE.includes(token), `引导语缺少 ${token}`)
-  }
-  // 三条硬规则必须在：键色要实测 / 先 apply 再 export / 参数分两档
+test('引导语点名了关键纪律（模型看不到就会乱试）', () => {
+  // 2026-11-13：六步原语搬进 skill 了，常驻这边只留"先加载 skill + 三条硬规则"。
+  // 所以这里不再要求它列全工具名，只要求它把最容易出事的纪律说清楚。
   assert.match(SPRITE_GUIDANCE, /实测/)
   assert.match(SPRITE_GUIDANCE, /先 apply 再 export/)
   assert.match(SPRITE_GUIDANCE, /ignored/)
+  assert.ok(SPRITE_GUIDANCE.includes('dafeiyu-sprite'), '必须告诉模型先加载哪个 skill')
 })
 
-test('指南（sprite_guide）覆盖参数语义表与症状速查表', () => {
+/**
+ * 指南的**真源**是 skill 的那套文件（`assets/skills/dafeiyu-sprite/`）。
+ * 2026-11-13 起 `SPRITE_GUIDE` 只是"读不到文件时的兜底"，不再是唯一载体——
+ * 所以覆盖性断言要盯真源，而不是盯兜底文案。
+ */
+function skillCorpus(): string {
+  const root = fileURLToPath(new URL('../../assets/skills/dafeiyu-sprite', import.meta.url))
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name)
+      return entry.isDirectory() ? walk(full) : [readFileSync(full, 'utf8')]
+    })
+  return walk(root).join('\n')
+}
+
+test('指南（skill 真源）覆盖参数语义表与症状速查表', () => {
+  const corpus = skillCorpus()
   for (const token of ['classic', 'advanced', 'greenToAlpha', 'autoPlate', 'first-frame', 'y-from-bottom', 'anchorConvention']) {
-    assert.ok(SPRITE_GUIDE.includes(token), `指南缺少 ${token}`)
+    assert.ok(corpus.includes(token), `指南缺少 ${token}`)
   }
-  assert.match(SPRITE_GUIDE, /症状/)
+  assert.match(corpus, /症状/)
 })
 
 test('指南必须覆盖第二轮新增能力（否则 agent 又得自己摸源码）', () => {
   // 2026-11-12：这几个都是给 agent 用的"语义入口"。写进指南 = 不用读 6000 行源码；
   // 漏一个，下一位使用者就得自己反推——上一批锚点搞错就是这么发生的。
+  const corpus = skillCorpus()
   for (const token of [
     'scan-horizontal', // measure 的列扫原语
     'boundary', // A→B 色段交界
@@ -177,15 +194,24 @@ test('指南必须覆盖第二轮新增能力（否则 agent 又得自己摸源�
     'anchorYTopDown', // meta 的顶口径锚点
     'cellWidth', // meta 的格子尺寸
     'fps', // meta 的帧率
+    'whiteness', // 判白色（低饱和+高亮度，排除肤色）
     '已空闲回收', // P1-3 的错误语义
   ]) {
-    assert.ok(SPRITE_GUIDE.includes(token), `指南缺少 ${token}（新能力没写给 agent，等于逼他自己摸代码）`)
+    assert.ok(corpus.includes(token), `指南缺少 ${token}（新能力没写给 agent，等于逼他自己摸代码）`)
   }
 })
 
-test('系统提示短引导也提到测量原语与双口径锚点', () => {
-  for (const token of ['scan-horizontal', 'minRun', 'anchorYTopDown']) {
-    assert.ok(SPRITE_GUIDANCE.includes(token), `系统提示缺少 ${token}`)
+test('系统提示短引导只负责"指路"：点名 skill，不复制正文', () => {
+  // 常驻上下文的东西必须短。它现在只该做三件事：说有能力、让人先加载 skill、给三条硬规则。
+  assert.ok(SPRITE_GUIDANCE.includes('dafeiyu-sprite'), '引导语必须点名 skill')
+  assert.match(SPRITE_GUIDANCE, /先加载/)
+  assert.ok(SPRITE_GUIDANCE.length < 1200, `常驻引导太长了（${SPRITE_GUIDANCE.length} 字符），正文应该在 skill 里`)
+})
+
+test('兜底正文够用：六步 + 两条最容易踩的坑都在', () => {
+  // 只有读不到 SKILL.md 时才会看到它，所以不要求全，但要求"能干活"。
+  for (const token of ['sprite_prepare', 'sprite_key_apply', 'sprite_export', 'whiteness', 'minRun', 'anchorYTopDown']) {
+    assert.ok(SPRITE_GUIDE.includes(token), `兜底缺 ${token}`)
   }
 })
 

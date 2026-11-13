@@ -95,7 +95,9 @@ function probeSchema(description: string): Record<string, unknown> {
       channel: {
         type: 'string',
         enum: [...SCAN_CHANNELS],
-        description: '通道：r/g/b/alpha 取原值，luma=0.299r+0.587g+0.114b，blue-minus-red=b-r，saturation=max-min',
+        description:
+          '通道：r/g/b/alpha 取原值，luma=0.299r+0.587g+0.114b，blue-minus-red=b-r，saturation=max-min，' +
+          'whiteness=低饱和(<25)且 luma>210 才算白（够白返回 luma，否则 0；判白色别用 r,g,b>200，肤色会漏）',
       },
       op: { type: 'string', enum: [...SCAN_OPS], description: '比较方式' },
       value: { type: 'number', description: '阈值（通道取值与它比较）' },
@@ -105,7 +107,10 @@ function probeSchema(description: string): Record<string, unknown> {
   }
 }
 
-export function buildTools(service: SpriteService): Array<Record<string, unknown>> {
+export function buildTools(
+  service: SpriteService,
+  options?: { guideBody?: () => string },
+): Array<Record<string, unknown>> {
   return [
     {
       name: 'sprite_prepare',
@@ -664,13 +669,14 @@ export function buildTools(service: SpriteService): Array<Record<string, unknown
     {
       name: 'sprite_guide',
       description:
-        '返回这套工具的完整指南（六步原语 / 参数语义表 / 症状速查 / 锚点口径 / 交付约定）。' +
-        '不确定语义时先调它，比读源码快。',
+        '返回这套工具的完整指南（方法论 / 六步原语 / 参数语义表 / 症状速查 / 坐标换算 / 锚点口径）。' +
+        '它与 skill `dafeiyu-sprite` 是同一份内容：优先用 skill，加载不到再调它。',
       parameters: { type: 'object', properties: {} },
       output: OUT,
       timeoutMs: 10_000,
       async execute(): Promise<string> {
-        return SPRITE_GUIDE
+        // 真源是 skill 的 SKILL.md（见 skill.ts）；读不到才退回内置兜底。
+        return options?.guideBody?.() ?? SPRITE_GUIDE
       },
     },
   ]

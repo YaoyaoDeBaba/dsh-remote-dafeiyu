@@ -6,7 +6,7 @@
  * **颜色交界**不是 alpha 边界，调用方只能自己写脚本量（上一轮就量错了 90px）。
  *
  * 这里把「通道条件」拆成三件事：
- * 1. `channelValue` —— 一个像素在某通道上的标量（r/g/b/alpha/luma/blue-minus-red/saturation）；
+ * 1. `channelValue` —— 一个像素在某通道上的标量（r/g/b/alpha/luma/blue-minus-red/saturation/whiteness）；
  * 2. `scanHorizontal`（landmark type `scan-horizontal`）—— 沿某一列从 fromY 往 toY 扫，
  *    找第一个「连续满足条件且长度 >= minRun」的 run；
  * 3. `findBoundary`（landmark type `boundary`）—— A 条件连续段结束、紧接 B 条件连续段的交界行。
@@ -32,6 +32,17 @@ import { SCAN_CHANNELS, SCAN_OPS } from './types.js'
 
 /** 阈值"果断程度"的归一化尺度：通道差/亮度差超过 255 的四分之一就算笃定。 */
 const MARGIN_SCALE = 63.75
+
+/**
+ * `whiteness` 的两个判据（实测依据：Q 版鲸鱼娘的白发带 vs 肤色）。
+ *
+ * 只看亮度不行：肤色 `(240,220,207)` 的 luma≈222，`r,g,b>200` 的老写法会让它全通过，
+ * 头顶线就直接穿到额头上了。肤色的问题是"不够灰"——它是暖色，饱和度 33；
+ * 白发带 `(248,249,251)` 饱和度只有 3。所以用 **饱和度 < 25** 挡住暖色，
+ * 再要求 **luma > 210** 挡住浅灰/深白（比如 205 那种"亮但不够亮"的灰）。
+ */
+export const WHITENESS_MAX_SATURATION = 25
+export const WHITENESS_MIN_LUMA = 210
 
 /** 调用方给的像素来源：只要求能按 (x,y) 取一个 [r,g,b,a]。 */
 export interface ScanPixelSource {
@@ -97,6 +108,13 @@ export function channelValue(rgba: readonly number[], channel: string): number {
     case 'luma': return 0.299 * r + 0.587 * g + 0.114 * b
     case 'blue-minus-red': return b - r
     case 'saturation': return Math.max(r, g, b) - Math.min(r, g, b)
+    /* 白 = 低饱和 + 高亮度：够白返回 luma（亮度仍可当阈值用），不够白返回 0
+       （0 永远过不了 `op:">", value:0`，也就不会被 `>` 阈值误判成白）。 */
+    case 'whiteness': {
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b)
+      const luma = 0.299 * r + 0.587 * g + 0.114 * b
+      return saturation < WHITENESS_MAX_SATURATION && luma > WHITENESS_MIN_LUMA ? luma : 0
+    }
     default: return Number.NaN
   }
 }

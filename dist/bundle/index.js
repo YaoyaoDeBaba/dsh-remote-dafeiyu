@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path28 from "node:path";
+import path29 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path29) {
-  if (!path29)
+function getElementAtPath(obj, path30) {
+  if (!path30)
     return obj;
-  return path29.reduce((acc, key) => acc?.[key], obj);
+  return path30.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path29, issues) {
+function prefixIssues(path30, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path29);
+    iss.path.unshift(path30);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path29 = []) => {
+  const processError = (error63, path30 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path29, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path30, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else {
-        const fullpath = [...path29, ...issue2.path];
+        const fullpath = [...path30, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path29 = []) => {
+  const processError = (error63, path30 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path29, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path30, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else {
-        const fullpath = [...path29, ...issue2.path];
+        const fullpath = [...path30, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path29 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path29) {
+  const path30 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path30) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path29 = ref.slice(1).split("/").filter(Boolean);
-  if (path29.length === 0) {
+  const path30 = ref.slice(1).split("/").filter(Boolean);
+  if (path30.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path29[0] === defsKey) {
-    const key = path29[1] === void 0 ? void 0 : decodeJSONPointerSegment(path29[1]);
+  if (path30[0] === defsKey) {
+    const key = path30[1] === void 0 ? void 0 : decodeJSONPointerSegment(path30[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -32127,12 +32127,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path29 = __require("node:path");
+        const path30 = __require("node:path");
         const fs10 = __require("node:fs");
-        const dir = path29.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path30.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs10.mkdirSync(dir, { recursive: true, mode: 448 });
         fs10.writeFileSync(
-          path29.join(dir, "client-report.json"),
+          path30.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -36334,16 +36334,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path29) {
+function deepGet(value, path30) {
   let cursor = value;
-  for (const key of path29) {
+  for (const key of path30) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path29) {
-  return String(path29 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path30) {
+  return String(path30 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -38372,8 +38372,8 @@ function startHandoff(ctx, input2) {
 }
 
 // src/sprite/start.ts
-import path21 from "node:path";
-import { existsSync as existsSync4 } from "node:fs";
+import path22 from "node:path";
+import { existsSync as existsSync5, readFileSync as readFileSync8 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // src/sprite/routes.ts
@@ -39115,6 +39115,59 @@ function startToolServer(toolHtmlPath, videos) {
     });
   });
 }
+async function resolveExportAnchor(call, args) {
+  const written = typeof args.anchorX === "number" || typeof args.anchorY === "number";
+  if (written) {
+    await call("setAnchor", {
+      ...typeof args.anchorX === "number" ? { x: args.anchorX } : {},
+      ...typeof args.anchorY === "number" ? { y: args.anchorY } : {}
+    });
+  }
+  const anchor2 = await call("getAnchor");
+  if (typeof anchor2?.anchorX !== "number" || typeof anchor2?.anchorY !== "number") {
+    throw new Error("\u9875\u9762 getAnchor \u6CA1\u6709\u8FD4\u56DE anchorX/anchorY\uFF08\u6865\u63A5\u7248\u672C\u8FC7\u65E7\uFF1F\uFF09\uFF0C\u8FD9\u6B21\u4E0D\u5199 meta \u91CC\u7684\u951A\u70B9");
+  }
+  return {
+    anchor: {
+      ...anchor2,
+      anchorX: anchor2.anchorX,
+      anchorY: anchor2.anchorY,
+      convention: anchor2.convention === "y-from-top" ? "y-from-top" : "y-from-bottom"
+    },
+    written
+  };
+}
+function buildExportMeta(input2) {
+  return {
+    ...input2.built.meta ?? {},
+    // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
+    // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
+    name: input2.name,
+    format: input2.format,
+    width: input2.built.width ?? null,
+    height: input2.built.height ?? null,
+    sheetWidth: input2.built.width ?? null,
+    sheetHeight: input2.built.height ?? null,
+    // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
+    // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
+    cellWidth: input2.cellWidth,
+    cellHeight: input2.cellHeight,
+    anchorX: input2.anchor.anchorX,
+    anchorY: input2.anchor.anchorY,
+    anchorConvention: input2.anchor.convention,
+    // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
+    anchorYTopDown: Number((1 - input2.anchor.anchorY).toFixed(6)),
+    // P0-1：明确告诉调用方"这次到底写没写锚点"——没传锚点参数时是 false（meta 里是页面当前值）。
+    anchorWritten: input2.anchorWritten,
+    // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
+    fps: input2.fps,
+    scale: input2.scaled.scale,
+    charHeightPx: input2.scaled.achievedPx,
+    appliedParams: input2.appliedParams,
+    generatedAt: input2.generatedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
+    engine: "dsh-remote-dafeiyu/sprite"
+  };
+}
 function createSpriteService(options) {
   const log = options.log;
   const idleMs = options.idleMs ?? 5 * 60 * 1e3;
@@ -39483,10 +39536,8 @@ function createSpriteService(options) {
         ...typeof args.targetHeight === "number" ? { targetCellHeight: args.targetHeight } : {},
         ...args.span ? { span: args.span } : {}
       });
-      const anchor2 = typeof args.anchorX === "number" || typeof args.anchorY === "number" ? await bridge("setAnchor", {
-        ...typeof args.anchorX === "number" ? { x: args.anchorX } : {},
-        ...typeof args.anchorY === "number" ? { y: args.anchorY } : {}
-      }) : await bridge("getAnchor");
+      const anchorOut = await resolveExportAnchor(bridge, args);
+      const anchor2 = anchorOut.anchor;
       const names = defaultFileNames({
         name: name2,
         cols,
@@ -39532,33 +39583,18 @@ function createSpriteService(options) {
           `cellHeight*rows=${cellHeightOut * rows} \u4E0E\u56FE\u96C6\u9AD8 ${sheetHeightOut} \u5DEE ${sheetHeightOut - cellHeightOut * rows}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
         );
       }
-      const meta3 = {
-        ...built.meta ?? {},
-        // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
-        // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
+      const meta3 = buildExportMeta({
+        built,
         name: name2,
         format,
-        width: built.width ?? null,
-        height: built.height ?? null,
-        sheetWidth: built.width ?? null,
-        sheetHeight: built.height ?? null,
-        // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
-        // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
         cellWidth: cellWidthOut,
         cellHeight: cellHeightOut,
-        anchorX: anchor2.anchorX,
-        anchorY: anchor2.anchorY,
-        anchorConvention: anchor2.convention,
-        // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
-        anchorYTopDown: Number((1 - anchor2.anchorY).toFixed(6)),
-        // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
+        anchor: anchor2,
+        anchorWritten: anchorOut.written,
         fps: lastPrepare?.fps ?? 12,
-        scale: scaled.scale,
-        charHeightPx: scaled.achievedPx,
-        appliedParams: state.params ?? null,
-        generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-        engine: "dsh-remote-dafeiyu/sprite"
-      };
+        scaled,
+        appliedParams: state.params ?? null
+      });
       writeFileSync3(metaPath, JSON.stringify(meta3, null, 2), "utf8");
       if (scaled.clamped) {
         warnings.push(
@@ -39770,126 +39806,50 @@ function createSpriteService(options) {
 }
 
 // src/sprite/guide.ts
-var SPRITE_GUIDE = `# \u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\uFF1Aagent \u5FEB\u901F\u4E0A\u624B
+var SPRITE_GUIDANCE = [
+  "\u4F60\u6709\u300C\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u300D\u80FD\u529B\uFF1A\u628A\u5E26\u7EFF\u5E55\u80CC\u666F\u7684\u89C6\u9891\u8F6C\u6210\u900F\u660E\u5E95\u7CBE\u7075\u56FE\uFF08\u62BD\u5E27 \u2192 \u53D6\u8272 \u2192 \u62A0\u80CC\u666F \u2192 \u53BB\u6C34\u5370/\u88C1\u526A \u2192 \u62FC\u56FE\u5BFC\u51FA\uFF09\u3002",
+  "**\u505A\u8FD9\u7C7B\u6D3B\u4E4B\u524D\u5148\u52A0\u8F7D `dafeiyu-sprite` skill**\uFF1A\u5B83\u5199\u4E86\u91CF\u4EC0\u4E48\u3001\u5728\u54EA\u4E2A\u5750\u6807\u7A7A\u95F4\u91CF\u3001\u91CF\u9519\u4E86\u600E\u4E48\u81EA\u8BC1\uFF1B",
+  "`references/` \u91CC\u8FD8\u6709\u5DE5\u5177\u901F\u67E5\u3001\u53C2\u6570\u5206\u6863\u8868\u3001\u75C7\u72B6\u901F\u67E5\u3001\u5750\u6807\u6362\u7B97\u3002\u52A0\u8F7D\u4E0D\u5230\u5C31\u8C03 `sprite_guide`\u3002",
+  "",
+  "\u4E09\u6761\u786C\u89C4\u5219\uFF1A",
+  "- **\u952E\u8272\u5FC5\u987B\u5B9E\u6D4B**\uFF08\u7528 `sprite_probe_color`\uFF0C\u522B\u62FF #00FF00 \u786C\u731C\uFF09\uFF1B",
+  "- **\u5148 apply \u518D export**\uFF1A`sprite_key_preview` \u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF0Cexport \u524D\u5FC5\u987B\u91CD\u65B0 apply\uFF08\u5DE5\u5177\u4F1A\u76F4\u63A5\u62A5\u9519\u63D0\u9192\u4F60\uFF09\uFF1B",
+  "- \u53C2\u6570\u5206\u4E24\u6863\uFF08classic / advanced\uFF09\uFF0C\u4F20\u4E86\u4E0D\u751F\u6548\u6863\u7684\u53C2\u6570\u4F1A\u51FA\u73B0\u5728\u8FD4\u56DE\u7684 `ignored[]` \u91CC\uFF1B",
+  '- \u76EE\u6807\u5C3A\u5BF8\u7528 `sprite_scale_to` / `charHeightPx` + `span`\uFF08\u6309"\u89D2\u8272\u51C0\u9AD8"\uFF09\uFF0C\u522B\u7528 bbox \u9AD8\u786C\u51D1\u3002',
+  "",
+  '\u5224"\u767D\u8272"\u7528 `probe.channel:"whiteness"`\uFF08\u4F4E\u9971\u548C <25 \u4E14 luma >210\uFF09\uFF0C**\u522B\u7528 `r,g,b>200`**\u2014\u2014\u80A4\u8272\u4F1A\u5168\u90E8\u901A\u8FC7\u3002'
+].join("\n");
+var SPRITE_GUIDE = `# \u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\uFF08\u515C\u5E95\u901F\u67E5\uFF09
 
-## \u4E00\u3001\u516D\u6B65\u539F\u8BED\uFF08\u6700\u5C0F\u53EF\u7528\u8DEF\u5F84\uFF09
+> \u5B8C\u6574\u65B9\u6CD5\u8BBA\u5728 skill \`dafeiyu-sprite\`\uFF08\`SKILL.md\` + \`references/\`\uFF09\u3002\u8FD9\u4EFD\u662F\u8BFB\u4E0D\u5230\u5B83\u65F6\u7684\u515C\u5E95\u3002
+
+## \u516D\u6B65\u539F\u8BED
 
 1. \`sprite_prepare\` { videoPath, start=0, end=4, fps=12 } \u2192 \u5E27\u6570/\u5C3A\u5BF8
-2. \`sprite_probe_color\` { frame=0 } \u2192 \`keyColor\`\uFF08**\u522B\u7528 #00FF00 \u786C\u731C**\uFF0C\u6BCF\u6BB5\u7D20\u6750\u80CC\u666F\u8272\u90FD\u4E0D\u4E00\u6837\uFF09
-3. \`sprite_measure\` { frame=0, landmarks:[\u2026] } \u2192 \`alphaBBox\` / \u6838\u5BF9\u56FE\uFF08\`overlayPath\`\uFF09
-4. \`sprite_key_apply\` { mode, colorHex, intensity, \u2026 } \u2192 \u62A0\u56FE + \`stats\` + \`worst\`
-5. \`sprite_cleanup\` { trim:{ mode, pad }, maskRect:"auto" } \u2192 \u88C1\u526A\u6846\uFF08\u542B\u56DE\u663E\uFF09
+2. \`sprite_probe_color\` \u2192 \`keyColor\`\uFF08**\u5FC5\u987B\u5B9E\u6D4B\u80CC\u666F\u8272**\uFF0C\u522B\u7528 #00FF00 \u786C\u731C\uFF09
+3. \`sprite_measure\` { frame, landmarks, overlay } \u2192 \`alphaBBox\` / \u6838\u5BF9\u56FE
+4. \`sprite_key_apply\` { mode, colorHex, intensity \u2026 } \u2192 \u62A0\u56FE + \`stats\` + \`worst\`
+5. \`sprite_cleanup\` { trim, maskRect:"auto" } \u2192 \u88C1\u526A\u6846
 6. \`sprite_export\` { cols, rows, charHeightPx, span, format } \u2192 PNG/webp + meta
 
-\u60F3\u4E00\u6B21\u8DD1\u5B8C\uFF1A\`sprite_auto\` { videoPath, targetCharHeight, format }\uFF1B
-\u591A\u6BB5\u7D20\u6750\uFF1A\`sprite_batch\` { outRoot, items:[\u2026] }\u3002
+\u4E00\u6B21\u8DD1\u5B8C\u7528 \`sprite_auto\`\uFF1B\u591A\u6BB5\u7D20\u6750\u7528 \`sprite_batch\`\u3002
 
-## \u4E8C\u3001measure \u7684 landmarks\uFF1A\u516B\u79CD\u539F\u8BED\uFF08**\u522B\u81EA\u5DF1\u5199\u811A\u672C\u91CF**\uFF09
+## \u4E09\u6761\u786C\u89C4\u5219
 
-\u524D\u516D\u79CD\u91CF\u7684\u662F\u300Calpha \u8FB9\u754C\u300D\uFF0C\u540E\u4E24\u79CD\u91CF\u7684\u662F\u300C\u989C\u8272\u6761\u4EF6\u300D\u2014\u2014\u5934\u9876\u53D1\u9645\u7EBF\u3001\u9886\u53E3\u3001\u978B\u5E95\u8FD9\u7C7B\u8BED\u4E49\u70B9\u7528\u540E\u4E24\u79CD\u3002
+- **\u5148 apply \u518D export**\uFF1A\`sprite_key_preview\` \u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF1B
+- \u53C2\u6570\u5206 classic / advanced \u4E24\u6863\uFF0C\u4F20\u9519\u6863\u7684\u4F1A\u51FA\u73B0\u5728 \`ignored[]\`\uFF1B
+- \u76EE\u6807\u5C3A\u5BF8\u7528 \`charHeightPx\` + \`span\`\uFF08\u89D2\u8272\u51C0\u9AD8\uFF09\uFF0C\u4E0D\u8981\u7528 bbox \u9AD8\u3002
 
-| type | \u9700\u8981\u7684\u5B57\u6BB5 | \u542B\u4E49 |
-|---|---|---|
-| \`bbox-top/bottom/left/right\` | \u2014 | alpha \u8FB9\u754C\uFF08\u6574\u5E45\u6216\u8BE5\u5E27\u7684\u5305\u56F4\u76D2\uFF09 |
-| \`point\` | x, y | \u539F\u6837\u56DE\u663E\uFF0C\u53EA\u7528\u6765\u5728\u6838\u5BF9\u56FE\u4E0A\u6253\u70B9 |
-| \`scan-vertical\` | x, fromY, toY | \u6CBF\u5217\u627E**\u7B2C\u4E00\u4E2A alpha > \u9608\u503C**\u7684\u884C\uFF08\u4E0D\u8BA4\u989C\u8272\uFF09 |
-| \`scan-horizontal\` | x, fromY, toY, \`probe\` | \u6CBF\u5217\u627E**\u7B2C\u4E00\u4E2A\u6EE1\u8DB3\u989C\u8272\u6761\u4EF6\u3001\u4E14\u8FDE\u7EED \u2265 minRun \u884C**\u7684\u6BB5 |
-| \`boundary\` | x, fromY, toY, \`a\`, \`b\` | A \u8272\u6BB5\u7ED3\u675F\u3001\u7D27\u63A5 B \u8272\u6BB5\u7684\u90A3\u4E00\u884C\uFF08"\u767D\u5E26\u7ED3\u675F\u3001\u84DD\u53D1\u5F00\u59CB"\uFF09 |
+## \u4E24\u4E2A\u6700\u5BB9\u6613\u8E29\u7684\u5751
 
-\`probe\` / \`a\` / \`b\` \u7684\u5F62\u72B6\uFF1A\`{ channel, op, value, minRun? }\`
+- \u5224\u767D\u8272\u7528 \`probe.channel:"whiteness"\`\uFF08\u9971\u548C\u5EA6 <25 \u4E14 luma >210\uFF09\uFF1B\`r,g,b>200\` \u4F1A\u628A\u80A4\u8272\u7B97\u6210\u767D\uFF1B
+- \`scan-horizontal\` / \`boundary\` \u7684 \`minRun\` **\u5FC5\u987B\u663E\u5F0F\u7ED9**\uFF0C\u5426\u5219\u4F1A\u88AB\u5446\u6BDB\u4E4B\u7C7B\u7684\u5C0F\u8272\u5757\u9A97\u8D70\u3002
 
-- \`channel\`\uFF1A\`r\` \`g\` \`b\` \`alpha\` \`luma\`\uFF080.299r+0.587g+0.114b\uFF09\`blue-minus-red\` \`saturation\`\uFF08max\u2212min\uFF09
-- \`op\`\uFF1A\`>\` \`>=\` \`<\` \`<=\`
-- \`minRun\`\uFF1A\u8FDE\u7EED\u591A\u5C11\u884C\u624D\u7B97\u6570\uFF0C**\u9ED8\u8BA4 1**
+## meta \u5FC5\u5E26
 
-> **\`minRun\` \u662F\u9632\u5446\u7684\u6838\u5FC3**\uFF1A\u4E0D\u7ED9\u5B83\uFF0C\u8BED\u4E49\u5C31\u662F"\u7B2C\u4E00\u4E2A\u4EA4\u754C"\uFF0C\u4E00\u6839 4 \u884C\u9AD8\u7684\u5446\u6BDB\u5C31\u80FD\u628A\u4F60\u9A97\u8D70\u3002
-> \u5B9E\u6D4B\u90A3\u6761\u7D20\u6750\uFF1A\u4E0D\u7ED9 minRun \u5F97\u5230 y=120\uFF08\u5446\u6BDB\uFF09\uFF0C\u7ED9 \`b.minRun:12\` \u624D\u843D\u5230 y=187\uFF08\u771F\u5B9E\u53D1\u5E26\u4E0B\u6CBF\uFF09\u3002
-> \u91CF"\u67D0\u4E2A\u8272\u5757\u4ECE\u54EA\u5F00\u59CB"\u65F6\uFF0C**\u6C38\u8FDC\u663E\u5F0F\u7ED9 minRun**\u3002
-
-\u626B\u4E0D\u5230\u4E0D\u4F1A\u629B\u5F02\u5E38\uFF1A\u8FD4\u56DE \`{found:false, reason:"\u2026"}\`\uFF0C\u5176\u4F59 landmark \u7167\u5E38\u7ED9\u51FA\u3002
-
-\`\`\`json
-{ "frame": 0, "source": "keyed", "landmarks": [
-  { "id": "hairTop", "type": "scan-horizontal", "x": 360, "fromY": 60, "toY": 600,
-    "probe": { "channel": "blue-minus-red", "op": ">", "value": 25, "minRun": 12 } },
-  { "id": "hairline", "type": "boundary", "x": 360, "fromY": 60, "toY": 600,
-    "a": { "channel": "blue-minus-red", "op": "<", "value": 10 },
-    "b": { "channel": "blue-minus-red", "op": ">", "value": 25, "minRun": 12 } }
-] }
-\`\`\`
-
-## \u4E09\u3001\u53C2\u6570\u8BED\u4E49\uFF1A**\u54EA\u4E00\u6863\u751F\u6548**\uFF08C2\uFF09
-
-| \u53C2\u6570 | \u7ECF\u5178\u6863 classic | \u667A\u80FD\u6863 advanced | \u8BED\u4E49 | \u5EFA\u8BAE\u521D\u503C |
-|---|---|---|---|---|
-| \`colorHex\` | \u2705 | \u2705 | \u952E\u8272\uFF08**\u5FC5\u987B\u5B9E\u6D4B\u80CC\u666F\u8272**\uFF09 | \u7528 probe_color \u7684\u7ED3\u679C |
-| \`intensity\` | \u2705 | \u2705 | \u8D8A\u5927\u62A0\u5F97\u8D8A\u72E0 | 75~85 |
-| \`feather\` | \u2705 | \u2014 | alpha \u7FBD\u5316\u534A\u5F84 | 20 |
-| \`cleanup\` | \u2705 | \u2014 | \u53BB\u8272\u6EA2\u51FA | 30 |
-| \`softness\` | \u2014 | \u2705 | \u8F6F\u8FB9\u5BBD\u5EA6 | 100 |
-| \`despill\` | \u2014 | \u2705 | \u53BB\u7EFF\u8FB9\u5F3A\u5EA6 | 70 |
-| \`aggressive\` | \u2014 | \u2705 | \u4E3B\u4F53\u8F6E\u5ED3\u4E5F\u53BB\u7EFF | true |
-| \`greenToAlpha\` | \u2014 | \u2705 | \u6B8B\u7EFF\u8F6C\u900F\u660E\uFF08>0 \u8D70\u4E24\u6B65\u6CD5\uFF09 | 25 |
-| \`autoPlate\` | \u2014 | \u2705 | \u81EA\u52A8\u80CC\u666F\u677F\uFF08**\u53EA apply \u751F\u6548**\uFF09 | \u80CC\u666F\u6591\u9A73\u65F6 true |
-| \`maskMode\` | \u2705\uFF08cleanup\uFF09 | \u2705\uFF08cleanup\uFF09 | \u6C34\u5370\u63A2\u6D4B\u6863\uFF1A\`auto\`=\u4E25\u683C\u5224\u636E\u2192\u56DB\u89D2\u515C\u5E95\uFF1B\`corner\`=\u76F4\u63A5\u56DB\u89D2\u626B | \u9ED8\u8BA4 \`auto\` |
-
-> \u4F20\u4E86\u4E0D\u751F\u6548\u6863\u7684\u53C2\u6570\u4E0D\u4F1A\u62A5\u9519\uFF0C\u4F46\u4F1A\u51FA\u73B0\u5728\u8FD4\u56DE\u7684 \`ignored\` \u91CC\u2014\u2014**\u770B\u5230 ignored \u975E\u7A7A\u5C31\u8BF4\u660E\u4F60\u9009\u9519\u6863\u4E86**\u3002
-
-## \u56DB\u3001\u75C7\u72B6 \u2192 \u539F\u56E0 \u2192 \u5904\u7406\uFF08C3\uFF09
-
-| \u75C7\u72B6 | \u5927\u6982\u7387\u539F\u56E0 | \u5904\u7406 |
-|---|---|---|
-| \u5BFC\u51FA\u7684\u56FE alpha \u5168 255\u3001\u80CC\u666F\u8FD8\u662F\u7EFF\u7684 | \u62A0\u56FE\u7F13\u5B58\u88AB\u6E05\uFF08\u8DD1\u8FC7 preview / \u6539\u8FC7\u53C2\u6570\uFF09/ \u952E\u8272\u4E0D\u5BF9 | \u91CD\u65B0 \`sprite_key_apply\` \u518D\u7ACB\u523B \`sprite_export\`\uFF08\u5DE5\u5177\u73B0\u5728\u4F1A\u76F4\u63A5\u62A5\u9519\uFF0C\u4E0D\u4F1A\u95F7\u58F0\u51FA\u56FE\uFF09 |
-| \u4E3B\u4F53\u8FB9\u7F18\u4E00\u5708\u6A44\u6984\u8272 | \u7ECF\u5178\u6863\u53BB\u7EFF\u4E0D\u8DB3 | \u6362 advanced \u6863\uFF0C\u6216 \`greenToAlpha\` \u52A0\u5927 |
-| \u88C1\u526A\u6846\u83AB\u540D\u53D8\u5927 | \u67D0\u5E27\u6709\u6B8B\u7559/\u6F02\u6D6E\u7269\uFF0C\u5E76\u96C6\u628A\u5B83\u5E26\u4E0A\u4E86 | \u770B \`sprite_measure\` \u7684 \`perFrameSpread\`\uFF1B\u6216 \`trim.mode:"first-frame"\` |
-| \u89D2\u8272\u9AD8 \u2260 \u76EE\u6807 | \u7528\u9519\u4E86\u300Cbbox \u9AD8\u300D\u8BED\u4E49 | \u7528 \`sprite_scale_to\` \u7684 \`charHeightPx\` + \`span\` |
-| \u5207\u52A8\u4F5C\u201C\u77AC\u79FB\u201D | \u951A\u70B9\u8DE8\u7D20\u6750\u590D\u7528 / \u53E3\u5F84\u4E0D\u4E00\u81F4 | \u6BCF\u6BB5\u5355\u72EC\u91CF\uFF1B\u770B meta \u91CC\u7684 \`anchorConvention\` |
-| \u7ED3\u679C\u5DEE 1~2px | trim pad / alphaThreshold \u9ED8\u8BA4\u503C | \u770B \`sprite_cleanup\` \u8FD4\u56DE\u91CC\u7684 \`pad\` \u4E0E \`alphaThreshold\` |
-| webp \u5BFC\u51FA\u62A5\u201C\u4E0D\u652F\u6301\u201D | \u8FD9\u4E2A\u6D4F\u89C8\u5668\u6CA1\u6709 webp \u7F16\u7801 | \u6362 png\uFF0C\u6216\u5347\u7EA7\u6D4F\u89C8\u5668 |
-| \`maskAuto\` \u8BF4"\u672A\u547D\u4E2D" | \u89D2\u6807\u538B\u5728\u6E10\u53D8\u80CC\u666F\u4E0A\uFF0C\u4E25\u683C\u5224\u636E\u7684\u5BF9\u6BD4\u5EA6\u4E0D\u591F | \u770B \`warnings\` \u4E0E \`path\`\uFF1A\`corner-fallback\` = \u5DF2\u7528\u56DB\u89D2\u4F4E\u7F6E\u4FE1\u515C\u5E95\uFF1B\u4E5F\u53EF\u663E\u5F0F \`maskMode:"corner"\` |
-| \u62A5\u4E86 \`maskRect\` \u4F46\u4E0D\u786E\u5B9A\u5BF9\u4E0D\u5BF9 | \u4F4E\u7F6E\u4FE1\u5EA6\u515C\u5E95\uFF08confidence < 0.8\uFF09\u4F1A**\u771F\u7684**\u53BB\u906E | \u5148 \`maskAuto\` \u53EA\u62FF\u5019\u9009\uFF1A\u770B \`watermarkCandidates[].selected\` \u4E0E \`rejectedReason\`\uFF0C\u786E\u8BA4\u6CA1\u5403\u6389\u89D2\u8272\u518D\u7EE7\u7EED |
-| \u53D6 \`rects[0]\` \u7ED3\u679C\u906E\u5230\u4E86 1px \u9AD8\u7684\u6B8B\u7247 | \u5019\u9009\u73B0\u5728**\u5168\u90E8**\u5410\u51FA\uFF0C\u542B \`selected:false\` \u7684 | \u7528 \`selected===true\`\uFF0C\u6216\u770B \`selectedCount\` / \`path\` |
-| \u62A5"\u4F1A\u8BDD\u5DF2\u7A7A\u95F2\u56DE\u6536" | \u8D85\u8FC7 5 \u5206\u949F\u6CA1\u64CD\u4F5C\uFF0C\u5E27\u6570\u636E\u88AB\u91CA\u653E\u4E86\uFF08**\u6CA1\u6709 \`extract()\` \u8FD9\u4E2A\u5DE5\u5177**\uFF09 | \u91CD\u65B0 \`sprite_prepare\`\uFF0C\u524D\u9762\u7684\u62A0\u56FE\u53C2\u6570\u8981\u91CD\u6765 |
-| \`sprite_*\` \u7A81\u7136\u5361\u51E0\u5206\u949F | \u591A\u534A\u662F\u5BBF\u4E3B\u5D29\u8FC7\uFF0F\u88AB\u5F3A\u6740\u7559\u4E0B\u7684**\u5B64\u513F\u65E0\u5934\u6D4F\u89C8\u5668**\u5728\u62A2\u7AEF\u53E3\u548C profile | \u91CD\u542F\u5BBF\u4E3B\u5373\u53EF\uFF1A\u65B0\u7248\u672C\u542F\u52A8\u65F6\u4F1A\u81EA\u52A8\u6E05\u6389"\u7236\u8FDB\u7A0B\u5DF2\u4E0D\u5728"\u7684\u6D4F\u89C8\u5668\uFF1B\u6B63\u5E38\u5173\u95ED\u4E5F\u4F1A**\u6574\u68F5\u8FDB\u7A0B\u6811**\u4E00\u8D77\u6536 |
-
-## \u4E94\u3001\u951A\u70B9\u53E3\u5F84\uFF08\u6700\u5BB9\u6613\u8E29\uFF09
-
-- \u5DE5\u5177\u5185\u90E8\u4E0E meta \u91CC\u7684 \`anchorY\` \u662F **\`y-from-bottom\`**\uFF1A0 = \u5E27\u5E95\uFF0C1 = \u5E27\u9876\u3002
-- \u4E3B\u6D41 2D \u8FD0\u884C\u65F6\uFF08Unity/SpriteRenderer\uFF09\u5E38\u7528 **\`y-from-top\`**\uFF1A0 = \u5E27\u9876\u3002
-  \u4E24\u8005\u662F \`1 - anchorY\` \u7684\u5173\u7CFB\uFF0C**meta \u91CC\u540C\u65F6\u7ED9\u4E86\u4E24\u4E2A\u503C**\uFF1A\`anchorY\`\uFF08\u5E95\u53E3\u5F84\uFF09+ \`anchorYTopDown\`\uFF08\u9876\u53E3\u5F84\uFF09\uFF0C
-  \u8FD8\u6709 \`anchorConvention\` \u58F0\u660E\u53E3\u5F84\u2014\u2014**\u8BFB\u5B57\u6BB5\uFF0C\u522B\u81EA\u5DF1\u6362\u7B97**\uFF08\u6362\u7B97\u9519\u6574\u6279\u951A\u70B9\u90A3\u6B21\u5C31\u662F\u8FD9\u4E48\u6765\u7684\uFF09\u3002
-- \u91CF\u951A\u70B9\u65F6\u4F18\u5148\u7ED9**\u50CF\u7D20**\uFF1A\`sprite_set_anchor\` { y: <\u4ECE\u5E27\u5E95\u5F80\u4E0A\u7684\u50CF\u7D20>, convention:"y-from-bottom" }\u3002
-
-## \u516D\u3001\u4EA4\u4ED8\u7269\u7EA6\u5B9A
-
-- \u9ED8\u8BA4\u547D\u540D\uFF1A\`<name>_<cols>x<rows>.<format>\` + \`<\u540C\u540D>.meta.json\`\uFF1B\`dirPerAction:true\` \u65F6\u653E\u8FDB \`<outDir>/<name>/\`\u3002
-- meta \u5FC5\u5E26\uFF1A\`name\`\uFF08= \u4F60\u4F20\u7684 name\uFF09\u3001\u7F51\u683C \`cols/rows\`\u3001\`cellWidth/cellHeight\`\uFF08\u6574\u6570\uFF0C**\u4FDD\u8BC1 \`cellWidth*cols === sheetWidth\`**\uFF09\u3001
-  \`width/height\` \u4E0E \`sheetWidth/sheetHeight\`\u3001\`anchorX/anchorY\` + \`anchorConvention\` + \`anchorYTopDown\`\u3001
-  \`scale\`\u3001\`charHeightPx\`\u3001\`fps\`\uFF08\u6765\u81EA prepare \u7684 fps\uFF0C\u5F62\u8C61\u4FA7\u6309\u5B83\u64AD\uFF09\u3001\`appliedParams\`\u3002
-- \u6838\u5BF9\u56FE\u843D\u5728 \`<outDir>/_debug/\`\uFF0C\u53EF\u4EE5\u76F4\u63A5 \`read_image\` \u770B\u3002
-
-## \u4E03\u3001\u81EA\u68C0\u6E05\u5355\uFF08\u6BCF\u6279\u51FA\u56FE\u524D\u8DD1\u4E00\u904D\uFF09
-
-1. \`sprite_probe_color\` \u7684 \`spread\` < 0.05\uFF08\u80CC\u666F\u5747\u5300\uFF09\uFF1B
-2. \`sprite_key_apply\` \u7684 \`stats.bgResidual\` < 0.01\u3001\`subjectCoverage\` > 0.98\u3001\`edgeGreen\` < 0.10\uFF1B
-3. \`worst.frame\` \u4E0E\u7B2C 0 \u5E27\u5DEE\u8DDD\u5927 \u2192 \u90A3\u4E00\u5E27\u6709\u6B8B\u7559\uFF0C\u522B\u5FFD\u7565\uFF1B
-4. \`sprite_export\` \u8FD4\u56DE\u7684 \`scaleClamped\` \u4E3A false\uFF08\u5426\u5219\u76EE\u6807\u5C3A\u5BF8\u6CA1\u8FBE\u5230\uFF09\uFF1B
-5. meta \u7684 \`anchorConvention\` \u4E0E\u4F60\u7684\u8FD0\u884C\u65F6\u4E00\u81F4\u3002
+\`name / cols / rows / cellWidth / cellHeight / charHeightPx / scale / anchorX / anchorY / anchorYTopDown / anchorConvention / fps\`\uFF1B
+\`anchorY\` \u662F y-from-bottom\uFF0C\`anchorYTopDown\` \u662F\u9876\u53E3\u5F84\uFF0C\u76F4\u63A5\u8BFB\u5B57\u6BB5\u522B\u81EA\u5DF1\u6362\u7B97\u3002
 `;
-var SPRITE_GUIDANCE = `\u4F60\u6709\u300C\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u300D\u80FD\u529B\uFF1A\u628A\u5E26\u7EFF\u5E55\u80CC\u666F\u7684\u89C6\u9891\u8F6C\u6210\u900F\u660E\u5E95\u7CBE\u7075\u56FE\uFF08\u62BD\u5E27 \u2192 \u53D6\u8272 \u2192 \u62A0\u80CC\u666F \u2192 \u53BB\u6C34\u5370/\u88C1\u526A \u2192 \u62FC\u56FE\u5BFC\u51FA\uFF09\u3002
-
-\u6807\u51C6\u8DEF\u5F84\uFF1Asprite_prepare \u2192 sprite_probe_color\uFF08**\u952E\u8272\u5FC5\u987B\u5B9E\u6D4B\uFF0C\u522B\u7528 #00FF00 \u786C\u731C**\uFF09\u2192 sprite_measure\uFF08\u62FF bbox \u4E0E\u6838\u5BF9\u56FE\uFF09
-\u2192 sprite_key_apply \u2192 sprite_cleanup \u2192 sprite_export\u3002\u4E00\u6B21\u8DD1\u5B8C\u7528 sprite_auto\uFF1B\u591A\u6BB5\u7D20\u6750\u7528 sprite_batch\uFF1B\u4E0D\u786E\u5B9A\u8BED\u4E49\u5C31\u8C03 sprite_guide\u3002
-
-\u4E09\u6761\u786C\u89C4\u5219\uFF1A
-- **\u5148 apply \u518D export**\uFF1Asprite_key_preview \u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF0Cexport \u524D\u5FC5\u987B\u91CD\u65B0 apply\uFF08\u5DE5\u5177\u4F1A\u76F4\u63A5\u62A5\u9519\u63D0\u9192\u4F60\uFF09\uFF1B
-- \u53C2\u6570\u5206\u4E24\u6863\uFF08classic/advanced\uFF09\uFF0C\u4F20\u4E86\u4E0D\u751F\u6548\u6863\u7684\u53C2\u6570\u4F1A\u51FA\u73B0\u5728\u8FD4\u56DE\u7684 ignored \u91CC\uFF1B
-- \u76EE\u6807\u5C3A\u5BF8\u7528 sprite_scale_to / charHeightPx + span\uFF08\u6309"\u89D2\u8272\u51C0\u9AD8"\uFF09\uFF0C\u522B\u7528 bbox \u9AD8\u786C\u51D1\u3002
-
-\u91CF"\u53D1\u9645\u7EBF/\u9886\u53E3/\u978B\u5E95"\u8FD9\u7C7B\u8BED\u4E49\u70B9**\u522B\u518D\u81EA\u5DF1\u5199\u811A\u672C**\uFF1Asprite_measure \u7684 landmarks \u652F\u6301
-scan-horizontal / boundary\uFF08\u5E26 probe:{channel,op,value,minRun}\uFF09\uFF0C\u663E\u5F0F\u7ED9 minRun\uFF0C\u5426\u5219\u4F1A\u88AB\u5446\u6BDB\u4E4B\u7C7B\u7684\u5C0F\u8272\u5757\u9A97\u8D70\u3002
-meta \u91CC anchorY\uFF08\u5E95\u53E3\u5F84\uFF09\u4E0E anchorYTopDown\uFF08\u9876\u53E3\u5F84\uFF09**\u90FD\u7ED9\u4E86**\uFF0C\u76F4\u63A5\u8BFB\uFF0C\u522B\u81EA\u5DF1\u6362\u7B97\u3002
-\u8FED\u4EE3\u4E0A\u9650 6 \u8F6E\u6216\u76F4\u63A5\u7528 sprite_autotune\uFF1B\u4E0D\u6536\u655B\u5C31\u660E\u786E\u544A\u8BC9\u7528\u6237"\u80CC\u666F\u4E0D\u53EF\u62A0/\u9700\u8981\u91CD\u62CD"\uFF0C\u522B\u786C\u585E\u70C2\u56FE\u3002`;
 
 // src/sprite/types.ts
 var KEY_PARAM_KEYS = [
@@ -39906,7 +39866,7 @@ var KEY_PARAM_KEYS = [
   "advIntensity",
   "advFeather"
 ];
-var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation"];
+var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation", "whiteness"];
 var SCAN_OPS = [">", ">=", "<", "<="];
 
 // src/sprite/tools.ts
@@ -39977,7 +39937,7 @@ function probeSchema(description) {
       channel: {
         type: "string",
         enum: [...SCAN_CHANNELS],
-        description: "\u901A\u9053\uFF1Ar/g/b/alpha \u53D6\u539F\u503C\uFF0Cluma=0.299r+0.587g+0.114b\uFF0Cblue-minus-red=b-r\uFF0Csaturation=max-min"
+        description: "\u901A\u9053\uFF1Ar/g/b/alpha \u53D6\u539F\u503C\uFF0Cluma=0.299r+0.587g+0.114b\uFF0Cblue-minus-red=b-r\uFF0Csaturation=max-min\uFF0Cwhiteness=\u4F4E\u9971\u548C(<25)\u4E14 luma>210 \u624D\u7B97\u767D\uFF08\u591F\u767D\u8FD4\u56DE luma\uFF0C\u5426\u5219 0\uFF1B\u5224\u767D\u8272\u522B\u7528 r,g,b>200\uFF0C\u80A4\u8272\u4F1A\u6F0F\uFF09"
       },
       op: { type: "string", enum: [...SCAN_OPS], description: "\u6BD4\u8F83\u65B9\u5F0F" },
       value: { type: "number", description: "\u9608\u503C\uFF08\u901A\u9053\u53D6\u503C\u4E0E\u5B83\u6BD4\u8F83\uFF09" },
@@ -39986,7 +39946,7 @@ function probeSchema(description) {
     required: ["channel", "op", "value"]
   };
 }
-function buildTools(service) {
+function buildTools(service, options) {
   return [
     {
       name: "sprite_prepare",
@@ -40491,39 +40451,98 @@ function buildTools(service) {
     },
     {
       name: "sprite_guide",
-      description: "\u8FD4\u56DE\u8FD9\u5957\u5DE5\u5177\u7684\u5B8C\u6574\u6307\u5357\uFF08\u516D\u6B65\u539F\u8BED / \u53C2\u6570\u8BED\u4E49\u8868 / \u75C7\u72B6\u901F\u67E5 / \u951A\u70B9\u53E3\u5F84 / \u4EA4\u4ED8\u7EA6\u5B9A\uFF09\u3002\u4E0D\u786E\u5B9A\u8BED\u4E49\u65F6\u5148\u8C03\u5B83\uFF0C\u6BD4\u8BFB\u6E90\u7801\u5FEB\u3002",
+      description: "\u8FD4\u56DE\u8FD9\u5957\u5DE5\u5177\u7684\u5B8C\u6574\u6307\u5357\uFF08\u65B9\u6CD5\u8BBA / \u516D\u6B65\u539F\u8BED / \u53C2\u6570\u8BED\u4E49\u8868 / \u75C7\u72B6\u901F\u67E5 / \u5750\u6807\u6362\u7B97 / \u951A\u70B9\u53E3\u5F84\uFF09\u3002\u5B83\u4E0E skill `dafeiyu-sprite` \u662F\u540C\u4E00\u4EFD\u5185\u5BB9\uFF1A\u4F18\u5148\u7528 skill\uFF0C\u52A0\u8F7D\u4E0D\u5230\u518D\u8C03\u5B83\u3002",
       parameters: { type: "object", properties: {} },
       output: OUT2,
       timeoutMs: 1e4,
       async execute() {
-        return SPRITE_GUIDE;
+        return options?.guideBody?.() ?? SPRITE_GUIDE;
       }
     }
   ];
 }
 
+// src/sprite/skill.ts
+import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, rmSync as rmSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import path21 from "node:path";
+var SPRITE_SKILL_NAME = "dafeiyu-sprite";
+var VERSION_FILE = ".dafeiyu-skill-version";
+function installSpriteSkill(deps) {
+  const source = path21.join(deps.assetsRoot, "SKILL.md");
+  if (!existsSync4(source)) return { ok: false, reason: `missing-asset: ${source}` };
+  const target = path21.join(deps.dshHome, "skills", SPRITE_SKILL_NAME);
+  const stamp = path21.join(target, VERSION_FILE);
+  try {
+    if (existsSync4(stamp)) {
+      const current = readFileSync7(stamp, "utf8").trim();
+      if (current === deps.version) return { ok: true, path: target };
+    }
+    mkdirSync7(path21.dirname(target), { recursive: true });
+    if (existsSync4(target)) rmSync2(target, { recursive: true, force: true });
+    cpSync(deps.assetsRoot, target, { recursive: true });
+    writeFileSync4(stamp, `${deps.version}
+`, "utf8");
+    deps.log("\u5E8F\u5217\u5E27 skill \u5DF2\u94FA\u5F00", { path: target, version: deps.version });
+    return { ok: true, path: target };
+  } catch (error62) {
+    return { ok: false, reason: String(error62?.message ?? error62).slice(0, 160) };
+  }
+}
+var cachedBody;
+function readSpriteSkillBody(assetsRoot) {
+  if (cachedBody !== void 0) return cachedBody;
+  try {
+    const raw = readFileSync7(path21.join(assetsRoot, "SKILL.md"), "utf8");
+    cachedBody = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
+  } catch {
+    cachedBody = SPRITE_GUIDE;
+  }
+  return cachedBody;
+}
+
 // src/sprite/start.ts
 function packageRoot() {
   try {
-    return path21.resolve(path21.dirname(fileURLToPath(import.meta.url)), "..", "..");
+    return path22.resolve(path22.dirname(fileURLToPath(import.meta.url)), "..", "..");
   } catch {
     return process.cwd();
   }
 }
+function packageVersion() {
+  try {
+    const raw = readFileSync8(path22.join(packageRoot(), "package.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    return typeof parsed.version === "string" ? parsed.version : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 function startSprite(ctx, deps) {
   const probe = {};
-  const toolHtmlPath = deps.toolHtmlPath ?? path21.join(packageRoot(), "assets", "sprite", "sprite-tool.html");
-  const outDir = deps.outDir ?? path21.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "sprite-out");
+  const toolHtmlPath = deps.toolHtmlPath ?? path22.join(packageRoot(), "assets", "sprite", "sprite-tool.html");
+  const outDir = deps.outDir ?? path22.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "sprite-out");
+  const skillAssetsRoot = path22.join(packageRoot(), "assets", "skills", SPRITE_SKILL_NAME);
   let service;
   if (deps.enabled === false) {
     probe.service = "disabled";
-  } else if (!existsSync4(toolHtmlPath)) {
+  } else if (!existsSync5(toolHtmlPath)) {
     probe.service = `missing-tool-html: ${toolHtmlPath}`;
     deps.log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u4E0D\u5B58\u5728\uFF08\u5DE5\u5177\u4E0D\u4F1A\u6CE8\u518C\uFF09", { path: toolHtmlPath });
   } else {
     try {
       service = createSpriteService({ toolHtmlPath, outDir, log: deps.log });
       probe.service = "ready";
+      try {
+        const installed = installSpriteSkill({
+          dshHome: deps.dshHome,
+          assetsRoot: skillAssetsRoot,
+          version: packageVersion(),
+          log: deps.log
+        });
+        probe.skill = installed.ok ? "installed" : `skipped: ${installed.reason ?? "unknown"}`;
+      } catch (error62) {
+        probe.skill = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+      }
       void sweepOrphanBrowsers(deps.log).then((count) => {
         if (count > 0) probe.orphansSwept = String(count);
       }).catch(() => void 0);
@@ -40537,7 +40556,7 @@ function startSprite(ctx, deps) {
     try {
       const tools = ctx.get?.("tools", true);
       if (tools && typeof tools.register === "function") {
-        const definitions = buildTools(service);
+        const definitions = buildTools(service, { guideBody: () => readSpriteSkillBody(skillAssetsRoot) });
         for (const definition of definitions) tools.register(definition);
         toolCount = definitions.length;
         probe.tools = `registered(${toolCount})`;
@@ -40643,7 +40662,7 @@ function startSprite(ctx, deps) {
 }
 
 // src/xyq/start.ts
-import path23 from "node:path";
+import path24 from "node:path";
 
 // src/xyq/service.ts
 function parseJson(text) {
@@ -41057,8 +41076,8 @@ function xyqGenerateHandler(deps) {
       const model2 = typeof body.model === "string" ? body.model.trim() : "";
       if (prompt === "" || model2 === "") return json10(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
       try {
-        const { mkdirSync: mkdirSync9 } = await import("node:fs");
-        mkdirSync9(deps.outDir, { recursive: true });
+        const { mkdirSync: mkdirSync10 } = await import("node:fs");
+        mkdirSync10(deps.outDir, { recursive: true });
       } catch {
       }
       const sessionKey2 = typeof body.sessionKey === "string" && body.sessionKey !== "" ? body.sessionKey : "xyq-panel";
@@ -41111,14 +41130,14 @@ function xyqFileHandler(deps) {
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const target = (url2.searchParams.get("path") ?? "").trim();
     if (target === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
-    const path29 = await import("node:path");
+    const path30 = await import("node:path");
     const fs10 = await import("node:fs");
-    const resolved = path29.resolve(target);
-    const root = path29.resolve(deps.outDir);
-    if (!resolved.startsWith(root + path29.sep)) return json10(response, 403, { ok: false, error: "path-escape" });
+    const resolved = path30.resolve(target);
+    const root = path30.resolve(deps.outDir);
+    if (!resolved.startsWith(root + path30.sep)) return json10(response, 403, { ok: false, error: "path-escape" });
     try {
       const data = fs10.readFileSync(resolved);
-      const ext = path29.extname(resolved).toLowerCase();
+      const ext = path30.extname(resolved).toLowerCase();
       const mime = ext === ".mp4" ? "video/mp4" : ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "application/octet-stream";
       response.writeHead(200, { "Content-Type": mime, "Content-Length": data.byteLength });
       if (request.method === "HEAD") response.end();
@@ -41252,7 +41271,7 @@ function xyqTools(service) {
 import { spawn as spawn4 } from "node:child_process";
 import fs9 from "node:fs";
 import os5 from "node:os";
-import path22 from "node:path";
+import path23 from "node:path";
 function platformDir() {
   const arch = process.arch === "arm64" ? "arm64" : "x64";
   if (process.platform === "win32") return `win32-${arch}`;
@@ -41263,14 +41282,14 @@ function binaryName() {
   return process.platform === "win32" ? "pippit-tool-cli.exe" : "pippit-tool-cli";
 }
 function cachedCliCandidates(home = os5.homedir()) {
-  const base = path22.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
+  const base = path23.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
   return [
-    path22.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
-    path22.join(base, "node_modules", ".bin", binaryName())
+    path23.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
+    path23.join(base, "node_modules", ".bin", binaryName())
   ];
 }
 function ensureCliScript(home = os5.homedir()) {
-  return path22.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
+  return path23.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
 }
 var defaultCliRunner = (args, options) => new Promise((resolve) => {
   const child = spawn4(cliPathForRun(args), args.slice(1), {
@@ -41332,7 +41351,7 @@ async function resolveCliPath(run, options = {}) {
   }
   const installed = await installCli(run, { home });
   if (installed !== void 0 && fs9.existsSync(installed)) {
-    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path22.basename(installed) });
+    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path23.basename(installed) });
     return installed;
   }
   return void 0;
@@ -41349,7 +41368,7 @@ function startXyq(ctx, deps) {
   let unregister;
   let started = false;
   let stopped = false;
-  const outDir = path23.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "xyq-output");
+  const outDir = path24.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "xyq-output");
   const routeDeps = { service, outDir, log: deps.log };
   const tryStart = () => {
     if (started || stopped) return;
@@ -41365,7 +41384,7 @@ function startXyq(ctx, deps) {
         [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
         [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)]
       ];
-      for (const [path29, handler] of registers) disposers.push(web.register({ kind: "exact", path: path29, handler }));
+      for (const [path30, handler] of registers) disposers.push(web.register({ kind: "exact", path: path30, handler }));
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -41900,12 +41919,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync7, mkdirSync as mkdirSync8, readdirSync as readdirSync3, readFileSync as readFileSync9, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync5 } from "node:fs";
-import path26 from "node:path";
+import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync3, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import path27 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync5, readFileSync as readFileSync7 } from "node:fs";
-import path24 from "node:path";
+import { existsSync as existsSync6, readFileSync as readFileSync9 } from "node:fs";
+import path25 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -41917,26 +41936,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path24.join(dshHome, "dsh-backup-git");
+  return path25.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path24.join(backupDir(dshHome), "config.json");
+  return path25.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path24.join(backupDir(dshHome), "credential.json");
+  return path25.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path24.join(backupDir(dshHome), "status.json");
+  return path25.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path24.join(backupDir(dshHome), "work");
+  return path25.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync5(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync6(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync7(file2, "utf8"));
+    parsed = JSON.parse(readFileSync9(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -42049,9 +42068,9 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync5(file2)) return "";
+  if (!existsSync6(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync7(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync9(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -42163,19 +42182,19 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync6, readdirSync as readdirSync2, readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync7, readdirSync as readdirSync2, readFileSync as readFileSync10, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path25 from "node:path";
+import path26 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path25.join(sessionsRoot, slug);
+    const slugDir = path26.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path25.join(slugDir, dirName);
+      const sessionDir = path26.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path25.join(sessionDir, fileName);
+        const file2 = path26.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync4(file2);
@@ -42187,7 +42206,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path25.posix.join(slug, dirName, fileName),
+          relPath: path26.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -42236,11 +42255,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path25.join(input2.stagingDir, "latest");
+  const staging = path26.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path25.join(staging, "sessions", entry.relPath);
+    const target = path26.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -42249,20 +42268,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path25.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path26.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path25.join(staging, "profiles", path25.basename(input2.profileDir));
+    const target = path26.join(staging, "profiles", path26.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path25.join(input2.profileDir, name2);
-      if (!existsSync6(source)) continue;
-      await copyFileFresh(source, path25.join(target, name2));
+      const source = path26.join(input2.profileDir, name2);
+      if (!existsSync7(source)) continue;
+      await copyFileFresh(source, path26.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path25.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path26.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -42278,18 +42297,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path25.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path26.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path25.join(stagingDir, "archive");
+  const root = path26.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path25.join(root, entry.relPath);
-    if (existsSync6(target)) continue;
+    const target = path26.join(root, entry.relPath);
+    if (existsSync7(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -42302,7 +42321,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync6(dir)) return;
+  if (!existsSync7(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -42334,7 +42353,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path25.join(dir, entry.name);
+    const full = path26.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -42345,8 +42364,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path25.dirname(target), { recursive: true });
-  if (existsSync6(target)) {
+  await mkdir(path26.dirname(target), { recursive: true });
+  if (existsSync7(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -42354,25 +42373,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync6(sourceDir)) return [];
+  if (!existsSync7(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path25.join(sourceDir, name2), path25.join(targetDir, name2));
+    await copyFileFresh(path26.join(sourceDir, name2), path26.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync6(sourceDir)) return total;
+  if (!existsSync7(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path25.join(sourceDir, entry.name);
-    const target = path25.join(targetDir, entry.name);
+    const source = path26.join(sourceDir, entry.name);
+    const target = path26.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -42404,14 +42423,14 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync6(profilesRoot)) return "";
+  if (!existsSync7(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path25.join(profilesRoot, name2);
-    const manifest = path25.join(dir, "package.json");
-    if (!existsSync6(manifest)) continue;
+    const dir = path26.join(profilesRoot, name2);
+    const manifest = path26.join(dir, "package.json");
+    if (!existsSync7(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync8(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync10(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
       const mtimeMs = statSync4(manifest).mtimeMs;
@@ -42573,7 +42592,7 @@ var BackupService = class {
     this.status.running = true;
     try {
       const dirs = this.layout();
-      mkdirSync8(dirs.base, { recursive: true });
+      mkdirSync9(dirs.base, { recursive: true });
       const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
@@ -42660,13 +42679,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path26.join(base, "staging"),
-      hotRepo: path26.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path26.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path26.join(this.deps.dshHome, "sessions"),
-      storagesDir: path26.join(this.deps.dshHome, "storages"),
-      profilesRoot: path26.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path26.join(this.deps.dshHome, "attachments")
+      staging: path27.join(base, "staging"),
+      hotRepo: path27.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path27.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path27.join(this.deps.dshHome, "sessions"),
+      storagesDir: path27.join(this.deps.dshHome, "storages"),
+      profilesRoot: path27.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path27.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -42688,8 +42707,8 @@ var BackupService = class {
     return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
   async prepareRepo(repo) {
-    mkdirSync8(repo, { recursive: true });
-    if (!existsSync7(path26.join(repo, ".git"))) {
+    mkdirSync9(repo, { recursive: true });
+    if (!existsSync8(path27.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -42709,8 +42728,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path26.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync7(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path27.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync8(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -42753,15 +42772,15 @@ var BackupService = class {
   }
   askpassScript() {
     const base = backupDir(this.deps.dshHome);
-    mkdirSync8(base, { recursive: true });
+    mkdirSync9(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path26.join(base, "askpass.cmd");
-      if (!existsSync7(file3)) writeFileSync5(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path27.join(base, "askpass.cmd");
+      if (!existsSync8(file3)) writeFileSync6(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path26.join(base, "askpass.sh");
-    if (!existsSync7(file2)) {
-      writeFileSync5(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+    const file2 = path27.join(base, "askpass.sh");
+    if (!existsSync8(file2)) {
+      writeFileSync6(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
   }
@@ -42783,32 +42802,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path26.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path27.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path26.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path26.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path27.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path27.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path26.join(staging, "latest");
-      const restoredHot = existsSync7(path26.join(restoreLatest, "sessions")) ? countSessionFiles(path26.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path27.join(staging, "latest");
+      const restoredHot = existsSync8(path27.join(restoreLatest, "sessions")) ? countSessionFiles(path27.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path26.join(this.deps.dshHome, name2);
-        if (existsSync7(target)) {
+        const target = path27.join(this.deps.dshHome, name2);
+        if (existsSync8(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path26.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path26.join(restoreLatest, "storages"), path26.join(this.deps.dshHome, "storages"));
-      if (existsSync7(path26.join(restoreLatest, "attachments"))) {
-        await mergeTree(path26.join(restoreLatest, "attachments"), path26.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path27.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path27.join(restoreLatest, "storages"), path27.join(this.deps.dshHome, "storages"));
+      if (existsSync8(path27.join(restoreLatest, "attachments"))) {
+        await mergeTree(path27.join(restoreLatest, "attachments"), path27.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path26.join(staging, "archive"), sessionsRoot);
-      const profiles = path26.join(restoreLatest, "profiles");
-      if (existsSync7(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path27.join(staging, "archive"), sessionsRoot);
+      const profiles = path27.join(restoreLatest, "profiles");
+      if (existsSync8(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -42844,36 +42863,36 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync3(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path26.join(repo, entry.name);
-    rmSync3(target, { recursive: true, force: true });
+    const target = path27.join(repo, entry.name);
+    rmSync4(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync7(source)) return;
+  if (!existsSync8(source)) return;
   for (const entry of readdirSync3(source, { withFileTypes: true })) {
-    const from = path26.join(source, entry.name);
-    const to = path26.join(target, entry.name);
+    const from = path27.join(source, entry.name);
+    const to = path27.join(target, entry.name);
     if (entry.isDirectory()) {
-      mkdirSync8(to, { recursive: true });
+      mkdirSync9(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync7(to)) continue;
-    mkdirSync8(target, { recursive: true });
+    if (existsSync8(to)) continue;
+    mkdirSync9(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync7(profilesRoot)) return;
+  if (!existsSync8(profilesRoot)) return;
   for (const entry of readdirSync3(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path26.join(source, entry.name);
-    const to = path26.join(profilesRoot, entry.name);
-    if (!existsSync7(to)) continue;
+    const from = path27.join(source, entry.name);
+    const to = path27.join(profilesRoot, entry.name);
+    if (!existsSync8(to)) continue;
     for (const file2 of readdirSync3(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path26.join(from, file2.name), path26.join(to, file2.name));
+      await copyFileFresh(path27.join(from, file2.name), path27.join(to, file2.name));
     }
   }
 }
@@ -42887,12 +42906,12 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path26.join(dir, entry.name);
+      const full = path27.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync7(root)) walk2(root);
+  if (existsSync8(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -42902,8 +42921,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync10 } from "node:fs";
-import path27 from "node:path";
+import { readFileSync as readFileSync12 } from "node:fs";
+import path28 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -42933,14 +42952,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path27.dirname(statusFile2) : dataDir();
-  return path27.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path28.dirname(statusFile2) : dataDir();
+  return path28.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync10(file2, "utf8");
+    raw = readFileSync12(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -42948,12 +42967,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path27.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path28.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path27.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path28.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -42992,7 +43011,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path27.dirname(file2));
+    ensureSecureDir(path28.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -43175,7 +43194,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path28.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path29.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -43198,7 +43217,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path28.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path29.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -43747,7 +43766,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path28.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path29.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -43929,7 +43948,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path28.dirname(path28.dirname(config2.statusFile)) : path28.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path29.dirname(path29.dirname(config2.statusFile)) : path29.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
