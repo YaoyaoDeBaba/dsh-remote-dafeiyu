@@ -47,8 +47,10 @@ scale, charHeightPx, fps, appliedParams, generatedAt
 | `bbox-top/bottom/left/right` | — | alpha 包围盒 |
 | `point` | `x,y` | 原样回显（在核对图上打点） |
 | `scan-vertical` | `x, fromY, toY` | 沿列找第一个 `alpha > 阈值` 的行 |
-| `scan-horizontal` | `x, fromY, toY, probe` | 沿列找第一个**满足颜色条件且连续 ≥minRun 行**的段 |
+| `scan-horizontal` | `x`（单列）**或** `columns`（多列）, `fromY, toY, probe, aggregate?` | 沿列找**满足颜色条件且连续 ≥minRun 行**的段 |
 | `boundary` | `x, fromY, toY, a, b` | A 色段结束、紧接 B 色段的那一行 |
+| **`bodyTop`** | `columns, probe, minRun, fromY, toY` | 语义原语：身高**上端**。多列扫 + 聚合（默认 `min`） |
+| **`bodyBottom`** | `band{centerFrac,widthFrac}, probe, minRunPx, fromY, toY` | 语义原语：身高**下端**。**行扫描**：从下往上找"中央带内连续 ≥minRunPx 像素满足条件"的最低行 |
 
 `probe` 形状：`{ channel, op, value, minRun? }`
 
@@ -57,6 +59,33 @@ scale, charHeightPx, fps, appliedParams, generatedAt
 - `minRun`：连续多少行才算数，**默认 1**
 
 > **`minRun` 是防呆的核心**：不给它，语义就是"第一个交界"，一根 4 行高的呆毛就能把你骗走。
-> 量"某个色块从哪开始"时，**永远显式给 minRun**（推荐按帧高的 15%~25% 推）。
+> 量"某个色块从哪开始"时，**永远显式给 minRun**。缺省时返回里会给一条 warning + **推荐值**（`round(帧高×0.2)` 向上取整到 5 的倍数，下限 8），照它给就行。
+
+### 多列扫描（2026-11-13 新增，量语义点默认走这条）
+
+单列一定会被局部干扰骗（呆毛偏 84px、被摸头时取到手背偏 80px、特效偏 30px）。所以：
+
+```jsonc
+{ "id":"hairTop", "type":"scan-horizontal",
+  "columns": [200,260,320,380],          // 源帧像素；与 x 互斥
+  // 或 "0.30..0.70 step 0.05" ← 这三个数是**帧宽的比例**，工具内部 ×帧宽
+  "fromY": 60, "toY": 600,
+  "probe": { "channel":"whiteness", "op":">", "value":210, "minRun":120 },
+  "aggregate": "median" }                 // min|max|median|mode，默认 median
+```
+
+返回：`py`（聚合值）、`confidence`（命中列数/总列数）、`perColumn:[{x,found,py,run,reason?}]`、`aggregate`、`space:"frame"`。
+
+- 命中率 **<50% → `found:false`**（"多数列扫不到"），`perColumn` 仍然全给，让你看出是哪几列挂了；
+- 聚合**只用命中的列**；
+- `aggregate` 怎么选：求"最高的开始点"用 `min`；有离群干扰时用 `median`（默认）；`mode` 用于离散且重复度高的边界。
 
 扫不到不会抛异常：返回 `{found:false, reason:"…"}`，其余 landmark 照常给出。
+所有测量值都带 `space:"frame"`（源帧坐标），换算到格子见 `coordinates.md`。
+
+## 遮挡/异常告警
+
+- `sprite_key_apply`：画面四边各取 2%（至少 4px）的带，**不透明比例 >5%** → `warnings` 里出「画面边缘有主体/道具压边（可能是手或特效）」；
+- `sprite_measure`：同一次调用里 `bodyTop` 与 `bodyBottom` 都量到时，若 `confidence<0.6` 或某端逐列 `py` 极差 > 帧高 10%（或上下端认反）→ `warnings` 里出「疑似被遮挡/形变」。
+- `sprite_batch` / `sprite_auto` 会把这些 warnings 透传到最终结果——**一条龙最容易"绿着交出烂图"**，看结果时先看 `warnings`。
+

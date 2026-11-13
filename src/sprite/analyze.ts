@@ -54,6 +54,91 @@ function bandWidth(width: number, height: number): number {
 }
 
 /**
+ * 「压边」检测用的边框带：短边 2%，至少 4px。
+ *
+ * 为什么跟 `bandWidth`（6%）分开：6% 那条是给 `bgResidual` 用的，那条带子要够宽才能
+ * 统计到"背景残渣"；而这里判的是"画面边缘有没有主体/道具压上来"，2% 才是"贴着画框"
+ * 的尺度——用 6% 会把离边还有一段的主体也算进去，虚警一片。
+ */
+export const BORDER_BAND_RATIO = 0.02
+export const BORDER_BAND_MIN = 4
+
+/** 压边比例超过它就要提示（5%：边缘 4 条带上零星的抗锯齿不算，成片压上来才算）。 */
+export const BORDER_WARN_RATIO = 0.05
+
+export interface BorderOpaque {
+  width: number
+  height: number
+  /** 实际用的带宽（像素）。 */
+  bandPx: number
+  /** 边框带的总像素数（四边覆盖，四角只算一次）。 */
+  pixels: number
+  /** 其中 alpha > 阈值的像素数。 */
+  opaque: number
+  /** 不透明占比 0~1。 */
+  ratio: number
+}
+
+/** 压边检测的带宽（像素）。 */
+export function borderBandWidth(width: number, height: number): number {
+  const a = Number(width)
+  const b = Number(height)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+    throw new Error(`borderBandWidth 需要正的宽高，收到 ${String(width)}×${String(height)}`)
+  }
+  return Math.max(BORDER_BAND_MIN, Math.round(Math.min(a, b) * BORDER_BAND_RATIO))
+}
+
+/**
+ * 画面四边各取 `bandPx` 宽的带，算其中不透明像素占多大比例。
+ *
+ * 用途：抠图之后主体还压着画框边缘，多半是**手**（摸头/入画）或**特效**（云、泡泡、
+ * 感叹号）被一起抠进了主体。这种帧的 bbox 会缩到画面边，`contentHeight` 与缩放全跟着错，
+ * 而 `bgResidual` 又只会升到零点几——不报警的话调用方以为一切正常。
+ */
+export function borderOpaqueRatio(png: Buffer, options?: { alphaCut?: number; bandPx?: number }): BorderOpaque {
+  const alphaCut = options?.alphaCut ?? DEFAULT_ALPHA_CUT
+  if (!Number.isInteger(alphaCut) || alphaCut < 0 || alphaCut > 255) {
+    throw new Error(`alphaCut 必须是 0~255 的整数，实际收到 ${String(alphaCut)}`)
+  }
+  const { width, height, rgba } = decodePng(png)
+  const band = options?.bandPx ?? borderBandWidth(width, height)
+  if (!Number.isInteger(band) || band <= 0) {
+    throw new Error(`bandPx 必须是正整数，实际收到 ${String(options?.bandPx)}`)
+  }
+  let pixels = 0
+  let opaque = 0
+  for (let y = 0; y < height; y++) {
+    const inBandRow = y < band || y >= height - band
+    for (let x = 0; x < width; x++) {
+      if (!(inBandRow || x < band || x >= width - band)) continue
+      pixels++
+      if (rgba[(y * width + x) * 4 + 3]! > alphaCut) opaque++
+    }
+  }
+  return { width, height, bandPx: band, pixels, opaque, ratio: pixels === 0 ? 0 : opaque / pixels }
+}
+
+/**
+ * 压边告警文案；没超阈值返回 null（调用方据此决定要不要往 warnings 里塞）。
+ * @param frame 采样到的那一帧（写进文案，方便去核对图上看）
+ */
+export function borderOpaqueWarning(
+  result: { ratio: number; bandPx: number },
+  frame?: number,
+  limit = BORDER_WARN_RATIO,
+): string | null {
+  if (!(result.ratio > limit)) return null
+  const percent = Math.round(result.ratio * 1000) / 10
+  const where = typeof frame === 'number' ? `第 ${frame} 帧，` : ''
+  return (
+    '画面边缘有主体/道具压边（可能是手或特效）：' + where +
+    '边框带不透明比例 ' + percent + '% > ' + Math.round(limit * 100) + '%（带宽 ' + result.bandPx +
+    'px）。这种帧的 bbox 会被撑到画框，contentHeight/缩放会跟着错，先看核对图'
+  )
+}
+
+/**
  * 分析一张 PNG 的抠图质量。
  * @param png PNG 原始字节
  * @param options.alphaCut 判定「不透明」的 alpha 阈值，0~255 的整数，默认 32

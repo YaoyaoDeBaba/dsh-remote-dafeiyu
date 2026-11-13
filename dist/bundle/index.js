@@ -38572,6 +38572,45 @@ var BAND_RATIO = 0.06;
 function bandWidth(width, height) {
   return Math.max(MIN_BAND, Math.round(Math.min(width, height) * BAND_RATIO));
 }
+var BORDER_BAND_RATIO = 0.02;
+var BORDER_BAND_MIN = 4;
+var BORDER_WARN_RATIO = 0.05;
+function borderBandWidth(width, height) {
+  const a = Number(width);
+  const b = Number(height);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+    throw new Error(`borderBandWidth \u9700\u8981\u6B63\u7684\u5BBD\u9AD8\uFF0C\u6536\u5230 ${String(width)}\xD7${String(height)}`);
+  }
+  return Math.max(BORDER_BAND_MIN, Math.round(Math.min(a, b) * BORDER_BAND_RATIO));
+}
+function borderOpaqueRatio(png, options) {
+  const alphaCut = options?.alphaCut ?? DEFAULT_ALPHA_CUT;
+  if (!Number.isInteger(alphaCut) || alphaCut < 0 || alphaCut > 255) {
+    throw new Error(`alphaCut \u5FC5\u987B\u662F 0~255 \u7684\u6574\u6570\uFF0C\u5B9E\u9645\u6536\u5230 ${String(alphaCut)}`);
+  }
+  const { width, height, rgba } = decodePng(png);
+  const band = options?.bandPx ?? borderBandWidth(width, height);
+  if (!Number.isInteger(band) || band <= 0) {
+    throw new Error(`bandPx \u5FC5\u987B\u662F\u6B63\u6574\u6570\uFF0C\u5B9E\u9645\u6536\u5230 ${String(options?.bandPx)}`);
+  }
+  let pixels = 0;
+  let opaque = 0;
+  for (let y = 0; y < height; y++) {
+    const inBandRow = y < band || y >= height - band;
+    for (let x = 0; x < width; x++) {
+      if (!(inBandRow || x < band || x >= width - band)) continue;
+      pixels++;
+      if (rgba[(y * width + x) * 4 + 3] > alphaCut) opaque++;
+    }
+  }
+  return { width, height, bandPx: band, pixels, opaque, ratio: pixels === 0 ? 0 : opaque / pixels };
+}
+function borderOpaqueWarning(result2, frame, limit = BORDER_WARN_RATIO) {
+  if (!(result2.ratio > limit)) return null;
+  const percent = Math.round(result2.ratio * 1e3) / 10;
+  const where = typeof frame === "number" ? `\u7B2C ${frame} \u5E27\uFF0C` : "";
+  return "\u753B\u9762\u8FB9\u7F18\u6709\u4E3B\u4F53/\u9053\u5177\u538B\u8FB9\uFF08\u53EF\u80FD\u662F\u624B\u6216\u7279\u6548\uFF09\uFF1A" + where + "\u8FB9\u6846\u5E26\u4E0D\u900F\u660E\u6BD4\u4F8B " + percent + "% > " + Math.round(limit * 100) + "%\uFF08\u5E26\u5BBD " + result2.bandPx + "px\uFF09\u3002\u8FD9\u79CD\u5E27\u7684 bbox \u4F1A\u88AB\u6491\u5230\u753B\u6846\uFF0CcontentHeight/\u7F29\u653E\u4F1A\u8DDF\u7740\u9519\uFF0C\u5148\u770B\u6838\u5BF9\u56FE";
+}
 function analyzeSpritePng(png, options) {
   const alphaCut = options?.alphaCut ?? DEFAULT_ALPHA_CUT;
   if (!Number.isInteger(alphaCut) || alphaCut < 0 || alphaCut > 255) {
@@ -39281,6 +39320,7 @@ function createSpriteService(options) {
     picks.add(total - 1);
     const bucket = [];
     let firstStats;
+    let border;
     for (const frame of [...picks].slice(0, sampleLimit + 1)) {
       try {
         const one = await bridge("keyedDataURL", frame);
@@ -39289,11 +39329,20 @@ function createSpriteService(options) {
         const stats = analyzeSpritePng(buffer);
         if (!firstStats) firstStats = stats;
         bucket.push({ frame, stats });
+        try {
+          const edge = borderOpaqueRatio(buffer);
+          if (!border || edge.ratio > border.ratio) border = { ratio: edge.ratio, frame, bandPx: edge.bandPx };
+        } catch {
+        }
       } catch {
       }
     }
     const worst = pickWorst(bucket);
-    return { ...worst ? { worst } : {}, ...firstStats ? { stats: firstStats } : {} };
+    return {
+      ...worst ? { worst } : {},
+      ...firstStats ? { stats: firstStats } : {},
+      ...border ? { border } : {}
+    };
   };
   const keytedParamsOf = async () => {
     try {
@@ -39408,6 +39457,12 @@ function createSpriteService(options) {
         throw new Error("keyApply \u8DD1\u5B8C\u4F46\u62A0\u56FE\u7F13\u5B58\u662F\u7A7A\u7684\u2014\u2014\u9875\u9762\u90A3\u8FB9\u51FA\u4E86\u95EE\u9898\uFF0C\u5148\u522B export");
       }
       const sampled = await worstOf(frames, args.probeFrames ?? 8);
+      const warnings = [];
+      if (applied.autoEnabled === true) warnings.push("\u62A0\u56FE\u539F\u672C\u6CA1\u542F\u7528\uFF0C\u5DF2\u81EA\u52A8\u542F\u7528\uFF08\u5426\u5219\u62FC\u56FE\u4F1A\u7528\u539F\u5E27\uFF09");
+      if (sampled.border) {
+        const edgeWarning = borderOpaqueWarning(sampled.border, sampled.border.frame);
+        if (edgeWarning) warnings.push(edgeWarning);
+      }
       return {
         ok: true,
         frames,
@@ -39417,7 +39472,7 @@ function createSpriteService(options) {
         ...sampled.worst ? { worst: sampled.worst } : {},
         ...state.params ? { appliedParams: state.params } : {},
         ignored: [],
-        warnings: applied.autoEnabled === true ? ["\u62A0\u56FE\u539F\u672C\u6CA1\u542F\u7528\uFF0C\u5DF2\u81EA\u52A8\u542F\u7528\uFF08\u5426\u5219\u62FC\u56FE\u4F1A\u7528\u539F\u5E27\uFF09"] : []
+        warnings
       };
     },
     async measure(args) {
@@ -39748,6 +39803,7 @@ function createSpriteService(options) {
             ...measured.overlayPath ? { overlayPath: measured.overlayPath } : {},
             warnings: [
               ...exported.warnings,
+              ...applied.warnings,
               ...cleaned.trimBox ? [] : ["\u6CA1\u6709\u7B97\u51FA\u88C1\u526A\u6846"],
               ...applied.plateApplied ? [] : [],
               ...prepared.transport === "base64" ? ["\u89C6\u9891\u8D70\u7684\u662F base64 \u901A\u9053\uFF08\u8F83\u6162\uFF09"] : []
@@ -39790,7 +39846,11 @@ function createSpriteService(options) {
         overwrite: true
       });
       stages.push(`export: ${exported.pngPath}\uFF08${exported.bytes} B\uFF09`);
-      return { ...exported, stages };
+      return {
+        ...exported,
+        warnings: [...exported.warnings, ...applied.warnings],
+        stages
+      };
     },
     async stop() {
       if (stopped) return;
@@ -39868,6 +39928,7 @@ var KEY_PARAM_KEYS = [
 ];
 var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation", "whiteness"];
 var SCAN_OPS = [">", ">=", "<", "<="];
+var SCAN_AGGREGATES = ["min", "max", "median", "mode"];
 
 // src/sprite/tools.ts
 var json9 = (value) => JSON.stringify(value);
@@ -39927,7 +39988,9 @@ var LANDMARK_TYPES = [
   "point",
   "scan-vertical",
   "scan-horizontal",
-  "boundary"
+  "boundary",
+  "bodyTop",
+  "bodyBottom"
 ];
 function probeSchema(description) {
   return {
@@ -40025,7 +40088,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_key_apply",
-      description: "\u628A\u53C2\u6570\u5E94\u7528\u5230**\u5168\u90E8\u5E27**\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u56DE {frames,keyedCount,stats,worst,appliedParams}\u3002\u6162\uFF0C30~90 \u79D2\u3002worst \u662F\u62BD\u6837\u5E27\u91CC\u6700\u5DEE\u7684\u4E00\u5E27\u2014\u2014\u7B2C 0 \u5E27\u5E72\u51C0\u4E0D\u4EE3\u8868\u6574\u6BB5\u5E72\u51C0\u3002",
+      description: "\u628A\u53C2\u6570\u5E94\u7528\u5230**\u5168\u90E8\u5E27**\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u56DE {frames,keyedCount,stats,worst,appliedParams,warnings}\u3002\u6162\uFF0C30~90 \u79D2\u3002worst \u662F\u62BD\u6837\u5E27\u91CC\u6700\u5DEE\u7684\u4E00\u5E27\u2014\u2014\u7B2C 0 \u5E27\u5E72\u51C0\u4E0D\u4EE3\u8868\u6574\u6BB5\u5E72\u51C0\u3002warnings \u91CC\u51FA\u73B0\u300C\u753B\u9762\u8FB9\u7F18\u6709\u4E3B\u4F53/\u9053\u5177\u538B\u8FB9\u300D= \u8FB9\u6846\u5E26\uFF08\u77ED\u8FB9 2%\uFF09\u4E0D\u900F\u660E > 5%\uFF1A\u591A\u534A\u662F\u624B/\u7279\u6548\u88AB\u62A0\u6210\u4E86\u4E3B\u4F53\uFF0C\u8FD9\u79CD\u5E27\u7684 bbox \u4F1A\u6491\u5230\u753B\u6846\uFF0C\u5148\u770B\u6838\u5BF9\u56FE\u518D\u5F80\u4E0B\u8D70\u3002",
       parameters: keySchema(),
       output: OUT2,
       timeoutMs: 6e5,
@@ -40040,7 +40103,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_measure",
-      description: '\u91CF\u8FD9\u5F20\uFF08\u6216\u5168\u90E8\uFF09\u5E27\u7684\u5185\u5BB9\u8FB9\u754C\uFF1AalphaBBox / contentHeight / perFrameSpread / \u53EF\u9009 landmarks\uFF0C\u5E76\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE\uFF08overlayPath\uFF09\u3002frame:"all" \u80FD\u7ED9\u6BCF\u5E27 topY/soleY \u7684\u6781\u503C\u5206\u5E03\u2014\u2014\u7528\u5B83\u533A\u5206"\u771F\u5185\u5BB9"\u548C"\u67D0\u5E27\u7684\u6B8B\u7559"\u3002\u5750\u6807\u4E00\u5F8B\u300C\u5E27\u539F\u59CB\u50CF\u7D20\u3001\u5DE6\u4E0A\u539F\u70B9\u3001\u53F3\u4E0B\u5F00\u533A\u95F4\u300D\u3002',
+      description: '\u91CF\u8FD9\u5F20\uFF08\u6216\u5168\u90E8\uFF09\u5E27\u7684\u5185\u5BB9\u8FB9\u754C\uFF1AalphaBBox / contentHeight / perFrameSpread / \u53EF\u9009 landmarks\uFF0C\u5E76\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE\uFF08overlayPath\uFF09\u3002frame:"all" \u80FD\u7ED9\u6BCF\u5E27 topY/soleY \u7684\u6781\u503C\u5206\u5E03\u2014\u2014\u7528\u5B83\u533A\u5206"\u771F\u5185\u5BB9"\u548C"\u67D0\u5E27\u7684\u6B8B\u7559"\u3002\u5750\u6807\u4E00\u5F8B\u300C\u5E27\u539F\u59CB\u50CF\u7D20\u3001\u5DE6\u4E0A\u539F\u70B9\u3001\u53F3\u4E0B\u5F00\u533A\u95F4\u300D\u3002\u540C\u65F6\u91CF\u4E86 bodyTop + bodyBottom \u65F6\u4F1A\u5728 warnings \u91CC\u62A5\u300C\u7591\u4F3C\u88AB\u906E\u6321/\u5F62\u53D8\u300D\uFF08\u5404\u5217 py \u6781\u5DEE > \u5E27\u9AD8 10% \u6216\u7F6E\u4FE1\u5EA6 < 0.6\uFF09\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -40051,18 +40114,40 @@ function buildTools(service, options) {
           source: { type: "string", enum: ["keyed", "raw"], description: "\u91CF\u62A0\u56FE\u7ED3\u679C\uFF08\u9ED8\u8BA4 keyed\uFF09\u8FD8\u662F\u539F\u59CB\u5E27\uFF08raw\uFF09" },
           landmarks: {
             type: "array",
-            description: "\u8981\u91CF\u7684\u57FA\u51C6\u70B9\uFF1B\u4E0D\u4F20\u5C31\u53EA\u7ED9\u51E0\u4F55\u7EDF\u8BA1\u3002\u91CF\u989C\u8272\u4EA4\u754C\uFF08\u4E0D\u9760 alpha\uFF09\u7528\u540E\u4E24\u79CD\uFF1Ascan-horizontal = \u6CBF\u5217 x \u4ECE fromY \u5F80 toY \u627E\u7B2C\u4E00\u4E2A\u8FDE\u7EED\u6EE1\u8DB3 probe \u7684 run\uFF1Bboundary = \u300Ca \u6BB5\u7ED3\u675F\u3001\u7D27\u63A5 b \u6BB5\u300D\u7684\u4EA4\u754C\u884C\uFF08\u8FD4\u56DE\u7684 py \u662F b \u6BB5\u7B2C\u4E00\u884C\uFF09\u3002\u6761\u4EF6\u5168\u7531\u4F60\u7ED9\uFF08channel/op/value\uFF09\uFF0C\u626B\u4E0D\u5230\u6216\u8D8A\u754C\u56DE found:false + reason\uFF0C\u4E0D\u4F1A\u8BA9\u6574\u6B21 measure \u5931\u8D25\u3002",
+            description: "\u8981\u91CF\u7684\u57FA\u51C6\u70B9\uFF1B\u4E0D\u4F20\u5C31\u53EA\u7ED9\u51E0\u4F55\u7EDF\u8BA1\u3002\u91CF\u989C\u8272\u4EA4\u754C\uFF08\u4E0D\u9760 alpha\uFF09\uFF1Ascan-horizontal = \u6CBF\u5217\u626B\u7B2C\u4E00\u4E2A\u8FDE\u7EED\u6EE1\u8DB3 probe \u7684 run\uFF08\u7ED9 columns \u5C31\u591A\u5217\u6295\u7968\uFF0C\u5355\u5217\u4F1A\u88AB\u5446\u6BDB/\u624B/\u7279\u6548\u9A97\u51E0\u5341 px\uFF09\uFF1Bboundary = \u300Ca \u6BB5\u7ED3\u675F\u3001\u7D27\u63A5 b \u6BB5\u300D\u7684\u4EA4\u754C\u884C\uFF08\u8FD4\u56DE\u7684 py \u662F b \u6BB5\u7B2C\u4E00\u884C\uFF09\uFF1BbodyTop = \u8EAB\u9AD8\u4E0A\u7AEF\uFF08\u591A\u5217\u626B\u63CF + \u53D6 min\uFF09\uFF1BbodyBottom = \u8EAB\u9AD8\u4E0B\u7AEF\uFF08\u4E2D\u592E\u5E26\u884C\u626B\u63CF\uFF0C\u4ECE\u4E0B\u5F80\u4E0A\u627E\uFF09\u3002\u6761\u4EF6\u5168\u7531\u4F60\u7ED9\uFF08channel/op/value\uFF09\uFF0C\u626B\u4E0D\u5230\u6216\u8D8A\u754C\u56DE found:false + reason\uFF0C\u4E0D\u4F1A\u8BA9\u6574\u6B21 measure \u5931\u8D25\u3002\u540C\u65F6\u91CF\u51FA bodyTop \u4E0E bodyBottom \u65F6\u4F1A\u505A\u4EA4\u53C9\u6821\u9A8C\uFF0C\u53EF\u7591\u5C31\u56DE warnings\uFF08\u7591\u4F3C\u88AB\u906E\u6321/\u5F62\u53D8\uFF09\u3002",
             items: {
               type: "object",
               properties: {
                 id: { type: "string" },
                 type: { type: "string", enum: [...LANDMARK_TYPES] },
-                x: { type: "number" },
+                x: { type: "number", description: "\u5355\u5217\u626B\u63CF\u7684\u5217\u53F7\uFF08\u4E0E columns \u4E92\u65A5\uFF1B\u53EA\u7ED9 x \u5C31\u662F\u8001\u7684\u5355\u5217\u884C\u4E3A\uFF09" },
                 y: { type: "number" },
+                columns: {
+                  description: '\u591A\u5217\u626B\u63CF\u8981\u626B\u54EA\u51E0\u5217\uFF08\u4E0E x \u4E92\u65A5\uFF0C\u4E24\u4E2A\u90FD\u7ED9\u4F1A\u62A5\u9519\uFF09\uFF1A\u50CF\u7D20\u6570\u7EC4 [200,260,320,380]\uFF1B\u6216\u5B57\u7B26\u4E32 "0.30..0.70 step 0.05"\u2014\u2014\u5B57\u7B26\u4E32\u91CC a/b/step \u4E09\u4E2A\u6570\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF08\u5185\u90E8 \xD7 \u5E27\u5BBD\u53D6\u6574\uFF09\uFF0C\u4E0D\u662F\u50CF\u7D20\uFF1B\u6700\u591A 200 \u5217\u3002bodyTop \u7528\u5B83\uFF0CbodyBottom \u4E0D\u7528\u3002',
+                  oneOf: [{ type: "string" }, { type: "array", items: { type: "number" } }]
+                },
+                aggregate: {
+                  type: "string",
+                  enum: [...SCAN_AGGREGATES],
+                  description: "\u591A\u5217\u6295\u7968\u65B9\u5F0F\uFF08\u9ED8\u8BA4 median\uFF1BbodyTop \u9ED8\u8BA4 min\uFF09\u3002\u53EA\u7528\u547D\u4E2D\u7684\u5217\uFF1Bmode \u5E73\u7968\u53D6\u6700\u5C0F\u7684 py\u3002\u547D\u4E2D\u5217\u6570 < 50% \u76F4\u63A5 found:false + reason\uFF0CperColumn \u91CC\u80FD\u770B\u5230\u54EA\u51E0\u5217\u6302\u4E86\u3002"
+                },
+                minRun: { type: "number", description: "bodyTop\uFF1A\u8FDE\u7EED\u547D\u4E2D\u591A\u5C11\u884C\u624D\u7B97\u6570\uFF08\u8986\u76D6 probe.minRun\uFF09" },
+                band: {
+                  type: "object",
+                  description: "bodyBottom\uFF1A\u884C\u626B\u63CF\u7684\u4E2D\u592E\u7AD6\u5E26\uFF08\u90FD\u662F\u5E27\u5BBD\u6BD4\u4F8B\uFF0CcenterFrac \u9ED8\u8BA4 0.5\u3001widthFrac \u9ED8\u8BA4 0.4\uFF09",
+                  properties: {
+                    centerFrac: { type: "number" },
+                    widthFrac: { type: "number" }
+                  }
+                },
+                minRunPx: {
+                  type: "number",
+                  description: "bodyBottom\uFF1A\u8BE5\u884C\u4E0A\u8FDE\u7EED\u6EE1\u8DB3\u6761\u4EF6\u7684**\u50CF\u7D20\u6570**\u4E0B\u9650\uFF08\u9ED8\u8BA4 1\uFF0C\u5B9E\u9645\u7528\u5FC5\u987B\u7ED9\uFF0C\u5426\u5219\u6563\u843D\u9634\u5F71\u4E5F\u80FD\u6EE1\u8DB3\uFF09"
+                },
                 fromY: { type: "number", description: "\u626B\u63CF\u8D77\u70B9\u884C\uFF08\u542B\uFF09\uFF0C\u9ED8\u8BA4 0" },
                 toY: { type: "number", description: "\u626B\u63CF\u7EC8\u70B9\u884C\uFF08\u542B\uFF09\uFF0C\u9ED8\u8BA4 \u5E27\u9AD8 - 1" },
                 alphaThreshold: { type: "number" },
-                probe: probeSchema("scan-horizontal \u7684\u6761\u4EF6\uFF08\u901A\u9053 + \u6BD4\u8F83 + \u9608\u503C + \u53EF\u9009 minRun \u8FDE\u7EED\u957F\u5EA6\uFF09"),
+                probe: probeSchema("\u626B\u63CF\u6761\u4EF6\uFF08\u901A\u9053 + \u6BD4\u8F83 + \u9608\u503C + \u53EF\u9009 minRun \u8FDE\u7EED\u957F\u5EA6\uFF09"),
                 a: probeSchema("boundary \u4E0A\u65B9\u90A3\u4E00\u6BB5\uFF08A\uFF09\u7684\u6761\u4EF6"),
                 b: probeSchema("boundary \u4E0B\u65B9\u90A3\u4E00\u6BB5\uFF08B\uFF09\u7684\u6761\u4EF6")
               },

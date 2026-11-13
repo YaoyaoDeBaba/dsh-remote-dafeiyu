@@ -405,7 +405,11 @@ test('measure 的 landmarks schema：老六种原样在前，后加 scan-horizon
     'point',
     'scan-vertical',
   ])
-  assert.deepEqual(typeEnum.slice(6), ['scan-horizontal', 'boundary'], '新原语必须能被 schema 表达')
+  assert.deepEqual(
+    typeEnum.slice(6),
+    ['scan-horizontal', 'boundary', 'bodyTop', 'bodyBottom'],
+    '新原语必须能被 schema 表达',
+  )
   assert.deepEqual(items.required, ['id', 'type'])
 
   const probe = items.properties.probe as { properties: { channel: { enum: string[] }; op: { enum: string[] } } }

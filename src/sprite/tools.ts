@@ -10,7 +10,7 @@
  */
 import type { SpriteService } from './service.js'
 import { SPRITE_GUIDE } from './guide.js'
-import { KEY_PARAM_KEYS, SCAN_CHANNELS, SCAN_OPS, type KeyParams, type Rect } from './types.js'
+import { KEY_PARAM_KEYS, SCAN_AGGREGATES, SCAN_CHANNELS, SCAN_OPS, type KeyParams, type Rect } from './types.js'
 
 const json = (value: unknown): string => JSON.stringify(value)
 const fail = (error: unknown): never => {
@@ -72,8 +72,10 @@ const OUT = {
 
 /**
  * measure 的 landmarks 类型清单。
- * 前六种是老原语（行为不许变）；后两种是 P2-5 新增的颜色扫描原语，
- * 条件由调用方给（`probe` / `a` + `b`），实现见 `src/sprite/scan.ts`。
+ * 前六种是老原语（行为不许变）；`scan-horizontal` / `boundary` 是 P2-5 的颜色扫描原语；
+ * 最后两种（`bodyTop` / `bodyBottom`）是语义原语——只描述「身高上端/下端」这个**概念**，
+ * 具体用哪个像素路标由调用方给条件（`probe`），工具不认识任何素材语义。
+ * 实现见 `src/sprite/scan.ts`（与页面 `spriteScanPrimitives()` 同源，parity 测试对拍）。
  */
 const LANDMARK_TYPES = [
   'bbox-top',
@@ -84,6 +86,8 @@ const LANDMARK_TYPES = [
   'scan-vertical',
   'scan-horizontal',
   'boundary',
+  'bodyTop',
+  'bodyBottom',
 ] as const
 
 /** 扫描条件的 JSON Schema：`scan-horizontal` 的 probe、`boundary` 的 a/b 共用。 */
@@ -196,8 +200,10 @@ export function buildTools(
     {
       name: 'sprite_key_apply',
       description:
-        '把参数应用到**全部帧**（含自动背景板），完成后回 {frames,keyedCount,stats,worst,appliedParams}。慢，30~90 秒。' +
-        'worst 是抽样帧里最差的一帧——第 0 帧干净不代表整段干净。',
+        '把参数应用到**全部帧**（含自动背景板），完成后回 {frames,keyedCount,stats,worst,appliedParams,warnings}。慢，30~90 秒。' +
+        'worst 是抽样帧里最差的一帧——第 0 帧干净不代表整段干净。' +
+        'warnings 里出现「画面边缘有主体/道具压边」= 边框带（短边 2%）不透明 > 5%：' +
+        '多半是手/特效被抠成了主体，这种帧的 bbox 会撑到画框，先看核对图再往下走。',
       parameters: keySchema(),
       output: OUT,
       timeoutMs: 600_000,
@@ -215,7 +221,8 @@ export function buildTools(
       description:
         '量这张（或全部）帧的内容边界：alphaBBox / contentHeight / perFrameSpread / 可选 landmarks，并出一张核对图（overlayPath）。' +
         'frame:"all" 能给每帧 topY/soleY 的极值分布——用它区分"真内容"和"某帧的残留"。' +
-        '坐标一律「帧原始像素、左上原点、右下开区间」。',
+        '坐标一律「帧原始像素、左上原点、右下开区间」。' +
+        '同时量了 bodyTop + bodyBottom 时会在 warnings 里报「疑似被遮挡/形变」（各列 py 极差 > 帧高 10% 或置信度 < 0.6）。',
       parameters: {
         type: 'object',
         properties: {
@@ -228,20 +235,50 @@ export function buildTools(
             type: 'array',
             description:
               '要量的基准点；不传就只给几何统计。' +
-              '量颜色交界（不靠 alpha）用后两种：scan-horizontal = 沿列 x 从 fromY 往 toY 找第一个连续满足 probe 的 run；' +
-              'boundary = 「a 段结束、紧接 b 段」的交界行（返回的 py 是 b 段第一行）。' +
-              '条件全由你给（channel/op/value），扫不到或越界回 found:false + reason，不会让整次 measure 失败。',
+              '量颜色交界（不靠 alpha）：scan-horizontal = 沿列扫第一个连续满足 probe 的 run' +
+              '（给 columns 就多列投票，单列会被呆毛/手/特效骗几十 px）；' +
+              'boundary = 「a 段结束、紧接 b 段」的交界行（返回的 py 是 b 段第一行）；' +
+              'bodyTop = 身高上端（多列扫描 + 取 min）；bodyBottom = 身高下端（中央带行扫描，从下往上找）。' +
+              '条件全由你给（channel/op/value），扫不到或越界回 found:false + reason，不会让整次 measure 失败。' +
+              '同时量出 bodyTop 与 bodyBottom 时会做交叉校验，可疑就回 warnings（疑似被遮挡/形变）。',
             items: {
               type: 'object',
               properties: {
                 id: { type: 'string' },
                 type: { type: 'string', enum: [...LANDMARK_TYPES] },
-                x: { type: 'number' },
+                x: { type: 'number', description: '单列扫描的列号（与 columns 互斥；只给 x 就是老的单列行为）' },
                 y: { type: 'number' },
+                columns: {
+                  description:
+                    '多列扫描要扫哪几列（与 x 互斥，两个都给会报错）：像素数组 [200,260,320,380]；' +
+                    '或字符串 "0.30..0.70 step 0.05"——字符串里 a/b/step 三个数是**帧宽的比例**（内部 × 帧宽取整），' +
+                    '不是像素；最多 200 列。bodyTop 用它，bodyBottom 不用。',
+                  oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'number' } }],
+                },
+                aggregate: {
+                  type: 'string',
+                  enum: [...SCAN_AGGREGATES],
+                  description:
+                    '多列投票方式（默认 median；bodyTop 默认 min）。只用命中的列；' +
+                    'mode 平票取最小的 py。命中列数 < 50% 直接 found:false + reason，perColumn 里能看到哪几列挂了。',
+                },
+                minRun: { type: 'number', description: 'bodyTop：连续命中多少行才算数（覆盖 probe.minRun）' },
+                band: {
+                  type: 'object',
+                  description: 'bodyBottom：行扫描的中央竖带（都是帧宽比例，centerFrac 默认 0.5、widthFrac 默认 0.4）',
+                  properties: {
+                    centerFrac: { type: 'number' },
+                    widthFrac: { type: 'number' },
+                  },
+                },
+                minRunPx: {
+                  type: 'number',
+                  description: 'bodyBottom：该行上连续满足条件的**像素数**下限（默认 1，实际用必须给，否则散落阴影也能满足）',
+                },
                 fromY: { type: 'number', description: '扫描起点行（含），默认 0' },
                 toY: { type: 'number', description: '扫描终点行（含），默认 帧高 - 1' },
                 alphaThreshold: { type: 'number' },
-                probe: probeSchema('scan-horizontal 的条件（通道 + 比较 + 阈值 + 可选 minRun 连续长度）'),
+                probe: probeSchema('扫描条件（通道 + 比较 + 阈值 + 可选 minRun 连续长度）'),
                 a: probeSchema('boundary 上方那一段（A）的条件'),
                 b: probeSchema('boundary 下方那一段（B）的条件'),
               },

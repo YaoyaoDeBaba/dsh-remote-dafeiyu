@@ -68,6 +68,26 @@ export type MeasureScanChannel = (typeof SCAN_CHANNELS)[number]
 export const SCAN_OPS = ['>', '>=', '<', '<='] as const
 export type MeasureScanOp = (typeof SCAN_OPS)[number]
 
+/**
+ * 多列扫描的聚合方式（`scan-horizontal` / `bodyTop`）：只用**命中**的列投票。
+ * `median` 默认（抗单列被呆毛/手/特效骗）；`min` 上端语义常用（头顶取最高那列）；
+ * `mode` 平票取最小的 py（确定性，不随列序变）。
+ */
+export const SCAN_AGGREGATES = ['min', 'max', 'median', 'mode'] as const
+export type ScanAggregate = (typeof SCAN_AGGREGATES)[number]
+
+/** 多列扫描里单列的命中结果（`perColumn` 的元素）。 */
+export interface MeasureColumnHit {
+  /** 源帧列号（像素）。 */
+  x: number
+  found: boolean
+  py: number | null
+  /** 该列命中的连续行数。 */
+  run: number | null
+  confidence?: number
+  reason?: string
+}
+
 /** 一条扫描条件：通道 + 比较 + 阈值（+ 可选"连续多少行才算数"）。 */
 export interface MeasureScanProbe {
   channel: MeasureScanChannel
@@ -88,6 +108,8 @@ export interface MeasureLandmark {
     | 'scan-vertical'
     | 'scan-horizontal'
     | 'boundary'
+    | 'bodyTop'
+    | 'bodyBottom'
   x?: number
   y?: number
   fromY?: number
@@ -99,6 +121,20 @@ export interface MeasureLandmark {
   a?: MeasureScanProbe
   /** `boundary`：交界**下方**那一段（B）的条件。 */
   b?: MeasureScanProbe
+  /**
+   * 多列扫描要扫哪几列，**与 `x` 互斥**（两个都给会报错，不会猜你要哪个）。
+   * 两种写法：像素数组 `[200,260,320,380]`；或字符串 `"0.30..0.70 step 0.05"`
+   * ——字符串里的三个数是**帧宽的比例**（实现内部 × 帧宽再取整），不是像素。
+   */
+  columns?: number[] | string
+  /** 多列聚合方式，默认 `median`（`bodyTop` 默认 `min`）。 */
+  aggregate?: ScanAggregate
+  /** `bodyTop`：连续命中多少行才算数（等价于 `probe.minRun`，这里给就覆盖它）。 */
+  minRun?: number
+  /** `bodyBottom`：行扫描的中央竖带（`centerFrac` 默认 0.5、`widthFrac` 默认 0.4，都是帧宽比例）。 */
+  band?: { centerFrac?: number; widthFrac?: number }
+  /** `bodyBottom`：该行上连续满足条件的**像素数**下限（默认 1，实际用必须给）。 */
+  minRunPx?: number
 }
 
 /**
@@ -140,6 +176,28 @@ export interface MeasureLandmarkResult {
   clipped?: boolean
   /** 只有 `point` 会给：坐标是否落在帧内。 */
   inside?: boolean
+  /**
+   * 坐标空间。多列原语（`scan-horizontal` 多列 / `bodyTop` / `bodyBottom`）一定会带
+   * `space:"frame"`——这些 px 是**源帧**坐标，不是裁剪框/格子坐标。
+   */
+  space?: 'frame'
+  /** 多列扫描的聚合方式回显。 */
+  aggregate?: string
+  /** 这次实际扫了哪几列（源帧 px，升序去重）。 */
+  columns?: number[]
+  /** 每列各自的结果：命中列数 < 50% 时整条 found:false，但这里全带上，能看出是哪几列挂了。 */
+  perColumn?: MeasureColumnHit[]
+  /**
+   * 「别一路绿灯」的提示（P2-5 后续）：minRun 没给、画面边缘被压边、
+   * 上下端疑似被遮挡/形变等。空/缺省表示没发现异常。
+   */
+  warnings?: string[]
+  /** `bodyBottom`：该行上最长的一段连续命中像素数。 */
+  run?: number
+  /** `bodyBottom`：实际生效的"行内连续像素数"下限（回显，方便对账）。 */
+  minRunPx?: number
+  /** `bodyBottom`：行扫描实际生效的竖带列区间 `[x0,x1]`（含端点，源帧 px）。 */
+  bandX?: [number, number]
 }
 
 export interface MeasureResult {
@@ -157,6 +215,12 @@ export interface MeasureResult {
     bboxUnion: { x0: number; y0: number; x1: number; y1: number }
   }
   landmarks?: MeasureLandmarkResult[]
+  /**
+   * 整次 measure 级别的告警（`measure` 在页面侧算好、service 原样透传）：
+   * 同时量了 `bodyTop` + `bodyBottom` 时，若置信度低或各列 py 极差过大，
+   * 会写「疑似被遮挡/形变：…」。
+   */
+  warnings?: string[]
   /** 这次量的是抠图结果还是原帧（.58）：绿幕素材的原帧整幅不透明，量原帧只会得到「整幅」。 */
   source?: 'keyed' | 'raw'
   /** bbox 面积 / 帧面积 —— 一眼看出「量的是整幅还是主体」。 */

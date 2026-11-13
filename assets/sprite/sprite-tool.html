@@ -5046,6 +5046,8 @@ $('statusText').textContent = '就绪 — 导入素材开始';
     var WHITENESS_MIN_LUMA = 210;
     var CHANNELS = ['r', 'g', 'b', 'alpha', 'luma', 'blue-minus-red', 'saturation', 'whiteness'];
     var OPS = ['>', '>=', '<', '<='];
+    /* 多列投票的聚合方式（与 src/sprite/types.ts 的 SCAN_AGGREGATES 同值） */
+    var AGGREGATES = ['min', 'max', 'median', 'mode'];
 
     function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
     function round3(v) { return Math.round(v * 1000) / 1000; }
@@ -5114,16 +5116,24 @@ $('statusText').textContent = '就绪 — 导入素材开始';
 
     /* 列号 + y 区间校验：越界不裁剪成"看起来对"的值，直接给原因 */
     function resolveColumnRange(grid, req) {
-      var width = grid ? toNum(grid.width) : NaN;
-      var height = grid ? toNum(grid.height) : NaN;
-      if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
-        return { range: null, reason: '帧尺寸无效（width/height 必须为正）' };
-      }
+      var dims = frameDimsOf(grid);
+      if (!dims) return { range: null, reason: '帧尺寸无效（width/height 必须为正）' };
       var x = Math.round(toNum(req ? req.x : undefined));
       if (isNaN(x)) return { range: null, reason: '缺少可用列号 x（要量哪一列）' };
-      if (x < 0 || x > width - 1) {
-        return { range: null, reason: 'x=' + x + ' 超出可用列 [0,' + (width - 1) + ']' };
+      if (x < 0 || x > dims.width - 1) {
+        return { range: null, reason: 'x=' + x + ' 超出可用列 [0,' + (dims.width - 1) + ']' };
       }
+      var yOut = resolveYRange(grid, req);
+      if (!yOut.range) return { range: null, reason: yOut.reason };
+      return { range: { x: x, fromY: yOut.range.fromY, toY: yOut.range.toY, clipped: yOut.range.clipped } };
+    }
+
+    /* y 区间校验（单列 / 多列 / 行扫描共用）：超出帧的部分裁掉并标 clipped，
+       整段落在帧外则给原因（那种"扫了个寂寞"必须显形，不能返回空区间的假阴性） */
+    function resolveYRange(grid, req) {
+      var dims = frameDimsOf(grid);
+      if (!dims) return { range: null, reason: '帧尺寸无效（width/height 必须为正）' };
+      var height = dims.height;
       var fromRaw = toNum(req ? req.fromY : undefined);
       var toRaw = toNum(req ? req.toY : undefined);
       var fromY = isNaN(fromRaw) ? 0 : Math.round(fromRaw);
@@ -5135,10 +5145,460 @@ $('statusText').textContent = '就绪 — 导入素材开始';
         return { range: null, reason: '扫描区间 y=[' + fromY + ',' + toY + '] 整段落在帧外（帧高 ' + height + '）' };
       }
       var y0 = Math.max(0, fromY), y1 = Math.min(height - 1, toY);
-      return { range: { x: x, fromY: y0, toY: y1, clipped: y0 !== fromY || y1 !== toY } };
+      return { range: { fromY: y0, toY: y1, clipped: y0 !== fromY || y1 !== toY } };
+    }
+
+    /* 帧尺寸（多列 / 行扫描都要用）；无效返回 null */
+    function frameDimsOf(grid) {
+      var width = grid ? toNum(grid.width) : NaN;
+      var height = grid ? toNum(grid.height) : NaN;
+      if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) return null;
+      return { width: width, height: height };
     }
 
     function condText(probe) { return probe.channel + ' ' + probe.op + ' ' + String(probe.value); }
+
+    /* 一次多列扫描最多允许几列（与 src/sprite/scan.ts 的 MAX_SCAN_COLUMNS 同值）：
+       "0.30..0.70 step 0.001" 在 1920 宽上会生成 769 列×逐行扫描，报错比默默截断好 */
+    var MAX_SCAN_COLUMNS = 200;
+    /* minRun 推荐值的下限（像素） */
+    var MIN_RUN_FLOOR = 8;
+    /* 合法写法的说明：所有报错都带上它，调用方照着改一遍就能跑 */
+    var COLUMNS_SYNTAX_HINT =
+      '合法写法只有两种：像素数组 [200,260,320,380]；或比例字符串 "0.30..0.70 step 0.05"' +
+      '（a / b / step 三个数都是**帧宽的比例**，不是像素；step 必须写，不能省）';
+
+    /* minRun 的推荐值：帧高 20%，向上取整到 5 的倍数，下限 8。
+       只用于 warning 里给建议，绝不偷偷应用（缺省语义必须保持 1） */
+    function recommendMinRun(frameHeight) {
+      var height = toNum(frameHeight);
+      /* 帧高无效时不编一个数：直接给下限（"按 8 行起算"） */
+      if (!isFinite(height) || height <= 0) return MIN_RUN_FLOOR;
+      var raw = Math.round(height * 0.2);
+      return Math.max(MIN_RUN_FLOOR, Math.ceil(raw / 5) * 5);
+    }
+
+    /* 聚合方式收敛：缺省给 fallback；不认识的返回 null（由调用方报错，不猜） */
+    function normalizeAggregate(raw, fallback) {
+      var fb = fallback === undefined ? 'median' : fallback;
+      if (raw === undefined || raw === null || raw === '') return fb;
+      var text = typeof raw === 'string' ? raw.trim() : '';
+      return has(AGGREGATES, text) ? text : null;
+    }
+
+    /* 多列投票的聚合，只用命中的列（没命中的不代表"更靠上/更靠下"，不能当 0 用） */
+    function aggregateValues(values, aggregate) {
+      if (!values.length) return NaN;
+      var sorted = values.slice().sort(function (a, b) { return a - b; });
+      if (aggregate === 'min') return sorted[0];
+      if (aggregate === 'max') return sorted[sorted.length - 1];
+      if (aggregate === 'median') {
+        var n = sorted.length;
+        if (n % 2 === 1) return sorted[(n - 1) / 2];
+        return Math.round((sorted[n / 2 - 1] + sorted[n / 2]) / 2);
+      }
+      if (aggregate === 'mode') {
+        var counts = {};
+        sorted.forEach(function (v) { counts[v] = (counts[v] || 0) + 1; });
+        var best = sorted[0], bestCount = 0;
+        /* 按升序遍历 + 严格大于：平票时留在更小的 py 上 */
+        sorted.forEach(function (v) {
+          if (counts[v] > bestCount) { best = v; bestCount = counts[v]; }
+        });
+        return best;
+      }
+      return NaN;
+    }
+
+    /* 解析 columns：像素数组，或 "a..b step s"（三个数都是帧宽比例）。
+       每条非法输入都给能照做的原因，不做静默兜底 */
+    function parseColumnsSpec(raw, frameWidth) {
+      var width = toNum(frameWidth);
+      if (isNaN(width) || width <= 0) return { columns: null, reason: '帧宽无效（width 必须为正）' };
+
+      if (Array.isArray(raw)) {
+        if (!raw.length) return { columns: null, reason: 'columns 是空数组（至少要一列）' };
+        var out = [];
+        for (var i = 0; i < raw.length; i++) {
+          var value = Math.round(toNum(raw[i]));
+          if (isNaN(value)) {
+            return { columns: null, reason: 'columns[' + i + '] 不是数字（收到 ' + String(raw[i]) + '）' };
+          }
+          if (value < 0 || value > width - 1) {
+            return { columns: null, reason: 'columns[' + i + ']=' + value + ' 超出可用列 [0,' + (width - 1) + ']（这里是**像素**；要按比例写请用字符串形式）' };
+          }
+          out.push(value);
+        }
+        var uniq = [];
+        out.slice().sort(function (a, b) { return a - b; }).forEach(function (v) { if (uniq.indexOf(v) < 0) uniq.push(v); });
+        if (uniq.length > MAX_SCAN_COLUMNS) {
+          return { columns: null, reason: 'columns 去重后还有 ' + uniq.length + ' 列，超过上限 ' + MAX_SCAN_COLUMNS };
+        }
+        return { columns: uniq };
+      }
+
+      if (typeof raw === 'string') {
+        var text = raw.trim();
+        if (text === '') return { columns: null, reason: 'columns 是空字符串。' + COLUMNS_SYNTAX_HINT };
+        var match = /^([0-9]*\.?[0-9]+)\.\.([0-9]*\.?[0-9]+)(?:\s*step\s*([0-9]*\.?[0-9]+))?$/.exec(text);
+        if (!match) return { columns: null, reason: 'columns 解析不了：' + text + '。' + COLUMNS_SYNTAX_HINT };
+        if (match[3] === undefined) {
+          return { columns: null, reason: 'columns 字符串缺 step（不知道隔多少列）；' + COLUMNS_SYNTAX_HINT };
+        }
+        var a = Number(match[1]), b = Number(match[2]), step = Number(match[3]);
+        if (!isFinite(a) || !isFinite(b) || !isFinite(step)) {
+          return { columns: null, reason: 'columns 里的数字解析失败。' + COLUMNS_SYNTAX_HINT };
+        }
+        if (a < 0 || b < 0 || a > 1 || b > 1) {
+          return { columns: null, reason: 'a=' + a + ' / b=' + b + ' 超出 0~1：字符串里的三个数是**帧宽的比例**，不是像素（像素请用数组形式）' };
+        }
+        if (a > b) {
+          return { columns: null, reason: 'a=' + a + ' 大于 b=' + b + '，区间为空（写成 "小..大 step s"）' };
+        }
+        if (!(step > 0)) return { columns: null, reason: 'step=' + step + ' 必须大于 0（按比例解释，通常 0.02~0.1）' };
+        if (step > 1) return { columns: null, reason: 'step=' + step + ' 大于 1：step 也是**帧宽的比例**，必须 <= 1' };
+
+        var startPx = Math.min(width - 1, Math.max(0, Math.round(a * width)));
+        var endPx = Math.min(width - 1, Math.max(0, Math.round(b * width)));
+        var stepPx = Math.max(1, Math.round(step * width));
+        var span = endPx - startPx;
+        if (span < 0) return { columns: null, reason: '换算成像素后区间为空（a/b 四舍五入到同一列？请把 a..b 拉开）' };
+        var estimate = Math.floor(span / stepPx) + 1;
+        if (estimate > MAX_SCAN_COLUMNS) {
+          var minStepPx = Math.ceil(span / (MAX_SCAN_COLUMNS - 1));
+          var minStep = Math.ceil((minStepPx / width) * 1000) / 1000;
+          return {
+            columns: null,
+            reason: '按 step=' + step + ' 会扫 ' + estimate + ' 列，超过上限 ' + MAX_SCAN_COLUMNS +
+              '（帧宽 ' + width + '，每步 ' + stepPx + 'px）；把 step 调到 >= ' + minStep + ' 再来',
+          };
+        }
+        var list = [];
+        for (var x = startPx; x <= endPx; x += stepPx) list.push(x);
+        return { columns: list };
+      }
+
+      return { columns: null, reason: 'columns 只支持「像素数组」或「"a..b step s" 比例字符串」（收到 ' + String(raw) + '）。' + COLUMNS_SYNTAX_HINT };
+    }
+
+    /* 沿一列从 fromY 往 toY 找第一个连续满足 probe 且长度 >= minRun 的 run；找不到 null */
+    function columnRunOf(grid, x, fromY, toY, probe) {
+      function matches(y) {
+        return compareOp(channelValue(grid.rgbaAt(x, y), probe.channel), probe.op, probe.value);
+      }
+      var y = fromY;
+      while (y <= toY) {
+        if (!matches(y)) { y++; continue; }
+        var start = y;
+        while (y <= toY && matches(y)) y++;
+        var run = y - start;
+        if (run >= probe.minRun) {
+          return { start: start, run: run, firstValue: channelValue(grid.rgbaAt(x, start), probe.channel) };
+        }
+        /* run 太短不算数：从它后面继续找第一个够长的（minRun 的语义就是"够长"） */
+      }
+      return null;
+    }
+
+    /* landmark type `scan-horizontal`：沿列 x 从 fromY 往 toY 扫，向下找第一个
+       满足 probe 且连续长度 >= minRun 的 run。给了 columns 就走多列投票（scanColumns），
+       只给 x 的老用法行为一行没变 */
+    function scanHorizontal(grid, req) {
+      var raw = req || {};
+      if (raw.columns !== undefined && raw.columns !== null) return scanColumns(grid, raw);
+
+      var probeOut = normalizeProbe(raw.probe);
+      var probe = probeOut.probe;
+      if (!probe) return notFound(probeOut.reason);
+      var rangeOut = resolveColumnRange(grid, raw);
+      var range = rangeOut.range;
+      if (!range) return notFound(rangeOut.reason);
+
+      var x = range.x, fromY = range.fromY, toY = range.toY, clipped = range.clipped;
+      var hit = columnRunOf(grid, x, fromY, toY, probe);
+      if (hit) {
+        var result = {
+          found: true,
+          px: x,
+          py: hit.start,
+          value: hit.start,
+          confidence: confidenceOf(hit.run, probe.minRun, hit.firstValue, probe.value),
+          runLength: hit.run,
+          runStart: hit.start,
+          runEnd: hit.start + hit.run - 1,
+          channel: probe.channel,
+          op: probe.op,
+          threshold: probe.value,
+          column: x,
+          fromY: fromY,
+          toY: toY,
+        };
+        if (clipped) result.clipped = true;
+        return result;
+      }
+      return notFound('在 y=[' + fromY + ',' + toY + '] 没找到满足「' + condText(probe) +
+        '」且连续 >= ' + probe.minRun + ' 行的 run');
+    }
+
+    /* `scan-horizontal` 的多列形态（也支撑 bodyTop）：同一批列各自扫一遍，再按
+       aggregate（min/max/median/mode）投票。单列必被局部干扰骗到（呆毛/手/特效），
+       多列投票能把叛变的少数投掉，perColumn 还会暴露哪几列叛变。
+       confidence = 命中列数/总列数；命中率 < 50% 判 found:false 但 perColumn 全带上 */
+    function scanColumns(grid, req) {
+      var raw = req || {};
+      if (raw.columns !== undefined && raw.columns !== null && raw.x !== undefined && raw.x !== null) {
+        return notFound('columns 与 x 互斥：二选一。给 x = 单列老用法（行为不变），给 columns = 多列投票；' +
+          '不会替你挑一个（猜错了就是几十 px 的系统性偏移）');
+      }
+
+      var probeOut = normalizeProbe(raw.probe);
+      var probe = probeOut.probe;
+      if (!probe) return notFound(probeOut.reason);
+
+      var dims = frameDimsOf(grid);
+      if (!dims) return notFound('帧尺寸无效（width/height 必须为正）');
+
+      var aggregate = normalizeAggregate(raw.aggregate, 'median');
+      if (!aggregate) {
+        return notFound('aggregate 不支持：' + String(raw.aggregate) + '（可用 ' + AGGREGATES.join(' / ') + '）');
+      }
+
+      var columnsOut = parseColumnsSpec(raw.columns, dims.width);
+      var columns = columnsOut.columns;
+      if (!columns) return notFound(columnsOut.reason);
+
+      var yOut = resolveYRange(grid, raw);
+      var yRange = yOut.range;
+      if (!yRange) return notFound(yOut.reason);
+      var fromY = yRange.fromY, toY = yRange.toY, clipped = yRange.clipped;
+
+      var rawProbe = (raw.probe && typeof raw.probe === 'object') ? raw.probe : null;
+      var warnings = [];
+      if (!rawProbe || isNaN(toNum(rawProbe.minRun))) {
+        warnings.push('minRun 没给，按帧高 20% 推荐 ' + recommendMinRun(dims.height) +
+          '（当前按 1 算：任何细长附属物都会抢答，多列投票也救不回"列列都错"）');
+      }
+
+      var perColumn = [], pys = [], repOf = {};
+      columns.forEach(function (x) {
+        var hit = columnRunOf(grid, x, fromY, toY, probe);
+        if (!hit) {
+          perColumn.push({
+            x: x, found: false, py: null, run: null,
+            reason: '这一列没有连续 >= ' + probe.minRun + ' 行的「' + condText(probe) + '」',
+          });
+          return;
+        }
+        perColumn.push({
+          x: x, found: true, py: hit.start, run: hit.run,
+          confidence: confidenceOf(hit.run, probe.minRun, hit.firstValue, probe.value),
+        });
+        pys.push(hit.start);
+        if (repOf[hit.start] === undefined) repOf[hit.start] = x;
+      });
+
+      var total = columns.length, hits = pys.length;
+      var confidence = total === 0 ? 0 : round3(hits / total);
+      var base = {
+        found: false,
+        px: null,
+        py: null,
+        confidence: confidence,
+        aggregate: aggregate,
+        columns: columns,
+        perColumn: perColumn,
+        space: 'frame',
+        channel: probe.channel,
+        op: probe.op,
+        threshold: probe.value,
+        fromY: fromY,
+        toY: toY,
+      };
+      if (warnings.length) base.warnings = warnings;
+      if (clipped) base.clipped = true;
+
+      if (hits === 0) {
+        base.reason = '多列全部扫不到（0/' + total + ' 列命中）：条件或 y 区间大概率不对，先看 perColumn 的 reason';
+        return base;
+      }
+      if (hits / total < 0.5) {
+        base.reason = '多数列扫不到（' + hits + '/' + total + ' 列命中，命中率 ' + Math.round((hits / total) * 100) + '% < 50%）：先确认 probe 条件对这批列是否成立，再谈聚合';
+        return base;
+      }
+
+      var py = aggregateValues(pys, aggregate);
+      var repX = (repOf[py] === undefined) ? columns[0] : repOf[py];
+      return Object.assign({}, base, { found: true, px: repX, py: py, value: py, column: repX });
+    }
+
+    /* landmark type `bodyTop`：语义是「身高上端」。工具不写死任何素材路标，
+       只做「调用方给条件 → 多列带扫描 → 取 min」；minRun 可以写在 landmark 级别，
+       会合并进 probe.minRun 并覆盖它 */
+    function findBodyTop(grid, req) {
+      var raw = req || {};
+      var topMinRun = toNum(raw.minRun);
+      var probeOut = raw.probe;
+      if (!isNaN(topMinRun)) {
+        var baseProbe = (raw.probe && typeof raw.probe === 'object') ? raw.probe : {};
+        probeOut = Object.assign({}, baseProbe, { minRun: Math.max(1, Math.round(topMinRun)) });
+      }
+      return scanColumns(grid, Object.assign({}, raw, {
+        probe: probeOut,
+        aggregate: raw.aggregate === undefined ? 'min' : raw.aggregate,
+      }));
+    }
+
+    /* 中央竖带（bodyBottom 的 band），换算成帧内列区间 */
+    function resolveBand(frameWidth, band) {
+      var width = toNum(frameWidth);
+      if (isNaN(width) || width <= 0) return { reason: '帧宽无效（width 必须为正）' };
+      var spec = (band && typeof band === 'object') ? band : {};
+      var centerFrac = isNaN(toNum(spec.centerFrac)) ? 0.5 : toNum(spec.centerFrac);
+      var widthFrac = isNaN(toNum(spec.widthFrac)) ? 0.4 : toNum(spec.widthFrac);
+      if (!(centerFrac >= 0 && centerFrac <= 1)) return { reason: 'band.centerFrac=' + centerFrac + ' 必须落在 0~1（帧宽比例）' };
+      if (!(widthFrac > 0 && widthFrac <= 1)) return { reason: 'band.widthFrac=' + widthFrac + ' 必须落在 (0,1]（帧宽比例）' };
+      var half = widthFrac / 2;
+      var x0 = Math.max(0, Math.round((centerFrac - half) * width));
+      var x1 = Math.min(width - 1, Math.round((centerFrac + half) * width) - 1);
+      if (x1 < x0) return { reason: 'band 换算后是空区间（x0=' + x0 + ' > x1=' + x1 + '）：widthFrac 太小或 centerFrac 贴边' };
+      return { x0: x0, x1: x1, centerFrac: centerFrac, widthFrac: widthFrac };
+    }
+
+    /* 行扫描：一行里最长的连续命中段（与列扫描方向相反）。
+       返回最长段长度、起止列，以及段中点像素的通道值（算"离阈值多远"的可信度用） */
+    function rowRunOf(grid, y, x0, x1, probe) {
+      var best = 0, bestStart = x0, x = x0;
+      while (x <= x1) {
+        if (!compareOp(channelValue(grid.rgbaAt(x, y), probe.channel), probe.op, probe.value)) { x++; continue; }
+        var start = x;
+        while (x <= x1 && compareOp(channelValue(grid.rgbaAt(x, y), probe.channel), probe.op, probe.value)) x++;
+        var run = x - start;
+        if (run > best) { best = run; bestStart = start; }
+      }
+      if (best === 0) return { run: 0, startX: x0, endX: x0, midValue: NaN };
+      var endX = bestStart + best - 1;
+      var midX = bestStart + Math.floor((best - 1) / 2);
+      return { run: best, startX: bestStart, endX: endX, midValue: channelValue(grid.rgbaAt(midX, y), probe.channel) };
+    }
+
+    /* landmark type `bodyBottom`：语义是「身高下端」。从 toY 往上找第一个
+       「中央带里存在连续 >= minRunPx 个满足条件的像素」的行，也就是最低的那条地平线。
+       用"行内连续像素数"而不是"这一行有多少命中像素"：后者会被散落阴影/碎屑满足 */
+    function findBodyBottom(grid, req) {
+      var raw = req || {};
+      var probeOut = normalizeProbe(raw.probe);
+      var probe = probeOut.probe;
+      if (!probe) return notFound(probeOut.reason);
+
+      var dims = frameDimsOf(grid);
+      if (!dims) return notFound('帧尺寸无效（width/height 必须为正）');
+
+      var bandOut = resolveBand(dims.width, raw.band);
+      if (bandOut.reason) return notFound(bandOut.reason);
+      var x0 = bandOut.x0, x1 = bandOut.x1;
+
+      var yOut = resolveYRange(grid, raw);
+      var yRange = yOut.range;
+      if (!yRange) return notFound(yOut.reason);
+      var fromY = yRange.fromY, toY = yRange.toY, clipped = yRange.clipped;
+
+      var minRunPx = isNaN(toNum(raw.minRunPx)) ? 1 : Math.max(1, Math.round(toNum(raw.minRunPx)));
+
+      var warnings = [];
+      if (isNaN(toNum(raw.minRunPx))) {
+        warnings.push('minRunPx 没给，按 1 算：整条判据形同没有，散落的阴影也能满足，实际用必须给');
+      }
+
+      for (var y = toY; y >= fromY; y--) {
+        var row = rowRunOf(grid, y, x0, x1, probe);
+        if (row.run < minRunPx) continue;
+        var lengthScore = clamp01(row.run / Math.max(1, 2 * minRunPx));
+        var marginScore = clamp01(Math.abs(row.midValue - probe.value) / MARGIN_SCALE);
+        var result = {
+          found: true,
+          px: row.startX + Math.floor((row.run - 1) / 2),
+          py: y,
+          value: y,
+          confidence: round3(clamp01(0.6 * lengthScore + 0.4 * marginScore)),
+          run: row.run,
+          runLength: row.run,
+          bandX: [x0, x1],
+          minRunPx: minRunPx,
+          channel: probe.channel,
+          op: probe.op,
+          threshold: probe.value,
+          fromY: fromY,
+          toY: toY,
+          space: 'frame',
+        };
+        if (warnings.length) result.warnings = warnings;
+        if (clipped) result.clipped = true;
+        return result;
+      }
+      var miss = notFound('在 y=[' + fromY + ',' + toY + '] 的中央带 x=[' + x0 + ',' + x1 + '] 里，没有一行存在连续 >= ' +
+        minRunPx + ' 个「' + condText(probe) + '」的像素');
+      miss.bandX = [x0, x1];
+      miss.minRunPx = minRunPx;
+      miss.space = 'frame';
+      if (warnings.length) miss.warnings = warnings;
+      if (clipped) miss.clipped = true;
+      return miss;
+    }
+
+    /* 一次 measure 里同时量到上下端时，各自的异常证据（给 landmarkWarnings 用） */
+    function spreadOfColumn(mark) {
+      var list = Array.isArray(mark.perColumn) ? mark.perColumn : [];
+      var pys = [];
+      list.forEach(function (row) {
+        if (row && row.found === true && typeof row.py === 'number') pys.push(Number(row.py));
+      });
+      var total = list.length;
+      if (!pys.length) return { spread: 0, hits: 0, total: total };
+      return { spread: Math.max.apply(null, pys) - Math.min.apply(null, pys), hits: pys.length, total: total };
+    }
+
+    /* 「别一路绿灯」的交叉校验：同时量出 bodyTop 与 bodyBottom 时，若某一端置信度 < 0.6，
+       或某端各列 py 极差 > 帧高 10%，就报警。不跟同批帧中位数比较（那要跨调用状态，
+       留给以后的 sprite_verify） */
+    function landmarkWarnings(landmarks, frameHeight) {
+      var list = Array.isArray(landmarks) ? landmarks : [];
+      var top = null, bottom = null;
+      list.forEach(function (mark) {
+        if (!mark) return;
+        if (!top && mark.type === 'bodyTop' && mark.found === true) top = mark;
+        if (!bottom && mark.type === 'bodyBottom' && mark.found === true) bottom = mark;
+      });
+      if (!top || !bottom) return [];
+
+      var height = toNum(frameHeight);
+      var heightPx = (isFinite(height) && height > 0) ? Math.round(height) : 0;
+      var texts = [];
+
+      [{ name: 'bodyTop', mark: top }, { name: 'bodyBottom', mark: bottom }].forEach(function (part) {
+        var spread = spreadOfColumn(part.mark);
+        var ratio = spread.total > 0 ? Math.round((spread.hits / spread.total) * 100) : null;
+        var hitText = ratio === null ? '' : '，命中率 ' + spread.hits + '/' + spread.total + '（' + ratio + '%）';
+        if (heightPx > 0 && spread.total > 0 && spread.spread > heightPx * 0.1) {
+          texts.push(part.name + ' 各列 py 极差 ' + spread.spread + 'px = 帧高 ' +
+            Math.round((spread.spread / heightPx) * 100) + '%（> 10%）' + hitText);
+        }
+        var confidence = Number(part.mark.confidence);
+        if (!(confidence >= 0.6)) {
+          texts.push(part.name + ' 置信度 ' + (isFinite(confidence) ? confidence : 0) + ' < 0.6' + hitText);
+        }
+      });
+
+      var topPy = Number(top.py), bottomPy = Number(bottom.py);
+      var heightText = '';
+      if (isFinite(topPy) && isFinite(bottomPy)) {
+        var bodyHeight = bottomPy - topPy;
+        if (bodyHeight <= 0) texts.push('下端 py=' + bottomPy + ' 不在上端 py=' + topPy + ' 之下（上下端可能认反了）');
+        else heightText = '（身高 ' + bodyHeight + 'px）';
+      }
+
+      if (!texts.length) return [];
+      return ['疑似被遮挡/形变：' + texts.join('；') + heightText];
+    }
 
     function notFound(reason) {
       return { found: false, px: null, py: null, confidence: 0, reason: reason || '未命中' };
@@ -5150,54 +5610,6 @@ $('statusText').textContent = '就绪 — 导入素材开始';
       var lengthScore = clamp01(runLength / Math.max(1, 3 * minRun));
       var marginScore = clamp01(Math.abs(firstValue - threshold) / MARGIN_SCALE);
       return round3(clamp01(0.6 * lengthScore + 0.4 * marginScore));
-    }
-
-    /* landmark type `scan-horizontal`：沿列 x 从 fromY 往 toY 扫，向下找第一个
-       满足 probe 且连续长度 >= minRun 的 run（类型名沿用需求文档的写法，轴向是列内竖直扫） */
-    function scanHorizontal(grid, req) {
-      var raw = req || {};
-      var probeOut = normalizeProbe(raw.probe);
-      var probe = probeOut.probe;
-      if (!probe) return notFound(probeOut.reason);
-      var rangeOut = resolveColumnRange(grid, raw);
-      var range = rangeOut.range;
-      if (!range) return notFound(rangeOut.reason);
-
-      var x = range.x, fromY = range.fromY, toY = range.toY, clipped = range.clipped;
-      function matches(y) {
-        return compareOp(channelValue(grid.rgbaAt(x, y), probe.channel), probe.op, probe.value);
-      }
-      var y = fromY;
-      while (y <= toY) {
-        if (!matches(y)) { y++; continue; }
-        var start = y;
-        while (y <= toY && matches(y)) y++;
-        var runLength = y - start;
-        if (runLength >= probe.minRun) {
-          var firstValue = channelValue(grid.rgbaAt(x, start), probe.channel);
-          var result = {
-            found: true,
-            px: x,
-            py: start,
-            value: start,
-            confidence: confidenceOf(runLength, probe.minRun, firstValue, probe.value),
-            runLength: runLength,
-            runStart: start,
-            runEnd: y - 1,
-            channel: probe.channel,
-            op: probe.op,
-            threshold: probe.value,
-            column: x,
-            fromY: fromY,
-            toY: toY,
-          };
-          if (clipped) result.clipped = true;
-          return result;
-        }
-        /* run 太短不算数：从它后面继续找第一个够长的（minRun 的语义就是"够长"） */
-      }
-      return notFound('在 y=[' + fromY + ',' + toY + '] 没找到满足「' + condText(probe) +
-        '」且连续 >= ' + probe.minRun + ' 行的 run');
     }
 
     /* landmark type `boundary`：找「A 条件连续段结束、紧接 B 条件连续段」的那一行。
@@ -5270,11 +5682,23 @@ $('statusText').textContent = '就绪 — 导入素材开始';
     return {
       channels: CHANNELS,
       ops: OPS,
+      aggregates: AGGREGATES,
+      maxScanColumns: MAX_SCAN_COLUMNS,
       channelValue: channelValue,
       compareOp: compareOp,
       normalizeProbe: normalizeProbe,
       resolveColumnRange: resolveColumnRange,
+      resolveYRange: resolveYRange,
+      resolveBand: resolveBand,
+      recommendMinRun: recommendMinRun,
+      normalizeAggregate: normalizeAggregate,
+      parseColumnsSpec: parseColumnsSpec,
+      aggregateValues: aggregateValues,
       scanHorizontal: scanHorizontal,
+      scanColumns: scanColumns,
+      findBodyTop: findBodyTop,
+      findBodyBottom: findBodyBottom,
+      landmarkWarnings: landmarkWarnings,
       findBoundary: findBoundary,
     };
   }
@@ -5369,6 +5793,8 @@ $('statusText').textContent = '就绪 — 导入素材开始';
       if (!bb) return fail('该帧没有 α > ' + beta + ' 的像素（先抠图，或把 alphaThreshold 调低）');
 
       let landmarksOut = null;
+      /* measure 级别的告警（目前只有"上下端疑似被遮挡/形变"这一条来源）。 */
+      let warningsOut = null;
       if (Array.isArray(o.landmarks) && o.landmarks.length) {
         const F = f;
         let cache = null;
@@ -5433,7 +5859,8 @@ $('statusText').textContent = '就绪 — 导入素材开始';
           /* 扫不到 / 越界一律回 found:false + reason，不抛异常（抛了就整次 measure 全废） */
           if (type === 'scan-horizontal') {
             const hit = SCANP.scanHorizontal(grid, {
-              x: item.x, fromY: item.fromY, toY: item.toY, probe: item.probe,
+              x: item.x, columns: item.columns, aggregate: item.aggregate,
+              fromY: item.fromY, toY: item.toY, probe: item.probe,
             });
             return Object.assign({ id, type }, hit);
           }
@@ -5443,11 +5870,30 @@ $('statusText').textContent = '就绪 — 导入素材开始';
             });
             return Object.assign({ id, type }, hit);
           }
+          /* ---- 语义原语：不认素材路标，只做"调用方给条件 + 带扫描 + 投票" ---- */
+          if (type === 'bodyTop') {
+            const hit = SCANP.findBodyTop(grid, {
+              columns: item.columns, x: item.x, fromY: item.fromY, toY: item.toY,
+              probe: item.probe, minRun: item.minRun, aggregate: item.aggregate,
+            });
+            return Object.assign({ id, type }, hit);
+          }
+          if (type === 'bodyBottom') {
+            const hit = SCANP.findBodyBottom(grid, {
+              band: item.band, probe: item.probe, minRunPx: item.minRunPx,
+              fromY: item.fromY, toY: item.toY,
+            });
+            return Object.assign({ id, type }, hit);
+          }
           throw new Error('未知的 landmarks 类型：' + (type || '(空)'));
         });
+        /* 一次调用里同时量到上下端时做交叉校验（P2-5 后续：遮挡/形变不许一路绿灯）。
+           只在本帧的 landmarks 上算，不跨调用比较（跨批中位数留给以后的 sprite_verify）。 */
+        const markWarnings = SCANP.landmarkWarnings(landmarksOut, F.height);
+        if (markWarnings.length) warningsOut = markWarnings;
       }
 
-      return {
+      const measured = {
         ok: true,
         frame: i,
         width: f.width,
@@ -5463,6 +5909,8 @@ $('statusText').textContent = '就绪 — 导入素材开始';
         space: 'frame',
         costMs: Math.round(nowMs() - t0),
       };
+      if (warningsOut) measured.warnings = warningsOut;
+      return measured;
     } catch (e) {
       return fail(e);
     }

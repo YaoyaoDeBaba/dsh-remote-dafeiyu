@@ -15,7 +15,7 @@ import { createServer, type Server } from 'node:http'
 import { createHash, randomBytes } from 'node:crypto'
 import { createReadStream, mkdirSync, readFileSync, statSync, writeFileSync, existsSync, renameSync } from 'node:fs'
 import path from 'node:path'
-import { analyzeSpritePng, type SpriteStats } from './analyze.js'
+import { analyzeSpritePng, borderOpaqueRatio, borderOpaqueWarning, type SpriteStats } from './analyze.js'
 import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, pickWorst } from './guard.js'
 import { launchBrowser, type CdpSession } from './browser.js'
 import type {
@@ -514,8 +514,21 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
     return buffer.byteLength
   }
 
-  /** 采样若干帧的抠图结果并算指标，找出"最差帧"（B6：第 0 帧干净不代表整段干净）。 */
-  const worstOf = async (frames: number, sampleLimit = 8): Promise<{ worst?: WorstFrame; stats?: SpriteStats }> => {
+  /**
+   * 采样若干帧的抠图结果并算指标，找出"最差帧"（B6：第 0 帧干净不代表整段干净）。
+   *
+   * 顺带算「压边」：某帧画面边缘有大量不透明像素，多半是手/特效被抠成了主体（C 系列：
+   * 这种帧的 bbox 会撑到画框，contentHeight 与缩放全跟着错）。带子按短边 2% 取，
+   * 与 `bgResidual` 的 6% 分开——判的是"贴着画框"而不是"背景残渣"。
+   */
+  const worstOf = async (
+    frames: number,
+    sampleLimit = 8,
+  ): Promise<{
+    worst?: WorstFrame
+    stats?: SpriteStats
+    border?: { ratio: number; frame: number; bandPx: number }
+  }> => {
     const total = Math.max(1, frames)
     const picks = new Set<number>([0])
     const step = Math.max(1, Math.floor(total / sampleLimit))
@@ -523,6 +536,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
     picks.add(total - 1)
     const bucket: Array<{ frame: number; stats: SpriteStats }> = []
     let firstStats: SpriteStats | undefined
+    let border: { ratio: number; frame: number; bandPx: number } | undefined
     for (const frame of [...picks].slice(0, sampleLimit + 1)) {
       try {
         const one = await bridge<{ ok: boolean; dataURL?: string }>('keyedDataURL', frame)
@@ -531,12 +545,22 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         const stats = analyzeSpritePng(buffer)
         if (!firstStats) firstStats = stats
         bucket.push({ frame, stats })
+        try {
+          const edge = borderOpaqueRatio(buffer)
+          if (!border || edge.ratio > border.ratio) border = { ratio: edge.ratio, frame, bandPx: edge.bandPx }
+        } catch {
+          /* 压边是增强项：这张解不开不影响其它指标 */
+        }
       } catch {
         /* 单帧采样失败不影响整体：采不到就不给 worst */
       }
     }
     const worst = pickWorst(bucket)
-    return { ...(worst ? { worst } : {}), ...(firstStats ? { stats: firstStats } : {}) }
+    return {
+      ...(worst ? { worst } : {}),
+      ...(firstStats ? { stats: firstStats } : {}),
+      ...(border ? { border } : {}),
+    }
   }
 
   /**
@@ -673,6 +697,12 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         throw new Error('keyApply 跑完但抠图缓存是空的——页面那边出了问题，先别 export')
       }
       const sampled = await worstOf(frames, args.probeFrames ?? 8)
+      const warnings: string[] = []
+      if (applied.autoEnabled === true) warnings.push('抠图原本没启用，已自动启用（否则拼图会用原帧）')
+      if (sampled.border) {
+        const edgeWarning = borderOpaqueWarning(sampled.border, sampled.border.frame)
+        if (edgeWarning) warnings.push(edgeWarning)
+      }
       return {
         ok: true,
         frames,
@@ -682,7 +712,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         ...(sampled.worst ? { worst: sampled.worst } : {}),
         ...(state.params ? { appliedParams: state.params } : {}),
         ignored: [],
-        warnings: applied.autoEnabled === true ? ['抠图原本没启用，已自动启用（否则拼图会用原帧）'] : [],
+        warnings,
       }
     },
 
@@ -1082,6 +1112,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
             ...(measured.overlayPath ? { overlayPath: measured.overlayPath } : {}),
             warnings: [
               ...exported.warnings,
+              ...applied.warnings,
               ...(cleaned.trimBox ? [] : ['没有算出裁剪框']),
               ...(applied.plateApplied ? [] : []),
               ...(prepared.transport === 'base64' ? ['视频走的是 base64 通道（较慢）'] : []),
@@ -1126,7 +1157,12 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         overwrite: true,
       })
       stages.push(`export: ${exported.pngPath}（${exported.bytes} B）`)
-      return { ...exported, stages }
+      /* 一条龙最容易"绿着交出烂图"：压边告警（手/特效被抠成主体）必须带到最终结果上 */
+      return {
+        ...exported,
+        warnings: [...exported.warnings, ...applied.warnings],
+        stages,
+      }
     },
 
     async stop() {
