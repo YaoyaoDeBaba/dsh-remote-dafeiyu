@@ -8,11 +8,12 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  installBundledSkills,
   installSpriteSkill,
   readSpriteSkillBody,
   resetSpriteSkillCache,
@@ -106,4 +107,56 @@ test('读不到 SKILL.md 时退回内置兜底（不许直接抛）', () => {
   const body = readSpriteSkillBody(path.join(tmpdir(), 'definitely-not-here'))
   assert.equal(body, SPRITE_GUIDE)
   resetSpriteSkillCache()
+})
+
+test('整批安装：assets/skills 下的每个 SKILL.md 都会铺开，没有 SKILL.md 的目录跳过', () => {
+  // 2026-11-13 起这个插件会有多个 skill（工具指南 + 开发规范…），安装器必须认目录而不是认名字。
+  const root = mkdtempSync(path.join(tmpdir(), 'drc-skills-'))
+  const home = mkdtempSync(path.join(tmpdir(), 'drc-skills-home-'))
+  try {
+    for (const name of ['alpha-skill', 'beta-skill']) {
+      mkdirSync(path.join(root, name, 'references'), { recursive: true })
+      writeFileSync(path.join(root, name, 'SKILL.md'), `---\nname: ${name}\ndescription: d\n---\nbody\n`, 'utf8')
+      writeFileSync(path.join(root, name, 'references', 'x.md'), 'x', 'utf8')
+    }
+    // 没有 SKILL.md 的目录不该被当成 skill
+    mkdirSync(path.join(root, 'not-a-skill'), { recursive: true })
+    const result = installBundledSkills({ dshHome: home, assetsRoot: root, version: '2.0.0', log: () => {} })
+    assert.ok(result.ok, result.reason ?? 'installBundledSkills 失败')
+    assert.deepEqual([...result.installed].sort(), ['alpha-skill', 'beta-skill'])
+    assert.ok(existsSync(path.join(home, 'skills', 'alpha-skill', 'references', 'x.md')))
+    assert.ok(existsSync(path.join(home, 'skills', 'beta-skill', 'SKILL.md')))
+    assert.equal(existsSync(path.join(home, 'skills', 'not-a-skill')), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+test('整批安装幂等：同版本第二次什么都不做', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'drc-skills2-'))
+  const home = mkdtempSync(path.join(tmpdir(), 'drc-skills2-home-'))
+  try {
+    mkdirSync(path.join(root, 'alpha'), { recursive: true })
+    writeFileSync(path.join(root, 'alpha', 'SKILL.md'), 'a', 'utf8')
+    assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '1', log: () => {} }).installed, ['alpha'])
+    assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '1', log: () => {} }).installed, [])
+    assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '2', log: () => {} }).installed, ['alpha'])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(home, { recursive: true, force: true })
+  }
+})
+
+test('随包的真实 skills 目录里，每份 SKILL.md 的 name 都等于目录名', () => {
+  // 名字和目录不一致 = 模型按目录名加载会失败；这条防的是"新建 skill 时复制粘贴忘改名"。
+  const skillsRoot = fileURLToPath(new URL('../../assets/skills', import.meta.url))
+  const dirs = readdirSync(skillsRoot, { withFileTypes: true }).filter((d) => d.isDirectory())
+  for (const dir of dirs) {
+    const skillFile = path.join(skillsRoot, dir.name, 'SKILL.md')
+    if (!existsSync(skillFile)) continue
+    const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(skillFile, 'utf8'))?.[1] ?? ''
+    const name = /^name:\s*(.+)$/m.exec(front)?.[1]?.trim()
+    assert.equal(name, dir.name, `${dir.name}/SKILL.md 的 name 与目录名不一致`)
+  }
 })

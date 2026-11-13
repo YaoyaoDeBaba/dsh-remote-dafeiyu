@@ -15,7 +15,7 @@ import { createSpriteService, type SpriteService } from './service.js'
 import { sweepOrphanBrowsers } from './orphans.js'
 import { buildTools } from './tools.js'
 import { SPRITE_GUIDANCE } from './guide.js'
-import { installSpriteSkill, readSpriteSkillBody, SPRITE_SKILL_NAME } from './skill.js'
+import { installBundledSkills, readSpriteSkillBody, SPRITE_SKILL_NAME } from './skill.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -85,18 +85,21 @@ export function startSprite(ctx: LooseContext, deps: SpriteStartDeps): SpriteHan
     try {
       service = createSpriteService({ toolHtmlPath, outDir, log: deps.log })
       probe.service = 'ready'
-      // 指南落成 DSH skill（单一真源见 assets/skills/<name>/SKILL.md）。
+      // 内置 skill 落成 DSH skill（一次装 `assets/skills/` 下全部：工具指南 + 插件开发规范…）。
       // 版本没变就是空操作；失败只写 probe，不影响工具本身。
+      // 放在这里是因为 startSprite 是插件启动时唯一稳定拿到 dshHome 的地方。
       try {
-        const installed = installSpriteSkill({
+        const installed = installBundledSkills({
           dshHome: deps.dshHome,
-          assetsRoot: skillAssetsRoot,
+          assetsRoot: path.join(packageRoot(), 'assets', 'skills'),
           version: packageVersion(),
           log: deps.log,
         })
-        probe.skill = installed.ok ? 'installed' : `skipped: ${installed.reason ?? 'unknown'}`
+        probe.skills = installed.ok
+          ? `installed(${installed.installed.length})`
+          : `skipped: ${installed.reason ?? 'unknown'}`
       } catch (error) {
-        probe.skill = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+        probe.skills = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
       }
       // 启动清理：宿主上次被强杀时留下的无头浏览器，父进程已经没了，这里收掉。
       // 判据是"父进程不存在"，所以不会误杀另一个还在跑的 DSH 实例里的浏览器。

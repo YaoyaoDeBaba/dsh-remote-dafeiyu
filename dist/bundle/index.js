@@ -40463,30 +40463,40 @@ function buildTools(service, options) {
 }
 
 // src/sprite/skill.ts
-import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, rmSync as rmSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync4 } from "node:fs";
 import path21 from "node:path";
 var SPRITE_SKILL_NAME = "dafeiyu-sprite";
 var VERSION_FILE = ".dafeiyu-skill-version";
-function installSpriteSkill(deps) {
-  const source = path21.join(deps.assetsRoot, "SKILL.md");
-  if (!existsSync4(source)) return { ok: false, reason: `missing-asset: ${source}` };
-  const target = path21.join(deps.dshHome, "skills", SPRITE_SKILL_NAME);
-  const stamp = path21.join(target, VERSION_FILE);
+function installBundledSkills(deps) {
+  let entries;
   try {
-    if (existsSync4(stamp)) {
-      const current = readFileSync7(stamp, "utf8").trim();
-      if (current === deps.version) return { ok: true, path: target };
-    }
-    mkdirSync7(path21.dirname(target), { recursive: true });
-    if (existsSync4(target)) rmSync2(target, { recursive: true, force: true });
-    cpSync(deps.assetsRoot, target, { recursive: true });
-    writeFileSync4(stamp, `${deps.version}
-`, "utf8");
-    deps.log("\u5E8F\u5217\u5E27 skill \u5DF2\u94FA\u5F00", { path: target, version: deps.version });
-    return { ok: true, path: target };
+    entries = readdirSync2(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path21.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync4(path21.join(entry.dir, "SKILL.md")));
   } catch (error62) {
-    return { ok: false, reason: String(error62?.message ?? error62).slice(0, 160) };
+    return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
+  if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
+  const installed = [];
+  for (const entry of entries) {
+    const target = path21.join(deps.dshHome, "skills", entry.name);
+    const stamp = path21.join(target, VERSION_FILE);
+    try {
+      if (existsSync4(stamp) && readFileSync7(stamp, "utf8").trim() === deps.version) continue;
+      mkdirSync7(path21.dirname(target), { recursive: true });
+      if (existsSync4(target)) rmSync2(target, { recursive: true, force: true });
+      cpSync(entry.dir, target, { recursive: true });
+      writeFileSync4(stamp, `${deps.version}
+`, "utf8");
+      installed.push(entry.name);
+    } catch (error62) {
+      deps.log("\u94FA skill \u5931\u8D25\uFF08\u4E0D\u5F71\u54CD\u5DE5\u5177\u672C\u8EAB\uFF09", {
+        skill: entry.name,
+        message: String(error62?.message ?? error62).slice(0, 120)
+      });
+      return { ok: installed.length > 0, installed, reason: `copy-failed: ${entry.name}` };
+    }
+  }
+  if (installed.length > 0) deps.log("\u5185\u7F6E skill \u5DF2\u94FA\u5F00", { skills: installed.join(","), version: deps.version });
+  return { ok: true, installed };
 }
 var cachedBody;
 function readSpriteSkillBody(assetsRoot) {
@@ -40533,15 +40543,15 @@ function startSprite(ctx, deps) {
       service = createSpriteService({ toolHtmlPath, outDir, log: deps.log });
       probe.service = "ready";
       try {
-        const installed = installSpriteSkill({
+        const installed = installBundledSkills({
           dshHome: deps.dshHome,
-          assetsRoot: skillAssetsRoot,
+          assetsRoot: path22.join(packageRoot(), "assets", "skills"),
           version: packageVersion(),
           log: deps.log
         });
-        probe.skill = installed.ok ? "installed" : `skipped: ${installed.reason ?? "unknown"}`;
+        probe.skills = installed.ok ? `installed(${installed.installed.length})` : `skipped: ${installed.reason ?? "unknown"}`;
       } catch (error62) {
-        probe.skill = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+        probe.skills = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
       }
       void sweepOrphanBrowsers(deps.log).then((count) => {
         if (count > 0) probe.orphansSwept = String(count);
@@ -41919,7 +41929,7 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync3, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync4, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync5, writeFileSync as writeFileSync6 } from "node:fs";
 import path27 from "node:path";
 
 // src/backup/config.ts
@@ -42182,7 +42192,7 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync7, readdirSync as readdirSync2, readFileSync as readFileSync10, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync7, readdirSync as readdirSync3, readFileSync as readFileSync10, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
 import path26 from "node:path";
@@ -42220,14 +42230,14 @@ function isSessionFile(fileName) {
 }
 function safeDirs(dir) {
   try {
-    return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
 }
 function safeFiles(dir) {
   try {
-    return readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
@@ -42861,7 +42871,7 @@ ${result2.stdout}`.toLowerCase();
   return /couldn't find remote ref|could not find remote ref|unknown revision|no such ref/.test(text);
 }
 function clearExceptGit(repo) {
-  for (const entry of readdirSync3(repo, { withFileTypes: true })) {
+  for (const entry of readdirSync4(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
     const target = path27.join(repo, entry.name);
     rmSync4(target, { recursive: true, force: true });
@@ -42869,7 +42879,7 @@ function clearExceptGit(repo) {
 }
 async function mergeTree(source, target) {
   if (!existsSync8(source)) return;
-  for (const entry of readdirSync3(source, { withFileTypes: true })) {
+  for (const entry of readdirSync4(source, { withFileTypes: true })) {
     const from = path27.join(source, entry.name);
     const to = path27.join(target, entry.name);
     if (entry.isDirectory()) {
@@ -42885,12 +42895,12 @@ async function mergeTree(source, target) {
 }
 async function mergeProfiles(source, profilesRoot) {
   if (!existsSync8(profilesRoot)) return;
-  for (const entry of readdirSync3(source, { withFileTypes: true })) {
+  for (const entry of readdirSync4(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const from = path27.join(source, entry.name);
     const to = path27.join(profilesRoot, entry.name);
     if (!existsSync8(to)) continue;
-    for (const file2 of readdirSync3(from, { withFileTypes: true })) {
+    for (const file2 of readdirSync4(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
       await copyFileFresh(path27.join(from, file2.name), path27.join(to, file2.name));
     }
@@ -42901,7 +42911,7 @@ function countSessionFiles(root) {
   const walk2 = (dir) => {
     let entries;
     try {
-      entries = readdirSync3(dir, { withFileTypes: true });
+      entries = readdirSync4(dir, { withFileTypes: true });
     } catch {
       return;
     }

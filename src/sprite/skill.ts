@@ -17,7 +17,7 @@
  * 三处内容只有一份真源：`assets/skills/dafeiyu-sprite/SKILL.md`。
  * `sprite_guide` 工具与这里都读它，不可能再出现"指南一套、代码一套"。
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { SPRITE_GUIDE } from './guide.js'
 
@@ -43,7 +43,57 @@ export interface SpriteSkillResult {
 }
 
 /**
- * 把指南铺到用户 skill 根目录。幂等：版本没变就什么都不做。
+ * 把**所有**内置 skill 铺到用户 skill 根目录（`assets/skills/<name>/SKILL.md`）。
+ *
+ * 为什么是"全部"而不是单个：2026-11-13 之后这个插件会有多个 skill
+ * （`dafeiyu-sprite` 工具指南、`dafeiyu-plugin-dev` 开发规范…），
+ * 每个都写一遍安装逻辑必然会漂。这里只认一个约定：`assets/skills/<name>/SKILL.md` 就是一份 skill。
+ *
+ * 幂等：版本标记存在且等于当前版本就整批跳过；否则**整份重铺**（避免 SKILL.md 换了 references 还是老的）。
+ */
+export function installBundledSkills(deps: {
+  dshHome: string
+  /** 插件包里 `assets/skills` 的绝对路径。 */
+  assetsRoot: string
+  version: string
+  log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
+}): { ok: boolean; installed: string[]; reason?: string } {
+  let entries: Array<{ name: string; dir: string }>
+  try {
+    entries = readdirSync(deps.assetsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => ({ name: entry.name, dir: path.join(deps.assetsRoot, entry.name) }))
+      .filter((entry) => existsSync(path.join(entry.dir, 'SKILL.md')))
+  } catch (error) {
+    return { ok: false, installed: [], reason: `missing-asset: ${String((error as Error)?.message ?? error)}` }
+  }
+  if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` }
+
+  const installed: string[] = []
+  for (const entry of entries) {
+    const target = path.join(deps.dshHome, 'skills', entry.name)
+    const stamp = path.join(target, VERSION_FILE)
+    try {
+      if (existsSync(stamp) && readFileSync(stamp, 'utf8').trim() === deps.version) continue
+      mkdirSync(path.dirname(target), { recursive: true })
+      if (existsSync(target)) rmSync(target, { recursive: true, force: true })
+      cpSync(entry.dir, target, { recursive: true })
+      writeFileSync(stamp, `${deps.version}\n`, 'utf8')
+      installed.push(entry.name)
+    } catch (error) {
+      deps.log('铺 skill 失败（不影响工具本身）', {
+        skill: entry.name,
+        message: String((error as Error)?.message ?? error).slice(0, 120),
+      })
+      return { ok: installed.length > 0, installed, reason: `copy-failed: ${entry.name}` }
+    }
+  }
+  if (installed.length > 0) deps.log('内置 skill 已铺开', { skills: installed.join(','), version: deps.version })
+  return { ok: true, installed }
+}
+
+/**
+ * 把一个 skill 铺到用户 skill 根目录（单个，保留给测试与"只想要一个"的场景）。
  *
  * **不用 `ctx.skills.register`**：嵌入式注册要求记住 provider 契约（list/load 的返回形状），
  * 而那是内核内部 API；文件系统根目录是官方文档写明的对外契约，稳得多。
