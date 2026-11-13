@@ -15,7 +15,7 @@ description: 给「大肥鱼」DSH 桌面插件（dsh-remote-dafeiyu）新增工
 | 红线 | 它防的是什么 |
 |---|---|
 | 这是 **bundle**，不是源码仓直跑 | 市场按 git commit 装机、装机时**不跑构建** ⇒ `dist/bundle` 必须入库（`README.md` 构建段、`.gitignore` 的 `!/dist/bundle/`） |
-| **永远不写 `inject:` 闸门** | 某一代宿主缺某个服务时整行不激活 ⇒ 插件**静默不加载**，比"带着次优配置跑"难查一个量级（`cordis.patch.yml:3-5`） |
+| **永远不导出 `inject`（连 `optional` 也别写）** | 写了 `required` ⇒ 缺服务就整行不激活；写成 `{required:[],optional:[…]}` 更糟——宿主上实测 `fiberPhase:"pending"` **永远不激活**（2026-11-13 dsh-selfloop 0.3.1 踩中）。正确姿势是**完全不导出 `inject`** + `ctx.get?.("tools", true)` 软探测，大肥鱼就是这么做的（`cordis.patch.yml:3-5`） |
 | 对外能力**只经 `src/ports/index.ts`** | 只有 `platform/` 与 `shell/` 允许 import `@deepseek-ai/*`；`core/` 只认端口形状，否则那层"可测性契约"当场失效（`src/ports/index.ts:1-20`） |
 | 一人一个 `src/<域>/` | 并行 agent 互改同一文件＝互相覆盖，事后没人说得清跑的是哪一版 |
 
