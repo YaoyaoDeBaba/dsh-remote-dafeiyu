@@ -1,5 +1,5 @@
 /**
- * sprite/tools —— 暴露给 LLM 的工具定义（19 个）。
+ * sprite/tools —— 暴露给 LLM 的工具定义（20 个）。
  *
  * 三条纪律（评审文档 A/C 两条主线的落点）：
  * 1. **每个工具只做一件事**，返回一行 JSON 字符串：模型读数字（stats），人读路径（pngPath）。
@@ -10,6 +10,7 @@
  */
 import type { SpriteService } from './service.js'
 import { SPRITE_GUIDE } from './guide.js'
+import { LOOP_MASK_MODES } from './loop.js'
 import { KEY_PARAM_KEYS, PIXEL_SOURCES, SCAN_AGGREGATES, SCAN_CHANNELS, SCAN_OPS, type KeyParams, type Rect, type ReferenceSpec } from './types.js'
 
 const json = (value: unknown): string => JSON.stringify(value)
@@ -106,6 +107,32 @@ function referenceSchema(description: string): Record<string, unknown> {
   }
 }
 
+/** `sprite_prepare` 的 `loop` 子对象：只收认得的键，其余交给 `ignoredLoop` 显形。 */
+export interface PrepareLoopArg {
+  targetFrames?: number
+  minPeriodSec?: number
+  targetMultiples?: number[]
+  mask?: 'body-core' | 'none'
+}
+
+const PREPARE_LOOP_KEYS = ['targetFrames', 'minPeriodSec', 'targetMultiples', 'mask'] as const
+
+/** 收敛 `sprite_prepare({loop})`：传了就进循环闭合流程（**不传是另一条完全不变的路径**）。 */
+export function prepareLoopOf(value: unknown): { loop: PrepareLoopArg; ignored: string[] } {
+  const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
+  const loop: PrepareLoopArg = {}
+  if (typeof raw.targetFrames === 'number' && Number.isFinite(raw.targetFrames)) loop.targetFrames = raw.targetFrames
+  if (typeof raw.minPeriodSec === 'number' && Number.isFinite(raw.minPeriodSec)) loop.minPeriodSec = raw.minPeriodSec
+  if (Array.isArray(raw.targetMultiples)) {
+    const multiples = raw.targetMultiples.filter((one): one is number => typeof one === 'number' && Number.isFinite(one))
+    if (multiples.length > 0) loop.targetMultiples = multiples
+  }
+  if (raw.mask === 'body-core' || raw.mask === 'none') loop.mask = raw.mask
+  const known = new Set<string>(PREPARE_LOOP_KEYS)
+  const ignored = Object.keys(raw).filter((key) => !known.has(key))
+  return { loop, ignored }
+}
+
 function referenceOf(value: unknown): ReferenceSpec {
   if (!value || typeof value !== 'object') return {}
   const raw = value as Record<string, unknown>
@@ -189,14 +216,33 @@ export function buildTools(
       name: 'sprite_prepare',
       description:
         '序列帧第一步：导入视频并抽帧。返回 {frames,width,height,transport}。' +
-        'transport=http 表示视频走本地直传（快）；base64 是兜底通道（慢 20 秒左右）。',
+        'transport=http 表示视频走本地直传（快）；base64 是兜底通道（慢 20 秒左右）。' +
+        '**循环动作**（跑/走/待机/呼吸/漂浮——会一直循环播的）加 `loop:{}`：内部会先按 fps 预采样测出真实周期，' +
+        '再按新采样率重新精确抽 T 帧，返回里多给 {fps,periodSec,loopClosed,loop}（一次性动作别传，会被截成半截）。' +
+        '不传 loop 时行为与以前完全一样。',
       parameters: {
         type: 'object',
         properties: {
           videoPath: { type: 'string', description: '视频文件绝对路径（mp4/webm/mov，≤200MB）' },
           start: { type: 'number', description: '起始秒，默认 0' },
           end: { type: 'number', description: '结束秒，默认 4' },
-          fps: { type: 'number', description: '抽帧帧率，默认 12' },
+          fps: { type: 'number', description: '抽帧帧率，默认 12（loop 模式下是**预采样**帧率，至少要 10、且区间 ≥2 秒）' },
+          loop: {
+            type: 'object',
+            description:
+              '循环闭合（可选开关）：传了就进"预采样 → 自相关测周期 → 按周期重采 T 帧"流程。' +
+              '周期判不清（曲线平缓）时会**报错而不是硬截**，说明这段动画该按一次性动作处理。',
+            properties: {
+              targetFrames: { type: 'number', description: '交付帧数（默认从 targetMultiples 里挑，通常 24 或 48）' },
+              minPeriodSec: { type: 'number', description: '最短周期（秒，默认 2）。动作一个循环不到 2 秒就调小，否则扫不到真周期' },
+              targetMultiples: { type: 'array', items: { type: 'number' }, description: '候选交付帧数，默认 [24,48]' },
+              mask: {
+                type: 'string',
+                enum: [...LOOP_MASK_MODES],
+                description: '周期扫描的掩膜口径：body-core（默认）= 第 0 帧最大连通域 + 1px 腐蚀；none = 整幅（绿幕素材别用）',
+              },
+            },
+          },
         },
         required: ['videoPath'],
       },
@@ -205,13 +251,65 @@ export function buildTools(
       async execute(args: Record<string, unknown>): Promise<string> {
         const videoPath = typeof args.videoPath === 'string' ? args.videoPath : ''
         if (videoPath === '') return fail('需要 videoPath（视频绝对路径）')
+        const looped = args.loop !== undefined ? prepareLoopOf(args.loop) : undefined
+        try {
+          const result = await service.prepare({
+            videoPath,
+            ...(typeof args.start === 'number' ? { start: args.start } : {}),
+            ...(typeof args.end === 'number' ? { end: args.end } : {}),
+            ...(typeof args.fps === 'number' ? { fps: args.fps } : {}),
+            ...(looped ? { loop: looped.loop } : {}),
+          })
+          // loop 子对象里不认识的键也要显形（顶层靠 ignoredKeysOf，这里不能断档）。
+          return json(looped && looped.ignored.length > 0 ? { ...result, ignoredLoop: looped.ignored } : result)
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    },
+    {
+      name: 'sprite_loop_scan',
+      description:
+        '扫**当前会话已抽好的帧**的循环周期（自相关：score(L)=平均帧差(i,i+L)），只给建议、**不改会话状态**' +
+        '（不改 fps、不改帧、不改锚点）。返回 {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,warnings}。' +
+        '前置：会话 fps ≥10 且帧数 ≥24（不够会直接报中文错，让你先 sprite_prepare 到 12fps）。' +
+        '算法口径：掩膜只用**第 0 帧那张** body-core（逐帧各算会让边界变化冒充动作差异）；' +
+        '自相关先在 1/4 降采样上扫（全分辨率 48 帧×19 候选 ≈16 亿次，会卡死），只在最优 L 上回全分辨率复核 L±1。' +
+        'closureScore = 末帧与首帧之差 ÷ 相邻帧平均差：≈0 说明还有重复帧、明显 >1 说明没闭合。' +
+        'confidence=low 时 reason 会说"动作本身不严格周期，建议按一次性动作处理"——那就别闭合。' +
+        '**只对循环动作调它**；要真按周期重采，用 sprite_prepare({loop})。',
+      parameters: {
+        type: 'object',
+        properties: {
+          preFps: { type: 'number', description: '预采样帧率（默认取会话当前 fps）：只用于回显/对账，周期换算一律用会话实际帧率' },
+          minPeriodSec: {
+            type: 'number',
+            description: '最短周期（秒，默认 2）。低于它（× fps）的候选不扫——动作周期更短就调小，否则扫到的只会是噪声',
+          },
+          targetMultiples: {
+            type: 'array',
+            items: { type: 'number' },
+            description: '候选交付帧数（默认 [24,48]）：挑"新采样率离预采样率最近"的那个，避免插值凑帧',
+          },
+          mask: {
+            type: 'string',
+            enum: [...LOOP_MASK_MODES],
+            description: '掩膜口径：body-core（默认，第 0 帧最大连通域 + 1px 腐蚀）或 none（整幅都算，绿幕噪声会压对比度）',
+          },
+        },
+      },
+      output: OUT,
+      timeoutMs: 240_000,
+      async execute(args: Record<string, unknown>): Promise<string> {
         try {
           return json(
-            await service.prepare({
-              videoPath,
-              ...(typeof args.start === 'number' ? { start: args.start } : {}),
-              ...(typeof args.end === 'number' ? { end: args.end } : {}),
-              ...(typeof args.fps === 'number' ? { fps: args.fps } : {}),
+            await service.loopScan({
+              ...(typeof args.preFps === 'number' ? { preFps: args.preFps } : {}),
+              ...(typeof args.minPeriodSec === 'number' ? { minPeriodSec: args.minPeriodSec } : {}),
+              ...(Array.isArray(args.targetMultiples)
+                ? { targetMultiples: args.targetMultiples.filter((one): one is number => typeof one === 'number') }
+                : {}),
+              ...(args.mask === 'body-core' || args.mask === 'none' ? { mask: args.mask } : {}),
             }),
           )
         } catch (error) {
@@ -541,7 +639,10 @@ export function buildTools(
         '格子数 >48 时只等间隔抽 12 格并给 sampled:true。**判成品对不对看 measured，别看 achievedPx**——' +
         'achievedPx 只是"你给的 span/整格高被缩到了多少"的参数回显；两者差 >1% 会在 warnings 里点名。' +
         'debugOverlay:true 再出一张 <outDir>/_debug/<name>-overlay.png（品红=实测头顶、青=实测脚底、' +
-        '白十字=锚点；身高偏离中位数 >5% 的格整格标黄），路径在 overlayPath。',
+        '白十字=锚点；身高偏离中位数 >5% 的格整格标黄），路径在 overlayPath。' +
+        '`loop:true`（或本次会话是 sprite_prepare({loop}) 采的）时额外给 loopCheck ' +
+        '{firstLastDiff,adjacentDiff,ok}：用**已解好的图集格子**比首尾，不额外解码；' +
+        'ok = |首尾差−相邻帧差|/相邻帧差 < 0.5，不 ok 时进 warnings。一次性动作别传 loop。',
       parameters: {
         type: 'object',
         properties: {
@@ -569,6 +670,12 @@ export function buildTools(
             description:
               'true = 额外出一张核对图 <outDir>/_debug/<name>-overlay.png（只在 png 导出时生效）；' +
               '逐格画像量头顶/脚底横线与锚点十字，异常格标黄；路径回在 overlayPath',
+          },
+          loop: {
+            type: 'boolean',
+            description:
+              'true = 这是循环动作，导出时算 loopCheck（首尾差 vs 相邻帧差，png 才有效）并检查闭合度；' +
+              'sprite_prepare({loop}) 采过的会话会自动带。一次性动作别传',
           },
         },
       },
@@ -603,6 +710,7 @@ export function buildTools(
               ...(typeof args.quality === 'number' ? { quality: args.quality } : {}),
               ...(typeof args.name === 'string' ? { name: args.name } : {}),
               ...(typeof args.debugOverlay === 'boolean' ? { debugOverlay: args.debugOverlay } : {}),
+              ...(typeof args.loop === 'boolean' ? { loop: args.loop } : {}),
             }),
           )
         } catch (error) {

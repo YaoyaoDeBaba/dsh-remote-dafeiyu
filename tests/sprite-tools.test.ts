@@ -4,11 +4,11 @@
  * 这一层钉的是评审文档里 P1（参数被静默丢弃）和 C1（语义要自解释）：
  * - 页面能调的每个参数，工具层都必须原样转给 service（`.57` 之前 `mode` 就被白名单吞了）；
  * - 传了但没被识别的键必须能算进 `ignored`（不允许静默忽略）；
- * - 14 个工具的形状（名字、必填项、超时）是稳定契约。
+ * - 20 个工具的形状（名字、必填项、超时）是稳定契约。
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildTools, ignoredKeysOf, keyParamsOf } from '../src/sprite/tools.js'
+import { buildTools, ignoredKeysOf, keyParamsOf, prepareLoopOf } from '../src/sprite/tools.js'
 import { SPRITE_GUIDE, SPRITE_GUIDANCE } from '../src/sprite/guide.js'
 import type { SpriteService } from '../src/sprite/service.js'
 
@@ -21,6 +21,7 @@ function stubService() {
   }
   const service = {
     prepare: record('prepare'),
+    loopScan: record('loopScan'),
     probeColor: record('probeColor'),
     keyPreview: record('keyPreview'),
     keyApply: record('keyApply'),
@@ -80,13 +81,14 @@ test('ignoredKeysOf：不认识的键要能被算出来（不能静默丢弃）'
   assert.deepEqual(ignoredKeysOf({ mode: 'advanced', frame: 0, nonsense: 1 }), ['nonsense'])
 })
 
-test('19 个工具的名字与必填项是稳定契约', () => {
+test('20 个工具的名字与必填项是稳定契约', () => {
   const { service } = stubService()
   const tools = buildTools(service)
   const byName = new Map(tools.map((tool) => [String(tool.name), tool]))
   // 2026-11-13：加了三个像素搜索原语（match / feature_fit / silhouette_fit）与一致性自检（verify），14 → 18；
   // 同一天最后一批加了准绳图 sprite_baseline（成品实测 measured / overflow 核对图），18 → 19。
-  assert.equal(byName.size, 19)
+  // 同一天再补循环闭合的扫描原语 sprite_loop_scan（自相关测周期），19 → 20。
+  assert.equal(byName.size, 20)
   const required: Record<string, string[]> = {
     sprite_prepare: ['videoPath'],
     sprite_batch: ['outRoot', 'items'],
@@ -202,8 +204,89 @@ test('sprite_export 的 debugOverlay 与 sprite_baseline 的入参都能过到 s
   })
 })
 
-test('sprite_export 描述里写清了"measured 才是成品实测"（否则模型还是只信 achievedPx）', () => {
+test('sprite_loop_scan 的参数能过到 service；不传就一个都不编默认值', async () => {
+  const { service, calls } = stubService()
+  const scan = new Map(buildTools(service).map((tool) => [String(tool.name), tool])).get('sprite_loop_scan')!
+  await (scan.execute as (args: unknown) => Promise<unknown>)({
+    preFps: 20.945,
+    minPeriodSec: 1.2,
+    targetMultiples: [24, 48],
+    mask: 'none',
+  })
+  assert.deepEqual(calls.find((call) => call.name === 'loopScan')!.args, {
+    preFps: 20.945,
+    minPeriodSec: 1.2,
+    targetMultiples: [24, 48],
+    mask: 'none',
+  })
+  // 全空：工具层不许自己塞 {minPeriodSec:2} 之类的默认值——默认值只许有一处（service），
+  // 两处各写一套就是下一次"schema 说有、service 没转"的起点。
+  await (scan.execute as (args: unknown) => Promise<unknown>)({})
+  assert.deepEqual(calls.filter((call) => call.name === 'loopScan').at(-1)!.args, {})
+})
+
+test('sprite_loop_scan 的描述写清了前置条件与"不改会话状态"', () => {
   const { service } = stubService()
+  const scan = buildTools(service).find((tool) => tool.name === 'sprite_loop_scan')!
+  const description = String(scan.description)
+  assert.match(description, /不改会话状态/)
+  assert.match(description, /24/)
+  assert.match(description, /closureScore/)
+  assert.match(description, /confidence/)
+  // 扫描原语不该有必填项（会话里的帧就够了）
+  assert.equal((scan.parameters as { required?: string[] }).required, undefined)
+})
+
+test('sprite_prepare 的 loop 是显式开关：不传时入参与以前一模一样', async () => {
+  const { service, calls } = stubService()
+  const prepare = new Map(buildTools(service).map((tool) => [String(tool.name), tool])).get('sprite_prepare')!
+  const run = (args: unknown): Promise<unknown> => (prepare.execute as (a: unknown) => Promise<unknown>)(args)
+
+  await run({ videoPath: 'D:\\v.mp4' })
+  assert.deepEqual(calls.at(-1)!.args, { videoPath: 'D:\\v.mp4' }, '不传 loop 时连键都不许出现（向后兼容）')
+
+  await run({ videoPath: 'D:\\v.mp4', fps: 12, loop: { targetFrames: 24, minPeriodSec: 1.2, targetMultiples: [24], mask: 'body-core' } })
+  assert.deepEqual(calls.at(-1)!.args, {
+    videoPath: 'D:\\v.mp4',
+    fps: 12,
+    loop: { targetFrames: 24, minPeriodSec: 1.2, targetMultiples: [24], mask: 'body-core' },
+  })
+
+  // 空的 loop:{} 也算"传了"（要走循环流程），不能被当成 falsy 吞掉。
+  await run({ videoPath: 'D:\\v.mp4', loop: {} })
+  assert.deepEqual(calls.at(-1)!.args, { videoPath: 'D:\\v.mp4', loop: {} })
+
+  // loop 子对象里不认识的键要显形（顶层有 ignoredKeysOf，子对象不能断档）。
+  const out = String(await run({ videoPath: 'D:\\v.mp4', loop: { targetFrames: 24, nonsense: 1 } }))
+  assert.match(out, /ignoredLoop/)
+  assert.match(out, /nonsense/)
+})
+
+test('prepareLoopOf：只收认得的键，类型不对的不进参数', () => {
+  assert.deepEqual(prepareLoopOf({ targetFrames: 24, mask: 'none' }).loop, { targetFrames: 24, mask: 'none' })
+  assert.deepEqual(prepareLoopOf({ targetFrames: '24', mask: 'weird', minPeriodSec: Number.NaN }), {
+    loop: {},
+    ignored: [],
+  })
+  assert.deepEqual(prepareLoopOf({ nonsense: 1, targetMultiples: [24, 'x', 48] }), {
+    loop: { targetMultiples: [24, 48] },
+    ignored: ['nonsense'],
+  })
+  assert.deepEqual(prepareLoopOf(undefined), { loop: {}, ignored: [] }, 'loop:{} 与 loop:null 都当成"传了但要默认"')
+})
+
+test('sprite_export 的 loop 开关能过到 service，不传时也不出现 loop 键', async () => {
+  const { service, calls } = stubService()
+  const exportTool = buildTools(service).find((tool) => tool.name === 'sprite_export')!
+  const run = (args: unknown): Promise<unknown> => (exportTool.execute as (a: unknown) => Promise<unknown>)(args)
+  await run({ name: 'Idle' })
+  assert.deepEqual(calls.at(-1)!.args, { name: 'Idle' })
+  await run({ name: 'Idle', loop: true })
+  assert.deepEqual(calls.at(-1)!.args, { name: 'Idle', loop: true })
+  assert.match(String(exportTool.description), /loopCheck/)
+})
+
+test('sprite_export 描述里写清了"measured 才是成品实测"（否则模型还是只信 achievedPx）', () => {  const { service } = stubService()
   const exportTool = buildTools(service).find((tool) => tool.name === 'sprite_export')!
   const description = String(exportTool.description)
   assert.match(description, /measured/)

@@ -290,6 +290,12 @@ export interface ExportOptions {
    * 只在 png 导出时生效（webp 解不回像素，没法量也没法画）。
    */
   debugOverlay?: boolean
+  /**
+   * 显式声明"这是循环动作"：为 true 时导出会算 `loopCheck` 并在没闭合时进 `warnings`。
+   * 不传也不算错——`sprite_prepare({loop})` 采过的会话会自动带上（一次性动作别传，
+   * 它们首尾本来就不该闭合，报了只会是噪音）。
+   */
+  loop?: boolean
 }
 
 export interface ExportResult {
@@ -315,8 +321,69 @@ export interface ExportResult {
   measured?: SheetMeasurement
   /** 核对图路径（只有 `debugOverlay:true` 且 png 导出时才给）。 */
   overlayPath?: string
+  /**
+   * 循环闭合校验（只对循环动作给）：用**已经解好的图集格子**比首尾，不额外解码。
+   * `ok = |firstLastDiff − adjacentDiff| / adjacentDiff < 0.5`；
+   * 首尾差 ≈0 = 还有重复帧、明显大于相邻帧差 = 跳变。不 ok 时会进 `warnings`。
+   */
+  loopCheck?: { firstLastDiff: number; adjacentDiff: number; ok: boolean }
   warnings: string[]
   error?: string
+}
+
+// ─────────────────── 循环闭合（自相关测周期 / 按周期重采 / 导出校验） ───────────────────
+
+/**
+ * `sprite_loop_scan` 的入参。**扫描只读像素，不改会话状态**（不改 fps、不改帧、不改锚点）。
+ */
+export interface LoopScanArgs {
+  /** 预采样帧率（默认取会话当前 fps，缺省 12）：用来把 minPeriodSec 换成帧数、并反推新采样率。 */
+  preFps?: number
+  /** 最短周期（秒，默认 2）。半周期/噪声低谷靠它排除。 */
+  minPeriodSec?: number
+  /** 候选交付帧数（默认 [24, 48]），`suggestFps` 从里面挑。 */
+  targetMultiples?: number[]
+  /** 掩膜口径：`body-core`（默认，第 0 帧最大连通域 + 1px 腐蚀）或 `none`（整幅都算）。 */
+  mask?: 'body-core' | 'none'
+}
+
+/** 自相关表里的一项（`frames` 是候选周期帧数，与工具返回字段同名）。 */
+export interface LoopScorePoint {
+  frames: number
+  score: number
+}
+
+export interface LoopScanResult {
+  ok: boolean
+  /** 真实周期（帧）。 */
+  periodFrames: number
+  /** 真实周期（秒）= periodFrames / preFps。 */
+  periodSec: number
+  /** 建议采样率 = targetFrames / periodSec。 */
+  suggestedFps: number
+  /** 建议交付帧数（从 targetMultiples 里挑的）。 */
+  targetFrames: number
+  /** 分数最低的若干个候选（看"是不是勉强赢的"）。 */
+  scoreCurve: LoopScorePoint[]
+  /** `frameDiff(末帧, 首帧) / 相邻帧平均差`：越小越好；≈0 说明还有重复帧，明显 >1 说明没闭合。 */
+  closureScore: number
+  confidence: 'high' | 'medium' | 'low'
+  warnings: string[]
+  /** 低置信度时给原因（"动作本身不严格周期，建议按一次性动作处理"）。 */
+  reason?: string
+  /** 这次扫的口径（回显，方便对账）。 */
+  scanned: {
+    frames: number
+    fps: number
+    mask: 'body-core' | 'none'
+    source: 'keyed' | 'raw'
+    /** 自相关在几分之一分辨率上扫（全分辨率会卡死）。 */
+    downsample: number
+    candidates: number
+    /** 扫描区间（帧，含端点）。 */
+    range: { lo: number; hi: number }
+  }
+  elapsedMs: number
 }
 
 /** `sprite_baseline` 的入参：把一组图集按锚点对齐到同一条地平线。 */

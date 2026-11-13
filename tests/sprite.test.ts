@@ -103,7 +103,7 @@ test('缺工具页：不注册工具，probe 里写清缺的是哪个文件', ()
   }
 })
 
-test('工具页在：注册 5 个工具，名字与形状固定（参数对象 + 返回字符串）', () => {
+test('工具页在：注册 20 个工具，名字与形状固定（参数对象 + 返回字符串）', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'drc-sprite-'))
   try {
     const file = path.join(dir, 'sprite-tool.html')
@@ -128,6 +128,7 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
         'sprite_guide',
         'sprite_key_apply',
         'sprite_key_preview',
+        'sprite_loop_scan',
         'sprite_match',
         'sprite_measure',
         'sprite_prepare',
@@ -145,7 +146,7 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
       const prepare = registered.find((definition) => definition.name === 'sprite_prepare')!
       const required = (prepare.parameters as { required?: string[] }).required ?? []
       assert.deepEqual(required, ['videoPath'], '预览/应用可以不带参数，但导入必须点名视频')
-      assert.equal(handle.probe.tools, 'registered(19)')
+      assert.equal(handle.probe.tools, 'registered(20)')
     } finally {
       handle.stop()
     }

@@ -43,11 +43,30 @@ import {
   fitFeatureFrame,
   fitSilhouetteFrame,
   matchTemplate,
+  round4,
   silhouetteConfidence,
   transferAnchor,
   type FeatureFrameFit,
+  type MaskImage,
   type RgbaImage,
 } from './match.js'
+import {
+  autocorrelation,
+  bodyCoreMask,
+  closureOf,
+  downsample,
+  downsampleMask,
+  frameDiff,
+  fullMask,
+  LOOP_DOWNSAMPLE_FACTOR,
+  maskArea,
+  pickPeriod,
+  scanRangeFor,
+  suggestFps,
+  type LoopClosureCheck,
+
+  multipleSuspectWarning
+} from './loop.js'
 import { decodePng } from './png.js'
 import type {
   AnchorInfo,
@@ -61,6 +80,8 @@ import type {
   FeatureFitInput,
   FeatureFitResult,
   KeyParams,
+  LoopScanArgs,
+  LoopScanResult,
   MatchInput,
   MatchResult,
   MeasureLandmark,
@@ -112,6 +133,19 @@ export interface PrepareResult {
   video: string
   /** 视频走的是哪条通道（http 直传 / base64）。诊断用。 */
   transport: 'http' | 'base64'
+  /** 只有 `loop` 模式才有：重采后的帧率（**不传 loop 时这些字段一个都不出现**）。 */
+  fps?: number
+  periodSec?: number
+  loopClosed?: boolean
+  /** 只有 `loop` 模式才有：周期/建议帧数/闭合度的完整回执。 */
+  loop?: {
+    periodFrames: number
+    targetFrames: number
+    suggestedFps: number
+    confidence: 'high' | 'medium' | 'low'
+    closure: LoopClosureCheck
+  }
+  warnings?: string[]
   error?: string
 }
 
@@ -222,7 +256,24 @@ export interface BatchResultItem {
 }
 
 export interface SpriteService {
-  prepare(args: { videoPath: string; start?: number; end?: number; fps?: number }): Promise<PrepareResult>
+  prepare(args: {
+    videoPath: string
+    start?: number
+    end?: number
+    fps?: number
+    /**
+     * 循环闭合（可选，**不传时行为与以前一字不变**）：先按 preFps 预采样 → 自相关测周期 →
+     * 按新采样率重新精确抽 `targetFrames` 帧。一次性动作别传（会被截成半截）。
+     */
+    loop?: {
+      targetFrames?: number
+      minPeriodSec?: number
+      targetMultiples?: number[]
+      mask?: 'body-core' | 'none'
+    }
+  }): Promise<PrepareResult>
+  /** 扫当前会话帧的循环周期（只读像素，不改 fps/帧/锚点）。 */
+  loopScan(args: LoopScanArgs): Promise<LoopScanResult>
   probeColor(args: { frame?: number; bandPx?: number }): Promise<ProbeColorResult>
   keyPreview(args: KeyParams & { frame?: number }): Promise<PreviewResult>
   keyApply(args: KeyParams & { indices?: number[]; probeFrames?: number }): Promise<ApplyResult>
@@ -457,7 +508,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
   let launching: Promise<CdpSession> | undefined
   let stopped = false
   /** 最近一次 prepare 的帧尺寸/数量/帧率，用于默认值、断言与 meta 回填。 */
-  let lastPrepare: { frames: number; width: number; height: number; fps: number } | undefined
+  let lastPrepare: { frames: number; width: number; height: number; fps: number; looped?: boolean } | undefined
   /**
    * 帧数据是不是已经被空闲回收掉了。
    *
@@ -744,6 +795,311 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
   const wantsAnchor = (args: { anchorX?: number; anchorY?: number }): boolean =>
     typeof args.anchorX === 'number' || typeof args.anchorY === 'number'
 
+  // ───────────────────── 循环闭合：自相关测周期 / 按周期重采 ─────────────────────
+  //
+  // 三条已对齐的决定（别自己改）：
+  // 1. 扫描跑在**当前会话已抽好的帧**上（不自己重新抽，否则冲掉用户已抽的帧）；
+  // 2. 默认只给建议（periodFrames / suggestedFps），要改采样必须显式 prepare({loop})；
+  // 3. 一次性动作不碰：loop 是显式开关，不按帧数自动触发。
+
+  /** 全分辨率复核与闭合度采样要几对：分数是均值，6 对足够（实测 6 对 = 21ms）。 */
+  const LOOP_VERIFY_PAIRS = 6
+
+  /**
+   * 扫周期（**纯读像素，不改会话状态**：不改 fps、不改帧、不改锚点）。
+   *
+   * 代价控制（这是本功能唯一的技术风险）：
+   * - 每帧只读一次，读完立刻降到 1/4（180×241）——全分辨率存 48 帧就是 130MB；
+   * - 自相关只在 1/4 上跑（实测 48 帧 × 19 候选 = 48ms；全分辨率要 ~16 亿次）；
+   * - 只在最优 L 附近回全分辨率复核（L±1、各 6 对），把降采样的量化误差修回一格；
+   * - 闭合度也在全分辨率算（跟真实播放同一口径，比值才有意义）。
+   */
+  const loopScanOf = async (params: {
+    fps: number
+    frames: number
+    source: 'keyed' | 'raw'
+    mask?: 'body-core' | 'none'
+    minPeriodSec?: number
+    targetMultiples?: number[]
+  }): Promise<LoopScanResult> => {
+    const startedAt = Date.now()
+    const n = Math.max(1, Math.floor(Number(params.frames)))
+    const fps = Number(params.fps) > 0 ? Number(params.fps) : 12
+    const maskMode: 'body-core' | 'none' = params.mask === 'none' ? 'none' : 'body-core'
+    const warnings: string[] = []
+    if (!(fps >= 10)) throw new Error(`当前会话 fps=${fps} 太低（<10）：先 sprite_prepare 到 12fps 再扫`)
+    if (n < 24) throw new Error(`当前会话只有 ${n} 帧（<24）：先 sprite_prepare 到 12fps、时长 ≥2 秒再扫`)
+    if (params.source === 'raw') {
+      warnings.push('还没 key_apply：这次用原帧扫（绿幕噪声会压低自相关的对比度）。扫完记得正常抠图再导出。')
+    }
+
+    // ① 逐帧读一次 → 立刻降采样；全分辨率只留候选复核要用的那几帧。
+    const keepInside = Math.min(LOOP_VERIFY_PAIRS + 2, n - 1)
+    const keepIdx = new Set<number>([n - 1])
+    for (let i = 0; i <= keepInside; i++) keepIdx.add(i)
+    const kept = new Map<number, RgbaImage>()
+    const small: RgbaImage[] = []
+    for (let i = 0; i < n; i++) {
+      const img = await readFramePixels({ frame: i, source: params.source })
+      if (keepIdx.has(i)) kept.set(i, img)
+      const down = downsample(img, LOOP_DOWNSAMPLE_FACTOR)
+      small.push({ width: down.width, height: down.height, rgba: down.rgba })
+    }
+    const first = kept.get(0)
+    if (!first) throw new Error('第 0 帧没读到，没法建共用掩膜')
+
+    // ② 共用一张掩膜（第 0 帧 body-core）。逐帧各算各的会让"边界变化"冒充动作差异。
+    let mask = maskMode === 'none' ? fullMask(first.width, first.height) : bodyCoreMask(first)
+    if (maskMode !== 'none' && maskArea(mask) < 16) {
+      throw new Error('body-core 掩膜几乎是空的（alpha 没命中任何像素）：先 key_apply 抠图，或显式传 mask:"none"')
+    }
+    const smallMask = downsampleMask(mask, LOOP_DOWNSAMPLE_FACTOR)
+    if (maskArea(smallMask) < 4) {
+      throw new Error(`降到 1/${LOOP_DOWNSAMPLE_FACTOR} 后掩膜里几乎没有前景像素（角色太小）：换 mask:"none" 再扫`)
+    }
+
+    // ③ 自相关（1×/4 分辨率）
+    const range = scanRangeFor(n, fps, params.minPeriodSec ?? 2)
+    warnings.push(...range.warnings)
+    const curve = autocorrelation(small, smallMask, { lo: range.lo, hi: range.hi })
+    const pick = pickPeriod(curve)
+
+    // ④ 全分辨率复核：只在最优 L 与 L±1 上算，精修一格
+    const pixelsOf = async (index: number): Promise<RgbaImage> => {
+      const hit = kept.get(index)
+      if (hit) return hit
+      const img = await readFramePixels({ frame: index, source: params.source })
+      kept.set(index, img)
+      return img
+    }
+    const scoreAt = async (L: number): Promise<number> => {
+      const pairs = Math.max(1, Math.min(LOOP_VERIFY_PAIRS, n - L))
+      let sum = 0
+      for (let i = 0; i < pairs; i++) sum += frameDiff(await pixelsOf(i), await pixelsOf(i + L), mask)
+      return sum / pairs
+    }
+    let periodFrames = pick.L
+    let fullScore = await scoreAt(periodFrames)
+    for (const neighbor of [pick.L - 1, pick.L + 1]) {
+      if (neighbor < range.lo || neighbor > range.hi) continue
+      const score = await scoreAt(neighbor)
+      if (score < fullScore) {
+        periodFrames = neighbor
+        fullScore = score
+      }
+    }
+    if (periodFrames !== pick.L) {
+      warnings.push(
+        `全分辨率复核把周期从 L=${pick.L}（1/${LOOP_DOWNSAMPLE_FACTOR} 分辨率上的最优）改成 L=${periodFrames}：降采样量化误差`,
+      )
+    }
+
+    // ④.1 下限过滤 → 倍数误判（2026-11-13 实测：真周期 1.17s，默认 minPeriodSec=2 把它挡在门外，报成 2 倍）
+    //     只在"候选被下界挡住"时补算，代价是多几次全分辨率 frameDiff，值得。
+    for (const divisor of [2, 3]) {
+      const candidate = Math.round(periodFrames / divisor)
+      if (candidate < 2 || candidate >= range.lo) continue
+      const candidateScore = await scoreAt(candidate)
+      const suspect = multipleSuspectWarning(periodFrames, fullScore, divisor, candidateScore, range.lo, fps)
+      if (suspect) {
+        warnings.push(suspect)
+        break
+      }
+    }
+
+    // ⑤ 闭合度（全分辨率）：末帧 vs 首帧 ÷ 相邻帧平均差
+    let adjacentSum = 0
+    const adjPairs = Math.max(1, Math.min(LOOP_VERIFY_PAIRS, n - 1))
+    for (let i = 0; i < adjPairs; i++) adjacentSum += frameDiff(await pixelsOf(i), await pixelsOf(i + 1), mask)
+    const adjacent = adjacentSum / adjPairs
+    if (adjacent <= 0) {
+      // 相邻帧逐像素完全相同 = 静止画面：任何 L 的分数都会是 0，报"周期 6 帧"就是假答案。
+      throw new Error(
+        '掩膜内相邻帧逐像素完全相同（静止画面）：量不出周期，别按循环处理。确认视频里角色真的在动，或换 mask:"none" 重扫',
+      )
+    }
+    const firstLast = frameDiff(await pixelsOf(n - 1), await pixelsOf(0), mask)
+    const closureScore = round4(firstLast / adjacent)
+
+    const suggested = suggestFps(periodFrames, fps, params.targetMultiples ?? [24, 48])
+    if (pick.confidence === 'low' && pick.reason) warnings.push(pick.reason)
+    const scoreCurve = [...curve]
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 5)
+      .map((point) => ({ frames: point.L, score: point.score }))
+    return {
+      ok: true,
+      periodFrames,
+      periodSec: round4(periodFrames / fps),
+      suggestedFps: suggested.fps,
+      targetFrames: suggested.targetFrames,
+      scoreCurve,
+      closureScore,
+      confidence: pick.confidence,
+      ...(pick.reason ? { reason: pick.reason } : {}),
+      warnings,
+      scanned: {
+        frames: n,
+        fps,
+        mask: maskMode,
+        source: params.source,
+        downsample: LOOP_DOWNSAMPLE_FACTOR,
+        candidates: curve.length,
+        range: { lo: range.lo, hi: range.hi },
+      },
+      elapsedMs: Date.now() - startedAt,
+    }
+  }
+
+  /**
+   * `sprite_prepare({loop})` 的真实流程：预采样 → 测周期 → 按新采样率**重新精确抽 T 帧**。
+   *
+   * 不传 loop 的路径一个字节都不走这里（向后兼容）。三条硬边界：
+   * - 周期判不清（confidence low）就**不重采**并报错——曲线平缓代表"这不是循环动作"，
+   *   硬截会把它剪成半截（方法论 §4.4）；
+   * - 重采后帧数必须**正好等于 T**，不等就报错（周期/采样率算错了，静默交付比失败更糟）；
+   * - 重采后要验闭合度：首尾差要与相邻帧差同量级。
+   */
+  const prepareLooped = async (params: {
+    video: string
+    transport: 'http' | 'base64'
+    start: number
+    end: number
+    preFps: number
+    loop: { targetFrames?: number; minPeriodSec?: number; targetMultiples?: number[]; mask?: 'body-core' | 'none' }
+  }): Promise<PrepareResult> => {
+    const warnings: string[] = []
+    // ① 预采样（只用来测周期，不交付）
+    const preRange = await bridge<{ ok: boolean; start: number; end: number; fps: number }>(
+      'setRange',
+      params.start,
+      params.end,
+      params.preFps,
+    )
+    const start = Number(preRange?.start ?? params.start)
+    const end = Number(preRange?.end ?? params.end)
+    const preFps = Number(preRange?.fps ?? params.preFps)
+    if (Math.abs(end - start) < 2) {
+      warnings.push(`预采样区间只有 ${round4(Math.abs(end - start))}s（<2 秒）：周期可能量不准，建议给更大的 end`)
+    }
+    const pre = await bridge<{ ok: boolean; count?: number; width?: number; height?: number }>('extract')
+    const preFrames = Number(pre.count ?? 0)
+    let width = Number(pre.width ?? 0)
+    let height = Number(pre.height ?? 0)
+    if (preFrames <= 0) throw new Error('预采样抽帧结果是 0 帧：检查 start/end 与 fps')
+    if (preFrames < 24) {
+      throw new Error(
+        `预采样只有 ${preFrames} 帧（<24）：循环闭合至少要 2 秒 × 12fps。把 end-start 拉长到 ≥2 秒，或把 fps 提到 12 以上再来`,
+      )
+    }
+    lastPrepare = { frames: preFrames, width, height, fps: preFps }
+    framesLost = false
+
+    // ② 测周期
+    const keyed = await keytedParamsOf()
+    const scan = await loopScanOf({
+      fps: preFps,
+      frames: preFrames,
+      source: keyed.keyedCount > 0 ? 'keyed' : 'raw',
+      ...(params.loop.mask ? { mask: params.loop.mask } : {}),
+      ...(typeof params.loop.minPeriodSec === 'number' ? { minPeriodSec: params.loop.minPeriodSec } : {}),
+      ...(Array.isArray(params.loop.targetMultiples) ? { targetMultiples: params.loop.targetMultiples } : {}),
+    })
+    warnings.push(...scan.warnings)
+    if (scan.confidence === 'low') {
+      throw new Error(
+        `周期不清晰，没有按周期重采（${scan.reason ?? '自相关曲线平缓'}）。` +
+          '这段动画更适合当一次性动作：去掉 loop 重新 sprite_prepare；确认它确实循环就调小 loop.minPeriodSec 再试',
+      )
+    }
+
+    // ③ 定目标帧数 → 反推采样率（P = L / preFps，fps_new = T / P）
+    const multiples = Array.isArray(params.loop.targetMultiples) ? params.loop.targetMultiples : [24, 48]
+    let targetFrames = scan.targetFrames
+    if (params.loop.targetFrames !== undefined) {
+      const wanted = Math.floor(Number(params.loop.targetFrames))
+      if (!Number.isFinite(wanted) || wanted < 2) {
+        throw new Error(`loop.targetFrames 必须是 ≥2 的整数（收到 ${String(params.loop.targetFrames)}）`)
+      }
+      targetFrames = wanted
+      if (!multiples.includes(wanted)) {
+        warnings.push(
+          `loop.targetFrames=${wanted} 不在候选 ${JSON.stringify(multiples)} 里：能交付，但 8×6=48 / 8×3=24 这类网格会多出空位`,
+        )
+      }
+    }
+    const fpsNew = round4(targetFrames / scan.periodSec)
+    const loopEnd = round4(start + scan.periodSec)
+    if (loopEnd > end + 1e-6) {
+      warnings.push(`周期 ${scan.periodSec}s 超出预采样区间 ${start}→${end}s：重采会用到区间外的画面（到片尾会被夹短）`)
+    }
+
+    // ④ 按新采样率重新精确抽 T 帧
+    await bridge('setRange', start, loopEnd, fpsNew)
+    const re = await bridge<{ ok: boolean; count?: number; width?: number; height?: number }>('extract')
+    const frames = Number(re.count ?? 0)
+    width = Number(re.width ?? width)
+    height = Number(re.height ?? height)
+    lastPrepare = { frames, width, height, fps: fpsNew, looped: true }
+    framesLost = false
+    if (frames !== targetFrames) {
+      throw new Error(
+        `按周期重采后应是 ${targetFrames} 帧，实际抽到 ${frames} 帧（周期 ${scan.periodSec}s → ${fpsNew}fps，区间 ${start}→${loopEnd}s）：` +
+          '周期或采样率算错了（片尾夹短 / 帧率取整），别拿这批帧交付',
+      )
+    }
+
+    // ⑤ 闭合度：首尾差要与相邻帧差同量级
+    let firstFrame: RgbaImage | undefined
+    let prev: RgbaImage | undefined
+    let lastFrame: RgbaImage | undefined
+    let maskImage: ReturnType<typeof fullMask> | undefined
+    let adjacentSum = 0
+    let adjPairs = 0
+    for (let i = 0; i < frames; i++) {
+      const img = await readFramePixels({ frame: i, source: 'raw' })
+      if (!firstFrame) {
+        firstFrame = img
+        maskImage = params.loop.mask === 'none' ? fullMask(img.width, img.height) : bodyCoreMask(img)
+        if (maskImage && maskArea(maskImage) < 16) {
+          maskImage = fullMask(img.width, img.height)
+          warnings.push('body-core 掩膜几乎是空的（还没抠图），闭合度改成整幅算')
+        }
+      }
+      if (prev && maskImage) {
+        adjacentSum += frameDiff(prev, img, maskImage)
+        adjPairs++
+      }
+      prev = img
+      lastFrame = img
+    }
+    const adjacent = adjPairs > 0 ? adjacentSum / adjPairs : 0
+    const firstLast = lastFrame && firstFrame && maskImage ? frameDiff(lastFrame, firstFrame, maskImage) : 0
+    const closure = closureOf(firstLast, adjacent)
+    if (!closure.ok) {
+      warnings.push(`首尾差 ${closure.firstLastDiff} 与相邻帧差 ${closure.adjacentDiff} 不同量级，循环没闭合`)
+    }
+    return {
+      ok: true,
+      frames,
+      width,
+      height,
+      video: params.video,
+      transport: params.transport,
+      fps: fpsNew,
+      periodSec: scan.periodSec,
+      loopClosed: closure.ok,
+      loop: {
+        periodFrames: scan.periodFrames,
+        targetFrames,
+        suggestedFps: scan.suggestedFps,
+        confidence: scan.confidence,
+        closure,
+      },
+      warnings,
+    }
+  }
+
   return {
     get busy() {
       return session !== undefined
@@ -786,6 +1142,17 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         )
       }
       if (loaded.ok !== true) throw new Error(loaded.error ?? '视频没能载入页面')
+      // `loop` 是显式开关：传了就走"预采样 → 测周期 → 按周期重采"那条路，不传则**一字不变**。
+      if (args.loop !== undefined) {
+        return await prepareLooped({
+          video: String(loaded.name ?? path.basename(videoPath)),
+          transport,
+          start: args.start ?? 0,
+          end: args.end ?? 4,
+          preFps: args.fps ?? 12,
+          loop: args.loop ?? {},
+        })
+      }
       const fpsUsed = args.fps ?? 12
       await bridge('setRange', args.start ?? 0, args.end ?? 4, fpsUsed)
       const extracted = await bridge<{ ok: boolean; count?: number; width?: number; height?: number }>('extract')
@@ -797,6 +1164,30 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       // 这一段有了新帧，"已回收"的判定自然失效。
       framesLost = false
       return { ok: true, frames, width, height, video: String(loaded.name ?? path.basename(videoPath)), transport }
+    },
+
+    async loopScan(args) {
+      const prepared = lastPrepare
+      if (!prepared) {
+        throw new Error('还没有帧：先 sprite_prepare（12fps、≥24 帧）再扫周期')
+      }
+      const extraWarnings: string[] = []
+      if (typeof args.preFps === 'number' && Math.abs(args.preFps - prepared.fps) > 0.01) {
+        // 帧就是按会话当前 fps 抽出来的，"预采样帧率"以会话为准；传别的值只会把 fps 建议带偏。
+        extraWarnings.push(
+          `preFps=${args.preFps} 与会话实际 fps=${prepared.fps} 不一致：周期换算一律用会话实际帧率（帧就是按它抽的）`,
+        )
+      }
+      const keyed = await keytedParamsOf()
+      const result = await loopScanOf({
+        fps: prepared.fps,
+        frames: prepared.frames,
+        source: keyed.keyedCount > 0 ? 'keyed' : 'raw',
+        ...(args.mask === 'none' || args.mask === 'body-core' ? { mask: args.mask } : {}),
+        ...(typeof args.minPeriodSec === 'number' ? { minPeriodSec: args.minPeriodSec } : {}),
+        ...(Array.isArray(args.targetMultiples) ? { targetMultiples: args.targetMultiples } : {}),
+      })
+      return extraWarnings.length > 0 ? { ...result, warnings: [...extraWarnings, ...result.warnings] } : result
     },
 
     async probeColor(args) {
@@ -1427,6 +1818,42 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       } else {
         warnings.push('format=webp 解不回像素：这次没有 measured（成品实测），要验身高请用 png 导出')
       }
+      // 4.55) 循环闭合校验：用**已经解好的图集格子**比首尾，不额外解码（D 的要求）。
+      //       只对循环动作给——`loop:true` 显式声明，或这次会话是 prepare({loop}) 采出来的；
+      //       一次性动作首尾本来就不该闭合，报了只会是噪音。
+      let loopCheck: LoopClosureCheck | undefined
+      const wantsLoopCheck = args.loop === true || lastPrepare?.looped === true
+      if (wantsLoopCheck && format === 'png' && decodedSheet && cellWidthOut && cellHeightOut) {
+        // 帧数塞不下网格时 checkGridCapacity 早就抛了；网格偏大时末尾是空格子，前 framesKnown 格才是帧。
+        const cells = framesKnown
+        if (cells >= 2) {
+          try {
+            const sheet = decodedSheet
+            const cellMask: MaskImage = fullMask(cellWidthOut, cellHeightOut)
+            const cellAt = (index: number): RgbaImage =>
+              cropRgba(sheet, {
+                x: (index % cols) * cellWidthOut,
+                y: Math.floor(index / cols) * cellHeightOut,
+                w: cellWidthOut,
+                h: cellHeightOut,
+              })
+            let adjacentSum = 0
+            for (let i = 0; i + 1 < cells; i++) adjacentSum += frameDiff(cellAt(i), cellAt(i + 1), cellMask)
+            loopCheck = closureOf(frameDiff(cellAt(cells - 1), cellAt(0), cellMask), adjacentSum / (cells - 1))
+            if (!loopCheck.ok) {
+              warnings.push(
+                `首尾差 ${loopCheck.firstLastDiff} 与相邻帧差 ${loopCheck.adjacentDiff} 不同量级，循环没闭合`,
+              )
+            }
+          } catch (error) {
+            // 算不出来就明说，别让调用方以为"没有 loopCheck 就是闭合了"。
+            warnings.push(
+              `循环闭合校验没算出来（${String((error as Error)?.message ?? error).slice(0, 120)}）：首尾接不接得上未经验证`,
+            )
+            loopCheck = undefined
+          }
+        }
+      }
       const meta = buildExportMeta({
         built,
         name,
@@ -1494,6 +1921,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         ...(worst ? { stats: { worst } } : {}),
         ...(measured ? { measured } : {}),
         ...(overlayPath ? { overlayPath } : {}),
+        ...(loopCheck ? { loopCheck } : {}),
         reported: { meta },
         warnings,
       }

@@ -52,6 +52,17 @@
 **已知局限**：纯圆盘/无内部结构的剪影尺度不可辨识（IoU 曲面在尺度方向太平），有肢体结构才准；不估旋转。
 
 
+## 循环闭合（2026-11-13 新增）
+
+| 工具 | 什么时候用 | 关键入参 | 关键返回 |
+|---|---|---|---|
+| `sprite_loop_scan` | 跑/走/待机这类**循环动作**，先量真实周期 | `minPeriodSec`（默认 2）、`targetMultiples`（默认 `[24,48]`）、`mask` | `periodFrames, periodSec, suggestedFps, targetFrames, confidence, closureScore, scoreCurve` |
+| `sprite_prepare({loop})` | 按周期重采（**丢掉重复帧**） | `loop:{targetFrames, minPeriodSec?, targetMultiples?}` | `frames, fps, periodSec, loopClosed` |
+
+`export` 会带 `loopCheck:{ firstLastDiff, adjacentDiff, ok }`：`ok = |firstLast−adjacent|/adjacent < 0.5`。
+**`confidence:"low"` 就不要闭合**（动作不严格周期，硬闭会把动作截半）；**一次性动作不加 `loop`**。
+`minPeriodSec` 默认 2 秒会把短周期过滤成 2 倍——工具会额外 warning 点名，看到就调小重扫。细节见 `loop.md`。
+
 ## 成品实测与验收图（2026-11-13 新增）
 
 `sprite_export` 现在会**把自己导出的图量一遍**，返回 `measured`：

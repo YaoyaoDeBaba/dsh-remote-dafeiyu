@@ -40530,6 +40530,288 @@ function transferAnchor(input2) {
   };
 }
 
+// src/sprite/loop.ts
+var LOOP_DOWNSAMPLE_FACTOR = 4;
+var LOOP_MASK_MODES = ["body-core", "none"];
+var LOOP_ALPHA_THRESHOLD = 32;
+var lumaCache = /* @__PURE__ */ new WeakMap();
+function lumaOf(image) {
+  const hit = lumaCache.get(image);
+  if (hit) return hit;
+  const { width, height, rgba } = image;
+  const data = new Uint8Array(width * height);
+  for (let i = 0, p = 0; i < data.length; i++, p += 4) {
+    const alpha = rgba[p + 3];
+    if (alpha === 0) {
+      data[i] = 0;
+      continue;
+    }
+    const luma = Math.round((299 * rgba[p] + 587 * rgba[p + 1] + 114 * rgba[p + 2]) / 1e3);
+    data[i] = alpha === 255 ? luma : Math.round(luma * alpha / 255);
+  }
+  lumaCache.set(image, data);
+  return data;
+}
+function fullMask(width, height) {
+  const w = Math.max(1, Math.floor(width));
+  const h = Math.max(1, Math.floor(height));
+  return { width: w, height: h, data: new Uint8Array(w * h).fill(1) };
+}
+function bodyCoreMask(image, alphaThreshold = LOOP_ALPHA_THRESHOLD) {
+  return maskFromAlpha(image, { threshold: alphaThreshold, mode: "body-core" });
+}
+function frameDiff(a, b, mask, width, height) {
+  const w = Math.floor(Number(width ?? a.width));
+  const h = Math.floor(Number(height ?? a.height));
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    throw new Error(`\u6BD4\u8F83\u533A\u57DF\u5FC5\u987B\u662F\u6B63\u6570\u5C3A\u5BF8\uFF08\u6536\u5230 ${String(width)}x${String(height)}\uFF09`);
+  }
+  if (a.width < w || a.height < h) throw new Error(`\u5E27 a \u662F ${a.width}x${a.height}\uFF0C\u88C5\u4E0D\u4E0B ${w}x${h} \u7684\u6BD4\u8F83\u533A\u57DF`);
+  if (b.width < w || b.height < h) throw new Error(`\u5E27 b \u662F ${b.width}x${b.height}\uFF0C\u88C5\u4E0D\u4E0B ${w}x${h} \u7684\u6BD4\u8F83\u533A\u57DF`);
+  if (mask.width < w || mask.height < h) {
+    throw new Error(`\u63A9\u819C\u662F ${mask.width}x${mask.height}\uFF0C\u6BD4\u6BD4\u8F83\u533A\u57DF ${w}x${h} \u5C0F\uFF08\u63A9\u819C\u8981\u8DDF\u5E27\u540C\u5C3A\u5BF8\uFF09`);
+  }
+  const la = lumaOf(a);
+  const lb = lumaOf(b);
+  if (la.length < a.width * a.height || lb.length < b.width * b.height) {
+    throw new Error("\u4EAE\u5EA6\u56FE\u5C3A\u5BF8\u4E0E\u50CF\u7D20\u56FE\u5BF9\u4E0D\u4E0A");
+  }
+  const rowSum = new Int32Array(h);
+  let covered = 0;
+  for (let y = 0; y < h; y++) {
+    const maskRow = y * mask.width;
+    const rowA = y * a.width;
+    const rowB = y * b.width;
+    let sum = 0;
+    for (let x = 0; x < w; x++) {
+      if (mask.data[maskRow + x] !== 1) continue;
+      sum += Math.abs(la[rowA + x] - lb[rowB + x]);
+      covered++;
+    }
+    rowSum[y] = sum;
+  }
+  if (covered === 0) {
+    throw new Error('\u63A9\u819C\u91CC\u4E00\u4E2A\u524D\u666F\u50CF\u7D20\u90FD\u6CA1\u6709\uFF1A\u5148\u7528 bodyCoreMask \u9020\u4E00\u5F20\uFF0C\u6216\u6362 mask:"none"\uFF08\u6574\u5E45\uFF09');
+  }
+  let total = 0;
+  for (let y = 0; y < h; y++) total += rowSum[y];
+  return round4(total / covered);
+}
+function downsample(img, factor = LOOP_DOWNSAMPLE_FACTOR) {
+  const f = Math.max(1, Math.round(Number(factor)));
+  const src = img.rgba;
+  if (f === 1) {
+    return { width: img.width, height: img.height, rgba: src.slice(), mask: maskFromAlpha(img, { mode: "raw" }) };
+  }
+  const w = Math.max(1, Math.floor(img.width / f));
+  const h = Math.max(1, Math.floor(img.height / f));
+  const rgba = new Uint8Array(w * h * 4);
+  const maskData = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const yStart = y * f;
+    const yEnd = Math.min(img.height, yStart + f);
+    for (let x = 0; x < w; x++) {
+      const xStart = x * f;
+      const xEnd = Math.min(img.width, xStart + f);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let n = 0;
+      for (let yy = yStart; yy < yEnd; yy++) {
+        let p = (yy * img.width + xStart) * 4;
+        for (let xx = xStart; xx < xEnd; xx++, p += 4) {
+          r += src[p];
+          g += src[p + 1];
+          b += src[p + 2];
+          a += src[p + 3];
+          n++;
+        }
+      }
+      const at = y * w + x;
+      const q = at * 4;
+      if (n === 0) continue;
+      rgba[q] = Math.round(r / n);
+      rgba[q + 1] = Math.round(g / n);
+      rgba[q + 2] = Math.round(b / n);
+      rgba[q + 3] = Math.round(a / n);
+      maskData[at] = a / n > LOOP_ALPHA_THRESHOLD ? 1 : 0;
+    }
+  }
+  return { width: w, height: h, rgba, mask: { width: w, height: h, data: maskData } };
+}
+var maskCache2 = /* @__PURE__ */ new WeakMap();
+function downsampleMask2(mask, factor = LOOP_DOWNSAMPLE_FACTOR) {
+  const f = Math.max(1, Math.round(Number(factor)));
+  if (f === 1) return mask;
+  let bucket = maskCache2.get(mask);
+  if (!bucket) {
+    bucket = /* @__PURE__ */ new Map();
+    maskCache2.set(mask, bucket);
+  }
+  const hit = bucket.get(f);
+  if (hit) return hit;
+  const w = Math.max(1, Math.floor(mask.width / f));
+  const h = Math.max(1, Math.floor(mask.height / f));
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const yStart = y * f;
+    const yEnd = Math.min(mask.height, yStart + f);
+    for (let x = 0; x < w; x++) {
+      const xStart = x * f;
+      const xEnd = Math.min(mask.width, xStart + f);
+      let on = 0;
+      let n = 0;
+      for (let yy = yStart; yy < yEnd; yy++) {
+        const row = yy * mask.width;
+        for (let xx = xStart; xx < xEnd; xx++) {
+          if (mask.data[row + xx] === 1) on++;
+          n++;
+        }
+      }
+      data[y * w + x] = n > 0 && on * 2 >= n ? 1 : 0;
+    }
+  }
+  const out = { width: w, height: h, data };
+  bucket.set(f, out);
+  return out;
+}
+function autocorrelation(frames, mask, opts = {}) {
+  const n = frames.length;
+  if (n < 4) throw new Error(`\u81EA\u76F8\u5173\u81F3\u5C11\u8981 4 \u5E27\uFF08\u6536\u5230 ${n} \u5E27\uFF09\uFF1A\u5E27\u592A\u5C11\u91CF\u4E0D\u51FA\u5468\u671F`);
+  const lo = Math.max(1, Math.floor(Number(opts.lo ?? 1)));
+  const hi = Math.min(n - 1, Math.floor(Number(opts.hi ?? Math.max(2, Math.floor(n / 2)))));
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) throw new Error(`\u626B\u63CF\u533A\u95F4\u4E0D\u662F\u6570\u5B57\uFF1Alo=${String(opts.lo)} hi=${String(opts.hi)}`);
+  if (lo > hi) throw new Error(`\u626B\u63CF\u533A\u95F4\u662F\u7A7A\u7684\uFF1Alo=${lo} > hi=${hi}\uFF08\u5E27\u6570 ${n}\uFF09`);
+  const out = [];
+  for (let L = lo; L <= hi; L++) {
+    let sum = 0;
+    let pairs = 0;
+    for (let i = 0; i + L < n; i++) {
+      sum += frameDiff(frames[i], frames[i + L], mask);
+      pairs++;
+    }
+    out.push({ L, score: pairs > 0 ? round4(sum / pairs) : Number.POSITIVE_INFINITY });
+  }
+  return out;
+}
+function pickPeriod(curve, opts = {}) {
+  if (!Array.isArray(curve) || curve.length === 0) {
+    throw new Error("\u66F2\u7EBF\u662F\u7A7A\u7684\uFF1A\u6CA1\u6709\u5019\u9009\u5468\u671F\u5C31\u6CA1\u6CD5\u6311\uFF08\u5148\u8DD1 autocorrelation\uFF09");
+  }
+  for (const point of curve) {
+    if (!Number.isFinite(point?.L) || !Number.isFinite(point?.score)) {
+      throw new Error(`\u81EA\u76F8\u5173\u8868\u91CC\u6709\u975E\u6570\u5B57\u9879\uFF1A${JSON.stringify(point)}`);
+    }
+  }
+  const points = [...curve].sort((a, b) => a.L - b.L);
+  const dominanceRatio = Number(opts.dominanceRatio ?? 0.85);
+  const sharpnessThreshold = Number(opts.sharpnessThreshold ?? 0.1);
+  const refineRadius = Math.max(1, Math.round(Number(opts.refineRadius ?? 1)));
+  const tieTolerance = Math.max(0, Number(opts.tieTolerance ?? 0.02));
+  let best = points[0];
+  for (const point of points) if (point.score < best.score) best = point;
+  let chosen = best;
+  for (const point of points) {
+    if (point.L >= chosen.L) continue;
+    if (best.L % point.L !== 0) continue;
+    if (point.score <= best.score * (1 + tieTolerance)) chosen = point;
+  }
+  const neighbors = points.filter(
+    (point) => point.L !== chosen.L && Math.abs(point.L - chosen.L) <= refineRadius
+  );
+  if (neighbors.length === 0) {
+    return {
+      L: chosen.L,
+      score: round4(chosen.score),
+      sharpness: 0,
+      confidence: "low",
+      reason: `\u66F2\u7EBF\u53EA\u6709 L=${chosen.L} \u4E00\u4E2A\u5019\u9009\uFF0C\u6CA1\u6CD5\u5224\u65AD\u5468\u671F\u6E05\u6670\u5EA6\uFF08\u626B\u63CF\u533A\u95F4\u592A\u7A84\uFF09`
+    };
+  }
+  const neighborMin = Math.min(...neighbors.map((point) => point.score));
+  const sharpness = neighborMin > 0 ? (neighborMin - chosen.score) / neighborMin : 0;
+  const dominance = neighborMin > 0 ? chosen.score / neighborMin : chosen.score > 0 ? 1 : 0;
+  const dominantOk = dominance < dominanceRatio;
+  const sharpOk = sharpness > sharpnessThreshold;
+  const confidence = dominantOk && sharpOk ? "high" : dominantOk || sharpOk ? "medium" : "low";
+  if (confidence !== "low") {
+    return { L: chosen.L, score: round4(chosen.score), sharpness: round4(sharpness), confidence };
+  }
+  return {
+    L: chosen.L,
+    score: round4(chosen.score),
+    sharpness: round4(sharpness),
+    confidence,
+    reason: `\u66F2\u7EBF\u5E73\u7F13\uFF1A\u6700\u4F18 L=${chosen.L} \u5206\u6570 ${round4(chosen.score)}\uFF0C\u90BB\u5C45\u6700\u4F4E ${round4(neighborMin)}\uFF0C\u53EA\u5DEE ${(sharpness * 100).toFixed(1)}%\uFF08\u8981 <${dominanceRatio}\xD7 \u90BB\u5C45\u4E14\u9510\u5EA6 >${(sharpnessThreshold * 100).toFixed(0)}% \u624D\u7B97\u6E05\u6670\uFF09\u2192 \u52A8\u4F5C\u672C\u8EAB\u4E0D\u4E25\u683C\u5468\u671F\uFF0C\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406`
+  };
+}
+function suggestFps(periodFrames, preFps, targetMultiples = [24, 48]) {
+  const L = Number(periodFrames);
+  const fpsPre = Number(preFps);
+  if (!Number.isFinite(L) || L <= 0) throw new Error(`\u5468\u671F\u5E27\u6570\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${String(periodFrames)}\uFF09`);
+  if (!Number.isFinite(fpsPre) || fpsPre <= 0) throw new Error(`\u9884\u91C7\u6837\u5E27\u7387\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${String(preFps)}\uFF09`);
+  const wanted = (Array.isArray(targetMultiples) ? targetMultiples : []).map((value) => Math.floor(Number(value))).filter((value) => Number.isFinite(value) && value >= 2);
+  if (wanted.length === 0) throw new Error("targetMultiples \u91CC\u6CA1\u6709\u53EF\u7528\u7684\u76EE\u6807\u5E27\u6570\uFF08\u81F3\u5C11\u7ED9\u4E00\u4E2A \u22652 \u7684\u6574\u6570\uFF0C\u4F8B\u5982 [24,48]\uFF09");
+  const periodSec = L / fpsPre;
+  let bestT = wanted[0];
+  let bestGap = Math.abs(bestT / periodSec - fpsPre);
+  for (const T of wanted) {
+    const gap = Math.abs(T / periodSec - fpsPre);
+    if (gap < bestGap - 1e-9 || Math.abs(gap - bestGap) <= 1e-9 && T < bestT) {
+      bestT = T;
+      bestGap = gap;
+    }
+  }
+  return { targetFrames: bestT, fps: round4(bestT / periodSec), periodSec: round4(periodSec) };
+}
+function closureOf(firstLastDiff, adjacentDiff, tolerance = 0.5) {
+  const firstLast = Number(firstLastDiff);
+  const adjacent = Number(adjacentDiff);
+  if (!Number.isFinite(firstLast) || !Number.isFinite(adjacent)) {
+    throw new Error(`\u95ED\u5408\u5EA6\u9700\u8981\u4E24\u4E2A\u6709\u9650\u6570\uFF08\u6536\u5230 ${String(firstLastDiff)} / ${String(adjacentDiff)}\uFF09`);
+  }
+  const ok = adjacent > 0 ? Math.abs(firstLast - adjacent) / adjacent < tolerance : firstLast <= 0;
+  return { firstLastDiff: round4(firstLast), adjacentDiff: round4(adjacent), ok };
+}
+function maskArea(mask) {
+  let area = 0;
+  for (let i = 0; i < mask.data.length; i++) if (mask.data[i] === 1) area++;
+  return area;
+}
+function multipleSuspectWarning(periodFrames, fullScore, divisor, divisorScore, lowerBound, fps) {
+  const candidate = Math.round(periodFrames / divisor);
+  if (!Number.isFinite(candidate) || candidate < 4) return null;
+  if (candidate >= lowerBound) return null;
+  if (!(fullScore >= 0)) return null;
+  if (!(divisorScore < fullScore * 1.2)) return null;
+  const sec = (candidate / (fps > 0 ? fps : 12)).toFixed(2);
+  return `\u5468\u671F\u53EF\u80FD\u662F ${divisor} \u500D\uFF1AL=${candidate}\uFF08\u7EA6 ${sec}s\uFF09\u7684\u5206\u6570 ${divisorScore.toFixed(2)} \u4E0E L=${periodFrames}\uFF08${fullScore.toFixed(2)}\uFF09\u63A5\u8FD1\uFF0C\u4F46\u5B83\u88AB\u626B\u63CF\u4E0B\u754C\uFF08L\u2265${lowerBound}\uFF09\u6321\u4F4F\u4E86\u6CA1\u53C2\u9009\u3002\u5982\u679C\u8FD9\u6BB5\u52A8\u4F5C\u7528 ${sec}s \u5C31\u80FD\u95ED\u4E00\u6B21\uFF0C\u628A loop.minPeriodSec \u8C03\u5230 \u2264${sec} \u91CD\u626B\u3002`;
+}
+function scanRangeFor(frames, preFps, minPeriodSec) {
+  const n = Math.max(4, Math.floor(frames));
+  const fps = Number(preFps) > 0 ? Number(preFps) : 12;
+  const wantedLo = Math.max(2, Math.round(Number(minPeriodSec ?? 2) * fps));
+  const half = Math.max(2, Math.floor(n / 2));
+  const maxLo = Math.max(2, n - 2);
+  const lo = Math.min(wantedLo, maxLo);
+  let hi = Math.min(Math.max(half, lo), n - 1);
+  const warnings = [];
+  if (wantedLo > maxLo) {
+    warnings.push(
+      `minPeriodSec=${minPeriodSec}s \xD7 ${fps}fps = L\u2265${wantedLo} \u5DF2\u8D85\u51FA\u672C\u6BB5\u53EF\u6D4B\u8303\u56F4\uFF08\u5171 ${n} \u5E27\uFF09\uFF0C\u4E0B\u754C\u88AB\u538B\u5230 L=${lo}`
+    );
+  }
+  if (hi - lo < 2 && n - 1 > hi) {
+    const widened = Math.min(n - 1, lo + Math.max(2, Math.round(lo * 0.5)));
+    warnings.push(
+      `\u626B\u63CF\u533A\u95F4 [${lo},${hi}] \u53EA\u6709 ${hi - lo + 1} \u4E2A\u5019\u9009\uFF0C\u81EA\u76F8\u5173\u5224\u4E0D\u51FA\u9510\u5EA6\uFF1B\u5DF2\u628A\u4E0A\u754C\u653E\u5BBD\u5230 ${widened}\uFF08\u8981\u66F4\u51C6\u5C31\u8C03\u5C0F minPeriodSec\uFF09`
+    );
+    hi = widened;
+  }
+  return { lo, hi, warnings };
+}
+
 // src/sprite/verify.ts
 var DEFAULT_HEIGHT_PCT = 0.01;
 var DEFAULT_ANCHOR_PX = 2;
@@ -40934,6 +41216,239 @@ function createSpriteService(options) {
     return { image: await readFramePixels({ frame, source }, cache), frame };
   };
   const wantsAnchor = (args) => typeof args.anchorX === "number" || typeof args.anchorY === "number";
+  const LOOP_VERIFY_PAIRS = 6;
+  const loopScanOf = async (params) => {
+    const startedAt = Date.now();
+    const n = Math.max(1, Math.floor(Number(params.frames)));
+    const fps = Number(params.fps) > 0 ? Number(params.fps) : 12;
+    const maskMode = params.mask === "none" ? "none" : "body-core";
+    const warnings = [];
+    if (!(fps >= 10)) throw new Error(`\u5F53\u524D\u4F1A\u8BDD fps=${fps} \u592A\u4F4E\uFF08<10\uFF09\uFF1A\u5148 sprite_prepare \u5230 12fps \u518D\u626B`);
+    if (n < 24) throw new Error(`\u5F53\u524D\u4F1A\u8BDD\u53EA\u6709 ${n} \u5E27\uFF08<24\uFF09\uFF1A\u5148 sprite_prepare \u5230 12fps\u3001\u65F6\u957F \u22652 \u79D2\u518D\u626B`);
+    if (params.source === "raw") {
+      warnings.push("\u8FD8\u6CA1 key_apply\uFF1A\u8FD9\u6B21\u7528\u539F\u5E27\u626B\uFF08\u7EFF\u5E55\u566A\u58F0\u4F1A\u538B\u4F4E\u81EA\u76F8\u5173\u7684\u5BF9\u6BD4\u5EA6\uFF09\u3002\u626B\u5B8C\u8BB0\u5F97\u6B63\u5E38\u62A0\u56FE\u518D\u5BFC\u51FA\u3002");
+    }
+    const keepInside = Math.min(LOOP_VERIFY_PAIRS + 2, n - 1);
+    const keepIdx = /* @__PURE__ */ new Set([n - 1]);
+    for (let i = 0; i <= keepInside; i++) keepIdx.add(i);
+    const kept = /* @__PURE__ */ new Map();
+    const small = [];
+    for (let i = 0; i < n; i++) {
+      const img = await readFramePixels({ frame: i, source: params.source });
+      if (keepIdx.has(i)) kept.set(i, img);
+      const down = downsample(img, LOOP_DOWNSAMPLE_FACTOR);
+      small.push({ width: down.width, height: down.height, rgba: down.rgba });
+    }
+    const first = kept.get(0);
+    if (!first) throw new Error("\u7B2C 0 \u5E27\u6CA1\u8BFB\u5230\uFF0C\u6CA1\u6CD5\u5EFA\u5171\u7528\u63A9\u819C");
+    let mask = maskMode === "none" ? fullMask(first.width, first.height) : bodyCoreMask(first);
+    if (maskMode !== "none" && maskArea(mask) < 16) {
+      throw new Error('body-core \u63A9\u819C\u51E0\u4E4E\u662F\u7A7A\u7684\uFF08alpha \u6CA1\u547D\u4E2D\u4EFB\u4F55\u50CF\u7D20\uFF09\uFF1A\u5148 key_apply \u62A0\u56FE\uFF0C\u6216\u663E\u5F0F\u4F20 mask:"none"');
+    }
+    const smallMask = downsampleMask2(mask, LOOP_DOWNSAMPLE_FACTOR);
+    if (maskArea(smallMask) < 4) {
+      throw new Error(`\u964D\u5230 1/${LOOP_DOWNSAMPLE_FACTOR} \u540E\u63A9\u819C\u91CC\u51E0\u4E4E\u6CA1\u6709\u524D\u666F\u50CF\u7D20\uFF08\u89D2\u8272\u592A\u5C0F\uFF09\uFF1A\u6362 mask:"none" \u518D\u626B`);
+    }
+    const range = scanRangeFor(n, fps, params.minPeriodSec ?? 2);
+    warnings.push(...range.warnings);
+    const curve = autocorrelation(small, smallMask, { lo: range.lo, hi: range.hi });
+    const pick2 = pickPeriod(curve);
+    const pixelsOf = async (index) => {
+      const hit = kept.get(index);
+      if (hit) return hit;
+      const img = await readFramePixels({ frame: index, source: params.source });
+      kept.set(index, img);
+      return img;
+    };
+    const scoreAt = async (L) => {
+      const pairs = Math.max(1, Math.min(LOOP_VERIFY_PAIRS, n - L));
+      let sum = 0;
+      for (let i = 0; i < pairs; i++) sum += frameDiff(await pixelsOf(i), await pixelsOf(i + L), mask);
+      return sum / pairs;
+    };
+    let periodFrames = pick2.L;
+    let fullScore = await scoreAt(periodFrames);
+    for (const neighbor of [pick2.L - 1, pick2.L + 1]) {
+      if (neighbor < range.lo || neighbor > range.hi) continue;
+      const score = await scoreAt(neighbor);
+      if (score < fullScore) {
+        periodFrames = neighbor;
+        fullScore = score;
+      }
+    }
+    if (periodFrames !== pick2.L) {
+      warnings.push(
+        `\u5168\u5206\u8FA8\u7387\u590D\u6838\u628A\u5468\u671F\u4ECE L=${pick2.L}\uFF081/${LOOP_DOWNSAMPLE_FACTOR} \u5206\u8FA8\u7387\u4E0A\u7684\u6700\u4F18\uFF09\u6539\u6210 L=${periodFrames}\uFF1A\u964D\u91C7\u6837\u91CF\u5316\u8BEF\u5DEE`
+      );
+    }
+    for (const divisor of [2, 3]) {
+      const candidate = Math.round(periodFrames / divisor);
+      if (candidate < 2 || candidate >= range.lo) continue;
+      const candidateScore = await scoreAt(candidate);
+      const suspect = multipleSuspectWarning(periodFrames, fullScore, divisor, candidateScore, range.lo, fps);
+      if (suspect) {
+        warnings.push(suspect);
+        break;
+      }
+    }
+    let adjacentSum = 0;
+    const adjPairs = Math.max(1, Math.min(LOOP_VERIFY_PAIRS, n - 1));
+    for (let i = 0; i < adjPairs; i++) adjacentSum += frameDiff(await pixelsOf(i), await pixelsOf(i + 1), mask);
+    const adjacent = adjacentSum / adjPairs;
+    if (adjacent <= 0) {
+      throw new Error(
+        '\u63A9\u819C\u5185\u76F8\u90BB\u5E27\u9010\u50CF\u7D20\u5B8C\u5168\u76F8\u540C\uFF08\u9759\u6B62\u753B\u9762\uFF09\uFF1A\u91CF\u4E0D\u51FA\u5468\u671F\uFF0C\u522B\u6309\u5FAA\u73AF\u5904\u7406\u3002\u786E\u8BA4\u89C6\u9891\u91CC\u89D2\u8272\u771F\u7684\u5728\u52A8\uFF0C\u6216\u6362 mask:"none" \u91CD\u626B'
+      );
+    }
+    const firstLast = frameDiff(await pixelsOf(n - 1), await pixelsOf(0), mask);
+    const closureScore = round4(firstLast / adjacent);
+    const suggested = suggestFps(periodFrames, fps, params.targetMultiples ?? [24, 48]);
+    if (pick2.confidence === "low" && pick2.reason) warnings.push(pick2.reason);
+    const scoreCurve = [...curve].sort((a, b) => a.score - b.score).slice(0, 5).map((point) => ({ frames: point.L, score: point.score }));
+    return {
+      ok: true,
+      periodFrames,
+      periodSec: round4(periodFrames / fps),
+      suggestedFps: suggested.fps,
+      targetFrames: suggested.targetFrames,
+      scoreCurve,
+      closureScore,
+      confidence: pick2.confidence,
+      ...pick2.reason ? { reason: pick2.reason } : {},
+      warnings,
+      scanned: {
+        frames: n,
+        fps,
+        mask: maskMode,
+        source: params.source,
+        downsample: LOOP_DOWNSAMPLE_FACTOR,
+        candidates: curve.length,
+        range: { lo: range.lo, hi: range.hi }
+      },
+      elapsedMs: Date.now() - startedAt
+    };
+  };
+  const prepareLooped = async (params) => {
+    const warnings = [];
+    const preRange = await bridge(
+      "setRange",
+      params.start,
+      params.end,
+      params.preFps
+    );
+    const start = Number(preRange?.start ?? params.start);
+    const end = Number(preRange?.end ?? params.end);
+    const preFps = Number(preRange?.fps ?? params.preFps);
+    if (Math.abs(end - start) < 2) {
+      warnings.push(`\u9884\u91C7\u6837\u533A\u95F4\u53EA\u6709 ${round4(Math.abs(end - start))}s\uFF08<2 \u79D2\uFF09\uFF1A\u5468\u671F\u53EF\u80FD\u91CF\u4E0D\u51C6\uFF0C\u5EFA\u8BAE\u7ED9\u66F4\u5927\u7684 end`);
+    }
+    const pre = await bridge("extract");
+    const preFrames = Number(pre.count ?? 0);
+    let width = Number(pre.width ?? 0);
+    let height = Number(pre.height ?? 0);
+    if (preFrames <= 0) throw new Error("\u9884\u91C7\u6837\u62BD\u5E27\u7ED3\u679C\u662F 0 \u5E27\uFF1A\u68C0\u67E5 start/end \u4E0E fps");
+    if (preFrames < 24) {
+      throw new Error(
+        `\u9884\u91C7\u6837\u53EA\u6709 ${preFrames} \u5E27\uFF08<24\uFF09\uFF1A\u5FAA\u73AF\u95ED\u5408\u81F3\u5C11\u8981 2 \u79D2 \xD7 12fps\u3002\u628A end-start \u62C9\u957F\u5230 \u22652 \u79D2\uFF0C\u6216\u628A fps \u63D0\u5230 12 \u4EE5\u4E0A\u518D\u6765`
+      );
+    }
+    lastPrepare = { frames: preFrames, width, height, fps: preFps };
+    framesLost = false;
+    const keyed = await keytedParamsOf();
+    const scan = await loopScanOf({
+      fps: preFps,
+      frames: preFrames,
+      source: keyed.keyedCount > 0 ? "keyed" : "raw",
+      ...params.loop.mask ? { mask: params.loop.mask } : {},
+      ...typeof params.loop.minPeriodSec === "number" ? { minPeriodSec: params.loop.minPeriodSec } : {},
+      ...Array.isArray(params.loop.targetMultiples) ? { targetMultiples: params.loop.targetMultiples } : {}
+    });
+    warnings.push(...scan.warnings);
+    if (scan.confidence === "low") {
+      throw new Error(
+        `\u5468\u671F\u4E0D\u6E05\u6670\uFF0C\u6CA1\u6709\u6309\u5468\u671F\u91CD\u91C7\uFF08${scan.reason ?? "\u81EA\u76F8\u5173\u66F2\u7EBF\u5E73\u7F13"}\uFF09\u3002\u8FD9\u6BB5\u52A8\u753B\u66F4\u9002\u5408\u5F53\u4E00\u6B21\u6027\u52A8\u4F5C\uFF1A\u53BB\u6389 loop \u91CD\u65B0 sprite_prepare\uFF1B\u786E\u8BA4\u5B83\u786E\u5B9E\u5FAA\u73AF\u5C31\u8C03\u5C0F loop.minPeriodSec \u518D\u8BD5`
+      );
+    }
+    const multiples = Array.isArray(params.loop.targetMultiples) ? params.loop.targetMultiples : [24, 48];
+    let targetFrames = scan.targetFrames;
+    if (params.loop.targetFrames !== void 0) {
+      const wanted = Math.floor(Number(params.loop.targetFrames));
+      if (!Number.isFinite(wanted) || wanted < 2) {
+        throw new Error(`loop.targetFrames \u5FC5\u987B\u662F \u22652 \u7684\u6574\u6570\uFF08\u6536\u5230 ${String(params.loop.targetFrames)}\uFF09`);
+      }
+      targetFrames = wanted;
+      if (!multiples.includes(wanted)) {
+        warnings.push(
+          `loop.targetFrames=${wanted} \u4E0D\u5728\u5019\u9009 ${JSON.stringify(multiples)} \u91CC\uFF1A\u80FD\u4EA4\u4ED8\uFF0C\u4F46 8\xD76=48 / 8\xD73=24 \u8FD9\u7C7B\u7F51\u683C\u4F1A\u591A\u51FA\u7A7A\u4F4D`
+        );
+      }
+    }
+    const fpsNew = round4(targetFrames / scan.periodSec);
+    const loopEnd = round4(start + scan.periodSec);
+    if (loopEnd > end + 1e-6) {
+      warnings.push(`\u5468\u671F ${scan.periodSec}s \u8D85\u51FA\u9884\u91C7\u6837\u533A\u95F4 ${start}\u2192${end}s\uFF1A\u91CD\u91C7\u4F1A\u7528\u5230\u533A\u95F4\u5916\u7684\u753B\u9762\uFF08\u5230\u7247\u5C3E\u4F1A\u88AB\u5939\u77ED\uFF09`);
+    }
+    await bridge("setRange", start, loopEnd, fpsNew);
+    const re = await bridge("extract");
+    const frames = Number(re.count ?? 0);
+    width = Number(re.width ?? width);
+    height = Number(re.height ?? height);
+    lastPrepare = { frames, width, height, fps: fpsNew, looped: true };
+    framesLost = false;
+    if (frames !== targetFrames) {
+      throw new Error(
+        `\u6309\u5468\u671F\u91CD\u91C7\u540E\u5E94\u662F ${targetFrames} \u5E27\uFF0C\u5B9E\u9645\u62BD\u5230 ${frames} \u5E27\uFF08\u5468\u671F ${scan.periodSec}s \u2192 ${fpsNew}fps\uFF0C\u533A\u95F4 ${start}\u2192${loopEnd}s\uFF09\uFF1A\u5468\u671F\u6216\u91C7\u6837\u7387\u7B97\u9519\u4E86\uFF08\u7247\u5C3E\u5939\u77ED / \u5E27\u7387\u53D6\u6574\uFF09\uFF0C\u522B\u62FF\u8FD9\u6279\u5E27\u4EA4\u4ED8`
+      );
+    }
+    let firstFrame;
+    let prev;
+    let lastFrame;
+    let maskImage;
+    let adjacentSum = 0;
+    let adjPairs = 0;
+    for (let i = 0; i < frames; i++) {
+      const img = await readFramePixels({ frame: i, source: "raw" });
+      if (!firstFrame) {
+        firstFrame = img;
+        maskImage = params.loop.mask === "none" ? fullMask(img.width, img.height) : bodyCoreMask(img);
+        if (maskImage && maskArea(maskImage) < 16) {
+          maskImage = fullMask(img.width, img.height);
+          warnings.push("body-core \u63A9\u819C\u51E0\u4E4E\u662F\u7A7A\u7684\uFF08\u8FD8\u6CA1\u62A0\u56FE\uFF09\uFF0C\u95ED\u5408\u5EA6\u6539\u6210\u6574\u5E45\u7B97");
+        }
+      }
+      if (prev && maskImage) {
+        adjacentSum += frameDiff(prev, img, maskImage);
+        adjPairs++;
+      }
+      prev = img;
+      lastFrame = img;
+    }
+    const adjacent = adjPairs > 0 ? adjacentSum / adjPairs : 0;
+    const firstLast = lastFrame && firstFrame && maskImage ? frameDiff(lastFrame, firstFrame, maskImage) : 0;
+    const closure = closureOf(firstLast, adjacent);
+    if (!closure.ok) {
+      warnings.push(`\u9996\u5C3E\u5DEE ${closure.firstLastDiff} \u4E0E\u76F8\u90BB\u5E27\u5DEE ${closure.adjacentDiff} \u4E0D\u540C\u91CF\u7EA7\uFF0C\u5FAA\u73AF\u6CA1\u95ED\u5408`);
+    }
+    return {
+      ok: true,
+      frames,
+      width,
+      height,
+      video: params.video,
+      transport: params.transport,
+      fps: fpsNew,
+      periodSec: scan.periodSec,
+      loopClosed: closure.ok,
+      loop: {
+        periodFrames: scan.periodFrames,
+        targetFrames,
+        suggestedFps: scan.suggestedFps,
+        confidence: scan.confidence,
+        closure
+      },
+      warnings
+    };
+  };
   return {
     get busy() {
       return session !== void 0;
@@ -40972,6 +41487,16 @@ function createSpriteService(options) {
         );
       }
       if (loaded.ok !== true) throw new Error(loaded.error ?? "\u89C6\u9891\u6CA1\u80FD\u8F7D\u5165\u9875\u9762");
+      if (args.loop !== void 0) {
+        return await prepareLooped({
+          video: String(loaded.name ?? path20.basename(videoPath)),
+          transport,
+          start: args.start ?? 0,
+          end: args.end ?? 4,
+          preFps: args.fps ?? 12,
+          loop: args.loop ?? {}
+        });
+      }
       const fpsUsed = args.fps ?? 12;
       await bridge("setRange", args.start ?? 0, args.end ?? 4, fpsUsed);
       const extracted = await bridge("extract");
@@ -40982,6 +41507,28 @@ function createSpriteService(options) {
       lastPrepare = { frames, width, height, fps: fpsUsed };
       framesLost = false;
       return { ok: true, frames, width, height, video: String(loaded.name ?? path20.basename(videoPath)), transport };
+    },
+    async loopScan(args) {
+      const prepared = lastPrepare;
+      if (!prepared) {
+        throw new Error("\u8FD8\u6CA1\u6709\u5E27\uFF1A\u5148 sprite_prepare\uFF0812fps\u3001\u226524 \u5E27\uFF09\u518D\u626B\u5468\u671F");
+      }
+      const extraWarnings = [];
+      if (typeof args.preFps === "number" && Math.abs(args.preFps - prepared.fps) > 0.01) {
+        extraWarnings.push(
+          `preFps=${args.preFps} \u4E0E\u4F1A\u8BDD\u5B9E\u9645 fps=${prepared.fps} \u4E0D\u4E00\u81F4\uFF1A\u5468\u671F\u6362\u7B97\u4E00\u5F8B\u7528\u4F1A\u8BDD\u5B9E\u9645\u5E27\u7387\uFF08\u5E27\u5C31\u662F\u6309\u5B83\u62BD\u7684\uFF09`
+        );
+      }
+      const keyed = await keytedParamsOf();
+      const result2 = await loopScanOf({
+        fps: prepared.fps,
+        frames: prepared.frames,
+        source: keyed.keyedCount > 0 ? "keyed" : "raw",
+        ...args.mask === "none" || args.mask === "body-core" ? { mask: args.mask } : {},
+        ...typeof args.minPeriodSec === "number" ? { minPeriodSec: args.minPeriodSec } : {},
+        ...Array.isArray(args.targetMultiples) ? { targetMultiples: args.targetMultiples } : {}
+      });
+      return extraWarnings.length > 0 ? { ...result2, warnings: [...extraWarnings, ...result2.warnings] } : result2;
     },
     async probeColor(args) {
       const answer = await bridge("probeColor", {
@@ -41527,6 +42074,36 @@ function createSpriteService(options) {
       } else {
         warnings.push("format=webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF1A\u8FD9\u6B21\u6CA1\u6709 measured\uFF08\u6210\u54C1\u5B9E\u6D4B\uFF09\uFF0C\u8981\u9A8C\u8EAB\u9AD8\u8BF7\u7528 png \u5BFC\u51FA");
       }
+      let loopCheck;
+      const wantsLoopCheck = args.loop === true || lastPrepare?.looped === true;
+      if (wantsLoopCheck && format === "png" && decodedSheet && cellWidthOut && cellHeightOut) {
+        const cells = framesKnown;
+        if (cells >= 2) {
+          try {
+            const sheet = decodedSheet;
+            const cellMask = fullMask(cellWidthOut, cellHeightOut);
+            const cellAt = (index) => cropRgba(sheet, {
+              x: index % cols * cellWidthOut,
+              y: Math.floor(index / cols) * cellHeightOut,
+              w: cellWidthOut,
+              h: cellHeightOut
+            });
+            let adjacentSum = 0;
+            for (let i = 0; i + 1 < cells; i++) adjacentSum += frameDiff(cellAt(i), cellAt(i + 1), cellMask);
+            loopCheck = closureOf(frameDiff(cellAt(cells - 1), cellAt(0), cellMask), adjacentSum / (cells - 1));
+            if (!loopCheck.ok) {
+              warnings.push(
+                `\u9996\u5C3E\u5DEE ${loopCheck.firstLastDiff} \u4E0E\u76F8\u90BB\u5E27\u5DEE ${loopCheck.adjacentDiff} \u4E0D\u540C\u91CF\u7EA7\uFF0C\u5FAA\u73AF\u6CA1\u95ED\u5408`
+              );
+            }
+          } catch (error62) {
+            warnings.push(
+              `\u5FAA\u73AF\u95ED\u5408\u6821\u9A8C\u6CA1\u7B97\u51FA\u6765\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09\uFF1A\u9996\u5C3E\u63A5\u4E0D\u63A5\u5F97\u4E0A\u672A\u7ECF\u9A8C\u8BC1`
+            );
+            loopCheck = void 0;
+          }
+        }
+      }
       const meta3 = buildExportMeta({
         built,
         name: name2,
@@ -41590,6 +42167,7 @@ function createSpriteService(options) {
         ...worst ? { stats: { worst } } : {},
         ...measured ? { measured } : {},
         ...overlayPath ? { overlayPath } : {},
+        ...loopCheck ? { loopCheck } : {},
         reported: { meta: meta3 },
         warnings
       };
@@ -41944,6 +42522,21 @@ function referenceSchema(description) {
     }
   };
 }
+var PREPARE_LOOP_KEYS = ["targetFrames", "minPeriodSec", "targetMultiples", "mask"];
+function prepareLoopOf(value) {
+  const raw = value && typeof value === "object" ? value : {};
+  const loop = {};
+  if (typeof raw.targetFrames === "number" && Number.isFinite(raw.targetFrames)) loop.targetFrames = raw.targetFrames;
+  if (typeof raw.minPeriodSec === "number" && Number.isFinite(raw.minPeriodSec)) loop.minPeriodSec = raw.minPeriodSec;
+  if (Array.isArray(raw.targetMultiples)) {
+    const multiples = raw.targetMultiples.filter((one) => typeof one === "number" && Number.isFinite(one));
+    if (multiples.length > 0) loop.targetMultiples = multiples;
+  }
+  if (raw.mask === "body-core" || raw.mask === "none") loop.mask = raw.mask;
+  const known = new Set(PREPARE_LOOP_KEYS);
+  const ignored = Object.keys(raw).filter((key) => !known.has(key));
+  return { loop, ignored };
+}
 function referenceOf(value) {
   if (!value || typeof value !== "object") return {};
   const raw = value;
@@ -42006,14 +42599,28 @@ function buildTools(service, options) {
   return [
     {
       name: "sprite_prepare",
-      description: "\u5E8F\u5217\u5E27\u7B2C\u4E00\u6B65\uFF1A\u5BFC\u5165\u89C6\u9891\u5E76\u62BD\u5E27\u3002\u8FD4\u56DE {frames,width,height,transport}\u3002transport=http \u8868\u793A\u89C6\u9891\u8D70\u672C\u5730\u76F4\u4F20\uFF08\u5FEB\uFF09\uFF1Bbase64 \u662F\u515C\u5E95\u901A\u9053\uFF08\u6162 20 \u79D2\u5DE6\u53F3\uFF09\u3002",
+      description: "\u5E8F\u5217\u5E27\u7B2C\u4E00\u6B65\uFF1A\u5BFC\u5165\u89C6\u9891\u5E76\u62BD\u5E27\u3002\u8FD4\u56DE {frames,width,height,transport}\u3002transport=http \u8868\u793A\u89C6\u9891\u8D70\u672C\u5730\u76F4\u4F20\uFF08\u5FEB\uFF09\uFF1Bbase64 \u662F\u515C\u5E95\u901A\u9053\uFF08\u6162 20 \u79D2\u5DE6\u53F3\uFF09\u3002**\u5FAA\u73AF\u52A8\u4F5C**\uFF08\u8DD1/\u8D70/\u5F85\u673A/\u547C\u5438/\u6F02\u6D6E\u2014\u2014\u4F1A\u4E00\u76F4\u5FAA\u73AF\u64AD\u7684\uFF09\u52A0 `loop:{}`\uFF1A\u5185\u90E8\u4F1A\u5148\u6309 fps \u9884\u91C7\u6837\u6D4B\u51FA\u771F\u5B9E\u5468\u671F\uFF0C\u518D\u6309\u65B0\u91C7\u6837\u7387\u91CD\u65B0\u7CBE\u786E\u62BD T \u5E27\uFF0C\u8FD4\u56DE\u91CC\u591A\u7ED9 {fps,periodSec,loopClosed,loop}\uFF08\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20\uFF0C\u4F1A\u88AB\u622A\u6210\u534A\u622A\uFF09\u3002\u4E0D\u4F20 loop \u65F6\u884C\u4E3A\u4E0E\u4EE5\u524D\u5B8C\u5168\u4E00\u6837\u3002",
       parameters: {
         type: "object",
         properties: {
           videoPath: { type: "string", description: "\u89C6\u9891\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84\uFF08mp4/webm/mov\uFF0C\u2264200MB\uFF09" },
           start: { type: "number", description: "\u8D77\u59CB\u79D2\uFF0C\u9ED8\u8BA4 0" },
           end: { type: "number", description: "\u7ED3\u675F\u79D2\uFF0C\u9ED8\u8BA4 4" },
-          fps: { type: "number", description: "\u62BD\u5E27\u5E27\u7387\uFF0C\u9ED8\u8BA4 12" }
+          fps: { type: "number", description: "\u62BD\u5E27\u5E27\u7387\uFF0C\u9ED8\u8BA4 12\uFF08loop \u6A21\u5F0F\u4E0B\u662F**\u9884\u91C7\u6837**\u5E27\u7387\uFF0C\u81F3\u5C11\u8981 10\u3001\u4E14\u533A\u95F4 \u22652 \u79D2\uFF09" },
+          loop: {
+            type: "object",
+            description: '\u5FAA\u73AF\u95ED\u5408\uFF08\u53EF\u9009\u5F00\u5173\uFF09\uFF1A\u4F20\u4E86\u5C31\u8FDB"\u9884\u91C7\u6837 \u2192 \u81EA\u76F8\u5173\u6D4B\u5468\u671F \u2192 \u6309\u5468\u671F\u91CD\u91C7 T \u5E27"\u6D41\u7A0B\u3002\u5468\u671F\u5224\u4E0D\u6E05\uFF08\u66F2\u7EBF\u5E73\u7F13\uFF09\u65F6\u4F1A**\u62A5\u9519\u800C\u4E0D\u662F\u786C\u622A**\uFF0C\u8BF4\u660E\u8FD9\u6BB5\u52A8\u753B\u8BE5\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406\u3002',
+            properties: {
+              targetFrames: { type: "number", description: "\u4EA4\u4ED8\u5E27\u6570\uFF08\u9ED8\u8BA4\u4ECE targetMultiples \u91CC\u6311\uFF0C\u901A\u5E38 24 \u6216 48\uFF09" },
+              minPeriodSec: { type: "number", description: "\u6700\u77ED\u5468\u671F\uFF08\u79D2\uFF0C\u9ED8\u8BA4 2\uFF09\u3002\u52A8\u4F5C\u4E00\u4E2A\u5FAA\u73AF\u4E0D\u5230 2 \u79D2\u5C31\u8C03\u5C0F\uFF0C\u5426\u5219\u626B\u4E0D\u5230\u771F\u5468\u671F" },
+              targetMultiples: { type: "array", items: { type: "number" }, description: "\u5019\u9009\u4EA4\u4ED8\u5E27\u6570\uFF0C\u9ED8\u8BA4 [24,48]" },
+              mask: {
+                type: "string",
+                enum: [...LOOP_MASK_MODES],
+                description: "\u5468\u671F\u626B\u63CF\u7684\u63A9\u819C\u53E3\u5F84\uFF1Abody-core\uFF08\u9ED8\u8BA4\uFF09= \u7B2C 0 \u5E27\u6700\u5927\u8FDE\u901A\u57DF + 1px \u8150\u8680\uFF1Bnone = \u6574\u5E45\uFF08\u7EFF\u5E55\u7D20\u6750\u522B\u7528\uFF09"
+              }
+            }
+          }
         },
         required: ["videoPath"]
       },
@@ -42022,13 +42629,54 @@ function buildTools(service, options) {
       async execute(args) {
         const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
         if (videoPath === "") return fail2("\u9700\u8981 videoPath\uFF08\u89C6\u9891\u7EDD\u5BF9\u8DEF\u5F84\uFF09");
+        const looped = args.loop !== void 0 ? prepareLoopOf(args.loop) : void 0;
+        try {
+          const result2 = await service.prepare({
+            videoPath,
+            ...typeof args.start === "number" ? { start: args.start } : {},
+            ...typeof args.end === "number" ? { end: args.end } : {},
+            ...typeof args.fps === "number" ? { fps: args.fps } : {},
+            ...looped ? { loop: looped.loop } : {}
+          });
+          return json9(looped && looped.ignored.length > 0 ? { ...result2, ignoredLoop: looped.ignored } : result2);
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_loop_scan",
+      description: '\u626B**\u5F53\u524D\u4F1A\u8BDD\u5DF2\u62BD\u597D\u7684\u5E27**\u7684\u5FAA\u73AF\u5468\u671F\uFF08\u81EA\u76F8\u5173\uFF1Ascore(L)=\u5E73\u5747\u5E27\u5DEE(i,i+L)\uFF09\uFF0C\u53EA\u7ED9\u5EFA\u8BAE\u3001**\u4E0D\u6539\u4F1A\u8BDD\u72B6\u6001**\uFF08\u4E0D\u6539 fps\u3001\u4E0D\u6539\u5E27\u3001\u4E0D\u6539\u951A\u70B9\uFF09\u3002\u8FD4\u56DE {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,warnings}\u3002\u524D\u7F6E\uFF1A\u4F1A\u8BDD fps \u226510 \u4E14\u5E27\u6570 \u226524\uFF08\u4E0D\u591F\u4F1A\u76F4\u63A5\u62A5\u4E2D\u6587\u9519\uFF0C\u8BA9\u4F60\u5148 sprite_prepare \u5230 12fps\uFF09\u3002\u7B97\u6CD5\u53E3\u5F84\uFF1A\u63A9\u819C\u53EA\u7528**\u7B2C 0 \u5E27\u90A3\u5F20** body-core\uFF08\u9010\u5E27\u5404\u7B97\u4F1A\u8BA9\u8FB9\u754C\u53D8\u5316\u5192\u5145\u52A8\u4F5C\u5DEE\u5F02\uFF09\uFF1B\u81EA\u76F8\u5173\u5148\u5728 1/4 \u964D\u91C7\u6837\u4E0A\u626B\uFF08\u5168\u5206\u8FA8\u7387 48 \u5E27\xD719 \u5019\u9009 \u224816 \u4EBF\u6B21\uFF0C\u4F1A\u5361\u6B7B\uFF09\uFF0C\u53EA\u5728\u6700\u4F18 L \u4E0A\u56DE\u5168\u5206\u8FA8\u7387\u590D\u6838 L\xB11\u3002closureScore = \u672B\u5E27\u4E0E\u9996\u5E27\u4E4B\u5DEE \xF7 \u76F8\u90BB\u5E27\u5E73\u5747\u5DEE\uFF1A\u22480 \u8BF4\u660E\u8FD8\u6709\u91CD\u590D\u5E27\u3001\u660E\u663E >1 \u8BF4\u660E\u6CA1\u95ED\u5408\u3002confidence=low \u65F6 reason \u4F1A\u8BF4"\u52A8\u4F5C\u672C\u8EAB\u4E0D\u4E25\u683C\u5468\u671F\uFF0C\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406"\u2014\u2014\u90A3\u5C31\u522B\u95ED\u5408\u3002**\u53EA\u5BF9\u5FAA\u73AF\u52A8\u4F5C\u8C03\u5B83**\uFF1B\u8981\u771F\u6309\u5468\u671F\u91CD\u91C7\uFF0C\u7528 sprite_prepare({loop})\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          preFps: { type: "number", description: "\u9884\u91C7\u6837\u5E27\u7387\uFF08\u9ED8\u8BA4\u53D6\u4F1A\u8BDD\u5F53\u524D fps\uFF09\uFF1A\u53EA\u7528\u4E8E\u56DE\u663E/\u5BF9\u8D26\uFF0C\u5468\u671F\u6362\u7B97\u4E00\u5F8B\u7528\u4F1A\u8BDD\u5B9E\u9645\u5E27\u7387" },
+          minPeriodSec: {
+            type: "number",
+            description: "\u6700\u77ED\u5468\u671F\uFF08\u79D2\uFF0C\u9ED8\u8BA4 2\uFF09\u3002\u4F4E\u4E8E\u5B83\uFF08\xD7 fps\uFF09\u7684\u5019\u9009\u4E0D\u626B\u2014\u2014\u52A8\u4F5C\u5468\u671F\u66F4\u77ED\u5C31\u8C03\u5C0F\uFF0C\u5426\u5219\u626B\u5230\u7684\u53EA\u4F1A\u662F\u566A\u58F0"
+          },
+          targetMultiples: {
+            type: "array",
+            items: { type: "number" },
+            description: '\u5019\u9009\u4EA4\u4ED8\u5E27\u6570\uFF08\u9ED8\u8BA4 [24,48]\uFF09\uFF1A\u6311"\u65B0\u91C7\u6837\u7387\u79BB\u9884\u91C7\u6837\u7387\u6700\u8FD1"\u7684\u90A3\u4E2A\uFF0C\u907F\u514D\u63D2\u503C\u51D1\u5E27'
+          },
+          mask: {
+            type: "string",
+            enum: [...LOOP_MASK_MODES],
+            description: "\u63A9\u819C\u53E3\u5F84\uFF1Abody-core\uFF08\u9ED8\u8BA4\uFF0C\u7B2C 0 \u5E27\u6700\u5927\u8FDE\u901A\u57DF + 1px \u8150\u8680\uFF09\u6216 none\uFF08\u6574\u5E45\u90FD\u7B97\uFF0C\u7EFF\u5E55\u566A\u58F0\u4F1A\u538B\u5BF9\u6BD4\u5EA6\uFF09"
+          }
+        }
+      },
+      output: OUT2,
+      timeoutMs: 24e4,
+      async execute(args) {
         try {
           return json9(
-            await service.prepare({
-              videoPath,
-              ...typeof args.start === "number" ? { start: args.start } : {},
-              ...typeof args.end === "number" ? { end: args.end } : {},
-              ...typeof args.fps === "number" ? { fps: args.fps } : {}
+            await service.loopScan({
+              ...typeof args.preFps === "number" ? { preFps: args.preFps } : {},
+              ...typeof args.minPeriodSec === "number" ? { minPeriodSec: args.minPeriodSec } : {},
+              ...Array.isArray(args.targetMultiples) ? { targetMultiples: args.targetMultiples.filter((one) => typeof one === "number") } : {},
+              ...args.mask === "body-core" || args.mask === "none" ? { mask: args.mask } : {}
             })
           );
         } catch (error62) {
@@ -42303,7 +42951,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_export",
-      description: '\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002\u8FD4\u56DE\u91CC `measured` \u662F**\u6210\u54C1\u5B9E\u6D4B**\uFF08\u89E3\u81EA\u5DF1\u5BFC\u51FA\u7684 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2 \u2192 \u53D6\u4E2D\u4F4D\u6570\uFF09\uFF1AcharHeightPx/headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"\uFF0C\u683C\u5B50\u6570 >48 \u65F6\u53EA\u7B49\u95F4\u9694\u62BD 12 \u683C\u5E76\u7ED9 sampled:true\u3002**\u5224\u6210\u54C1\u5BF9\u4E0D\u5BF9\u770B measured\uFF0C\u522B\u770B achievedPx**\u2014\u2014achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\u7684\u53C2\u6570\u56DE\u663E\uFF1B\u4E24\u8005\u5DEE >1% \u4F1A\u5728 warnings \u91CC\u70B9\u540D\u3002debugOverlay:true \u518D\u51FA\u4E00\u5F20 <outDir>/_debug/<name>-overlay.png\uFF08\u54C1\u7EA2=\u5B9E\u6D4B\u5934\u9876\u3001\u9752=\u5B9E\u6D4B\u811A\u5E95\u3001\u767D\u5341\u5B57=\u951A\u70B9\uFF1B\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5% \u7684\u683C\u6574\u683C\u6807\u9EC4\uFF09\uFF0C\u8DEF\u5F84\u5728 overlayPath\u3002',
+      description: '\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002\u8FD4\u56DE\u91CC `measured` \u662F**\u6210\u54C1\u5B9E\u6D4B**\uFF08\u89E3\u81EA\u5DF1\u5BFC\u51FA\u7684 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2 \u2192 \u53D6\u4E2D\u4F4D\u6570\uFF09\uFF1AcharHeightPx/headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"\uFF0C\u683C\u5B50\u6570 >48 \u65F6\u53EA\u7B49\u95F4\u9694\u62BD 12 \u683C\u5E76\u7ED9 sampled:true\u3002**\u5224\u6210\u54C1\u5BF9\u4E0D\u5BF9\u770B measured\uFF0C\u522B\u770B achievedPx**\u2014\u2014achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\u7684\u53C2\u6570\u56DE\u663E\uFF1B\u4E24\u8005\u5DEE >1% \u4F1A\u5728 warnings \u91CC\u70B9\u540D\u3002debugOverlay:true \u518D\u51FA\u4E00\u5F20 <outDir>/_debug/<name>-overlay.png\uFF08\u54C1\u7EA2=\u5B9E\u6D4B\u5934\u9876\u3001\u9752=\u5B9E\u6D4B\u811A\u5E95\u3001\u767D\u5341\u5B57=\u951A\u70B9\uFF1B\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5% \u7684\u683C\u6574\u683C\u6807\u9EC4\uFF09\uFF0C\u8DEF\u5F84\u5728 overlayPath\u3002`loop:true`\uFF08\u6216\u672C\u6B21\u4F1A\u8BDD\u662F sprite_prepare({loop}) \u91C7\u7684\uFF09\u65F6\u989D\u5916\u7ED9 loopCheck {firstLastDiff,adjacentDiff,ok}\uFF1A\u7528**\u5DF2\u89E3\u597D\u7684\u56FE\u96C6\u683C\u5B50**\u6BD4\u9996\u5C3E\uFF0C\u4E0D\u989D\u5916\u89E3\u7801\uFF1Bok = |\u9996\u5C3E\u5DEE\u2212\u76F8\u90BB\u5E27\u5DEE|/\u76F8\u90BB\u5E27\u5DEE < 0.5\uFF0C\u4E0D ok \u65F6\u8FDB warnings\u3002\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20 loop\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -42329,6 +42977,10 @@ function buildTools(service, options) {
           debugOverlay: {
             type: "boolean",
             description: "true = \u989D\u5916\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE <outDir>/_debug/<name>-overlay.png\uFF08\u53EA\u5728 png \u5BFC\u51FA\u65F6\u751F\u6548\uFF09\uFF1B\u9010\u683C\u753B\u50CF\u91CF\u5934\u9876/\u811A\u5E95\u6A2A\u7EBF\u4E0E\u951A\u70B9\u5341\u5B57\uFF0C\u5F02\u5E38\u683C\u6807\u9EC4\uFF1B\u8DEF\u5F84\u56DE\u5728 overlayPath"
+          },
+          loop: {
+            type: "boolean",
+            description: "true = \u8FD9\u662F\u5FAA\u73AF\u52A8\u4F5C\uFF0C\u5BFC\u51FA\u65F6\u7B97 loopCheck\uFF08\u9996\u5C3E\u5DEE vs \u76F8\u90BB\u5E27\u5DEE\uFF0Cpng \u624D\u6709\u6548\uFF09\u5E76\u68C0\u67E5\u95ED\u5408\u5EA6\uFF1Bsprite_prepare({loop}) \u91C7\u8FC7\u7684\u4F1A\u8BDD\u4F1A\u81EA\u52A8\u5E26\u3002\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20"
           }
         }
       },
@@ -42357,7 +43009,8 @@ function buildTools(service, options) {
               ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
               ...typeof args.quality === "number" ? { quality: args.quality } : {},
               ...typeof args.name === "string" ? { name: args.name } : {},
-              ...typeof args.debugOverlay === "boolean" ? { debugOverlay: args.debugOverlay } : {}
+              ...typeof args.debugOverlay === "boolean" ? { debugOverlay: args.debugOverlay } : {},
+              ...typeof args.loop === "boolean" ? { loop: args.loop } : {}
             })
           );
         } catch (error62) {

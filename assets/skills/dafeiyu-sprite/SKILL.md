@@ -112,11 +112,31 @@ description: 用 sprite_* 工具把带绿幕的视频做成透明底序列帧精
 
 实测基线：同角色 6 条（头宽 474±5）；剪影 IoU 站立类 0.92~0.95、动作类 0.55~0.72；门襟模板 score 0.91~1.00，idle 复现 0.4164。
 
-## 12. references
+## 12. 循环动作要做闭合
+
+跑/走/待机/呼吸这类**会持续循环**的动作，AI 生成的片段里通常含 N 个不完整循环——播完跳回第 0 帧会「顿一下」或跳变。
+正确做法是量出真实周期、按周期重采、**丢掉重复的那一帧**：
+
+`
+sprite_prepare({fps:12})                   → 预采样（只用于测周期）
+sprite_loop_scan({minPeriodSec:2})         → periodFrames / suggestedFps / confidence
+sprite_prepare({loop:{targetFrames:24}})   → frames:24, loopClosed:true
+sprite_export(...)                         → loopCheck:{firstLastDiff,adjacentDiff,ok}
+`
+
+三条要点：
+- **`confidence:"low"` 就别闭合**——那是"动作本身不严格周期"，按一次性动作处理；
+- **`minPeriodSec` 默认 2 秒会把短周期过滤成 2 倍**（工具会给 warning，看到就调小重扫）；
+- **一次性动作（指点/挥手/看图纸）不加 `loop`**，硬闭合会把动作截成半截。
+
+细节见 `references/loop.md`。
+
+## 13. references
 
 | 文件 | 什么时候读 |
 |---|---|
 | `references/tools.md` | 不确定某个工具的入参/返回字段时 |
 | `references/params.md` | 调抠图参数（classic/advanced 哪一档生效）时 |
 | `references/symptoms.md` | 结果不对，想知道"这是哪一步的锅"时 |
+| `references/loop.md` | 做循环动作（跑/走/待机/呼吸）的首尾闭合时 |
 | `references/coordinates.md` | 要把"源帧量到的值"换成格子/归一化时 |
