@@ -122,15 +122,19 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
         'sprite_batch',
         'sprite_cleanup',
         'sprite_export',
+        'sprite_feature_fit',
         'sprite_get_anchor',
         'sprite_guide',
         'sprite_key_apply',
         'sprite_key_preview',
+        'sprite_match',
         'sprite_measure',
         'sprite_prepare',
         'sprite_probe_color',
         'sprite_scale_to',
         'sprite_set_anchor',
+        'sprite_silhouette_fit',
+        'sprite_verify',
       ])
       for (const definition of registered) {
         assert.equal((definition.parameters as { type?: string }).type, 'object')
@@ -140,7 +144,7 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
       const prepare = registered.find((definition) => definition.name === 'sprite_prepare')!
       const required = (prepare.parameters as { required?: string[] }).required ?? []
       assert.deepEqual(required, ['videoPath'], '预览/应用可以不带参数，但导入必须点名视频')
-      assert.equal(handle.probe.tools, 'registered(14)')
+      assert.equal(handle.probe.tools, 'registered(18)')
     } finally {
       handle.stop()
     }

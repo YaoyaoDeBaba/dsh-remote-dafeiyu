@@ -328,3 +328,126 @@ export interface AutotuneTraceStep {
   subjectCoverage: number
   edgeGreen: number
 }
+
+// ─────────────────── 重计算原语（模板匹配 / 特征反推 / 剪影拟合） ───────────────────
+//
+// 这三个原语都是"在像素上做搜索"，所以**所有矩形与坐标都是源帧像素**
+// （左上原点、右下开区间；返回里带 `space:"frame"`）。
+// 像素只在宿主 Node 里算（页面只把 dataURL 搬过来），算法核在 `match.ts`。
+
+/** 像素来源：`keyed` = 抠图结果（默认）；`raw` = 原始帧（绿幕没抠，整幅不透明）。 */
+export const PIXEL_SOURCES = ['keyed', 'raw'] as const
+
+export interface MatchInput {
+  /** 模板取自哪一帧（默认同 inFrame，再缺省 0）。 */
+  templateFrame?: number
+  /** 模板矩形（**templateFrame 的源帧像素空间**）。 */
+  templateRect: Rect
+  /** 在哪个帧里找（默认同 templateFrame）。 */
+  inFrame?: number
+  /** 只在这个矩形里搜（默认整幅；会被帧边界夹紧）。 */
+  searchRect?: Rect
+  source?: 'keyed' | 'raw'
+  /** 低于它就 `found:false`（默认 0.85）。分值仍然回传。 */
+  minScore?: number
+}
+
+export interface MatchResult {
+  found: boolean
+  /** 命中位置左上角（**inFrame 的源帧像素空间**）。 */
+  x: number
+  y: number
+  /** NCC 分值（−1~1；同位置自匹配 ≥0.999）。 */
+  score: number
+  space: 'frame'
+  reason?: string
+}
+
+export interface FeatureTemplateSpec {
+  rect: Rect
+  /** 权重（默认 1）。头部特征一般给得比躯干高。 */
+  weight?: number
+}
+
+/**
+ * 参考帧：要么是当前会话的某一帧，要么是磁盘上一张 PNG
+ * ——后者是"跨素材对齐"的唯一入口（上一段素材导出的那一帧）。
+ */
+export interface ReferenceSpec {
+  frame?: number
+  imagePath?: string
+}
+
+export interface ScaleRange {
+  min?: number
+  max?: number
+  step?: number
+}
+
+export interface FeatureFitInput {
+  reference?: ReferenceSpec
+  /** 特征模板（建议 2 个：单模板只能定平移，双模板才能定 scale）。 */
+  templates: FeatureTemplateSpec[]
+  /** 参考帧上的归一化锚点（0~1，y-from-bottom，与 meta.json 同口径）；给了才回传 transferredAnchor。 */
+  anchorX?: number
+  anchorY?: number
+  search?: {
+    frames?: number[] | 'all'
+    scale?: ScaleRange
+  }
+  source?: 'keyed' | 'raw'
+}
+
+export interface TransferredAnchor {
+  anchorX: number
+  anchorY: number
+  anchorYTopDown: number
+  /** 锚点是怎么来的：`silhouette` 拓印 / `semantic-required` 必须走语义点 / `feature` 特征反推。 */
+  anchorSource?: 'silhouette' | 'semantic-required' | 'feature'
+}
+
+export type FitConfidence = 'high' | 'medium' | 'low'
+
+export interface FeatureFitResult {
+  /** 命中的目标帧号。 */
+  frame: number
+  scale: number
+  /** 参考图坐标 → 目标图坐标：`p_target = p_ref × scale + (dx, dy)`（源帧像素）。 */
+  dx: number
+  dy: number
+  /** 各模板 NCC 的加权平均。 */
+  score: number
+  /** 两个模板各自反推的平移差（px）；>2px 说明特征被遮挡/形变。 */
+  residualPx: number
+  transferredAnchor?: TransferredAnchor
+  perTemplate: Array<{ score: number; x: number; y: number }>
+  confidence: FitConfidence
+  reason?: string
+  warnings?: string[]
+}
+
+export interface SilhouetteFitInput {
+  reference?: ReferenceSpec
+  target?: { frames?: number[] | 'all' }
+  /** `body-core`（默认）= 最大连通域 + 1px 腐蚀（去特效/去手）；`raw` = 只按 alpha 阈值。 */
+  mask?: 'raw' | 'body-core'
+  search?: { scale?: ScaleRange }
+  source?: 'keyed' | 'raw'
+  anchorX?: number
+  anchorY?: number
+  alphaThreshold?: number
+}
+
+export interface SilhouetteFitResult {
+  frame: number
+  iou: number
+  scale: number
+  dx: number
+  dy: number
+  /** `null` = IoU < 0.75，锚点不可拓印（必须走语义点）。 */
+  transferredAnchor: TransferredAnchor | null
+  confidence: FitConfidence
+  reason?: string
+  warnings?: string[]
+}
+

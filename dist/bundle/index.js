@@ -38428,7 +38428,16 @@ function spritePageHandler(deps) {
 // src/sprite/service.ts
 import { createServer } from "node:http";
 import { createHash as createHash5, randomBytes as randomBytes5 } from "node:crypto";
-import { createReadStream, mkdirSync as mkdirSync6, readFileSync as readFileSync6, statSync as statSync3, writeFileSync as writeFileSync3, existsSync as existsSync3, renameSync as renameSync2 } from "node:fs";
+import {
+  createReadStream,
+  existsSync as existsSync3,
+  mkdirSync as mkdirSync6,
+  readdirSync as readdirSync2,
+  readFileSync as readFileSync6,
+  renameSync as renameSync2,
+  statSync as statSync3,
+  writeFileSync as writeFileSync3
+} from "node:fs";
 import path20 from "node:path";
 
 // src/sprite/png.ts
@@ -39088,6 +39097,1064 @@ async function launchBrowser(options) {
   };
 }
 
+// src/sprite/match.ts
+function intRect(rect, label) {
+  const x = Math.round(Number(rect.x));
+  const y = Math.round(Number(rect.y));
+  const w = Math.round(Number(rect.w));
+  const h = Math.round(Number(rect.h));
+  if (![x, y, w, h].every((value) => Number.isFinite(value))) {
+    throw new Error(`${label} \u5FC5\u987B\u662F\u56DB\u4E2A\u6709\u9650\u6570\u5B57\uFF08x,y,w,h\uFF09`);
+  }
+  if (w <= 0 || h <= 0) throw new Error(`${label} \u7684\u5BBD\u9AD8\u5FC5\u987B\u4E3A\u6B63\uFF08\u6536\u5230 ${w}x${h}\uFF09`);
+  return { x, y, w, h };
+}
+function clampRect(rect, width, height) {
+  const x0 = Math.max(0, Math.min(width, Math.round(rect.x)));
+  const y0 = Math.max(0, Math.min(height, Math.round(rect.y)));
+  const x1 = Math.max(0, Math.min(width, Math.round(rect.x + rect.w)));
+  const y1 = Math.max(0, Math.min(height, Math.round(rect.y + rect.h)));
+  if (x1 - x0 <= 0 || y1 - y0 <= 0) return void 0;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+function clampNumber(value, lo, hi) {
+  return Math.max(lo, Math.min(hi, value));
+}
+function round4(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 1e4) / 1e4;
+}
+function cropRgba(image, rect) {
+  const box = intRect(rect, "rect");
+  if (box.x < 0 || box.y < 0 || box.x + box.w > image.width || box.y + box.h > image.height) {
+    throw new Error(
+      `\u77E9\u5F62 ${box.x},${box.y} ${box.w}x${box.h} \u8D85\u51FA\u4E86\u5E27 ${image.width}x${image.height}\uFF08\u50CF\u7D20\u5750\u6807\uFF0C\u5DE6\u4E0A\u539F\u70B9\uFF09`
+    );
+  }
+  const out = new Uint8Array(box.w * box.h * 4);
+  const stride = image.width * 4;
+  for (let y = 0; y < box.h; y++) {
+    const from = (box.y + y) * stride + box.x * 4;
+    out.set(image.rgba.subarray(from, from + box.w * 4), y * box.w * 4);
+  }
+  return { width: box.w, height: box.h, rgba: out };
+}
+var grayCache = /* @__PURE__ */ new WeakMap();
+function toGray(image) {
+  const hit = grayCache.get(image);
+  if (hit) return hit;
+  const { width, height, rgba } = image;
+  const data = new Float32Array(width * height);
+  for (let i = 0, p = 0; i < data.length; i++, p += 4) {
+    const alpha = rgba[p + 3] / 255;
+    data[i] = (0.299 * rgba[p] + 0.587 * rgba[p + 1] + 0.114 * rgba[p + 2]) * alpha;
+  }
+  const gray = { width, height, data };
+  grayCache.set(image, gray);
+  return gray;
+}
+function cropGray(image, rect) {
+  const box = intRect(rect, "rect");
+  if (box.x < 0 || box.y < 0 || box.x + box.w > image.width || box.y + box.h > image.height) {
+    throw new Error(
+      `\u77E9\u5F62 ${box.x},${box.y} ${box.w}x${box.h} \u8D85\u51FA\u4E86\u56FE ${image.width}x${image.height}\uFF08\u50CF\u7D20\u5750\u6807\uFF0C\u5DE6\u4E0A\u539F\u70B9\uFF09`
+    );
+  }
+  const data = new Float32Array(box.w * box.h);
+  for (let y = 0; y < box.h; y++) {
+    const from = (box.y + y) * image.width + box.x;
+    data.set(image.data.subarray(from, from + box.w), y * box.w);
+  }
+  return { width: box.w, height: box.h, data };
+}
+function maskPoints(mask) {
+  let count = 0;
+  for (let i = 0; i < mask.data.length; i++) if (mask.data[i] === 1) count++;
+  const xs = new Int32Array(count);
+  const ys = new Int32Array(count);
+  let at = 0;
+  for (let y = 0; y < mask.height; y++) {
+    const row = y * mask.width;
+    for (let x = 0; x < mask.width; x++) {
+      if (mask.data[row + x] === 1) {
+        xs[at] = x;
+        ys[at] = y;
+        at++;
+      }
+    }
+  }
+  return { xs, ys, count, area: count };
+}
+function resampleGray(image, scale) {
+  if (!Number.isFinite(scale) || scale <= 0) throw new Error(`\u91CD\u91C7\u6837\u6BD4\u4F8B\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${scale}\uFF09`);
+  if (Math.abs(scale - 1) < 1e-9) return image;
+  const w = Math.max(1, Math.round(image.width * scale));
+  const h = Math.max(1, Math.round(image.height * scale));
+  const data = new Float32Array(w * h);
+  const sx = image.width / w;
+  const sy = image.height / h;
+  for (let y = 0; y < h; y++) {
+    const fy = clampNumber((y + 0.5) * sy - 0.5, 0, image.height - 1);
+    const y0 = Math.floor(fy);
+    const wy = fy - y0;
+    const y1 = Math.min(image.height - 1, y0 + 1);
+    for (let x = 0; x < w; x++) {
+      const fx = clampNumber((x + 0.5) * sx - 0.5, 0, image.width - 1);
+      const x0 = Math.floor(fx);
+      const wx = fx - x0;
+      const x1 = Math.min(image.width - 1, x0 + 1);
+      const v00 = image.data[y0 * image.width + x0];
+      const v01 = image.data[y0 * image.width + x1];
+      const v10 = image.data[y1 * image.width + x0];
+      const v11 = image.data[y1 * image.width + x1];
+      data[y * w + x] = (v00 * (1 - wx) + v01 * wx) * (1 - wy) + (v10 * (1 - wx) + v11 * wx) * wy;
+    }
+  }
+  return { width: w, height: h, data };
+}
+var downsampleCache = /* @__PURE__ */ new WeakMap();
+function downsampleGray(image, factor) {
+  const f = Math.max(1, Math.round(factor));
+  if (f === 1) return image;
+  let bucket = downsampleCache.get(image);
+  if (!bucket) {
+    bucket = /* @__PURE__ */ new Map();
+    downsampleCache.set(image, bucket);
+  }
+  const hit = bucket.get(f);
+  if (hit) return hit;
+  const w = Math.max(1, Math.floor(image.width / f));
+  const h = Math.max(1, Math.floor(image.height / f));
+  const data = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const yStart = y * f;
+    const yEnd = Math.min(image.height, yStart + f);
+    for (let x = 0; x < w; x++) {
+      const xStart = x * f;
+      const xEnd = Math.min(image.width, xStart + f);
+      let sum = 0;
+      let n = 0;
+      for (let yy = yStart; yy < yEnd; yy++) {
+        const row = yy * image.width;
+        for (let xx = xStart; xx < xEnd; xx++) {
+          sum += image.data[row + xx];
+          n++;
+        }
+      }
+      data[y * w + x] = n > 0 ? sum / n : 0;
+    }
+  }
+  const out = { width: w, height: h, data };
+  bucket.set(f, out);
+  return out;
+}
+var integralCache = /* @__PURE__ */ new WeakMap();
+function integralOf(image) {
+  const hit = integralCache.get(image);
+  if (hit) return hit;
+  const stride = image.width + 1;
+  const sum = new Float64Array(stride * (image.height + 1));
+  const sumSq = new Float64Array(stride * (image.height + 1));
+  for (let y = 0; y < image.height; y++) {
+    let rowSum = 0;
+    let rowSumSq = 0;
+    const src = y * image.width;
+    const out = (y + 1) * stride;
+    const prev = y * stride;
+    for (let x = 0; x < image.width; x++) {
+      const value = image.data[src + x];
+      rowSum += value;
+      rowSumSq += value * value;
+      sum[out + x + 1] = sum[prev + x + 1] + rowSum;
+      sumSq[out + x + 1] = sumSq[prev + x + 1] + rowSumSq;
+    }
+  }
+  const built = { stride, sum, sumSq };
+  integralCache.set(image, built);
+  return built;
+}
+function rectSum(plane, stride, x, y, w, h) {
+  return plane[(y + h) * stride + x + w] - plane[y * stride + x + w] - plane[(y + h) * stride + x] + plane[y * stride + x];
+}
+function templateStatsOf(template) {
+  const n = template.width * template.height;
+  if (n < 1) return void 0;
+  let sumT = 0;
+  let sumT2 = 0;
+  for (let i = 0; i < n; i++) {
+    const value = template.data[i];
+    sumT += value;
+    sumT2 += value * value;
+  }
+  const varT = sumT2 - sumT * sumT / n;
+  if (!(varT > 1e-9)) return void 0;
+  return { sumT, sumT2, n, varT };
+}
+function nccAtOffset(image, template, stats, x, y) {
+  const tw = template.width;
+  const th = template.height;
+  if (x < 0 || y < 0 || x + tw > image.width || y + th > image.height) return void 0;
+  const integral = integralOf(image);
+  const stride = integral.stride;
+  const sumG = rectSum(integral.sum, stride, x, y, tw, th);
+  const sumG2 = rectSum(integral.sumSq, stride, x, y, tw, th);
+  const varG = sumG2 - sumG * sumG / stats.n;
+  if (!(varG > 1e-9)) return void 0;
+  let cross = 0;
+  for (let ty = 0; ty < th; ty++) {
+    const gRow = (y + ty) * image.width + x;
+    const tRow = ty * tw;
+    for (let tx = 0; tx < tw; tx++) cross += template.data[tRow + tx] * image.data[gRow + tx];
+  }
+  return (cross - stats.sumT * sumG / stats.n) / Math.sqrt(stats.varT * varG);
+}
+function nccScoreAt(image, template, x, y) {
+  const stats = templateStatsOf(template);
+  if (!stats) return void 0;
+  return nccAtOffset(image, template, stats, x, y);
+}
+function nccSearch(image, template, options = {}) {
+  const tw = template.width;
+  const th = template.height;
+  if (tw < 1 || th < 1) return void 0;
+  if (tw > image.width || th > image.height) return void 0;
+  const step = Math.max(1, Math.round(options.step ?? 1));
+  const wanted = options.rect ?? { x: 0, y: 0, w: image.width, h: image.height };
+  const box = clampRect(wanted, image.width, image.height);
+  if (!box) return void 0;
+  const maxX = box.x + box.w - tw;
+  const maxY = box.y + box.h - th;
+  if (maxX < box.x || maxY < box.y) return void 0;
+  const stats = templateStatsOf(template);
+  if (!stats) return { x: box.x, y: box.y, score: 0 };
+  let best;
+  for (let y = box.y; y <= maxY; y += step) {
+    for (let x = box.x; x <= maxX; x += step) {
+      const score = nccAtOffset(image, template, stats, x, y);
+      if (score === void 0) continue;
+      if (!best || score > best.score) best = { x, y, score };
+    }
+  }
+  return best;
+}
+function nccSearchTopK(image, template, options = {}) {
+  const tw = template.width;
+  const th = template.height;
+  const k = Math.max(1, Math.round(options.k ?? 3));
+  const minSep = Math.max(1, Math.round(options.minSep ?? Math.max(tw, th) / 2));
+  if (tw < 1 || th < 1 || tw > image.width || th > image.height) return [];
+  const step = Math.max(1, Math.round(options.step ?? 1));
+  const box = clampRect(options.rect ?? { x: 0, y: 0, w: image.width, h: image.height }, image.width, image.height);
+  if (!box) return [];
+  const maxX = box.x + box.w - tw;
+  const maxY = box.y + box.h - th;
+  if (maxX < box.x || maxY < box.y) return [];
+  const stats = templateStatsOf(template);
+  if (!stats) return [];
+  const hits = [];
+  for (let y = box.y; y <= maxY; y += step) {
+    for (let x = box.x; x <= maxX; x += step) {
+      const score = nccAtOffset(image, template, stats, x, y);
+      if (score === void 0) continue;
+      hits.push({ x, y, score });
+    }
+  }
+  hits.sort((a, b) => b.score - a.score);
+  const picked = [];
+  for (const hit of hits) {
+    if (picked.length >= k) break;
+    if (picked.some((one) => Math.abs(one.x - hit.x) < minSep && Math.abs(one.y - hit.y) < minSep)) continue;
+    picked.push(hit);
+  }
+  return picked;
+}
+function nccCandidates(image, template, options = {}) {
+  const step = Math.max(1, Math.round(options.step ?? 1));
+  const k = Math.max(1, Math.round(options.k ?? 3));
+  const rect = options.rect ? { rect: options.rect } : {};
+  if (step <= 1) {
+    const hit = nccSearch(image, template, rect);
+    return hit ? [hit] : [];
+  }
+  const tops = nccSearchTopK(image, template, {
+    ...rect,
+    step,
+    k,
+    minSep: Math.max(2 * step, Math.max(template.width, template.height) / 2)
+  });
+  const radius = 2 * step;
+  const out = [];
+  for (const top of tops) {
+    const hit = nccSearch(image, template, {
+      rect: {
+        x: top.x - radius,
+        y: top.y - radius,
+        w: template.width + 2 * radius,
+        h: template.height + 2 * radius
+      },
+      step: 1
+    });
+    if (hit) out.push(hit);
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+function matchTemplate(source, template, options = {}) {
+  return matchGray(toGray(source), toGray(template), options);
+}
+function matchGray(source, template, options = {}) {
+  const tw = template.width;
+  const th = template.height;
+  if (tw < 1 || th < 1) return { found: false, x: 0, y: 0, score: 0, space: "frame", reason: "\u6A21\u677F\u662F\u7A7A\u7684\uFF08\u5BBD\u6216\u9AD8 \u2264 0\uFF09" };
+  const searchRect = options.searchRect ?? { x: 0, y: 0, w: source.width, h: source.height };
+  const box = clampRect(searchRect, source.width, source.height);
+  if (!box) {
+    return { found: false, x: 0, y: 0, score: 0, space: "frame", reason: "\u641C\u7D22\u533A\u57DF\u4E0E\u5E27\u6CA1\u6709\u4EA4\u96C6" };
+  }
+  if (box.w < tw || box.h < th) {
+    return {
+      found: false,
+      x: 0,
+      y: 0,
+      score: 0,
+      space: "frame",
+      reason: `\u641C\u7D22\u533A\u57DF ${box.w}x${box.h} \u6BD4\u6A21\u677F ${tw}x${th} \u8FD8\u5C0F\uFF08\u653E\u4E0D\u4E0B\u4EFB\u4F55\u4E00\u4E2A\u504F\u79FB\uFF09`
+    };
+  }
+  if (!templateStatsOf(template)) {
+    return {
+      found: false,
+      x: 0,
+      y: 0,
+      score: 0,
+      space: "frame",
+      reason: "\u6A21\u677F\u662F\u7EAF\u8272/\u51E0\u4E4E\u65E0\u53D8\u5316\uFF08\u65B9\u5DEE 0\uFF09\uFF0CNCC \u65E0\u5B9A\u4E49\uFF1A\u6362\u4E00\u5757\u6709\u7EB9\u7406\u7684\u533A\u57DF\uFF08\u7EBD\u6263\u3001\u5FBD\u7AE0\u3001\u773C\u775B\uFF09"
+    };
+  }
+  const factors = pyramidFactors(tw, th);
+  const budget = options.maxOpsPerLevel ?? 12e7;
+  let candidates = [];
+  let first = true;
+  for (const factor of factors) {
+    const image = downsampleGray(source, factor);
+    const tpl = downsampleGray(template, factor);
+    if (tpl.width < 1 || tpl.height < 1) continue;
+    if (tpl.width > image.width || tpl.height > image.height) continue;
+    const next = [];
+    if (first) {
+      const scaled = clampRect(
+        { x: box.x / factor, y: box.y / factor, w: box.w / factor, h: box.h / factor },
+        image.width,
+        image.height
+      );
+      if (!scaled) continue;
+      const offsets = Math.max(1, scaled.w - tpl.width + 1) * Math.max(1, scaled.h - tpl.height + 1);
+      const ops = offsets * tpl.width * tpl.height;
+      const step = ops > budget ? Math.min(8, Math.ceil(Math.sqrt(ops / budget))) : 1;
+      const hits = nccCandidates(image, tpl, { rect: scaled, step, k: 3 });
+      for (const hit of hits) next.push({ factor, x: hit.x, y: hit.y, score: hit.score, step });
+      first = false;
+    } else {
+      for (const prev of candidates) {
+        const centerX = Math.round(prev.x * prev.factor / factor);
+        const centerY = Math.round(prev.y * prev.factor / factor);
+        const radius = Math.max(2, Math.ceil(prev.step * prev.factor / factor) + 1);
+        const window = {
+          x: centerX - radius,
+          y: centerY - radius,
+          w: tpl.width + 2 * radius,
+          h: tpl.height + 2 * radius
+        };
+        const hit = nccSearch(image, tpl, { rect: window, step: 1 });
+        if (hit) next.push({ factor, x: hit.x, y: hit.y, score: hit.score, step: 1 });
+      }
+    }
+    if (next.length === 0) {
+      return {
+        found: false,
+        x: 0,
+        y: 0,
+        score: 0,
+        space: "frame",
+        reason: `\u91D1\u5B57\u5854 1/${factor} \u5C42\u6CA1\u80FD\u7B97\u51FA\u5019\u9009\uFF08\u6A21\u677F\u5728\u8BE5\u5C42 ${tpl.width}x${tpl.height}\uFF0C\u53EF\u80FD\u592A\u5C0F\uFF09`
+      };
+    }
+    next.sort((a, b) => b.score - a.score);
+    candidates = next.slice(0, 3);
+  }
+  const best = candidates[0];
+  if (!best) {
+    return { found: false, x: 0, y: 0, score: 0, space: "frame", reason: "\u6CA1\u6709\u53EF\u7528\u7684\u91D1\u5B57\u5854\u5C42\uFF08\u5E27\u592A\u5C0F\uFF09" };
+  }
+  const minScore = clampNumber(options.minScore ?? 0.85, -1, 1);
+  const score = best.score;
+  if (score >= minScore) {
+    return { found: true, x: best.x, y: best.y, score: round4(score), space: "frame" };
+  }
+  return {
+    found: false,
+    x: best.x,
+    y: best.y,
+    score: round4(score),
+    space: "frame",
+    reason: `\u6700\u9AD8\u5206 ${round4(score)} \u4F4E\u4E8E\u9608\u503C ${minScore}\uFF08\u4F4D\u7F6E\u4ECD\u56DE\u4F20\uFF0C\u53EF\u636E\u6B64\u5224\u65AD"\u5DEE\u591A\u5C11"\uFF09`
+  };
+}
+function pyramidFactors(templateWidth, templateHeight) {
+  const minDim = Math.min(templateWidth, templateHeight);
+  if (minDim >= 32) return [4, 2, 1];
+  if (minDim >= 16) return [2, 1];
+  return [1];
+}
+function scaleGrid(range = {}, defaults = { min: 0.85, max: 1.15, step: 0.01 }, cap = 31) {
+  const lo0 = clampNumber(Number(range.min ?? defaults.min), 0.1, 4);
+  const hi0 = clampNumber(Number(range.max ?? defaults.max), 0.1, 4);
+  const step0 = clampNumber(Number(range.step ?? defaults.step), 1e-3, 1);
+  const lo = Math.min(lo0, hi0);
+  const hi = Math.max(lo0, hi0);
+  const natural = Math.floor((hi - lo) / step0 + 1e-9) + 1;
+  const count = Math.max(1, Math.min(cap, natural));
+  const step = count === 1 ? 0 : (hi - lo) / (count - 1);
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(round4(lo + i * step));
+  if (out.length === 0) out.push(round4(lo));
+  return out;
+}
+function choosePeak(curve) {
+  if (curve.length === 0) return void 0;
+  let top = -Infinity;
+  for (const one of curve) if (one.score > top) top = one.score;
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < curve.length; i++) {
+    if (curve[i].score >= top - 1e-9) {
+      if (first < 0) first = i;
+      last = i;
+    }
+  }
+  const middle = curve[Math.floor((first + last) / 2)];
+  return middle?.scale;
+}
+function parabolaOffset(before, mid, after) {
+  const denominator = before - 2 * mid + after;
+  if (!(Math.abs(denominator) > 1e-9)) return 0;
+  return clampNumber(0.5 * (before - after) / denominator, -0.5, 0.5);
+}
+function refineScaleParabola(curve) {
+  if (curve.length < 3) return void 0;
+  let peak = 0;
+  for (let i = 1; i < curve.length; i++) if (curve[i].score > curve[peak].score) peak = i;
+  if (peak === 0 || peak === curve.length - 1) return void 0;
+  const prev = curve[peak - 1];
+  const mid = curve[peak];
+  const next = curve[peak + 1];
+  const step = mid.scale - prev.scale;
+  if (!(Math.abs(step) > 1e-9)) return void 0;
+  const delta = parabolaOffset(prev.score, mid.score, next.score);
+  return mid.scale + delta * step;
+}
+function coarseFactorOf(frameWidth, frameHeight, minTemplateDim) {
+  const small = Math.min(frameWidth, frameHeight);
+  if (minTemplateDim >= 40 && small >= 128) return 4;
+  if (minTemplateDim >= 12 && small >= 48) return 2;
+  return 1;
+}
+function fitFeatureFrame(reference, frame, options) {
+  const specs = options.templates;
+  if (!Array.isArray(specs) || specs.length === 0) throw new Error("\u81F3\u5C11\u8981\u7ED9 1 \u4E2A\u7279\u5F81\u6A21\u677F\uFF08templates\uFF09");
+  if (specs.length > 8) throw new Error(`\u7279\u5F81\u6A21\u677F\u6700\u591A 8 \u4E2A\uFF08\u6536\u5230 ${specs.length} \u4E2A\uFF09\uFF0C2 \u4E2A\u6700\u7A33`);
+  const refGray = toGray(reference);
+  const frameGray = toGray(frame);
+  const templates = specs.map((spec, index) => {
+    const rect = intRect(spec.rect, `templates[${index}].rect`);
+    const gray = cropGray(refGray, rect);
+    return {
+      gray,
+      origin: { x: rect.x, y: rect.y },
+      weight: Math.max(1e-4, Number(spec.weight ?? 1))
+    };
+  });
+  const minDim = Math.min(...templates.map((one) => Math.min(one.gray.width, one.gray.height)));
+  const grid = scaleGrid(options.scale);
+  const span = grid[grid.length - 1] - grid[0];
+  const userStep = grid.length > 1 ? grid[1] - grid[0] : 0.01;
+  const coarseStep = Math.max(0.02, span / 9, userStep);
+  const evaluate = (scales, factor, radius, seeds) => {
+    const image = downsampleGray(frameGray, factor);
+    const results = [];
+    for (const scale of scales) {
+      let weighted = 0;
+      let weightSum = 0;
+      const positions = [];
+      const scores = [];
+      let usable = true;
+      for (let i = 0; i < templates.length; i++) {
+        const one = templates[i];
+        const tpl = resampleGray(one.gray, scale / factor);
+        if (tpl.width < 2 || tpl.height < 2 || tpl.width > image.width || tpl.height > image.height) {
+          usable = false;
+          break;
+        }
+        if (!templateStatsOf(tpl)) {
+          usable = false;
+          break;
+        }
+        let rect;
+        if (seeds) {
+          const seed = seeds[i];
+          const centerX = Math.round(seed.x / factor);
+          const centerY = Math.round(seed.y / factor);
+          rect = {
+            x: centerX - radius,
+            y: centerY - radius,
+            w: tpl.width + 2 * radius,
+            h: tpl.height + 2 * radius
+          };
+        } else {
+          rect = { x: 0, y: 0, w: image.width, h: image.height };
+        }
+        const offsets = Math.max(1, Math.min(rect.w, image.width) - tpl.width + 1) * Math.max(1, Math.min(rect.h, image.height) - tpl.height + 1);
+        const ops = offsets * tpl.width * tpl.height;
+        if (!seeds && ops > 12e7) {
+          throw new Error(
+            `\u7279\u5F81\u6A21\u677F\u592A\u5927\uFF08\u7F29\u653E\u540E ${tpl.width}x${tpl.height}\uFF09\uFF1A\u7C97\u641C\u8981\u7B97 ${Math.round(ops / 1e6)}M \u6B21\u4E58\u52A0\uFF0C\u8BF7\u628A\u6A21\u677F\u88C1\u5230 16~64px \u89C1\u65B9\uFF08\u9009\u7EBD\u6263/\u773C\u775B\u8FD9\u7C7B\u5C0F\u800C\u7A33\u7684\u7279\u5F81\uFF0C\u522B\u6846\u6574\u9897\u5934\uFF09`
+          );
+        }
+        const hit = nccSearch(image, tpl, { rect, step: 1 });
+        if (!hit || hit.score < -0.99) {
+          usable = false;
+          break;
+        }
+        weighted += hit.score * one.weight;
+        weightSum += one.weight;
+        positions.push({ x: hit.x * factor, y: hit.y * factor });
+        scores.push(hit.score);
+      }
+      if (!usable || weightSum <= 0) continue;
+      results.push({ scale, score: weighted / weightSum, positions, scores, curve: [] });
+    }
+    if (results.length === 0) return void 0;
+    const curve = results.map((one) => ({ scale: one.scale, score: one.score }));
+    const chosen = choosePeak(curve);
+    const winner = results.find((one) => one.scale === chosen) ?? results[0];
+    winner.curve = curve;
+    return winner;
+  };
+  const factor0 = coarseFactorOf(frame.width, frame.height, minDim);
+  const midFactor = factor0 > 2 ? 2 : factor0;
+  const skip = Math.max(1, Math.round(coarseStep / Math.max(userStep, 1e-6)));
+  const coarseScales = grid.filter((_value, index) => index % skip === 0);
+  let current;
+  if (options.seed) {
+    const seed = options.seed;
+    const wanted = grid.filter((value) => Math.abs(value - seed.scale) <= coarseStep + 1e-9);
+    const seeds = templates.map((_one, index) => seed.positions[index] ?? { x: 0, y: 0 });
+    current = evaluate(wanted.length > 0 ? wanted : [seed.scale], midFactor, 10, seeds);
+    if (current && current.score < 0.6) current = void 0;
+  }
+  if (!current) {
+    current = evaluate(coarseScales.length > 0 ? coarseScales : grid, factor0, 0, void 0);
+  }
+  if (!current) {
+    throw new Error(
+      `\u5C3A\u5EA6 ${grid[0]}~${grid[grid.length - 1]} \u5168\u90FD\u4E0D\u884C\uFF1A\u6A21\u677F\u7F29\u653E\u540E\u653E\u4E0D\u8FDB ${frame.width}x${frame.height} \u7684\u5E27`
+    );
+  }
+  const fineScales = grid.filter((value) => Math.abs(value - current.scale) <= coarseStep + 1e-9);
+  const refined = evaluate(fineScales.length > 0 ? fineScales : [current.scale], midFactor, 10, current.positions);
+  if (refined) current = refined;
+  const lastScales = grid.filter(
+    (value) => Math.abs(value - current.scale) <= Math.max(3 * Math.max(userStep, 5e-3), coarseStep) + 1e-9
+  );
+  const finalStage = evaluate(lastScales.length > 0 ? lastScales : [current.scale], 1, 2, current.positions);
+  let atFullRes = finalStage !== void 0;
+  if (finalStage) current = finalStage;
+  const peak = refineScaleParabola(current.curve);
+  if (peak !== void 0 && Math.abs(peak - current.scale) > 1e-6) {
+    const polished = evaluate([round4(peak)], 1, 2, current.positions);
+    if (polished && polished.score >= current.score - 0.02) {
+      current = polished;
+      atFullRes = true;
+    }
+  }
+  const refinedPositions = current.positions.map((position, index) => {
+    if (!atFullRes) return position;
+    const tpl = resampleGray(templates[index].gray, current.scale);
+    const base = { x: Math.round(position.x), y: Math.round(position.y) };
+    const center = nccScoreAt(frameGray, tpl, base.x, base.y);
+    if (center === void 0) return position;
+    const axis = (dx2, dy2) => nccScoreAt(frameGray, tpl, base.x + dx2, base.y + dy2) ?? center;
+    return {
+      x: base.x + parabolaOffset(axis(-1, 0), center, axis(1, 0)),
+      y: base.y + parabolaOffset(axis(0, -1), center, axis(0, 1))
+    };
+  });
+  const translations = refinedPositions.map((position, index) => {
+    const origin = templates[index].origin;
+    return { x: position.x - origin.x * current.scale, y: position.y - origin.y * current.scale };
+  });
+  let sumWeight = 0;
+  let dx = 0;
+  let dy = 0;
+  for (let i = 0; i < translations.length; i++) {
+    const weight = templates[i].weight;
+    dx += translations[i].x * weight;
+    dy += translations[i].y * weight;
+    sumWeight += weight;
+  }
+  if (sumWeight > 0) {
+    dx /= sumWeight;
+    dy /= sumWeight;
+  }
+  let residual = 0;
+  for (let i = 1; i < translations.length; i++) {
+    residual = Math.max(
+      residual,
+      Math.hypot(translations[i].x - translations[0].x, translations[i].y - translations[0].y)
+    );
+  }
+  return {
+    scale: round4(current.scale),
+    dx: round4(dx),
+    dy: round4(dy),
+    score: round4(current.score),
+    residualPx: round4(residual),
+    perTemplate: current.positions.map((position, index) => ({
+      score: round4(current.scores[index] ?? 0),
+      x: Math.round(position.x),
+      y: Math.round(position.y)
+    }))
+  };
+}
+var maskCache = /* @__PURE__ */ new WeakMap();
+function maskFromAlpha(image, options = {}) {
+  const threshold = clampNumber(Number(options.threshold ?? 32), 0, 255);
+  const mode = options.mode ?? "body-core";
+  const key = `${mode}:${threshold}`;
+  let bucket = maskCache.get(image);
+  if (!bucket) {
+    bucket = /* @__PURE__ */ new Map();
+    maskCache.set(image, bucket);
+  }
+  const hit = bucket.get(key);
+  if (hit) return hit;
+  const data = new Uint8Array(image.width * image.height);
+  for (let i = 0, p = 3; i < data.length; i++, p += 4) {
+    data[i] = image.rgba[p] > threshold ? 1 : 0;
+  }
+  let mask = { width: image.width, height: image.height, data };
+  if (mode === "body-core") mask = erodeMask(largestComponent(mask), 1);
+  bucket.set(key, mask);
+  return mask;
+}
+function largestComponent(mask) {
+  const { width, height, data } = mask;
+  const out = new Uint8Array(width * height);
+  const visited = new Uint8Array(width * height);
+  const stack = new Int32Array(width * height);
+  let bestCount = 0;
+  let bestSeed = -1;
+  for (let start = 0; start < data.length; start++) {
+    if (data[start] !== 1 || visited[start] === 1) continue;
+    let top2 = 0;
+    let count = 0;
+    stack[top2++] = start;
+    visited[start] = 1;
+    while (top2 > 0) {
+      const index = stack[--top2];
+      count++;
+      const x = index % width;
+      const y = (index - x) / width;
+      if (x > 0) {
+        const left = index - 1;
+        if (data[left] === 1 && visited[left] === 0) {
+          visited[left] = 1;
+          stack[top2++] = left;
+        }
+      }
+      if (x + 1 < width) {
+        const right = index + 1;
+        if (data[right] === 1 && visited[right] === 0) {
+          visited[right] = 1;
+          stack[top2++] = right;
+        }
+      }
+      if (y > 0) {
+        const up = index - width;
+        if (data[up] === 1 && visited[up] === 0) {
+          visited[up] = 1;
+          stack[top2++] = up;
+        }
+      }
+      if (y + 1 < height) {
+        const down = index + width;
+        if (data[down] === 1 && visited[down] === 0) {
+          visited[down] = 1;
+          stack[top2++] = down;
+        }
+      }
+    }
+    if (count > bestCount) {
+      bestCount = count;
+      bestSeed = start;
+    }
+  }
+  if (bestSeed < 0) return { width, height, data: out };
+  let top = 0;
+  stack[top++] = bestSeed;
+  out[bestSeed] = 1;
+  while (top > 0) {
+    const index = stack[--top];
+    const x = index % width;
+    const y = (index - x) / width;
+    if (x > 0 && data[index - 1] === 1 && out[index - 1] === 0) {
+      out[index - 1] = 1;
+      stack[top++] = index - 1;
+    }
+    if (x + 1 < width && data[index + 1] === 1 && out[index + 1] === 0) {
+      out[index + 1] = 1;
+      stack[top++] = index + 1;
+    }
+    if (y > 0 && data[index - width] === 1 && out[index - width] === 0) {
+      out[index - width] = 1;
+      stack[top++] = index - width;
+    }
+    if (y + 1 < height && data[index + width] === 1 && out[index + width] === 0) {
+      out[index + width] = 1;
+      stack[top++] = index + width;
+    }
+  }
+  return { width, height, data: out };
+}
+function erodeMask(mask, iterations = 1) {
+  let current = mask;
+  for (let round = 0; round < Math.max(0, Math.round(iterations)); round++) {
+    const { width, height, data } = current;
+    const out = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = y * width + x;
+        if (data[index] !== 1) continue;
+        if (x === 0 || y === 0 || x + 1 === width || y + 1 === height) continue;
+        if (data[index - 1] === 1 && data[index + 1] === 1 && data[index - width] === 1 && data[index + width] === 1) {
+          out[index] = 1;
+        }
+      }
+    }
+    current = { width, height, data: out };
+  }
+  return current;
+}
+function resampleMask(mask, scale) {
+  if (!Number.isFinite(scale) || scale <= 0) throw new Error(`\u91CD\u91C7\u6837\u6BD4\u4F8B\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${scale}\uFF09`);
+  if (Math.abs(scale - 1) < 1e-9) return mask;
+  const w = Math.max(1, Math.round(mask.width * scale));
+  const h = Math.max(1, Math.round(mask.height * scale));
+  const data = new Uint8Array(w * h);
+  const sx = mask.width / w;
+  const sy = mask.height / h;
+  if (scale > 1) {
+    for (let y = 0; y < h; y++) {
+      const yy = clampNumber(Math.round((y + 0.5) * sy - 0.5), 0, mask.height - 1);
+      for (let x = 0; x < w; x++) {
+        const xx = clampNumber(Math.round((x + 0.5) * sx - 0.5), 0, mask.width - 1);
+        data[y * w + x] = mask.data[yy * mask.width + xx];
+      }
+    }
+    return { width: w, height: h, data };
+  }
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.floor(y * sy);
+    const y1 = Math.max(y0 + 1, Math.min(mask.height, Math.floor((y + 1) * sy)));
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.floor(x * sx);
+      const x1 = Math.max(x0 + 1, Math.min(mask.width, Math.floor((x + 1) * sx)));
+      let on = 0;
+      let total = 0;
+      for (let yy = y0; yy < y1; yy++) {
+        const row = yy * mask.width;
+        for (let xx = x0; xx < x1; xx++) {
+          total++;
+          if (mask.data[row + xx] === 1) on++;
+        }
+      }
+      data[y * w + x] = total > 0 && on * 2 >= total ? 1 : 0;
+    }
+  }
+  return { width: w, height: h, data };
+}
+function downsampleMask(mask, factor) {
+  const f = Math.max(1, Math.round(factor));
+  return f === 1 ? mask : resampleMask(mask, 1 / f);
+}
+function maskStats(points) {
+  let sx = 0;
+  let sy = 0;
+  for (let i = 0; i < points.count; i++) {
+    sx += points.xs[i];
+    sy += points.ys[i];
+  }
+  const area = points.count;
+  return { cx: area > 0 ? sx / area : 0, cy: area > 0 ? sy / area : 0, area };
+}
+function sparsifyPoints(points, stride) {
+  const step = Math.max(1, Math.round(stride));
+  if (step === 1 || points.count === 0) return points;
+  const count = Math.floor(points.count / step);
+  if (count === 0) return points;
+  const xs = new Int32Array(count);
+  const ys = new Int32Array(count);
+  for (let i = 0; i < count; i++) {
+    xs[i] = points.xs[i * step];
+    ys[i] = points.ys[i * step];
+  }
+  return { xs, ys, count, area: points.area };
+}
+function pointsCapped(points, target) {
+  if (points.count <= target) return points;
+  return sparsifyPoints(points, Math.ceil(points.count / target));
+}
+function iouAt(target, points, offsetX, offsetY, targetArea) {
+  let inter = 0;
+  for (let i = 0; i < points.count; i++) {
+    const x = points.xs[i] + offsetX;
+    const y = points.ys[i] + offsetY;
+    if (x < 0 || y < 0 || x >= target.width || y >= target.height) continue;
+    if (target.data[y * target.width + x] === 1) inter++;
+  }
+  const scale = points.count > 0 ? points.area / points.count : 1;
+  const intersect = inter * scale;
+  const union2 = points.area + targetArea - intersect;
+  return union2 > 0 ? intersect / union2 : 0;
+}
+function bestOffsetAround(target, points, targetArea, center, radius) {
+  let best = {
+    iou: iouAt(target, points, center.x, center.y, targetArea),
+    offset: center
+  };
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const iou = iouAt(target, points, center.x + dx, center.y + dy, targetArea);
+      if (iou > best.iou) best = { iou, offset: { x: center.x + dx, y: center.y + dy } };
+    }
+  }
+  return best;
+}
+function fitSilhouetteFrame(reference, frame, options = {}) {
+  const mode = options.mask === "raw" ? "raw" : "body-core";
+  const threshold = options.alphaThreshold;
+  const refMask = maskFromAlpha(reference, { ...threshold === void 0 ? {} : { threshold }, mode });
+  const frameMask = maskFromAlpha(frame, { ...threshold === void 0 ? {} : { threshold }, mode });
+  const refPointsFull = maskPoints(refMask);
+  const framePointsFull = maskPoints(frameMask);
+  if (refPointsFull.area === 0) {
+    return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u53C2\u8003\u5E27\u7684\u526A\u5F71\u662F\u7A7A\u7684\uFF08alpha \u9608\u503C\u4EE5\u4E0A\u7684\u50CF\u7D20\u4E3A 0\uFF09" };
+  }
+  if (framePointsFull.area === 0) {
+    return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u76EE\u6807\u5E27\u7684\u526A\u5F71\u662F\u7A7A\u7684\uFF08\u6CA1\u62A0\u56FE\uFF1F\uFF09" };
+  }
+  const grid = scaleGrid(options.scale, { min: 0.85, max: 1.15, step: 0.05 }, 9);
+  const factor = Math.min(4, Math.max(1, Math.floor(Math.min(frame.width, frame.height) / 64)));
+  const refSmall = downsampleMask(refMask, factor);
+  const frameSmall = downsampleMask(frameMask, factor);
+  const frameSmallPoints = maskPoints(frameSmall);
+  const frameSmallStats = maskStats(frameSmallPoints);
+  let best;
+  for (const scale of grid) {
+    const scaled = resampleMask(refSmall, scale);
+    const full = maskPoints(scaled);
+    if (full.area === 0) continue;
+    const points = pointsCapped(full, 4e3);
+    const stats = maskStats(full);
+    const center = {
+      x: Math.round(frameSmallStats.cx - stats.cx),
+      y: Math.round(frameSmallStats.cy - stats.cy)
+    };
+    const hit = bestOffsetAround(frameSmall, points, frameSmallPoints.area, center, 8);
+    if (!best || hit.iou > best.iou) best = { iou: hit.iou, scale, offset: hit.offset };
+  }
+  if (!best) {
+    return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u5C3A\u5EA6\u7F51\u683C\u91CC\u6CA1\u6709\u4E00\u6863\u80FD\u7B97\u51FA\u526A\u5F71\uFF08\u53C2\u8003\u5E27\u7684\u63A9\u819C\u662F\u7A7A\u7684\uFF1F\uFF09" };
+  }
+  if (best.iou < 0.5) {
+    const coarse = downsampleMask(refMask, 8);
+    const target = downsampleMask(frameMask, 8);
+    const targetPoints = maskPoints(target);
+    const scaled = resampleMask(coarse, best.scale);
+    const points = pointsCapped(maskPoints(scaled), 4e3);
+    if (points.area > 0 && scaled.width <= target.width && scaled.height <= target.height) {
+      let sweep2;
+      for (let y = 0; y + scaled.height <= target.height; y += 2) {
+        for (let x = 0; x + scaled.width <= target.width; x += 2) {
+          const iou = iouAt(target, points, x, y, targetPoints.area);
+          if (!sweep2 || iou > sweep2.iou) sweep2 = { iou, offset: { x: x * 2, y: y * 2 } };
+        }
+      }
+      if (sweep2) best = { iou: sweep2.iou, scale: best.scale, offset: sweep2.offset };
+    }
+  }
+  const gridStep = grid.length > 1 ? grid[1] - grid[0] : 0.05;
+  const probe = (scale, center, radius) => {
+    if (!(scale > 0.1) || scale > 4) return void 0;
+    const scaled = resampleMask(refMask, scale);
+    const full = maskPoints(scaled);
+    if (full.area === 0) return void 0;
+    const hit = bestOffsetAround(frameMask, pointsCapped(full, 3e4), framePointsFull.area, center, radius);
+    return { iou: hit.iou, offset: hit.offset, full };
+  };
+  const centerFull = { x: best.offset.x * factor, y: best.offset.y * factor };
+  const sweep = [];
+  for (let k = -2; k <= 2; k++) {
+    const found = probe(round4(best.scale + k * gridStep / 2), centerFull, 3);
+    if (found) sweep.push({ scale: round4(best.scale + k * gridStep / 2), ...found });
+  }
+  if (sweep.length === 0) {
+    const fallback = probe(best.scale, centerFull, 4);
+    if (!fallback) {
+      return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u539F\u5206\u8FA8\u7387\u4E0A\u7B97\u4E0D\u51FA\u526A\u5F71\uFF08\u53C2\u8003\u5E27\u7684\u63A9\u819C\u662F\u7A7A\u7684\uFF1F\uFF09" };
+    }
+    sweep.push({ scale: best.scale, ...fallback });
+  }
+  sweep.sort((a, b) => b.iou - a.iou);
+  let winner = sweep[0];
+  const peak = refineScaleParabola(sweep.map((one) => ({ scale: one.scale, score: one.iou })));
+  if (peak !== void 0 && Math.abs(peak - winner.scale) > 1e-6) {
+    const polished = probe(round4(peak), winner.offset, 2);
+    if (polished && polished.iou >= winner.iou - 5e-3) {
+      winner = { scale: round4(peak), ...polished };
+    }
+  }
+  const exact = iouAt(frameMask, winner.full, winner.offset.x, winner.offset.y, framePointsFull.area);
+  return {
+    iou: round4(exact),
+    scale: round4(winner.scale),
+    dx: winner.offset.x,
+    dy: winner.offset.y
+  };
+}
+function featureConfidence(score, residualPx) {
+  if (score >= 0.9 && residualPx < 2) return { confidence: "high" };
+  if (score >= 0.9) {
+    return {
+      confidence: "medium",
+      reason: `\u4E24\u4E2A\u6A21\u677F\u5404\u81EA\u53CD\u63A8\u7684\u5E73\u79FB\u5DEE ${round4(residualPx)}px \u2265 2px\uFF1A\u7279\u5F81\u53EF\u80FD\u88AB\u906E\u6321/\u5F62\u53D8\uFF0C\u951A\u70B9\u8981\u62FF\u8BED\u4E49\u70B9\u590D\u6838`
+    };
+  }
+  if (score >= 0.8) {
+    return {
+      confidence: "medium",
+      reason: `\u5206\u503C ${round4(score)} \u843D\u5728 0.80~0.90\uFF1A\u4E0E\u8BED\u4E49\u70B9\u4EA4\u53C9\u9A8C\u8BC1\uFF0C\u5DEE >3px \u4EE5\u8BED\u4E49\u70B9\u4E3A\u51C6`
+    };
+  }
+  return { confidence: "low", reason: `\u5206\u503C ${round4(score)} < 0.80\uFF1A\u7279\u5F81\u6CA1\u5BF9\u4E0A\uFF0C\u522B\u7528\u8FD9\u4E2A\u7ED3\u679C` };
+}
+function silhouetteConfidence(iou) {
+  if (iou >= 0.9) return { confidence: "high", anchorSource: "silhouette" };
+  if (iou >= 0.75) {
+    return {
+      confidence: "medium",
+      anchorSource: "semantic-required",
+      reason: `IoU ${round4(iou)} \u5728 0.75~0.90\uFF1A\u53EA\u91C7\u7528 scale\uFF0C\u951A\u70B9\u5FC5\u987B\u8D70\u8BED\u4E49\u70B9\uFF08transferredAnchor \u4EC5\u4F9B\u53C2\u8003\uFF09`
+    };
+  }
+  return {
+    confidence: "low",
+    anchorSource: null,
+    reason: `IoU ${round4(iou)} < 0.75\uFF1A\u8FD9\u6BB5\u52A8\u753B\u91CC\u6CA1\u6709\u59FF\u52BF\u63A5\u8FD1\u7684\u5E27\uFF0C\u526A\u5F71\u53EA\u4F5C\u53C2\u8003\uFF0C\u951A\u70B9\u5168\u7A0B\u8D70\u8BED\u4E49\u70B9`
+  };
+}
+function transferAnchor(input2) {
+  const refX = clampNumber(input2.anchorX, 0, 1) * input2.refWidth;
+  const refY = (1 - clampNumber(input2.anchorY, 0, 1)) * input2.refHeight;
+  const targetX = refX * input2.scale + input2.dx;
+  const targetY = refY * input2.scale + input2.dy;
+  const anchorX = input2.width > 0 ? targetX / input2.width : 0;
+  const anchorY = input2.height > 0 ? 1 - targetY / input2.height : 0;
+  return {
+    anchorX: round4(anchorX),
+    anchorY: round4(anchorY),
+    anchorYTopDown: round4(1 - anchorY)
+  };
+}
+
+// src/sprite/verify.ts
+var DEFAULT_HEIGHT_PCT = 0.01;
+var DEFAULT_ANCHOR_PX = 2;
+function median(values) {
+  if (values.length === 0) return Number.NaN;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function verifyConsistency(metas, options = {}) {
+  const heightPct = options.heightPct ?? DEFAULT_HEIGHT_PCT;
+  const anchorPx = options.anchorPx ?? DEFAULT_ANCHOR_PX;
+  const tolerance = { heightPct, anchorPx };
+  if (!Array.isArray(metas) || metas.length === 0) {
+    return { ok: false, count: 0, tolerance, items: [], warnings: [], reason: "\u6CA1\u6709\u53EF\u6821\u9A8C\u7684 meta\uFF08\u4F20\u8FDB\u6765\u7684\u5217\u8868\u662F\u7A7A\u7684\uFF09" };
+  }
+  const items = metas.map((meta3, index) => {
+    const name2 = (meta3.name ?? `#${index + 1}`).toString();
+    const problems = [];
+    if (typeof meta3.charHeightPx !== "number" || !(meta3.charHeightPx > 0)) problems.push("\u7F3A charHeightPx");
+    if (typeof meta3.anchorX !== "number") problems.push("\u7F3A anchorX");
+    if (typeof meta3.anchorY !== "number") problems.push("\u7F3A anchorY");
+    if (meta3.anchorWritten === false) problems.push("anchorWritten=false\uFF08\u951A\u70B9\u6CA1\u843D\u76D8\uFF0C\u53EF\u80FD\u662F\u65E7\u7248\u5BFC\u51FA\uFF09");
+    if (typeof meta3.cellWidth !== "number" || meta3.cellWidth <= 0) problems.push("\u7F3A cellWidth\uFF08\u951A\u70B9\u65E0\u6CD5\u6298\u7B97\u6210\u50CF\u7D20\uFF09");
+    if (typeof meta3.fps !== "number" || meta3.fps <= 0) problems.push("\u7F3A fps");
+    const item = { name: name2, problems };
+    if (typeof meta3.charHeightPx === "number") item.charHeightPx = meta3.charHeightPx;
+    if (typeof meta3.anchorX === "number" && typeof meta3.cellWidth === "number") {
+      item.anchorXPx = Number((meta3.anchorX * meta3.cellWidth).toFixed(3));
+    }
+    return item;
+  });
+  const heights = items.map((item) => item.charHeightPx).filter((v) => typeof v === "number");
+  const referenceCharHeight = options.referenceCharHeight ?? median(heights);
+  const anchorXs = items.map((item) => item.anchorXPx).filter((v) => typeof v === "number");
+  const referenceAnchorX = anchorXs.length > 0 ? median(anchorXs) : void 0;
+  const warnings = [];
+  if (!Number.isFinite(referenceCharHeight)) {
+    warnings.push("\u6CA1\u6709\u4E00\u6761\u5E26 charHeightPx\uFF0C\u65E0\u6CD5\u6BD4\u8F83\u8EAB\u9AD8");
+  }
+  for (const item of items) {
+    if (item.charHeightPx !== void 0 && Number.isFinite(referenceCharHeight)) {
+      const deltaPct = (item.charHeightPx - referenceCharHeight) / referenceCharHeight;
+      item.deltaPct = Number(deltaPct.toFixed(5));
+      if (Math.abs(deltaPct) > heightPct + 1e-9) {
+        const sign = deltaPct > 0 ? "\u504F\u5927" : "\u504F\u5C0F";
+        warnings.push(
+          `${item.name}\uFF1A\u8EAB\u9AD8 ${item.charHeightPx}px\uFF0C\u6BD4\u57FA\u51C6 ${referenceCharHeight}px ${sign} ${(Math.abs(deltaPct) * 100).toFixed(2)}%\uFF08\u5BB9\u5DEE ${(heightPct * 100).toFixed(1)}%\uFF09`
+        );
+      }
+    }
+    if (item.anchorXPx !== void 0 && referenceAnchorX !== void 0) {
+      const delta = Number((item.anchorXPx - referenceAnchorX).toFixed(3));
+      item.deltaAnchorXPx = delta;
+      if (Math.abs(delta) > anchorPx + 1e-9) {
+        warnings.push(`${item.name}\uFF1A\u951A\u70B9 X \u6298 ${item.anchorXPx}px\uFF0C\u504F\u79BB\u4E2D\u4F4D\u6570 ${delta > 0 ? "+" : ""}${delta}px\uFF08\u5BB9\u5DEE ${anchorPx}px\uFF09`);
+      }
+    }
+    if (item.problems.length > 0) warnings.push(`${item.name}\uFF1A${item.problems.join("\uFF1B")}`);
+  }
+  const conventions = new Set(metas.map((meta3) => meta3.anchorConvention).filter((v) => typeof v === "string"));
+  if (conventions.size > 1) {
+    warnings.push(`\u951A\u70B9\u53E3\u5F84\u4E0D\u4E00\u81F4\uFF1A${[...conventions].join(" / ")}\uFF08\u6DF7\u7528\u4F1A\u8BA9\u5207\u52A8\u753B\u65F6\u89D2\u8272\u8DF3\u4F4D\uFF09`);
+  }
+  if (metas.some((meta3) => meta3.anchorConvention === void 0)) {
+    warnings.push("\u6709 meta \u7F3A anchorConvention\uFF08\u65E0\u6CD5\u5224\u65AD\u53E3\u5F84\uFF09");
+  }
+  return {
+    ok: warnings.length === 0,
+    count: items.length,
+    reference: Number.isFinite(referenceCharHeight) ? { charHeightPx: referenceCharHeight, ...referenceAnchorX !== void 0 ? { anchorXPx: referenceAnchorX } : {} } : void 0,
+    tolerance,
+    items,
+    warnings
+  };
+}
+
 // src/sprite/service.ts
 var WATERMARK_AUTO_CONFIDENCE = 0.8;
 function dataUrlToBuffer(dataUrl) {
@@ -39353,6 +40420,68 @@ function createSpriteService(options) {
       return { keyedCount: -1 };
     }
   };
+  const readFramePixels = async (opts, cache) => {
+    const source = opts.source === "raw" ? "raw" : "keyed";
+    const frame = Math.max(0, Math.floor(Number(opts.frame ?? 0)));
+    if (!Number.isFinite(frame)) throw new Error(`\u5E27\u53F7\u4E0D\u662F\u6570\u5B57\uFF1A${String(opts.frame)}`);
+    const key = `${source}:${frame}`;
+    const cached2 = cache?.get(key);
+    if (cached2) return cached2;
+    const bridgeName = source === "raw" ? "frameDataURL" : "keyedDataURL";
+    const answer = await bridge(bridgeName, frame);
+    const buffer = dataUrlToBuffer(answer?.dataURL);
+    if (!buffer) throw new Error(`\u7B2C ${frame} \u5E27\uFF08${source}\uFF09\u6CA1\u62FF\u5230 PNG dataURL\uFF0C\u8BFB\u4E0D\u51FA\u50CF\u7D20`);
+    const decoded = decodePng(buffer);
+    const image = { width: decoded.width, height: decoded.height, rgba: decoded.rgba };
+    cache?.set(key, image);
+    return image;
+  };
+  const frameLimitFor = (width, height) => {
+    const budget = 720 * 966;
+    const pixels = Math.max(1, Math.round(width) * Math.round(height));
+    return Math.max(6, Math.min(24, Math.round(24 * budget / pixels)));
+  };
+  const framesOf = (spec, limit) => {
+    const warnings = [];
+    if (Array.isArray(spec)) {
+      const frames = [
+        ...new Set(
+          spec.map((value) => Math.floor(Number(value))).filter((value) => Number.isFinite(value) && value >= 0)
+        )
+      ].sort((a, b) => a - b);
+      if (frames.length === 0) throw new Error('frames \u662F\u7A7A\u6570\u7EC4\uFF1A\u8981\u4E48\u7ED9\u5E27\u53F7\uFF0C\u8981\u4E48\u5199 "all"');
+      if (frames.length > limit) {
+        warnings.push(`\u6309\u4F60\u7ED9\u7684 ${frames.length} \u5E27\u5168\u8DD1\uFF08\u8D85\u8FC7\u9ED8\u8BA4\u4E0A\u9650 ${limit} \u5E27\uFF0C\u4F1A\u66F4\u6162\uFF09`);
+      }
+      return { frames, warnings };
+    }
+    const total = lastPrepare?.frames ?? 0;
+    if (total <= 0) {
+      throw new Error(
+        "\u4E0D\u77E5\u9053\u603B\u5E27\u6570\uFF1A\u672C\u6B21\u4F1A\u8BDD\u6CA1\u6709 sprite_prepare \u8BB0\u5F55\uFF08\u6216\u5E27\u5DF2\u88AB\u7A7A\u95F2\u56DE\u6536\uFF09\u3002\u8BF7\u663E\u5F0F\u7ED9\u5E27\u53F7\u5217\u8868\uFF0C\u6216\u91CD\u65B0 sprite_prepare\u3002"
+      );
+    }
+    if (total <= limit) return { frames: Array.from({ length: total }, (_one, index) => index), warnings };
+    const step = total / limit;
+    const picked = [
+      ...new Set(Array.from({ length: limit }, (_one, index) => Math.min(total - 1, Math.round(index * step))))
+    ];
+    warnings.push(
+      `\u5E8F\u5217\u5171 ${total} \u5E27\uFF0C"all" \u9ED8\u8BA4\u53EA\u626B\u7B49\u95F4\u9694\u7684 ${picked.length} \u5E27\uFF08\u9884\u7B97\u6309 24 \u5E27\xD7720\xD7966 \u6298\u7B97\uFF09\uFF1B\u8981\u5168\u8DD1\u5C31\u663E\u5F0F\u7ED9 frames \u5217\u8868\u3002`
+    );
+    return { frames: picked, warnings };
+  };
+  const referenceImageOf = async (spec, source, cache) => {
+    const imagePath = typeof spec?.imagePath === "string" ? spec.imagePath.trim() : "";
+    if (imagePath !== "") {
+      if (!existsSync3(imagePath)) throw new Error(`\u53C2\u8003\u56FE\u4E0D\u5B58\u5728\uFF1A${imagePath}`);
+      const decoded = decodePng(readFileSync6(imagePath));
+      return { image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba } };
+    }
+    const frame = Math.max(0, Math.floor(Number(spec?.frame ?? 0)));
+    return { image: await readFramePixels({ frame, source }, cache), frame };
+  };
+  const wantsAnchor = (args) => typeof args.anchorX === "number" || typeof args.anchorY === "number";
   return {
     get busy() {
       return session !== void 0;
@@ -39521,6 +40650,196 @@ function createSpriteService(options) {
         }
       }
       return { ...answer, ...overlayPath ? { overlayPath } : {} };
+    },
+    async verify(args) {
+      const metas = Array.isArray(args.metas) ? [...args.metas] : [];
+      for (const raw of Array.isArray(args.paths) ? args.paths : []) {
+        const target = String(raw ?? "").trim();
+        if (!target) continue;
+        const abs = path20.isAbsolute(target) ? target : path20.join(outDirOf(), target);
+        let stat3;
+        try {
+          stat3 = statSync3(abs);
+        } catch {
+          throw new Error(`\u627E\u4E0D\u5230\u8FD9\u4E2A\u8DEF\u5F84\uFF1A${abs}`);
+        }
+        const files = stat3.isDirectory() ? readdirSync2(abs).filter((name2) => name2.toLowerCase().endsWith(".json")).sort().map((name2) => path20.join(abs, name2)) : [abs];
+        if (files.length === 0) throw new Error(`\u8FD9\u4E2A\u76EE\u5F55\u91CC\u6CA1\u6709 .json\uFF1A${abs}`);
+        for (const file2 of files) {
+          let parsed;
+          try {
+            parsed = JSON.parse(readFileSync6(file2, "utf8"));
+          } catch (error62) {
+            throw new Error(`\u8BFB\u4E0D\u4E86 meta\uFF08${file2}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`);
+          }
+          if (!parsed || typeof parsed !== "object") throw new Error(`\u8FD9\u4E2A\u6587\u4EF6\u4E0D\u662F meta \u5BF9\u8C61\uFF1A${file2}`);
+          metas.push(parsed);
+        }
+      }
+      if (metas.length === 0) throw new Error("\u9700\u8981 metas\uFF08\u76F4\u63A5\u7ED9\uFF09\u6216 paths\uFF08meta.json \u6216\u76EE\u5F55\uFF09");
+      return verifyConsistency(metas, {
+        ...typeof args.referenceCharHeight === "number" ? { referenceCharHeight: args.referenceCharHeight } : {},
+        ...typeof args.heightPct === "number" ? { heightPct: args.heightPct } : {},
+        ...typeof args.anchorPx === "number" ? { anchorPx: args.anchorPx } : {}
+      });
+    },
+    async match(args) {
+      if (!args.templateRect || typeof args.templateRect !== "object") {
+        throw new Error("\u9700\u8981 templateRect\uFF08\u6A21\u677F\u77E9\u5F62\uFF0C\u6E90\u5E27\u50CF\u7D20 {x,y,w,h}\uFF09");
+      }
+      const source = args.source === "raw" ? "raw" : "keyed";
+      const templateFrame = Math.max(0, Math.floor(Number(args.templateFrame ?? args.inFrame ?? 0)));
+      const inFrame = Math.max(0, Math.floor(Number(args.inFrame ?? templateFrame)));
+      const cache = /* @__PURE__ */ new Map();
+      const templatePixels = await readFramePixels({ frame: templateFrame, source }, cache);
+      const template = cropRgba(templatePixels, args.templateRect);
+      const imagePixels = inFrame === templateFrame ? templatePixels : await readFramePixels({ frame: inFrame, source }, cache);
+      return matchTemplate(imagePixels, template, {
+        ...args.searchRect ? { searchRect: args.searchRect } : {},
+        ...typeof args.minScore === "number" ? { minScore: args.minScore } : {}
+      });
+    },
+    async featureFit(args) {
+      const specs = Array.isArray(args.templates) ? args.templates : [];
+      if (specs.length === 0) {
+        throw new Error("\u9700\u8981 templates\uFF1A\u81F3\u5C11 1 \u4E2A\u7279\u5F81\u6A21\u677F {rect:{x,y,w,h}}\uFF08\u5EFA\u8BAE 2 \u4E2A\u2014\u2014\u5355\u6A21\u677F\u53EA\u80FD\u5B9A\u5E73\u79FB\uFF09");
+      }
+      const templateSpecs = specs.map((one, index) => {
+        if (!one || typeof one !== "object" || !one.rect) throw new Error(`templates[${index}] \u7F3A rect`);
+        return { rect: one.rect, ...typeof one.weight === "number" ? { weight: one.weight } : {} };
+      });
+      const source = args.source === "raw" ? "raw" : "keyed";
+      const cache = /* @__PURE__ */ new Map();
+      const ref = await referenceImageOf(args.reference, source, cache);
+      const picked = framesOf(args.search?.frames ?? "all", frameLimitFor(ref.image.width, ref.image.height));
+      const warnings = [...picked.warnings];
+      let best;
+      let seed;
+      const failed = [];
+      for (const frame of picked.frames) {
+        let pixels;
+        try {
+          pixels = await readFramePixels({ frame, source }, cache);
+        } catch (error62) {
+          failed.push(`\u7B2C ${frame} \u5E27\u8BFB\u4E0D\u5230\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
+          continue;
+        }
+        let fit;
+        try {
+          fit = fitFeatureFrame(ref.image, pixels, {
+            templates: templateSpecs,
+            ...args.search?.scale ? { scale: args.search.scale } : {},
+            ...seed ? { seed } : {}
+          });
+        } catch (error62) {
+          failed.push(`\u7B2C ${frame} \u5E27\u7B97\u4E0D\u51FA\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
+          cache.clear();
+          continue;
+        }
+        seed = { scale: fit.scale, positions: fit.perTemplate.map((one) => ({ x: one.x, y: one.y })) };
+        if (!best || fit.score > best.fit.score) best = { frame, fit, width: pixels.width, height: pixels.height };
+        cache.clear();
+      }
+      if (!best) {
+        throw new Error(`\u6CA1\u6709\u4EFB\u4F55\u4E00\u5E27\u80FD\u7B97\u7279\u5F81\u5339\u914D\uFF1A${failed.slice(0, 3).join("\uFF1B") || "\u5168\u90E8\u5E27\u90FD\u8BFB\u4E0D\u5230"}`);
+      }
+      if (failed.length > 0) warnings.push(`${failed.length} \u5E27\u6CA1\u7B97\u51FA\u6765\uFF0C\u5DF2\u8DF3\u8FC7\uFF08\u9996\u6761\uFF1A${failed[0]}\uFF09`);
+      const graded = featureConfidence(best.fit.score, best.fit.residualPx);
+      const transferredAnchor = wantsAnchor(args) ? {
+        ...transferAnchor({
+          anchorX: args.anchorX ?? 0.5,
+          anchorY: args.anchorY ?? 0.5,
+          refWidth: ref.image.width,
+          refHeight: ref.image.height,
+          scale: best.fit.scale,
+          dx: best.fit.dx,
+          dy: best.fit.dy,
+          width: best.width,
+          height: best.height
+        }),
+        anchorSource: "feature"
+      } : void 0;
+      return {
+        frame: best.frame,
+        scale: best.fit.scale,
+        dx: best.fit.dx,
+        dy: best.fit.dy,
+        score: best.fit.score,
+        residualPx: best.fit.residualPx,
+        ...transferredAnchor ? { transferredAnchor } : {},
+        perTemplate: best.fit.perTemplate,
+        confidence: graded.confidence,
+        ...graded.reason ? { reason: graded.reason } : {},
+        ...warnings.length > 0 ? { warnings } : {}
+      };
+    },
+    async silhouetteFit(args) {
+      const source = args.source === "raw" ? "raw" : "keyed";
+      const cache = /* @__PURE__ */ new Map();
+      const ref = await referenceImageOf(args.reference, source, cache);
+      const picked = framesOf(args.target?.frames ?? "all", frameLimitFor(ref.image.width, ref.image.height));
+      const warnings = [...picked.warnings];
+      const mask = args.mask === "raw" ? "raw" : "body-core";
+      let best;
+      const failed = [];
+      for (const frame of picked.frames) {
+        let pixels;
+        try {
+          pixels = await readFramePixels({ frame, source }, cache);
+        } catch (error62) {
+          failed.push(`\u7B2C ${frame} \u5E27\u8BFB\u4E0D\u5230\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
+          continue;
+        }
+        let fit;
+        try {
+          fit = fitSilhouetteFrame(ref.image, pixels, {
+            mask,
+            ...args.search?.scale ? { scale: args.search.scale } : {},
+            ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {}
+          });
+        } catch (error62) {
+          failed.push(`\u7B2C ${frame} \u5E27\u7B97\u4E0D\u51FA\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
+          cache.clear();
+          continue;
+        }
+        if (fit.reason) {
+          failed.push(`\u7B2C ${frame} \u5E27\uFF1A${fit.reason}`);
+          cache.clear();
+          continue;
+        }
+        if (!best || fit.iou > best.fit.iou) best = { frame, fit, width: pixels.width, height: pixels.height };
+        cache.clear();
+      }
+      if (!best) {
+        throw new Error(`\u6CA1\u6709\u4EFB\u4F55\u4E00\u5E27\u80FD\u7B97\u526A\u5F71\u62DF\u5408\uFF1A${failed.slice(0, 3).join("\uFF1B") || "\u5168\u90E8\u5E27\u90FD\u8BFB\u4E0D\u5230"}`);
+      }
+      if (failed.length > 0) warnings.push(`${failed.length} \u5E27\u6CA1\u7B97\u51FA\u6765\uFF0C\u5DF2\u8DF3\u8FC7\uFF08\u9996\u6761\uFF1A${failed[0]}\uFF09`);
+      const graded = silhouetteConfidence(best.fit.iou);
+      const transferredAnchor = graded.anchorSource !== null && wantsAnchor(args) ? {
+        ...transferAnchor({
+          anchorX: args.anchorX ?? 0.5,
+          anchorY: args.anchorY ?? 0.5,
+          refWidth: ref.image.width,
+          refHeight: ref.image.height,
+          scale: best.fit.scale,
+          dx: best.fit.dx,
+          dy: best.fit.dy,
+          width: best.width,
+          height: best.height
+        }),
+        anchorSource: graded.anchorSource
+      } : null;
+      return {
+        frame: best.frame,
+        iou: best.fit.iou,
+        scale: best.fit.scale,
+        dx: best.fit.dx,
+        dy: best.fit.dy,
+        transferredAnchor,
+        confidence: graded.confidence,
+        ...graded.reason ? { reason: graded.reason } : {},
+        ...warnings.length > 0 ? { warnings } : {}
+      };
     },
     async scaleTo(args) {
       return bridge("scaleTo", {
@@ -39929,6 +41248,7 @@ var KEY_PARAM_KEYS = [
 var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation", "whiteness"];
 var SCAN_OPS = [">", ">=", "<", "<="];
 var SCAN_AGGREGATES = ["min", "max", "median", "mode"];
+var PIXEL_SOURCES = ["keyed", "raw"];
 
 // src/sprite/tools.ts
 var json9 = (value) => JSON.stringify(value);
@@ -39958,6 +41278,64 @@ function rectOf(value) {
   const nums = [raw.x, raw.y, raw.w, raw.h];
   if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) return void 0;
   return { x: Number(raw.x), y: Number(raw.y), w: Number(raw.w), h: Number(raw.h) };
+}
+function rectSchema(description) {
+  return {
+    type: "object",
+    description,
+    properties: {
+      x: { type: "number", description: "\u5DE6\u4E0A\u89D2 x\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u6574\u6570\uFF09" },
+      y: { type: "number", description: "\u5DE6\u4E0A\u89D2 y\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u6574\u6570\uFF09" },
+      w: { type: "number", description: "\u5BBD\uFF08\u50CF\u7D20\uFF0C>0\uFF09" },
+      h: { type: "number", description: "\u9AD8\uFF08\u50CF\u7D20\uFF0C>0\uFF09" }
+    },
+    required: ["x", "y", "w", "h"]
+  };
+}
+function sourceSchema() {
+  return {
+    type: "string",
+    enum: [...PIXEL_SOURCES],
+    description: "\u50CF\u7D20\u6765\u6E90\uFF1Akeyed\uFF08\u9ED8\u8BA4\uFF0C\u62A0\u56FE\u7ED3\u679C\uFF1B\u6CA1 keyApply \u4F1A\u62A5\u9519\uFF09\u6216 raw\uFF08\u539F\u5E27\uFF1B\u7EFF\u5E55\u7D20\u6750\u6574\u5E45\u4E0D\u900F\u660E\uFF0C\u526A\u5F71/\u6A21\u677F\u90FD\u4F1A\u88AB\u80CC\u666F\u6C61\u67D3\uFF09"
+  };
+}
+function scaleSchema(description) {
+  return {
+    type: "object",
+    description,
+    properties: {
+      min: { type: "number", description: "\u4E0B\u754C\uFF08\u9ED8\u8BA4\u6309\u5DE5\u5177\u7ED9\u7684\u9ED8\u8BA4\u503C\uFF09" },
+      max: { type: "number", description: "\u4E0A\u754C" },
+      step: { type: "number", description: "\u6B65\u957F" }
+    }
+  };
+}
+function scaleRangeOf(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const raw = value;
+  const out = {};
+  if (typeof raw.min === "number" && Number.isFinite(raw.min)) out.min = raw.min;
+  if (typeof raw.max === "number" && Number.isFinite(raw.max)) out.max = raw.max;
+  if (typeof raw.step === "number" && Number.isFinite(raw.step)) out.step = raw.step;
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+function referenceSchema(description) {
+  return {
+    type: "object",
+    description,
+    properties: {
+      frame: { type: "number", description: "\u5F53\u524D\u4F1A\u8BDD\u7684\u5E27\u53F7\uFF08\u9ED8\u8BA4 0\uFF09" },
+      imagePath: { type: "string", description: "\u78C1\u76D8\u4E0A\u4E00\u5F20 PNG \u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF088-bit\u3001\u975E\u9694\u884C\uFF1B\u4E0A\u4E00\u6BB5\u7D20\u6750\u5BFC\u51FA\u7684\u90A3\u4E00\u5E27\uFF09" }
+    }
+  };
+}
+function referenceOf(value) {
+  if (!value || typeof value !== "object") return {};
+  const raw = value;
+  const out = {};
+  if (typeof raw.frame === "number" && Number.isFinite(raw.frame)) out.frame = raw.frame;
+  if (typeof raw.imagePath === "string" && raw.imagePath.trim() !== "") out.imagePath = raw.imagePath.trim();
+  return out;
 }
 var KEY_PROPERTIES = {
   mode: { type: "string", enum: ["classic", "advanced"], description: "\u62A0\u56FE\u6863\u4F4D\uFF1Aclassic \u8D70 intensity/feather/cleanup\uFF1Badvanced \u8D70 softness/despill/aggressive/greenToAlpha/autoPlate" },
@@ -40535,6 +41913,216 @@ function buildTools(service, options) {
       }
     },
     {
+      name: "sprite_match",
+      description: '\u6A21\u677F\u5339\u914D\uFF1A\u5728\u67D0\u4E00\u5E27\u91CC\u627E templateRect \u90A3\u5757\u56FE\u6848\u3002NCC \u5F52\u4E00\u5316\u4E92\u76F8\u5173\uFF08\u5BF9\u4EAE\u5EA6\u7EBF\u6027\u53D8\u5316\u514D\u75AB\uFF09\uFF0C1/4 \u2192 1/2 \u2192 1 \u4E09\u7EA7\u91D1\u5B57\u5854\u7C97\u641C + \u539F\u5206\u8FA8\u7387 \xB12px \u7CBE\u4FEE\uFF0C\u6240\u4EE5\u6574\u5E45\u641C\u7D22\u4E5F\u53EA\u6709\u767E\u6BEB\u79D2\u7EA7\u3002\u5750\u6807\u4E00\u5F8B\u662F**\u6E90\u5E27\u50CF\u7D20**\uFF08space:"frame"\uFF0C\u5DE6\u4E0A\u539F\u70B9\u3001\u53F3\u4E0B\u5F00\u533A\u95F4\uFF09\uFF0C\u4E0D\u662F\u88C1\u526A\u6846/\u683C\u5B50\u5750\u6807\uFF1BtemplateRect \u5C5E\u4E8E templateFrame \u7684\u7A7A\u95F4\uFF0C\u8FD4\u56DE\u7684 x/y \u5C5E\u4E8E inFrame \u7684\u7A7A\u95F4\u3002\u8FD4\u56DE {found,x,y,score,space:"frame"}\uFF1A\u540C\u4E00\u4F4D\u7F6E\u81EA\u5339\u914D score\u22481.000\uFF08\u8FD9\u662F\u5224\u516C\u5F0F/\u65B9\u5411\u5BF9\u4E0D\u5BF9\u7684\u786C\u81EA\u68C0\uFF09\uFF1B\u4F4E\u4E8E minScore\uFF08\u9ED8\u8BA4 0.85\uFF09\u65F6 found:false\uFF0C\u4F46\u4ECD\u56DE\u4F20\u6700\u9AD8\u5206\u7684\u4F4D\u7F6E\u4E0E\u5206\u503C\u3002\u6A21\u677F\u662F\u7EAF\u8272\uFF08\u65B9\u5DEE 0\uFF09\u65F6 NCC \u65E0\u5B9A\u4E49\uFF0C\u4F1A\u8FD4\u56DE found:false + reason\u2014\u2014\u6362\u4E00\u5757\u6709\u7EB9\u7406\u7684\u533A\u57DF\uFF08\u7EBD\u6263\u3001\u5FBD\u7AE0\u3001\u773C\u775B\uFF09\u3002source=keyed\uFF08\u9ED8\u8BA4\uFF09\u7528\u62A0\u56FE\u7ED3\u679C\uFF1Braw \u662F\u539F\u5E27\uFF0C\u7EFF\u5E55\u6CA1\u62A0\u65F6\u6574\u5E45\u4E0D\u900F\u660E\uFF0C\u522B\u62FF\u5B83\u627E\u56FE\u6848\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          templateFrame: { type: "number", description: "\u6A21\u677F\u53D6\u81EA\u54EA\u4E00\u5E27\uFF0C\u9ED8\u8BA4\u540C inFrame\uFF08\u518D\u7F3A\u7701 0\uFF09" },
+          templateRect: rectSchema("\u6A21\u677F\u77E9\u5F62\uFF08**templateFrame \u7684\u6E90\u5E27\u50CF\u7D20**\uFF0C\u5FC5\u987B\u6574\u5757\u843D\u5728\u5E27\u5185\uFF09"),
+          inFrame: { type: "number", description: "\u5728\u54EA\u4E2A\u5E27\u91CC\u627E\uFF0C\u9ED8\u8BA4\u540C templateFrame" },
+          searchRect: rectSchema("\u53EA\u5728\u8FD9\u4E2A\u77E9\u5F62\u91CC\u641C\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u9ED8\u8BA4\u6574\u5E45\uFF1B\u4F1A\u88AB\u5E27\u8FB9\u754C\u5939\u7D27\uFF09"),
+          minScore: { type: "number", description: "\u5224\u5B9A\u9608\u503C\uFF0C\u9ED8\u8BA4 0.85\uFF080.90 \u4EE5\u4E0A\u53EF\u4FE1\uFF0C0.85~0.90 \u8C28\u614E\uFF0C\u66F4\u4F4E\u89C6\u4E3A\u5931\u8D25\uFF09" },
+          source: sourceSchema()
+        },
+        required: ["templateRect"]
+      },
+      output: OUT2,
+      timeoutMs: 24e4,
+      async execute(args) {
+        try {
+          const templateRect = rectOf(args.templateRect);
+          if (!templateRect) return fail2("\u9700\u8981 templateRect {x,y,w,h}\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u56DB\u4E2A\u90FD\u662F\u6570\u5B57\uFF09");
+          const searchRect = rectOf(args.searchRect);
+          return json9(
+            await service.match({
+              templateRect,
+              ...typeof args.templateFrame === "number" ? { templateFrame: args.templateFrame } : {},
+              ...typeof args.inFrame === "number" ? { inFrame: args.inFrame } : {},
+              ...searchRect ? { searchRect } : {},
+              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {},
+              ...typeof args.minScore === "number" ? { minScore: args.minScore } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_feature_fit",
+      description: '\u7279\u5F81\u53CD\u63A8\uFF1A\u7528 1~2 \u4E2A\u300C\u59FF\u52BF\u65E0\u5173\u300D\u7684\u4E0D\u53D8\u7279\u5F81\uFF08\u773C\u775B\u3001\u5934\u9970\u3001\u7EBD\u6263\u5217\uFF09\u5BF9\u9F50\u4E24\u5E27/\u4E24\u6BB5\u7D20\u6750\uFF0C\u6C42\u51FA scale + \u5E73\u79FB\uFF08dx,dy\uFF09\uFF0C\u5E76\u628A\u53C2\u8003\u5E27\u7684\u951A\u70B9\u642C\u5230\u76EE\u6807\u5E27\u3002**\u59FF\u52BF\u5DEE\u5F02\u5927\u65F6\u7528\u5B83**\uFF08\u526A\u5F71\u4F1A\u56E0\u59FF\u52BF\u800C\u5931\u914D\uFF09\u3002\u6570\u5B66\uFF1Ap_target = p_ref \xD7 scale + (dx, dy)\uFF08\u6E90\u5E27\u50CF\u7D20\uFF09\uFF1B\u5355\u6A21\u677F\u53EA\u80FD\u5B9A\u5E73\u79FB\uFF0C\u53CC\u6A21\u677F\u7528\u4E24\u70B9\u95F4\u8DDD\u6BD4\u503C\u5B9A scale\uFF0C\u4E24\u4E2A\u6A21\u677F\u5404\u81EA\u53CD\u63A8\u7684\u5E73\u79FB\u5DEE\u5C31\u662F residualPx\uFF08>2px \u8BF4\u660E\u7279\u5F81\u88AB\u906E\u6321/\u5F62\u53D8\uFF0Cconfidence \u964D\u7EA7\uFF09\u3002\u53C2\u8003\u5E27\u4E24\u79CD\u7ED9\u6CD5\uFF1A{frame} \u7528\u5F53\u524D\u4F1A\u8BDD\u67D0\u5E27\uFF1B{imagePath} \u7528\u78C1\u76D8\u4E0A\u4E00\u5F20 PNG\uFF08\u4E0A\u4E00\u6BB5\u7D20\u6750\u5BFC\u51FA\u7684\u67D0\u5E27\uFF09\u2014\u2014\u8DE8\u7D20\u6750\u5BF9\u9F50\u9760\u8FD9\u6761\u3002\u8FD4\u56DE {frame,scale,dx,dy,score,residualPx,perTemplate,confidence}\uFF0C\u7ED9\u4E86 anchorX/anchorY \u624D\u6709 transferredAnchor\uFF08\u5F52\u4E00\u5316 0~1\u3001y-from-bottom\uFF0C\u4E0E meta.json \u540C\u53E3\u5F84\uFF1B\u53EA\u7ED9\u4E00\u4E2A\u65F6\u53E6\u4E00\u4E2A\u6309 0.5 \u8865\uFF09\u3002confidence\uFF1Ascore\u22650.90 \u4E14 residual<2px \u2192 high\uFF1B0.80~0.90 \u2192 medium\uFF08\u62FF\u8BED\u4E49\u70B9\u590D\u6838\uFF09\uFF1B\u66F4\u4F4E \u2192 low\uFF08\u522B\u7528\uFF09\u3002\u9650\u5E27\uFF1Asearch.frames \u7F3A\u7701/\u5199 "all" \u65F6\u6309 24 \u5E27\xD7720\xD7966 \u6298\u7B97\u62BD\u6837\uFF08\u5E27\u66F4\u5927\u81EA\u52A8\u66F4\u5C11\uFF09\uFF0C\u663E\u5F0F\u7ED9\u5E27\u53F7\u5217\u8868\u5219\u7167\u529E\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          reference: referenceSchema("\u53C2\u8003\u5E27\uFF08\u7279\u5F81\u662F\u4ECE\u5B83\u4E0A\u9762\u88C1\u7684\uFF09\u3002\u9ED8\u8BA4 {frame:0}"),
+          templates: {
+            type: "array",
+            description: "\u7279\u5F81\u6A21\u677F\uFF0C\u5EFA\u8BAE 2 \u4E2A\uFF08\u5355\u6A21\u677F\u53EA\u80FD\u5B9A\u5E73\u79FB\uFF09\u3002rect \u662F**\u53C2\u8003\u5E27\u7684\u6E90\u5E27\u50CF\u7D20**\uFF1B\u4F18\u5148\u5934\u90E8\u7279\u5F81\uFF0C\u522B\u7528\u624B\u811A/\u62AB\u98CE\u4E0B\u6446",
+            items: {
+              type: "object",
+              properties: {
+                rect: rectSchema("\u7279\u5F81\u77E9\u5F62\uFF08\u53C2\u8003\u5E27\u7684\u6E90\u5E27\u50CF\u7D20\uFF09"),
+                weight: { type: "number", description: "\u6743\u91CD\uFF0C\u9ED8\u8BA4 1\uFF08\u5934\u90E8\u7279\u5F81\u53EF\u4EE5\u7ED9\u9AD8\u4E00\u70B9\uFF09" }
+              },
+              required: ["rect"]
+            }
+          },
+          anchorX: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 x\uFF080~1\uFF0C\u5F52\u4E00\u5316\u3001\u6309\u53C2\u8003\u5E27\u5BBD\uFF09\uFF1B\u7ED9\u4E86\u624D\u56DE\u4F20 transferredAnchor" },
+          anchorY: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C\u4E0E meta.json \u540C\u53E3\u5F84\uFF09" },
+          search: {
+            type: "object",
+            description: "\u641C\u7D22\u8303\u56F4",
+            properties: {
+              frames: {
+                description: '\u8981\u641C\u7684\u5E27\uFF1A\u5E27\u53F7\u6570\u7EC4\uFF0C\u6216 "all"\uFF08\u9ED8\u8BA4\uFF0C\u4F1A\u6309\u9884\u7B97\u62BD\u6837\uFF0C\u89C1\u63CF\u8FF0\uFF09',
+                oneOf: [{ type: "array", items: { type: "number" } }, { type: "string", enum: ["all"] }]
+              },
+              scale: scaleSchema("\u5C3A\u5EA6\u8303\u56F4\uFF0C\u9ED8\u8BA4 0.85~1.15 step 0.01\uFF0831 \u6863\uFF1B\u5148\u7C97\u641C\u518D\u7CBE\u4FEE\uFF0C\u4E0D\u4F1A\u56E0\u4E3A 31 \u6863\u5C31\u6162\uFF09")
+            }
+          },
+          source: sourceSchema()
+        },
+        required: ["templates"]
+      },
+      output: OUT2,
+      timeoutMs: 24e4,
+      async execute(args) {
+        try {
+          const templates = Array.isArray(args.templates) ? args.templates.map((row) => {
+            const item = row;
+            const rect = rectOf(item.rect);
+            if (!rect) return void 0;
+            return { rect, ...typeof item.weight === "number" ? { weight: item.weight } : {} };
+          }).filter((one) => one !== void 0) : [];
+          if (templates.length === 0) return fail2("\u9700\u8981 templates\uFF1A[{rect:{x,y,w,h}},\u2026]\uFF08\u5EFA\u8BAE 2 \u4E2A\uFF0Crect \u662F\u53C2\u8003\u5E27\u7684\u6E90\u5E27\u50CF\u7D20\uFF09");
+          const search = {};
+          const rawSearch = args.search && typeof args.search === "object" ? args.search : {};
+          if (rawSearch.frames === "all") search.frames = "all";
+          else if (Array.isArray(rawSearch.frames)) {
+            search.frames = rawSearch.frames.filter((one) => typeof one === "number");
+          }
+          const scale = scaleRangeOf(rawSearch.scale);
+          if (scale) search.scale = scale;
+          return json9(
+            await service.featureFit({
+              reference: referenceOf(args.reference),
+              templates,
+              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
+              ...Object.keys(search).length > 0 ? { search } : {},
+              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_silhouette_fit",
+      description: '\u526A\u5F71\u62DF\u5408\uFF1A\u62FF\u53C2\u8003\u5E27\u7684\u526A\u5F71\u5F53\u5C3A\u5B50\uFF0C\u5728\u76EE\u6807\u52A8\u753B\u91CC\u627E\u59FF\u52BF\u6700\u63A5\u8FD1\u7684\u90A3\u4E00\u5E27\uFF0C\u8FD4\u56DE {frame,iou,scale,dx,dy,confidence}\u3002\u540C\u89D2\u8272\u6279\u91CF\u5BF9\u9F50\u7684\u4E3B\u529B\uFF08idle \u7684\u526A\u5F71\u53BB\u5BF9\u9F50 walk/idle2 \u8FD9\u7C7B\uFF09\u3002mask \u9ED8\u8BA4 body-core = alpha \u9608\u503C \u2192 **\u6700\u5927\u8FDE\u901A\u57DF**\uFF08\u53BB\u6389\u6F02\u6D6E\u7279\u6548/\u624B\uFF09\u2192 1px \u8150\u8680\uFF1Braw \u53EA\u6309 alpha \u9608\u503C\u3002**\u4E09\u6863\u5FC5\u987B\u770B IoU\uFF0C\u4E0D\u8BB8\u786C\u62D3\u5370**\uFF1A\u22650.90 \u7F29\u653E\u4E0E\u5E73\u79FB\u90FD\u53EF\u4FE1\uFF08transferredAnchor.anchorSource="silhouette"\uFF0C\u53EF\u62D3\u5370\uFF09\uFF1B0.75~0.90 \u53EA\u91C7\u7528 scale\uFF08anchorSource="semantic-required"\uFF0C\u951A\u70B9\u5FC5\u987B\u8D70\u8BED\u4E49\u70B9\uFF09\uFF1B<0.75 \u2192 confidence:"low" \u4E14 transferredAnchor \u76F4\u63A5\u7ED9 null\uFF08\u8FD9\u6BB5\u52A8\u753B\u91CC\u6CA1\u6709\u59FF\u52BF\u63A5\u8FD1\u7684\u5E27\uFF09\u3002\u5750\u6807\u540C sprite_match\uFF1A\u6E90\u5E27\u50CF\u7D20\u3001space \u7531\u8F93\u5165\u56FE\u51B3\u5B9A\uFF1Bp_target = p_ref \xD7 scale + (dx, dy)\u3002\u53C2\u8003\u5E27\u53EF\u4EE5\u662F {frame}\uFF08\u5F53\u524D\u4F1A\u8BDD\u67D0\u5E27\uFF09\u6216 {imagePath}\uFF08\u78C1\u76D8\u4E0A\u4E00\u5F20 PNG\uFF0C\u8DE8\u7D20\u6750\u9760\u8FD9\u6761\uFF09\u3002\u6027\u80FD\uFF1A\u7C97\u641C\u5728 1/4 \u5206\u8FA8\u7387\uFF08\u8D28\u5FC3\u5B9A\u521D\u503C\uFF09+ \u539F\u5206\u8FA8\u7387 \xB14px \u7CBE\u4FEE\uFF0C\u62A5\u7684 IoU \u662F\u539F\u5206\u8FA8\u7387\u7B97\u7684\uFF1Btarget.frames \u7F3A\u7701/\u5199 "all" \u65F6\u6309 24 \u5E27\xD7720\xD7966 \u6298\u7B97\u62BD\u6837\uFF0C\u8981\u5168\u8DD1\u5C31\u663E\u5F0F\u7ED9\u5E27\u53F7\u5217\u8868\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          reference: referenceSchema("\u53C2\u8003\u5E27\uFF08\u5C3A\u5B50\uFF09\u3002\u9ED8\u8BA4 {frame:0}"),
+          target: {
+            type: "object",
+            description: "\u5728\u54EA\u4E9B\u5E27\u91CC\u627E",
+            properties: {
+              frames: {
+                description: '\u5E27\u53F7\u6570\u7EC4\u6216 "all"\uFF08\u9ED8\u8BA4\uFF0C\u4F1A\u6309\u9884\u7B97\u62BD\u6837\uFF09',
+                oneOf: [{ type: "array", items: { type: "number" } }, { type: "string", enum: ["all"] }]
+              }
+            }
+          },
+          mask: {
+            type: "string",
+            enum: ["raw", "body-core"],
+            description: "\u63A9\u819C\u53E3\u5F84\uFF1Abody-core\uFF08\u9ED8\u8BA4\uFF09= \u6700\u5927\u8FDE\u901A\u57DF + 1px \u8150\u8680\uFF0C\u53BB\u7279\u6548/\u53BB\u624B\uFF1Braw = \u53EA\u6309 alpha \u9608\u503C\uFF08\u6548\u679C\u7269\u672C\u8EAB\u5C31\u662F\u526A\u5F71\u7684\u4E00\u90E8\u5206\u65F6\u624D\u7528\uFF09"
+          },
+          search: {
+            type: "object",
+            description: "\u641C\u7D22\u8303\u56F4",
+            properties: {
+              scale: scaleSchema("\u5C3A\u5EA6\u8303\u56F4\uFF0C\u9ED8\u8BA4 0.85~1.15 step 0.05\uFF08\u6700\u591A 9 \u6863\uFF1B\u7ED9\u66F4\u7EC6\u7684\u6B65\u957F\u4F1A\u81EA\u52A8\u5747\u5206\u6574\u4E2A\u533A\u95F4\uFF09")
+            }
+          },
+          alphaThreshold: { type: "number", description: "alpha \u9608\u503C\uFF08\u9ED8\u8BA4 32\uFF09" },
+          anchorX: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 x\uFF080~1\uFF09\uFF1B\u7ED9\u4E86\u624D\u56DE\u4F20 transferredAnchor" },
+          anchorY: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 y\uFF080~1\uFF0Cy-from-bottom\uFF09" },
+          source: sourceSchema()
+        }
+      },
+      output: OUT2,
+      timeoutMs: 24e4,
+      async execute(args) {
+        try {
+          const rawTarget = args.target && typeof args.target === "object" ? args.target : {};
+          const target = {};
+          if (rawTarget.frames === "all") target.frames = "all";
+          else if (Array.isArray(rawTarget.frames)) {
+            target.frames = rawTarget.frames.filter((one) => typeof one === "number");
+          }
+          const rawSearch = args.search && typeof args.search === "object" ? args.search : {};
+          const scale = scaleRangeOf(rawSearch.scale);
+          return json9(
+            await service.silhouetteFit({
+              reference: referenceOf(args.reference),
+              ...Object.keys(target).length > 0 ? { target } : {},
+              ...args.mask === "raw" || args.mask === "body-core" ? { mask: args.mask } : {},
+              ...scale ? { search: { scale } } : {},
+              ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
+              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
+              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
+              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_verify",
+      description: '\u4E00\u6279\u4EA7\u7269\u7684**\u4E00\u81F4\u6027\u81EA\u68C0**\uFF08\u7EAF\u8BFB meta\uFF0C\u4E0D\u89E3\u7801\u56FE\u7247\uFF09\uFF1A\u7EC4\u5185\u8EAB\u9AD8\u65B9\u5DEE \u22641%\u3001\u951A\u70B9 X \u504F\u5DEE \u22642px\u3001\u951A\u70B9\u53E3\u5F84\u4E00\u81F4\u3001\u5FC5\u5907\u5B57\u6BB5\u9F50\u5168\u3002\u89E3\u51B3\u7684\u662F"\u6BCF\u6761\u5355\u770B\u90FD\u6CA1\u4E8B\u3001\u6574\u7EC4\u4E0D\u50CF\u8BDD"\u2014\u20142026-11-13 \u90A3\u6279 6 \u6761\u52A8\u753B\u5355\u4EFD\u5168\u7EFF\uFF0C\u7EC4\u5185\u8EAB\u9AD8\u5DEE\u5230 \xB15%\uFF0C\u5168\u9760\u4EBA\u773C\u624D\u53D1\u73B0\u3002\u5165\u53C2\u4E8C\u9009\u4E00\uFF1Ametas \u76F4\u63A5\u7ED9\u5BF9\u8C61\u6570\u7EC4\uFF0C\u6216 paths \u7ED9 meta.json / \u76EE\u5F55\uFF08\u76EE\u5F55\u91CC\u6240\u6709 .json \u4F1A\u88AB\u5F53\u6210 meta \u8BFB\uFF09\u3002\u57FA\u51C6\u9ED8\u8BA4\u53D6\u7EC4\u5185\u4E2D\u4F4D\u6570\uFF08\u79BB\u7FA4\u70B9\u4E0D\u4F1A\u628A\u57FA\u51C6\u5E26\u8DD1\uFF09\uFF0C\u4E5F\u53EF\u4EE5\u7528 referenceCharHeight \u6307\u5B9A\uFF08\u8DE8\u6279\u6B21\u6CBF\u7528\u4E0A\u4E00\u6279\u7684\u5C3A\u5B50\uFF09\u3002\u8FD4\u56DE {ok,count,reference,tolerance,items[{name,charHeightPx,deltaPct,anchorXPx,deltaAnchorXPx,problems}],warnings}\uFF1Bok=false \u65F6\u9010\u6761 warnings \u4F1A\u5199\u6E05\u662F\u54EA\u4E00\u6761\u3001\u504F\u4E86\u591A\u5C11\u3001\u5BB9\u5DEE\u591A\u5C11\u3002\u6CE8\u610F\u5B83\u53EA\u56DE\u7B54"\u8FD9\u4E00\u7EC4\u5F7C\u6B64\u81EA\u6D3D\u5417"\uFF0C"\u6BCF\u6761\u672C\u8EAB\u51C6\u4E0D\u51C6"\u8981\u9760 measure/export \u7684\u6210\u54C1\u5B9E\u6D4B\u3002',
+      parameters: {
+        type: "object",
+        properties: {
+          paths: {
+            type: "array",
+            items: { type: "string" },
+            description: "meta.json \u7684\u8DEF\u5F84\u6216\u5305\u542B\u5B83\u4EEC\u7684\u76EE\u5F55\uFF08\u76F8\u5BF9\u8DEF\u5F84\u6309\u5BFC\u51FA\u76EE\u5F55\u89E3\u6790\uFF09"
+          },
+          metas: {
+            type: "array",
+            items: { type: "object" },
+            description: "\u76F4\u63A5\u7ED9 meta \u5BF9\u8C61\u6570\u7EC4\uFF08\u4E0E paths \u53EF\u540C\u65F6\u7528\uFF0C\u7ED3\u679C\u662F\u4E24\u8005\u5408\u5E76\uFF09"
+          },
+          referenceCharHeight: { type: "number", description: "\u57FA\u51C6\u8EAB\u9AD8\uFF08\u4E0D\u7ED9\u5C31\u53D6\u7EC4\u5185\u4E2D\u4F4D\u6570\uFF09" },
+          heightPct: { type: "number", description: "\u8EAB\u9AD8\u5141\u8BB8\u7684\u76F8\u5BF9\u504F\u5DEE\uFF0C\u9ED8\u8BA4 0.01\uFF081%\uFF09" },
+          anchorPx: { type: "number", description: "\u951A\u70B9 X \u5141\u8BB8\u7684\u6E90\u5E27\u50CF\u7D20\u504F\u5DEE\uFF0C\u9ED8\u8BA4 2" }
+        }
+      },
+      output: OUT2,
+      timeoutMs: 2e4,
+      async execute(args) {
+        try {
+          return json9(
+            await service.verify({
+              ...Array.isArray(args.paths) ? { paths: args.paths.filter((one) => typeof one === "string") } : {},
+              ...Array.isArray(args.metas) ? { metas: args.metas.filter((one) => one && typeof one === "object") } : {},
+              ...typeof args.referenceCharHeight === "number" ? { referenceCharHeight: args.referenceCharHeight } : {},
+              ...typeof args.heightPct === "number" ? { heightPct: args.heightPct } : {},
+              ...typeof args.anchorPx === "number" ? { anchorPx: args.anchorPx } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
       name: "sprite_guide",
       description: "\u8FD4\u56DE\u8FD9\u5957\u5DE5\u5177\u7684\u5B8C\u6574\u6307\u5357\uFF08\u65B9\u6CD5\u8BBA / \u516D\u6B65\u539F\u8BED / \u53C2\u6570\u8BED\u4E49\u8868 / \u75C7\u72B6\u901F\u67E5 / \u5750\u6807\u6362\u7B97 / \u951A\u70B9\u53E3\u5F84\uFF09\u3002\u5B83\u4E0E skill `dafeiyu-sprite` \u662F\u540C\u4E00\u4EFD\u5185\u5BB9\uFF1A\u4F18\u5148\u7528 skill\uFF0C\u52A0\u8F7D\u4E0D\u5230\u518D\u8C03\u5B83\u3002",
       parameters: { type: "object", properties: {} },
@@ -40548,7 +42136,7 @@ function buildTools(service, options) {
 }
 
 // src/sprite/skill.ts
-import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync2, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
+import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import path21 from "node:path";
 var SPRITE_SKILL_NAME = "dafeiyu-sprite";
 var VERSION_FILE = ".dafeiyu-skill-version";
@@ -40556,7 +42144,7 @@ function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync2(path21.join(base, rel), { withFileTypes: true });
+      entries = readdirSync3(path21.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -40579,7 +42167,7 @@ function fingerprint(dir) {
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync2(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path21.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync4(path21.join(entry.dir, "SKILL.md")));
+    entries = readdirSync3(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path21.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync4(path21.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
@@ -42038,7 +43626,7 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync4, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync6, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync5, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync6, writeFileSync as writeFileSync6 } from "node:fs";
 import path27 from "node:path";
 
 // src/backup/config.ts
@@ -42301,7 +43889,7 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync7, readdirSync as readdirSync3, readFileSync as readFileSync10, statSync as statSync5 } from "node:fs";
+import { existsSync as existsSync7, readdirSync as readdirSync4, readFileSync as readFileSync10, statSync as statSync5 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
 import path26 from "node:path";
@@ -42339,14 +43927,14 @@ function isSessionFile(fileName) {
 }
 function safeDirs(dir) {
   try {
-    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
 }
 function safeFiles(dir) {
   try {
-    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
@@ -42980,7 +44568,7 @@ ${result2.stdout}`.toLowerCase();
   return /couldn't find remote ref|could not find remote ref|unknown revision|no such ref/.test(text);
 }
 function clearExceptGit(repo) {
-  for (const entry of readdirSync4(repo, { withFileTypes: true })) {
+  for (const entry of readdirSync5(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
     const target = path27.join(repo, entry.name);
     rmSync4(target, { recursive: true, force: true });
@@ -42988,7 +44576,7 @@ function clearExceptGit(repo) {
 }
 async function mergeTree(source, target) {
   if (!existsSync8(source)) return;
-  for (const entry of readdirSync4(source, { withFileTypes: true })) {
+  for (const entry of readdirSync5(source, { withFileTypes: true })) {
     const from = path27.join(source, entry.name);
     const to = path27.join(target, entry.name);
     if (entry.isDirectory()) {
@@ -43004,12 +44592,12 @@ async function mergeTree(source, target) {
 }
 async function mergeProfiles(source, profilesRoot) {
   if (!existsSync8(profilesRoot)) return;
-  for (const entry of readdirSync4(source, { withFileTypes: true })) {
+  for (const entry of readdirSync5(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const from = path27.join(source, entry.name);
     const to = path27.join(profilesRoot, entry.name);
     if (!existsSync8(to)) continue;
-    for (const file2 of readdirSync4(from, { withFileTypes: true })) {
+    for (const file2 of readdirSync5(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
       await copyFileFresh(path27.join(from, file2.name), path27.join(to, file2.name));
     }
@@ -43020,7 +44608,7 @@ function countSessionFiles(root) {
   const walk2 = (dir) => {
     let entries;
     try {
-      entries = readdirSync4(dir, { withFileTypes: true });
+      entries = readdirSync5(dir, { withFileTypes: true });
     } catch {
       return;
     }

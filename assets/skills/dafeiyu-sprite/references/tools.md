@@ -30,6 +30,28 @@
 
 > `sprite_export` 也接受 `anchorX/anchorY`（归一化），语义与 `set_anchor` 等价。
 
+## 像素搜索原语（2026-11-13 新增，重计算在**宿主 Node**）
+
+命中/匹配这类活不要自己写脚本：工具里已经有 NCC（归一化互相关）+ 多尺度金字塔 + 亚像素精修。**坐标一律源帧像素、左上原点**，返回带 `space:"frame"`。
+
+| 工具 | 什么时候用 | 关键入参 | 关键返回 |
+|---|---|---|---|
+| `sprite_match` | 找一个**小特征**在哪（纽扣、徽章、眼睛） | `templateRect`（模板取自哪块）、`inFrame`、`searchRect`、`minScore`（默认 0.85） | `{found, x, y, score}` |
+| `sprite_feature_fit` | 姿势差异大、头顶/脚底不可靠时**反推**锚点 | `reference`（`{frame}` 或 **`{imagePath}`** 跨素材）、`templates`（建议 2 个）、`search.scale`、`anchorX/anchorY` | `{frame, scale, dx, dy, score, residualPx, transferredAnchor, confidence}` |
+| `sprite_silhouette_fit` | 同角色批量对齐（有同姿势帧时） | `reference`、`target.frames`、`mask:"body-core"`、`search.scale` | `{frame, iou, scale, dx, dy, transferredAnchor, confidence}` |
+| `sprite_verify` | 一批产物交付前的一致性自检 | `paths`（meta.json/目录）或 `metas`、`referenceCharHeight` | `{ok, items[], warnings[]}` |
+
+**跨素材怎么做**：我们的工具一段视频一个会话，没有"多素材 id"。所以 `reference` 支持 `{imagePath:"D:\\out\\idle-0.png"}`——把上一段素材导出的某一帧当尺子。这是跨动画对齐的唯一入口。
+
+**三档判定（剪影）必须先看 IoU，不许硬拓印**：`≥0.90` 拓印可信（`anchorSource:"silhouette"`）；`0.75~0.90` 只取 scale（`semantic-required`，锚点走语义点）；`<0.75` → `confidence:"low"` 且不给 `transferredAnchor`。
+
+**特征反推的置信度**：`score≥0.90 且 residualPx<2` → high；`0.80~0.90` → medium（与语义点交叉验证，差 >3px 以语义点为准）；否则 low。
+
+**实测精度**（合成图、真值已知）：匹配平移 0px；特征反推 `|Δxy| ≤ 2px`、`|Δscale| ≤ 0.02`；剪影 IoU 0.99+ 时平移 0px。性能：24 帧 × 5 档尺度 ≈ **2 秒**。`frames:"all"` 会按 24 帧×720×966 折算抽样，要全跑就显式给帧号列表。
+
+**已知局限**：纯圆盘/无内部结构的剪影尺度不可辨识（IoU 曲面在尺度方向太平），有肢体结构才准；不估旋转。
+
+
 ## meta 里有什么
 
 ```

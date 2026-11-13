@@ -10,7 +10,7 @@
  */
 import type { SpriteService } from './service.js'
 import { SPRITE_GUIDE } from './guide.js'
-import { KEY_PARAM_KEYS, SCAN_AGGREGATES, SCAN_CHANNELS, SCAN_OPS, type KeyParams, type Rect } from './types.js'
+import { KEY_PARAM_KEYS, PIXEL_SOURCES, SCAN_AGGREGATES, SCAN_CHANNELS, SCAN_OPS, type KeyParams, type Rect, type ReferenceSpec } from './types.js'
 
 const json = (value: unknown): string => JSON.stringify(value)
 const fail = (error: unknown): never => {
@@ -44,6 +44,75 @@ function rectOf(value: unknown): Rect | undefined {
   const nums = [raw.x, raw.y, raw.w, raw.h]
   if (!nums.every((n) => typeof n === 'number' && Number.isFinite(n))) return undefined
   return { x: Number(raw.x), y: Number(raw.y), w: Number(raw.w), h: Number(raw.h) }
+}
+
+/** 像素矩形的 schema（三个重计算原语共用）。说清楚是**源帧像素**，别让人以为是归一化坐标。 */
+function rectSchema(description: string): Record<string, unknown> {
+  return {
+    type: 'object',
+    description,
+    properties: {
+      x: { type: 'number', description: '左上角 x（源帧像素，整数）' },
+      y: { type: 'number', description: '左上角 y（源帧像素，整数）' },
+      w: { type: 'number', description: '宽（像素，>0）' },
+      h: { type: 'number', description: '高（像素，>0）' },
+    },
+    required: ['x', 'y', 'w', 'h'],
+  }
+}
+
+/** 像素来源：keyed / raw。三个原语共用同一套语义（原帧整幅不透明，别拿它算剪影）。 */
+function sourceSchema(): Record<string, unknown> {
+  return {
+    type: 'string',
+    enum: [...PIXEL_SOURCES],
+    description:
+      '像素来源：keyed（默认，抠图结果；没 keyApply 会报错）或 raw（原帧；绿幕素材整幅不透明，剪影/模板都会被背景污染）',
+  }
+}
+
+function scaleSchema(description: string): Record<string, unknown> {
+  return {
+    type: 'object',
+    description,
+    properties: {
+      min: { type: 'number', description: '下界（默认按工具给的默认值）' },
+      max: { type: 'number', description: '上界' },
+      step: { type: 'number', description: '步长' },
+    },
+  }
+}
+
+/** 尺度范围从工具参数收敛成 service 认的形状（不认的键不编默认值，交给 service 兜）。 */
+function scaleRangeOf(value: unknown): { min?: number; max?: number; step?: number } | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Record<string, unknown>
+  const out: { min?: number; max?: number; step?: number } = {}
+  if (typeof raw.min === 'number' && Number.isFinite(raw.min)) out.min = raw.min
+  if (typeof raw.max === 'number' && Number.isFinite(raw.max)) out.max = raw.max
+  if (typeof raw.step === 'number' && Number.isFinite(raw.step)) out.step = raw.step
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
+/** 参考帧：{frame} / {imagePath}，两个都给时 service 让 imagePath 优先。 */
+function referenceSchema(description: string): Record<string, unknown> {
+  return {
+    type: 'object',
+    description,
+    properties: {
+      frame: { type: 'number', description: '当前会话的帧号（默认 0）' },
+      imagePath: { type: 'string', description: '磁盘上一张 PNG 的绝对路径（8-bit、非隔行；上一段素材导出的那一帧）' },
+    },
+  }
+}
+
+function referenceOf(value: unknown): ReferenceSpec {
+  if (!value || typeof value !== 'object') return {}
+  const raw = value as Record<string, unknown>
+  const out: ReferenceSpec = {}
+  if (typeof raw.frame === 'number' && Number.isFinite(raw.frame)) out.frame = raw.frame
+  if (typeof raw.imagePath === 'string' && raw.imagePath.trim() !== '') out.imagePath = raw.imagePath.trim()
+  return out
 }
 
 const KEY_PROPERTIES = {
@@ -696,6 +765,256 @@ export function buildTools(
               ...(args.format === 'png' || args.format === 'webp' ? { format: args.format } : {}),
               ...(args.trimMode === 'union' || args.trimMode === 'first-frame' ? { trimMode: args.trimMode } : {}),
               ...(args.maskAuto === true ? { maskRect: 'auto' as const } : {}),
+            }),
+          )
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    },
+    {
+      name: 'sprite_match',
+      description:
+        '模板匹配：在某一帧里找 templateRect 那块图案。NCC 归一化互相关（对亮度线性变化免疫），' +
+        '1/4 → 1/2 → 1 三级金字塔粗搜 + 原分辨率 ±2px 精修，所以整幅搜索也只有百毫秒级。' +
+        '坐标一律是**源帧像素**（space:"frame"，左上原点、右下开区间），不是裁剪框/格子坐标；' +
+        'templateRect 属于 templateFrame 的空间，返回的 x/y 属于 inFrame 的空间。' +
+        '返回 {found,x,y,score,space:"frame"}：同一位置自匹配 score≈1.000（这是判公式/方向对不对的硬自检）；' +
+        '低于 minScore（默认 0.85）时 found:false，但仍回传最高分的位置与分值。' +
+        '模板是纯色（方差 0）时 NCC 无定义，会返回 found:false + reason——换一块有纹理的区域（纽扣、徽章、眼睛）。' +
+        'source=keyed（默认）用抠图结果；raw 是原帧，绿幕没抠时整幅不透明，别拿它找图案。',
+      parameters: {
+        type: 'object',
+        properties: {
+          templateFrame: { type: 'number', description: '模板取自哪一帧，默认同 inFrame（再缺省 0）' },
+          templateRect: rectSchema('模板矩形（**templateFrame 的源帧像素**，必须整块落在帧内）'),
+          inFrame: { type: 'number', description: '在哪个帧里找，默认同 templateFrame' },
+          searchRect: rectSchema('只在这个矩形里搜（源帧像素，默认整幅；会被帧边界夹紧）'),
+          minScore: { type: 'number', description: '判定阈值，默认 0.85（0.90 以上可信，0.85~0.90 谨慎，更低视为失败）' },
+          source: sourceSchema(),
+        },
+        required: ['templateRect'],
+      },
+      output: OUT,
+      timeoutMs: 240_000,
+      async execute(args: Record<string, unknown>): Promise<string> {
+        try {
+          const templateRect = rectOf(args.templateRect)
+          if (!templateRect) return fail('需要 templateRect {x,y,w,h}（源帧像素，四个都是数字）')
+          const searchRect = rectOf(args.searchRect)
+          return json(
+            await service.match({
+              templateRect,
+              ...(typeof args.templateFrame === 'number' ? { templateFrame: args.templateFrame } : {}),
+              ...(typeof args.inFrame === 'number' ? { inFrame: args.inFrame } : {}),
+              ...(searchRect ? { searchRect } : {}),
+              ...(args.source === 'keyed' || args.source === 'raw' ? { source: args.source } : {}),
+              ...(typeof args.minScore === 'number' ? { minScore: args.minScore } : {}),
+            }),
+          )
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    },
+    {
+      name: 'sprite_feature_fit',
+      description:
+        '特征反推：用 1~2 个「姿势无关」的不变特征（眼睛、头饰、纽扣列）对齐两帧/两段素材，' +
+        '求出 scale + 平移（dx,dy），并把参考帧的锚点搬到目标帧。**姿势差异大时用它**（剪影会因姿势而失配）。' +
+        '数学：p_target = p_ref × scale + (dx, dy)（源帧像素）；单模板只能定平移，双模板用两点间距比值定 scale，' +
+        '两个模板各自反推的平移差就是 residualPx（>2px 说明特征被遮挡/形变，confidence 降级）。' +
+        '参考帧两种给法：{frame} 用当前会话某帧；{imagePath} 用磁盘上一张 PNG（上一段素材导出的某帧）——跨素材对齐靠这条。' +
+        '返回 {frame,scale,dx,dy,score,residualPx,perTemplate,confidence}，给了 anchorX/anchorY 才有 transferredAnchor' +
+        '（归一化 0~1、y-from-bottom，与 meta.json 同口径；只给一个时另一个按 0.5 补）。' +
+        'confidence：score≥0.90 且 residual<2px → high；0.80~0.90 → medium（拿语义点复核）；更低 → low（别用）。' +
+        '限帧：search.frames 缺省/写 "all" 时按 24 帧×720×966 折算抽样（帧更大自动更少），显式给帧号列表则照办。',
+      parameters: {
+        type: 'object',
+        properties: {
+          reference: referenceSchema('参考帧（特征是从它上面裁的）。默认 {frame:0}'),
+          templates: {
+            type: 'array',
+            description: '特征模板，建议 2 个（单模板只能定平移）。rect 是**参考帧的源帧像素**；优先头部特征，别用手脚/披风下摆',
+            items: {
+              type: 'object',
+              properties: {
+                rect: rectSchema('特征矩形（参考帧的源帧像素）'),
+                weight: { type: 'number', description: '权重，默认 1（头部特征可以给高一点）' },
+              },
+              required: ['rect'],
+            },
+          },
+          anchorX: { type: 'number', description: '参考帧上的锚点 x（0~1，归一化、按参考帧宽）；给了才回传 transferredAnchor' },
+          anchorY: { type: 'number', description: '参考帧上的锚点 y（0~1，**y-from-bottom**，与 meta.json 同口径）' },
+          search: {
+            type: 'object',
+            description: '搜索范围',
+            properties: {
+              frames: {
+                description: '要搜的帧：帧号数组，或 "all"（默认，会按预算抽样，见描述）',
+                oneOf: [{ type: 'array', items: { type: 'number' } }, { type: 'string', enum: ['all'] }],
+              },
+              scale: scaleSchema('尺度范围，默认 0.85~1.15 step 0.01（31 档；先粗搜再精修，不会因为 31 档就慢）'),
+            },
+          },
+          source: sourceSchema(),
+        },
+        required: ['templates'],
+      },
+      output: OUT,
+      timeoutMs: 240_000,
+      async execute(args: Record<string, unknown>): Promise<string> {
+        try {
+          const templates = Array.isArray(args.templates)
+            ? args.templates
+                .map((row) => {
+                  const item = row as Record<string, unknown>
+                  const rect = rectOf(item.rect)
+                  if (!rect) return undefined
+                  return { rect, ...(typeof item.weight === 'number' ? { weight: item.weight } : {}) }
+                })
+                .filter((one): one is { rect: Rect; weight?: number } => one !== undefined)
+            : []
+          if (templates.length === 0) return fail('需要 templates：[{rect:{x,y,w,h}},…]（建议 2 个，rect 是参考帧的源帧像素）')
+          const search: { frames?: number[] | 'all'; scale?: { min?: number; max?: number; step?: number } } = {}
+          const rawSearch = (args.search && typeof args.search === 'object' ? args.search : {}) as Record<string, unknown>
+          if (rawSearch.frames === 'all') search.frames = 'all'
+          else if (Array.isArray(rawSearch.frames)) {
+            search.frames = rawSearch.frames.filter((one): one is number => typeof one === 'number')
+          }
+          const scale = scaleRangeOf(rawSearch.scale)
+          if (scale) search.scale = scale
+          return json(
+            await service.featureFit({
+              reference: referenceOf(args.reference),
+              templates,
+              ...(typeof args.anchorX === 'number' ? { anchorX: args.anchorX } : {}),
+              ...(typeof args.anchorY === 'number' ? { anchorY: args.anchorY } : {}),
+              ...(Object.keys(search).length > 0 ? { search } : {}),
+              ...(args.source === 'keyed' || args.source === 'raw' ? { source: args.source } : {}),
+            }),
+          )
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    },
+    {
+      name: 'sprite_silhouette_fit',
+      description:
+        '剪影拟合：拿参考帧的剪影当尺子，在目标动画里找姿势最接近的那一帧，返回 {frame,iou,scale,dx,dy,confidence}。' +
+        '同角色批量对齐的主力（idle 的剪影去对齐 walk/idle2 这类）。' +
+        'mask 默认 body-core = alpha 阈值 → **最大连通域**（去掉漂浮特效/手）→ 1px 腐蚀；raw 只按 alpha 阈值。' +
+        '**三档必须看 IoU，不许硬拓印**：≥0.90 缩放与平移都可信（transferredAnchor.anchorSource="silhouette"，可拓印）；' +
+        '0.75~0.90 只采用 scale（anchorSource="semantic-required"，锚点必须走语义点）；' +
+        '<0.75 → confidence:"low" 且 transferredAnchor 直接给 null（这段动画里没有姿势接近的帧）。' +
+        '坐标同 sprite_match：源帧像素、space 由输入图决定；p_target = p_ref × scale + (dx, dy)。' +
+        '参考帧可以是 {frame}（当前会话某帧）或 {imagePath}（磁盘上一张 PNG，跨素材靠这条）。' +
+        '性能：粗搜在 1/4 分辨率（质心定初值）+ 原分辨率 ±4px 精修，报的 IoU 是原分辨率算的；' +
+        'target.frames 缺省/写 "all" 时按 24 帧×720×966 折算抽样，要全跑就显式给帧号列表。',
+      parameters: {
+        type: 'object',
+        properties: {
+          reference: referenceSchema('参考帧（尺子）。默认 {frame:0}'),
+          target: {
+            type: 'object',
+            description: '在哪些帧里找',
+            properties: {
+              frames: {
+                description: '帧号数组或 "all"（默认，会按预算抽样）',
+                oneOf: [{ type: 'array', items: { type: 'number' } }, { type: 'string', enum: ['all'] }],
+              },
+            },
+          },
+          mask: {
+            type: 'string',
+            enum: ['raw', 'body-core'],
+            description: '掩膜口径：body-core（默认）= 最大连通域 + 1px 腐蚀，去特效/去手；raw = 只按 alpha 阈值（效果物本身就是剪影的一部分时才用）',
+          },
+          search: {
+            type: 'object',
+            description: '搜索范围',
+            properties: {
+              scale: scaleSchema('尺度范围，默认 0.85~1.15 step 0.05（最多 9 档；给更细的步长会自动均分整个区间）'),
+            },
+          },
+          alphaThreshold: { type: 'number', description: 'alpha 阈值（默认 32）' },
+          anchorX: { type: 'number', description: '参考帧上的锚点 x（0~1）；给了才回传 transferredAnchor' },
+          anchorY: { type: 'number', description: '参考帧上的锚点 y（0~1，y-from-bottom）' },
+          source: sourceSchema(),
+        },
+      },
+      output: OUT,
+      timeoutMs: 240_000,
+      async execute(args: Record<string, unknown>): Promise<string> {
+        try {
+          const rawTarget = (args.target && typeof args.target === 'object' ? args.target : {}) as Record<string, unknown>
+          const target: { frames?: number[] | 'all' } = {}
+          if (rawTarget.frames === 'all') target.frames = 'all'
+          else if (Array.isArray(rawTarget.frames)) {
+            target.frames = rawTarget.frames.filter((one): one is number => typeof one === 'number')
+          }
+          const rawSearch = (args.search && typeof args.search === 'object' ? args.search : {}) as Record<string, unknown>
+          const scale = scaleRangeOf(rawSearch.scale)
+          return json(
+            await service.silhouetteFit({
+              reference: referenceOf(args.reference),
+              ...(Object.keys(target).length > 0 ? { target } : {}),
+              ...(args.mask === 'raw' || args.mask === 'body-core' ? { mask: args.mask } : {}),
+              ...(scale ? { search: { scale } } : {}),
+              ...(typeof args.alphaThreshold === 'number' ? { alphaThreshold: args.alphaThreshold } : {}),
+              ...(typeof args.anchorX === 'number' ? { anchorX: args.anchorX } : {}),
+              ...(typeof args.anchorY === 'number' ? { anchorY: args.anchorY } : {}),
+              ...(args.source === 'keyed' || args.source === 'raw' ? { source: args.source } : {}),
+            }),
+          )
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    },
+    {
+      name: 'sprite_verify',
+      description:
+        '一批产物的**一致性自检**（纯读 meta，不解码图片）：组内身高方差 ≤1%、锚点 X 偏差 ≤2px、锚点口径一致、必备字段齐全。' +
+        '解决的是"每条单看都没事、整组不像话"——2026-11-13 那批 6 条动画单份全绿，组内身高差到 ±5%，全靠人眼才发现。' +
+        '入参二选一：metas 直接给对象数组，或 paths 给 meta.json / 目录（目录里所有 .json 会被当成 meta 读）。' +
+        '基准默认取组内中位数（离群点不会把基准带跑），也可以用 referenceCharHeight 指定（跨批次沿用上一批的尺子）。' +
+        '返回 {ok,count,reference,tolerance,items[{name,charHeightPx,deltaPct,anchorXPx,deltaAnchorXPx,problems}],warnings}；' +
+        'ok=false 时逐条 warnings 会写清是哪一条、偏了多少、容差多少。' +
+        '注意它只回答"这一组彼此自洽吗"，"每条本身准不准"要靠 measure/export 的成品实测。',
+      parameters: {
+        type: 'object',
+        properties: {
+          paths: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'meta.json 的路径或包含它们的目录（相对路径按导出目录解析）',
+          },
+          metas: {
+            type: 'array',
+            items: { type: 'object' },
+            description: '直接给 meta 对象数组（与 paths 可同时用，结果是两者合并）',
+          },
+          referenceCharHeight: { type: 'number', description: '基准身高（不给就取组内中位数）' },
+          heightPct: { type: 'number', description: '身高允许的相对偏差，默认 0.01（1%）' },
+          anchorPx: { type: 'number', description: '锚点 X 允许的源帧像素偏差，默认 2' },
+        },
+      },
+      output: OUT,
+      timeoutMs: 20_000,
+      async execute(args: Record<string, unknown>): Promise<string> {
+        try {
+          return json(
+            await service.verify({
+              ...(Array.isArray(args.paths) ? { paths: args.paths.filter((one): one is string => typeof one === 'string') } : {}),
+              ...(Array.isArray(args.metas)
+                ? { metas: args.metas.filter((one) => one && typeof one === 'object') as Record<string, unknown>[] }
+                : {}),
+              ...(typeof args.referenceCharHeight === 'number' ? { referenceCharHeight: args.referenceCharHeight } : {}),
+              ...(typeof args.heightPct === 'number' ? { heightPct: args.heightPct } : {}),
+              ...(typeof args.anchorPx === 'number' ? { anchorPx: args.anchorPx } : {}),
             }),
           )
         } catch (error) {

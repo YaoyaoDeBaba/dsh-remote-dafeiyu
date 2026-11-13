@@ -13,11 +13,32 @@
  */
 import { createServer, type Server } from 'node:http'
 import { createHash, randomBytes } from 'node:crypto'
-import { createReadStream, mkdirSync, readFileSync, statSync, writeFileSync, existsSync, renameSync } from 'node:fs'
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import { analyzeSpritePng, borderOpaqueRatio, borderOpaqueWarning, type SpriteStats } from './analyze.js'
 import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, pickWorst } from './guard.js'
 import { launchBrowser, type CdpSession } from './browser.js'
+import {
+  cropRgba,
+  featureConfidence,
+  fitFeatureFrame,
+  fitSilhouetteFrame,
+  matchTemplate,
+  silhouetteConfidence,
+  transferAnchor,
+  type FeatureFrameFit,
+  type RgbaImage,
+} from './match.js'
+import { decodePng } from './png.js'
 import type {
   AnchorInfo,
   AutotuneGoal,
@@ -25,15 +46,24 @@ import type {
   AutotuneTraceStep,
   ExportOptions,
   ExportResult,
+  FeatureFitInput,
+  FeatureFitResult,
   KeyParams,
+  MatchInput,
+  MatchResult,
   MeasureLandmark,
   MeasureResult,
   ProbeColorResult,
   Rect,
+  ReferenceSpec,
   ScaleResult,
+  SilhouetteFitInput,
+  SilhouetteFitResult,
+  TransferredAnchor,
   TrimOptions,
   WorstFrame,
 } from './types.js'
+import { verifyConsistency, type VerifyArgs, type VerifyMeta, type VerifyResult } from './verify.js'
 
 export interface SpriteServiceOptions {
   /** 打补丁后的工具页（绝对路径）。 */
@@ -191,6 +221,14 @@ export interface SpriteService {
     source?: 'keyed' | 'raw'
   }): Promise<MeasureResult>
   scaleTo(args: { charHeightPx?: number; targetCellHeight?: number; span?: { fromY: number; toY: number } }): Promise<ScaleResult>
+  /** 模板匹配（NCC）。坐标一律源帧像素。 */
+  match(args: MatchInput): Promise<MatchResult>
+  /** 特征反推：用 1~2 个不变特征求 scale + 平移，可跨素材（reference.imagePath）。 */
+  featureFit(args: FeatureFitInput): Promise<FeatureFitResult>
+  /** 剪影拟合：按 IoU 给三档，只有 ≥0.90 才允许拓印锚点。 */
+  silhouetteFit(args: SilhouetteFitInput): Promise<SilhouetteFitResult>
+  /** 一批产物的一致性自检（纯读 meta，不解码图片）。 */
+  verify(args: VerifyArgs): Promise<VerifyResult>
   getAnchor(): Promise<AnchorInfo>
   setAnchorPx(args: { x?: number; y?: number; convention?: 'y-from-bottom' | 'y-from-top' }): Promise<AnchorInfo>
   cleanup(args: { maskRect?: Rect | 'auto' | null; maskMode?: 'auto' | 'corner'; trim?: TrimOptions }): Promise<CleanupResult>
@@ -584,6 +622,109 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
     }
   }
 
+  /**
+   * 读某一帧的像素（**内部方法，不注册成工具**）。
+   *
+   * 走的是页面已有的两条只读桥：`frameDataURL`（原帧）与 `keyedDataURL`（抠图结果）
+   * ——两者都回 `{ok:true, dataURL}`，转 Buffer 后交给 `decodePng`，宿主侧就有 RGBA 了。
+   *
+   * 缓存只在**一次工具调用内**有效（调用方传进来一个 Map）：720×966 一帧的 RGBA 就是
+   * 2.7MB，做成跨调用的全局缓存会把宿主内存吃掉。
+   */
+  const readFramePixels = async (
+    opts: { frame: number; source?: 'keyed' | 'raw' },
+    cache?: Map<string, RgbaImage>,
+  ): Promise<RgbaImage> => {
+    const source = opts.source === 'raw' ? 'raw' : 'keyed'
+    const frame = Math.max(0, Math.floor(Number(opts.frame ?? 0)))
+    if (!Number.isFinite(frame)) throw new Error(`帧号不是数字：${String(opts.frame)}`)
+    const key = `${source}:${frame}`
+    const cached = cache?.get(key)
+    if (cached) return cached
+    const bridgeName = source === 'raw' ? 'frameDataURL' : 'keyedDataURL'
+    const answer = await bridge<{ ok: boolean; dataURL?: string }>(bridgeName, frame)
+    const buffer = dataUrlToBuffer(answer?.dataURL)
+    if (!buffer) throw new Error(`第 ${frame} 帧（${source}）没拿到 PNG dataURL，读不出像素`)
+    const decoded = decodePng(buffer)
+    const image: RgbaImage = { width: decoded.width, height: decoded.height, rgba: decoded.rgba }
+    cache?.set(key, image)
+    return image
+  }
+
+  /**
+   * 一次搜索最多扫几帧。
+   *
+   * 为什么不是"全扫"：720×966 一帧的 RGBA 是 2.7MB，24 帧就是 67MB，加上每帧的金字塔
+   * 与掩膜还要再翻一倍；帧数一多时间也不是线性可控的。预算按 24 帧 × 720×966 折算：
+   * 帧更大就自动少扫几帧，调用方显式给帧号列表则照办。
+   */
+  const frameLimitFor = (width: number, height: number): number => {
+    const budget = 720 * 966
+    const pixels = Math.max(1, Math.round(width) * Math.round(height))
+    return Math.max(6, Math.min(24, Math.round((24 * budget) / pixels)))
+  }
+
+  /**
+   * 把 `number[] | 'all' | undefined` 收敛成帧号列表。
+   * 显式列表照给（多给就多花时间，回一条 warning）；`'all'` 超过上限时**等间隔抽样**
+   * ——限帧要主动做，不能指望工具超时兜底（超时那一下什么都没有）。
+   */
+  const framesOf = (
+    spec: number[] | 'all' | undefined,
+    limit: number,
+  ): { frames: number[]; warnings: string[] } => {
+    const warnings: string[] = []
+    if (Array.isArray(spec)) {
+      const frames = [
+        ...new Set(
+          spec
+            .map((value) => Math.floor(Number(value)))
+            .filter((value) => Number.isFinite(value) && value >= 0),
+        ),
+      ].sort((a, b) => a - b)
+      if (frames.length === 0) throw new Error('frames 是空数组：要么给帧号，要么写 "all"')
+      if (frames.length > limit) {
+        warnings.push(`按你给的 ${frames.length} 帧全跑（超过默认上限 ${limit} 帧，会更慢）`)
+      }
+      return { frames, warnings }
+    }
+    const total = lastPrepare?.frames ?? 0
+    if (total <= 0) {
+      throw new Error(
+        '不知道总帧数：本次会话没有 sprite_prepare 记录（或帧已被空闲回收）。请显式给帧号列表，或重新 sprite_prepare。',
+      )
+    }
+    if (total <= limit) return { frames: Array.from({ length: total }, (_one, index) => index), warnings }
+    const step = total / limit
+    const picked = [
+      ...new Set(Array.from({ length: limit }, (_one, index) => Math.min(total - 1, Math.round(index * step)))),
+    ]
+    warnings.push(
+      `序列共 ${total} 帧，"all" 默认只扫等间隔的 ${picked.length} 帧（预算按 24 帧×720×966 折算）；要全跑就显式给 frames 列表。`,
+    )
+    return { frames: picked, warnings }
+  }
+
+  /** 参考图：当前会话的某一帧，或磁盘上一张 PNG（跨素材对齐的唯一入口）。 */
+  const referenceImageOf = async (
+    spec: ReferenceSpec | undefined,
+    source: 'keyed' | 'raw',
+    cache: Map<string, RgbaImage>,
+  ): Promise<{ image: RgbaImage; frame?: number }> => {
+    const imagePath = typeof spec?.imagePath === 'string' ? spec.imagePath.trim() : ''
+    if (imagePath !== '') {
+      if (!existsSync(imagePath)) throw new Error(`参考图不存在：${imagePath}`)
+      const decoded = decodePng(readFileSync(imagePath))
+      return { image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba } }
+    }
+    const frame = Math.max(0, Math.floor(Number(spec?.frame ?? 0)))
+    return { image: await readFramePixels({ frame, source }, cache), frame }
+  }
+
+  /** 锚点要不要回传：给了任一分量就算要（缺的那个按 0.5 补，description 里写明了）。 */
+  const wantsAnchor = (args: { anchorX?: number; anchorY?: number }): boolean =>
+    typeof args.anchorX === 'number' || typeof args.anchorY === 'number'
+
   return {
     get busy() {
       return session !== undefined
@@ -765,6 +906,215 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         }
       }
       return { ...answer, ...(overlayPath ? { overlayPath } : {}) }
+    },
+
+    async verify(args) {
+      const metas: VerifyMeta[] = Array.isArray(args.metas) ? [...args.metas] : []
+      for (const raw of Array.isArray(args.paths) ? args.paths : []) {
+        const target = String(raw ?? '').trim()
+        if (!target) continue
+        const abs = path.isAbsolute(target) ? target : path.join(outDirOf(), target)
+        let stat
+        try {
+          stat = statSync(abs)
+        } catch {
+          throw new Error(`找不到这个路径：${abs}`)
+        }
+        // 目录：把里面的 *.json 全当 meta 读（按文件名排序，结论可复现）
+        const files = stat.isDirectory()
+          ? readdirSync(abs)
+              .filter((name) => name.toLowerCase().endsWith('.json'))
+              .sort()
+              .map((name) => path.join(abs, name))
+          : [abs]
+        if (files.length === 0) throw new Error(`这个目录里没有 .json：${abs}`)
+        for (const file of files) {
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(readFileSync(file, 'utf8'))
+          } catch (error) {
+            throw new Error(`读不了 meta（${file}）：${String((error as Error)?.message ?? error).slice(0, 120)}`)
+          }
+          if (!parsed || typeof parsed !== 'object') throw new Error(`这个文件不是 meta 对象：${file}`)
+          metas.push(parsed as VerifyMeta)
+        }
+      }
+      if (metas.length === 0) throw new Error('需要 metas（直接给）或 paths（meta.json 或目录）')
+      return verifyConsistency(metas, {
+        ...(typeof args.referenceCharHeight === 'number' ? { referenceCharHeight: args.referenceCharHeight } : {}),
+        ...(typeof args.heightPct === 'number' ? { heightPct: args.heightPct } : {}),
+        ...(typeof args.anchorPx === 'number' ? { anchorPx: args.anchorPx } : {}),
+      })
+    },
+
+    async match(args) {
+      if (!args.templateRect || typeof args.templateRect !== 'object') {
+        throw new Error('需要 templateRect（模板矩形，源帧像素 {x,y,w,h}）')
+      }
+      const source: 'keyed' | 'raw' = args.source === 'raw' ? 'raw' : 'keyed'
+      const templateFrame = Math.max(0, Math.floor(Number(args.templateFrame ?? args.inFrame ?? 0)))
+      const inFrame = Math.max(0, Math.floor(Number(args.inFrame ?? templateFrame)))
+      const cache = new Map<string, RgbaImage>()
+      const templatePixels = await readFramePixels({ frame: templateFrame, source }, cache)
+      // 先按模板帧裁出模板（越界会带中文原因抛错），再拿到目标帧上搜。
+      const template = cropRgba(templatePixels, args.templateRect)
+      const imagePixels =
+        inFrame === templateFrame ? templatePixels : await readFramePixels({ frame: inFrame, source }, cache)
+      return matchTemplate(imagePixels, template, {
+        ...(args.searchRect ? { searchRect: args.searchRect } : {}),
+        ...(typeof args.minScore === 'number' ? { minScore: args.minScore } : {}),
+      })
+    },
+
+    async featureFit(args) {
+      const specs = Array.isArray(args.templates) ? args.templates : []
+      if (specs.length === 0) {
+        throw new Error('需要 templates：至少 1 个特征模板 {rect:{x,y,w,h}}（建议 2 个——单模板只能定平移）')
+      }
+      const templateSpecs = specs.map((one, index) => {
+        if (!one || typeof one !== 'object' || !one.rect) throw new Error(`templates[${index}] 缺 rect`)
+        return { rect: one.rect, ...(typeof one.weight === 'number' ? { weight: one.weight } : {}) }
+      })
+      const source: 'keyed' | 'raw' = args.source === 'raw' ? 'raw' : 'keyed'
+      const cache = new Map<string, RgbaImage>()
+      const ref = await referenceImageOf(args.reference, source, cache)
+      const picked = framesOf(args.search?.frames ?? 'all', frameLimitFor(ref.image.width, ref.image.height))
+      const warnings = [...picked.warnings]
+      let best: { frame: number; fit: FeatureFrameFit; width: number; height: number } | undefined
+      let seed: { scale: number; positions: Array<{ x: number; y: number }> } | undefined
+      const failed: string[] = []
+      for (const frame of picked.frames) {
+        let pixels: RgbaImage
+        try {
+          pixels = await readFramePixels({ frame, source }, cache)
+        } catch (error) {
+          failed.push(`第 ${frame} 帧读不到：${String((error as Error)?.message ?? error).slice(0, 100)}`)
+          continue
+        }
+        let fit: FeatureFrameFit
+        try {
+          fit = fitFeatureFrame(ref.image, pixels, {
+            templates: templateSpecs,
+            ...(args.search?.scale ? { scale: args.search.scale } : {}),
+            ...(seed ? { seed } : {}),
+          })
+        } catch (error) {
+          failed.push(`第 ${frame} 帧算不出：${String((error as Error)?.message ?? error).slice(0, 100)}`)
+          cache.clear()
+          continue
+        }
+        seed = { scale: fit.scale, positions: fit.perTemplate.map((one) => ({ x: one.x, y: one.y })) }
+        if (!best || fit.score > best.fit.score) best = { frame, fit, width: pixels.width, height: pixels.height }
+        // 逐帧放掉像素：24 帧 RGBA 一次全端着是 67MB，没必要。
+        cache.clear()
+      }
+      if (!best) {
+        throw new Error(`没有任何一帧能算特征匹配：${failed.slice(0, 3).join('；') || '全部帧都读不到'}`)
+      }
+      if (failed.length > 0) warnings.push(`${failed.length} 帧没算出来，已跳过（首条：${failed[0]}）`)
+      const graded = featureConfidence(best.fit.score, best.fit.residualPx)
+      const transferredAnchor: TransferredAnchor | undefined = wantsAnchor(args)
+        ? {
+            ...transferAnchor({
+              anchorX: args.anchorX ?? 0.5,
+              anchorY: args.anchorY ?? 0.5,
+              refWidth: ref.image.width,
+              refHeight: ref.image.height,
+              scale: best.fit.scale,
+              dx: best.fit.dx,
+              dy: best.fit.dy,
+              width: best.width,
+              height: best.height,
+            }),
+            anchorSource: 'feature',
+          }
+        : undefined
+      return {
+        frame: best.frame,
+        scale: best.fit.scale,
+        dx: best.fit.dx,
+        dy: best.fit.dy,
+        score: best.fit.score,
+        residualPx: best.fit.residualPx,
+        ...(transferredAnchor ? { transferredAnchor } : {}),
+        perTemplate: best.fit.perTemplate,
+        confidence: graded.confidence,
+        ...(graded.reason ? { reason: graded.reason } : {}),
+        ...(warnings.length > 0 ? { warnings } : {}),
+      }
+    },
+
+    async silhouetteFit(args) {
+      const source: 'keyed' | 'raw' = args.source === 'raw' ? 'raw' : 'keyed'
+      const cache = new Map<string, RgbaImage>()
+      const ref = await referenceImageOf(args.reference, source, cache)
+      const picked = framesOf(args.target?.frames ?? 'all', frameLimitFor(ref.image.width, ref.image.height))
+      const warnings = [...picked.warnings]
+      const mask = args.mask === 'raw' ? 'raw' : 'body-core'
+      let best: { frame: number; fit: ReturnType<typeof fitSilhouetteFrame>; width: number; height: number } | undefined
+      const failed: string[] = []
+      for (const frame of picked.frames) {
+        let pixels: RgbaImage
+        try {
+          pixels = await readFramePixels({ frame, source }, cache)
+        } catch (error) {
+          failed.push(`第 ${frame} 帧读不到：${String((error as Error)?.message ?? error).slice(0, 100)}`)
+          continue
+        }
+        let fit: ReturnType<typeof fitSilhouetteFrame>
+        try {
+          fit = fitSilhouetteFrame(ref.image, pixels, {
+            mask,
+            ...(args.search?.scale ? { scale: args.search.scale } : {}),
+            ...(typeof args.alphaThreshold === 'number' ? { alphaThreshold: args.alphaThreshold } : {}),
+          })
+        } catch (error) {
+          failed.push(`第 ${frame} 帧算不出：${String((error as Error)?.message ?? error).slice(0, 100)}`)
+          cache.clear()
+          continue
+        }
+        if (fit.reason) {
+          failed.push(`第 ${frame} 帧：${fit.reason}`)
+          cache.clear()
+          continue
+        }
+        if (!best || fit.iou > best.fit.iou) best = { frame, fit, width: pixels.width, height: pixels.height }
+        cache.clear()
+      }
+      if (!best) {
+        throw new Error(`没有任何一帧能算剪影拟合：${failed.slice(0, 3).join('；') || '全部帧都读不到'}`)
+      }
+      if (failed.length > 0) warnings.push(`${failed.length} 帧没算出来，已跳过（首条：${failed[0]}）`)
+      const graded = silhouetteConfidence(best.fit.iou)
+      // 中间档只采用 scale：锚点标 semantic-required（调用方必须走语义点）；低档直接不给锚点。
+      const transferredAnchor: TransferredAnchor | null =
+        graded.anchorSource !== null && wantsAnchor(args)
+          ? {
+              ...transferAnchor({
+                anchorX: args.anchorX ?? 0.5,
+                anchorY: args.anchorY ?? 0.5,
+                refWidth: ref.image.width,
+                refHeight: ref.image.height,
+                scale: best.fit.scale,
+                dx: best.fit.dx,
+                dy: best.fit.dy,
+                width: best.width,
+                height: best.height,
+              }),
+              anchorSource: graded.anchorSource,
+            }
+          : null
+      return {
+        frame: best.frame,
+        iou: best.fit.iou,
+        scale: best.fit.scale,
+        dx: best.fit.dx,
+        dy: best.fit.dy,
+        transferredAnchor,
+        confidence: graded.confidence,
+        ...(graded.reason ? { reason: graded.reason } : {}),
+        ...(warnings.length > 0 ? { warnings } : {}),
+      }
     },
 
     async scaleTo(args) {

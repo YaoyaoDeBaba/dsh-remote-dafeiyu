@@ -79,15 +79,19 @@ test('ignoredKeysOf：不认识的键要能被算出来（不能静默丢弃）'
   assert.deepEqual(ignoredKeysOf({ mode: 'advanced', frame: 0, nonsense: 1 }), ['nonsense'])
 })
 
-test('14 个工具的名字与必填项是稳定契约', () => {
+test('18 个工具的名字与必填项是稳定契约', () => {
   const { service } = stubService()
   const tools = buildTools(service)
   const byName = new Map(tools.map((tool) => [String(tool.name), tool]))
-  assert.equal(byName.size, 14)
+  // 2026-11-13：加了三个像素搜索原语（match / feature_fit / silhouette_fit）与一致性自检（verify），14 → 18。
+  assert.equal(byName.size, 18)
   const required: Record<string, string[]> = {
     sprite_prepare: ['videoPath'],
     sprite_batch: ['outRoot', 'items'],
     sprite_auto: ['videoPath'],
+    // 这三个没有"合理解法"的默认值：不给模板/矩形就只能瞎猜，所以必须点名。
+    sprite_match: ['templateRect'],
+    sprite_feature_fit: ['templates'],
   }
   for (const [name, fields] of Object.entries(required)) {
     const params = byName.get(name)!.parameters as { required?: string[] }
