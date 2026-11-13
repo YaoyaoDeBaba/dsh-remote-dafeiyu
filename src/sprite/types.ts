@@ -417,6 +417,12 @@ export interface LoopScanResult {
   warnings: string[]
   /** 低置信度时给原因（"动作本身不严格周期，建议按一次性动作处理"）。 */
   reason?: string
+  /**
+   * 显式的**动作建议**（P1-补）：只有 `confidence:"low"` 时出现，值为 `treat-as-one-shot`，
+   * 表示这段动画不该按循环闭合处理。同一句话也会出现在 `warnings[0]`——
+   * 以前它只藏在 `reason` 里，调用方不知道该不该信。
+   */
+  suggestedAction?: 'treat-as-one-shot'
   /** 这次扫的口径（回显，方便对账）。 */
   scanned: {
     frames: number
@@ -432,15 +438,27 @@ export interface LoopScanResult {
   elapsedMs: number
 }
 
+/**
+ * `sprite_baseline` 的格子选择口径：
+ * - 数字 = 固定第几格（默认 0，向后兼容）；
+ * - `tallest` = **语义身高最大**的那一格（拿不到语义身高就退回 bbox 高）——
+ *   专门给"首帧手臂下垂、后仰惊吓"这种姿势差异大的动画用（P2-6）；
+ * - `median` = bbox 高度**最接近中位数**的那一格（避开个别拔高的呆毛/特效帧）。
+ */
+export type BaselineCellSelector = number | 'tallest' | 'median'
+
 /** `sprite_baseline` 的入参：把一组图集按锚点对齐到同一条地平线。 */
 export interface BaselineArgs {
   /** 图集路径（png）。配套 meta 自动按同名找：`x.png` → `x.meta.json`，再退回 `x.json`。 */
   paths: string[]
-  /** 取每张图的第几格（默认 0 = 首帧）。 */
-  cellIndex?: number
+  /** 取每张图的哪一格（默认 0 = 首帧）；也可以给 `"tallest"` / `"median"`。 */
+  cellIndex?: BaselineCellSelector
   /** 格与格之间的横向空隙（像素，默认 8）。 */
   gap?: number
-  /** 底色（默认 #202030）。 */
+  /**
+   * 底色。**不给就按主体亮度自适应**（P2-7）：主体偏亮 → 深底 `#202030`，主体偏暗 → 浅底 `#f2f2f5`。
+   * 给了就一律用给的（显式值永远赢）。
+   */
   background?: string
   /** 四周留白（默认 4），给地平线/头顶线留出可见空间。 */
   padding?: number
@@ -459,8 +477,20 @@ export interface BaselineResult {
   baselineY?: number
   /** 头顶线的画布行（各格实测最高点的中位数）。 */
   headTopY?: number | null
+  /** 本次用的底色（自适应时 `adaptive:true`，并给出主体平均亮度）。 */
+  background?: { hex: string; meanLuma: number | null; adaptive: boolean; reason?: string }
+  /**
+   * 本次格子选择方式（P2-6）：`mode` 是 `cellIndex` 的口径，
+   * `perItem` 逐条说明"这张图用了第几格、按什么高选出来的"。
+   */
+  cellIndexUsed?: {
+    mode: 'fixed' | 'tallest' | 'median'
+    perItem: Array<{ name: string; cellIndex: number; basis: 'fixed' | 'semantic' | 'bbox'; heightPx: number }>
+  }
   items?: Array<{
     name: string
+    /** 这一条实际取的格子序号（P2-6：`tallest`/`median` 时逐条不同）。 */
+    cellIndex: number
     charHeightPx: number
     anchorX: number
     anchorY: number
@@ -501,6 +531,41 @@ export interface AutotuneTraceStep {
   bgResidual: number
   subjectCoverage: number
   edgeGreen: number
+}
+
+/** `sprite_autotune` 的入参。 */
+export interface AutotuneArgs {
+  goal?: AutotuneGoal
+  /**
+   * 调用方给的**起点参数**（P1-3）：作为搜索起点，并且**未达标时原样保留**
+   * （不再拿搜索过程里的劣解覆盖你手调好的那套）。`colorHex` 不给就用自动采色。
+   */
+  params?: KeyParams
+  space?: AutotuneSpace
+  maxIters?: number
+  frame?: number
+}
+
+/** `sprite_autotune` 的返回。 */
+export interface AutotuneResult {
+  ok: boolean
+  /**
+   * **向后兼容字段** = `appliedParams`（实际生效的那套）。
+   * 未达标时它就是你传进来的 `params`，不再是"搜索到最后一轮"的参数。
+   */
+  params?: KeyParams
+  /** 实际生效的参数（要拿去 key_apply 的就是它）。 */
+  appliedParams?: KeyParams
+  /** 搜索过程中**指标最好**的那一轮参数（供你和 `appliedParams` 比较，要不要用由你决定）。 */
+  bestParams?: KeyParams
+  /** `bestParams` 那一轮的指标（同 `trace` 里的一项）。 */
+  bestStep?: AutotuneTraceStep
+  /** 未达标时**一定有**一条 warning，写清"已保留你给的参数 / 搜索到的最优解"。 */
+  warnings?: string[]
+  trace: AutotuneTraceStep[]
+  reachedGoal: boolean
+  stats?: import('./analyze.js').SpriteStats
+  error?: string
 }
 
 // ─────────────────── 重计算原语（模板匹配 / 特征反推 / 剪影拟合） ───────────────────

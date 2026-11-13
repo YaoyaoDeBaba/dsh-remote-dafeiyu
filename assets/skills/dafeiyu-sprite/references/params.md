@@ -32,3 +32,8 @@
 3. 只剩边绿 → 加 `greenToAlpha`（25 → 50，不要一次给 300）；
 4. 背景斑驳/渐变 → `autoPlate: true`；
 5. 仍不收敛 → `sprite_autotune`（最多 6 轮），别再手工试。
+
+> **`sprite_autotune` 的两条语义（2026-11-13 改）**：
+> - 它接受 `params` 作为**起点**；**未达标时保留你给的参数**（以前会悄悄换成搜索到的更弱解，实测 `bgResidual` 从 0.0004 退化到 0.002~0.01）；
+> - 返回 `appliedParams`（实际生效）/ `bestParams` + `bestStep`（搜索最优，供你比较）/ `warnings`（没达标会说清）。
+>   一条龙 `sprite_auto` 内部则用 `bestParams ?? appliedParams`——它没人手调参数，取最优更合理。

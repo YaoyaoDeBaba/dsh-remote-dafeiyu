@@ -7,7 +7,16 @@
  *
  * 其余行为不变：默认右上、可拖动并记位置、双击复位、点按逗它（蹭得累）、
  * 待机/干活/交付三个动作池随机播放。
+ *
+ * ## 2026-11-13：播片节奏搬去 `src/avatar/playback.ts`（修"一抽一抽 + 总重现前几帧"）
+ *
+ * 这里原来有两套时钟：`clipUntil` 按**墙钟**判"这一片播完了"，`frame` 按 `setInterval`
+ * 的拍子推进画面。主线程被页面上的别的模块占住掉一拍（或窗口被遮挡被 throttle）时，
+ * 墙钟照样走到点、而帧才画了几张 ⇒ 立刻换片 ⇒ 换片把索引归零 ⇒ **永远只能看到每个动作
+ * 的前几帧**，且掉拍越厉害重启越频繁。现在"播完"只看**画了多少帧**（`frames × loops`），
+ * 掉拍只会让同一个动作播得慢一点，不跳帧、不回第 0 帧。`ClipPacer` 是纯逻辑，可单测。
  */
+import { ClipPacer, type AvatarPool, type ClipSpec, type FrameView } from '../avatar/playback.js'
 import { resolveHostUrl } from './host-url.js'
 
 type AvatarStateView = {
@@ -153,10 +162,10 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   addMenuButton('🧬', '一键分身', () => deps.onMenuAction?.('branch'))
   addMenuButton('🎞', '序列帧工具', () => deps.onMenuAction?.('sprite'))
   addMenuButton('😤', '戳一下', () => {
-    if (available(POKE_CLIP)) {
-      pokeUntil = Date.now() + POKE_MS
-      playClip(POKE_CLIP, 1)
-    }
+    const spec = specOf(POKE_CLIP, 1)
+    if (spec === undefined) return
+    // 戳一下是一次性反应：播完这一遍会自动回到当前池子继续（pacer.force 不动 pool）。
+    if (pacer.force(spec)) pokeUntil = Date.now() + POKE_MS
   })
   wrap.append(stage, menu)
   doc.body.appendChild(wrap)
@@ -175,7 +184,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
 
   let states: AvatarStateView[] = []
   let current: AvatarStateView | undefined
-  let frame = 0
   let playing = true
   let timer: ReturnType<typeof setInterval> | undefined
   let pollTimer: ReturnType<typeof setInterval> | undefined
@@ -184,11 +192,8 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   let disposed = false
   let placed = false
   let drag: { x: number; y: number; left: number; top: number; moved: boolean } | undefined
-  let stateKey: 'idle' | 'think' | 'talk' = 'idle'
-  let clipUntil = 0
   let pokeUntil = 0
   let lastClipId: string | undefined
-  let pendingClip: { id: string; loops: number } | undefined
   let manifestVersion = 0
 
   const assetStatus = new Map<string, 'loading' | 'ready' | 'failed'>()
@@ -196,7 +201,13 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     resolveHostUrl(`${BASE}/sheet?id=${encodeURIComponent(state.id)}${manifestVersion > 0 ? `&v=${manifestVersion}` : ''}`)
   const ready = (state: AvatarStateView): boolean => assetStatus.get(state.file) === 'ready'
 
-  const ensureAsset = (state: AvatarStateView, onReady?: () => void): void => {
+  /**
+   * 预加载一张 sheet。
+   *
+   * 就绪与否由 `assetStatus` 记账，播片那边每拍问一次 `ready()`——**不再回调里切片**：
+   * 回调里直接 `switchTo` 会绕过"素材没就绪就继续放旧片"的保护，是"抽"的老来源之一。
+   */
+  const ensureAsset = (state: AvatarStateView): void => {
     const known = assetStatus.get(state.file)
     if (known === 'ready' || known === 'failed') return
     assetStatus.set(state.file, 'loading')
@@ -204,7 +215,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     img.onload = () => {
       const done = (): void => {
         assetStatus.set(state.file, 'ready')
-        onReady?.()
       }
       if (typeof img.decode === 'function') img.decode().then(done).catch(done)
       else done()
@@ -283,17 +293,16 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     }
   }
 
-  const paint = (): void => {
-    if (!current) return
-    const col = frame % current.cols
-    const row = Math.floor(frame / current.cols) % current.rows
-    const cellW = current.cellWidth > 0 ? current.cellWidth : 1
-    const cellH = current.cellHeight > 0 ? current.cellHeight : 1
+  /** 把一帧画到当前可见格上（**只画**，不推进进度——进度归 `ClipPacer`）。 */
+  const drawFrame = (view: FrameView): void => {
+    const state = current
+    if (state === undefined) return
+    const cellW = state.cellWidth > 0 ? state.cellWidth : 1
+    const cellH = state.cellHeight > 0 ? state.cellHeight : 1
     const scale = displayScale
     const cell = cells[active]
     if (cell === undefined) return
-    cell.style.backgroundPosition = `${-col * cellW * scale}px ${-row * cellH * scale}px`
-    frame = (frame + 1) % current.frames
+    cell.style.backgroundPosition = `${-view.col * cellW * scale}px ${-view.row * cellH * scale}px`
   }
 
   /**
@@ -301,8 +310,22 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
    * 这样即使新层这一帧还没被浏览器合成，旧帧仍然完整可见，不会闪白。
    */
   let swapping = false
+  let pendingHide: HTMLDivElement | undefined
+  /** 上一次切换还没等到 rAF 就把旧层收掉（页面被遮挡时 rAF 可能一整段时间不跑，不能让它卡住换片）。 */
+  const finishSwap = (): void => {
+    if (pendingHide !== undefined) {
+      pendingHide.style.opacity = '0'
+      pendingHide.style.zIndex = '1'
+      pendingHide = undefined
+    }
+    swapping = false
+  }
+
   const switchTo = (state: AvatarStateView): void => {
-    if (swapping) return
+    // 上一次换片的 rAF 还没来（同一拍里连切，或 rAF 被 throttle）：先收尾再切。
+    // **不能像以前那样 `return`**——那会把 current/active 留在旧动作上，
+    // 而进度已经归零，画面就成了"新片的第 0 帧 + 旧片的格子几何"。
+    if (swapping) finishSwap()
     const previousIndex = active
     const next = 1 - active
     const layer = layers[next]!
@@ -325,14 +348,9 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     layer.style.opacity = '1'
     active = next
     current = state
-    frame = 0
-    paint()
     swapping = true
-    requestAnimationFrame(() => {
-      previousLayer.style.opacity = '0'
-      previousLayer.style.zIndex = '1'
-      swapping = false
-    })
+    pendingHide = previousLayer
+    requestAnimationFrame(finishSwap)
   }
 
   const available = (id: string): boolean => states.some((state) => state.id === id)
@@ -352,34 +370,56 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     return { id: last.id, loops: last.loops ?? 1 }
   }
 
-  const playClip = (id: string | undefined, loops: number): boolean => {
-    if (id === undefined) return false
+  /** manifest 的一行动作 + 池子给的 loops → 一条播片规格。 */
+  const specOf = (id: string, loops: number): ClipSpec | undefined => {
     const state = states.find((row) => row.id === id)
-    if (state === undefined) return false
-    if (!ready(state)) {
+    if (state === undefined) return undefined
+    return { id: state.id, cols: state.cols, rows: state.rows, frames: state.frames, loops }
+  }
+
+  /**
+   * 播片节奏（纯逻辑，见 `src/avatar/playback.ts`）。
+   *
+   * 三个依赖都是**软**的：挑不到片、素材没就绪都只影响"这一拍画什么"，
+   * 绝不让进度归零——这正是"越忙越抽"那条反馈链断掉的地方。
+   */
+  const pacer = new ClipPacer({
+    pick: (pool: AvatarPool) => {
+      const clip = pickClip(STATE_POOLS[pool])
+      if (clip === undefined) return undefined
+      lastClipId = clip.id
+      return specOf(clip.id, clip.loops)
+    },
+    available: (spec: ClipSpec) => {
+      const state = states.find((row) => row.id === spec.id)
+      if (state === undefined) return false
+      if (ready(state)) return true
       ensureAsset(state)
       return false
-    }
-    if (current?.id !== state.id) switchTo(state)
-    lastClipId = state.id
-    clipUntil = Date.now() + Math.max(1, loops) * (state.frames / FPS) * 1000
-    return true
+    },
+    onSwitch: (spec: ClipSpec) => {
+      const state = states.find((row) => row.id === spec.id)
+      if (state !== undefined) switchTo(state)
+    },
+  })
+
+  /** 一拍：问 pacer 要下一帧，有就画。 */
+  const paint = (): void => {
+    const view = pacer.tick()
+    if (view !== undefined) drawFrame(view)
   }
 
-  const enterState = (next: 'idle' | 'think' | 'talk'): void => {
-    const changed = next !== stateKey
-    stateKey = next
-    if (pendingClip !== undefined) {
-      if (playClip(pendingClip.id, pendingClip.loops)) pendingClip = undefined
-      return
-    }
-    if (!changed && Date.now() < clipUntil) return
-    const clip = pickClip(STATE_POOLS[next])
-    if (!clip) return
-    if (!playClip(clip.id, clip.loops)) pendingClip = clip
+  /**
+   * 目标池变化时调这里。
+   *
+   * `setPool` 同池是 no-op ⇒ 每 2.5s 一次的状态轮询（以及任何别的高频事件）**不可能**
+   * 打断正在播的片。
+   */
+  const enterState = (next: AvatarPool): void => {
+    pacer.setPool(next)
   }
 
-  const targetId = (): 'idle' | 'think' | 'talk' => {
+  const targetId = (): AvatarPool => {
     const status = (globalThis as Record<string, unknown>).__dafeiyuAvatarStatus as string | undefined
     if (status === 'running') return 'think'
     if (Date.now() < talkUntil) return 'talk'
@@ -412,23 +452,15 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
         if (lastStatus === 'running' && status === 'idle') talkUntil = Date.now() + 2000
         lastStatus = status
         ;(globalThis as Record<string, unknown>).__dafeiyuAvatarStatus = status
-        if (current === undefined) {
-          const idle = states.find((state) => state.id === 'idle') ?? states[0]
-          if (idle && ready(idle)) switchTo(idle)
-          else if (idle) ensureAsset(idle, () => {
-            if (current === undefined) switchTo(idle)
-          })
-        }
         if (Date.now() < pokeUntil) {
           wrap.hidden = false
           return
         }
         enterState(targetId())
       } catch {
-        if (current === undefined) {
-          const idle = states.find((state) => state.id === 'idle') ?? states[0]
-          if (idle && ready(idle)) switchTo(idle)
-        } else enterState('idle')
+        // 轮询失败**不改变**目标池：以前这里 `enterState('idle')`，于是宿主一忙、这条
+        // 4s 超时一响，正在播的片就被切掉重来（"一抽一抽"的第二个来源）。
+        // 播片自己会继续（pacer 与轮询无关），等下一次轮询成功再纠正池子。
       }
       wrap.hidden = false
     })()
@@ -448,9 +480,9 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
         states = answer.manifest.states
         manifestVersion = typeof answer.manifest.version === 'number' ? answer.manifest.version : 0
         recomputeScale()
+        // 预加载全部素材（换动作时才不会白）；开播交给 pacer 的第一拍，
+        // 不再在这里直接 switchTo——那会绕过"素材没就绪就等着"的保护。
         for (const state of states) ensureAsset(state)
-        const idle = states.find((state) => state.id === 'idle') ?? states[0]
-        if (idle) ensureAsset(idle, () => { if (current === undefined) switchTo(idle) })
       }
     } catch {
       /* 没素材就整块隐藏 */
@@ -500,15 +532,12 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   stage.addEventListener('dblclick', onDouble)
   ;(globalThis as { addEventListener?: (type: string, listener: () => void) => void }).addEventListener?.('resize', onResize)
 
+  // 一个 24fps 的节拍就够：换片由"帧画满了"驱动（pacer），不再要第二个 400ms 的墙钟定时器。
+  // 掉拍（主线程被别的模块占用 / 窗口被 throttle）只会让动画播得慢一点。
   timer = setInterval(() => {
     if (playing) paint()
   }, Math.round(1000 / FPS))
   pollTimer = setInterval(refresh, 2500)
-  const clipTimer = setInterval(() => {
-    if (disposed || !playing) return
-    if (Date.now() < pokeUntil) return
-    if (Date.now() >= clipUntil) enterState(stateKey)
-  }, 400)
   refresh()
 
   const dispose = (): void => {
@@ -516,7 +545,6 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     drag = undefined
     if (timer) clearInterval(timer)
     if (pollTimer) clearInterval(pollTimer)
-    clearInterval(clipTimer)
     try {
       doc.removeEventListener('click', onDocClick)
       doc.removeEventListener('keydown', onKey as EventListener)

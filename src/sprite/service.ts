@@ -37,7 +37,7 @@ import {
   measuredMismatchWarning,
   pickWorst,
 } from './guard.js'
-import { composeBaseline, drawCellOverlay, measureSheet, type BaselineCellInput, type SheetMeasurement } from './contact.js'
+import { composeBaseline, drawCellOverlay, measureSheet, anchorConventionWarnings, type AnchorConventionEntry, type BaselineCellInput, type SheetMeasurement } from './contact.js'
 import { encodePng } from './encode.js'
 import { launchBrowser, type CdpSession } from './browser.js'
 import {
@@ -59,6 +59,7 @@ import {
   closureOf,
   downsample,
   downsampleMask,
+  finalizeLoopScan,
   frameDiff,
   fullMask,
   LOOP_DOWNSAMPLE_FACTOR,
@@ -71,6 +72,8 @@ import {
   multipleSuspectWarning
 } from './loop.js'
 import { decodePng, type DecodedPng } from './png.js'
+import { selectBaselineCell, type BaselineSelection } from './select.js'
+import { resolveAutotune, resolveAutotuneGoal, stepReachedGoal } from './tuning.js'
 import {
   guessSemanticHeight,
   resolveMeasuredBasis,
@@ -79,8 +82,8 @@ import {
 } from './semantic.js'
 import type {
   AnchorInfo,
-  AutotuneGoal,
-  AutotuneSpace,
+  AutotuneArgs,
+  AutotuneResult,
   AutotuneTraceStep,
   BaselineArgs,
   BaselineResult,
@@ -318,14 +321,7 @@ export interface SpriteService {
   setAnchorPx(args: { x?: number; y?: number; convention?: 'y-from-bottom' | 'y-from-top' }): Promise<AnchorInfo>
   cleanup(args: { maskRect?: Rect | 'auto' | null; maskMode?: 'auto' | 'corner'; trim?: TrimOptions }): Promise<CleanupResult>
   exportSheet(args: ExportOptions): Promise<ExportResult>
-  autotune(args: { goal?: AutotuneGoal; space?: AutotuneSpace; maxIters?: number; frame?: number }): Promise<{
-    ok: boolean
-    params?: KeyParams
-    trace: AutotuneTraceStep[]
-    reachedGoal: boolean
-    stats?: SpriteStats
-    error?: string
-  }>
+  autotune(args: AutotuneArgs): Promise<AutotuneResult>
   batch(args: BatchOptions): Promise<{ ok: boolean; results: BatchResultItem[]; failures: Array<{ action: string; error: string }> }>
   /** 一段素材的一条龙（A7）。 */
   auto(args: {
@@ -1186,18 +1182,13 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
     const closureScore = round4(firstLast / adjacent)
 
     const suggested = suggestFps(periodFrames, fps, params.targetMultiples ?? [24, 48])
-    if (pick.confidence === 'low' && pick.reason) warnings.push(pick.reason)
-    const scoreCurve = [...curve]
-      .sort((a, b) => a.score - b.score)
-      .slice(0, 5)
-      .map((point) => ({ frames: point.L, score: point.score }))
-    return {
-      ok: true,
+    // 装配统一走 `finalizeLoopScan`（P1-补）：low 时它会把"建议按一次性动作处理"放进
+    // warnings 第一条并给 `suggestedAction`，不再只藏在 reason 里。
+    return finalizeLoopScan({
       periodFrames,
-      periodSec: round4(periodFrames / fps),
-      suggestedFps: suggested.fps,
-      targetFrames: suggested.targetFrames,
-      scoreCurve,
+      fps,
+      suggested,
+      curve,
       closureScore,
       confidence: pick.confidence,
       ...(pick.reason ? { reason: pick.reason } : {}),
@@ -1212,7 +1203,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         range: { lo: range.lo, hi: range.hi },
       },
       elapsedMs: Date.now() - startedAt,
-    }
+    })
   }
 
   /**
@@ -1625,10 +1616,23 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       const raw = Array.isArray(args?.paths) ? args.paths : []
       const wanted = raw.map((one) => String(one ?? '').trim()).filter((one) => one !== '')
       if (wanted.length === 0) throw new Error('需要 paths：至少一张图集路径（同目录还要有配套的 meta.json）')
-      const cellIndexWanted = Math.max(0, Math.floor(Number(args.cellIndex ?? 0)))
+      // P2-6：cellIndex 可以是固定格号（默认 0，向后兼容），也可以是 "tallest" / "median"。
+      const rawCellIndex: unknown = args.cellIndex ?? 0
+      let selector: number | 'tallest' | 'median'
+      if (typeof rawCellIndex === 'number') {
+        if (!Number.isFinite(rawCellIndex)) throw new Error(`cellIndex 不是有效数字：${String(rawCellIndex)}`)
+        selector = Math.max(0, Math.floor(rawCellIndex))
+      } else if (rawCellIndex === 'tallest' || rawCellIndex === 'median') {
+        selector = rawCellIndex
+      } else {
+        throw new Error(`cellIndex 只能是格号（数字）或 "tallest" / "median"（收到 ${JSON.stringify(rawCellIndex)}）`)
+      }
+      const mode: 'fixed' | 'tallest' | 'median' = typeof selector === 'number' ? 'fixed' : selector
       const inputs: BaselineCellInput[] = []
       const resolved: string[] = []
       const warnings: string[] = []
+      const conventions: AnchorConventionEntry[] = []
+      const selections: Array<{ name: string; cellIndex: number; basis: 'fixed' | 'semantic' | 'bbox'; heightPx: number }> = []
       for (const target of wanted) {
         const abs = path.isAbsolute(target) ? target : path.join(outDirOf(), target)
         if (!existsSync(abs)) throw new Error(`找不到这张图集：${abs}`)
@@ -1674,26 +1678,40 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         if (convention !== 'y-from-bottom' && convention !== 'y-from-top') {
           warnings.push(`${path.basename(abs)} 的 anchorConvention 是「${convention}」，按 y-from-bottom 处理`)
         }
+        // P2-8：口径校验要有据可查——把「写的是什么口径」和「两个口径字段是否自洽」都收进来。
+        const topDownRaw = Number(meta.anchorYTopDown)
+        conventions.push({
+          name: path.basename(abs),
+          convention,
+          anchorY,
+          ...(Number.isFinite(topDownRaw) ? { anchorYTopDown: topDownRaw } : {}),
+        })
         const cols = Number(meta.cols) > 0 ? Math.floor(Number(meta.cols)) : Math.max(1, Math.round(decoded.width / cellWidth))
         const rows = Number(meta.rows) > 0 ? Math.floor(Number(meta.rows)) : Math.max(1, Math.round(decoded.height / cellHeight))
-        if (cellIndexWanted >= cols * rows) {
-          throw new Error(
-            `cellIndex=${cellIndexWanted} 超出网格（${path.basename(abs)} 是 ${cols}×${rows}，最大序号 ${cols * rows - 1}）`,
-          )
-        }
         const name = typeof meta.name === 'string' && meta.name.trim() !== '' ? meta.name.trim() : path.basename(abs, path.extname(abs))
-        inputs.push({
-          name,
-          image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
-          cellIndex: cellIndexWanted,
-          cols,
-          cellWidth,
-          cellHeight,
-          anchorX,
-          anchorY,
-        })
+        const image = { width: decoded.width, height: decoded.height, rgba: decoded.rgba }
+        let cellIndex: number
+        if (typeof selector === 'number') {
+          if (selector >= cols * rows) {
+            throw new Error(
+              `cellIndex=${selector} 超出网格（${path.basename(abs)} 是 ${cols}×${rows}，最大序号 ${cols * rows - 1}）`,
+            )
+          }
+          cellIndex = selector
+        } else {
+          // P2-6：姿势差异大时首帧的 bbox 高度不代表角色高度——按语义/中位数挑一格。
+          const picked = selectBaselineCell(image, { cols, rows, cellWidth, cellHeight }, selector)
+          cellIndex = picked.cellIndex
+          if (picked.note) warnings.push(`${name}: ${picked.note}`)
+          selections.push({ name, cellIndex, basis: picked.basis, heightPx: picked.heightPx })
+        }
+        if (typeof selector === 'number') selections.push({ name, cellIndex, basis: 'fixed', heightPx: 0 })
+        inputs.push({ name, image, cellIndex, cols, cellWidth, cellHeight, anchorX, anchorY })
         resolved.push(abs)
       }
+      // P2-8：一组里口径混用 / 单条的 anchorY 与 anchorYTopDown 对不上，都要点名——
+      // 8 条老 meta 存成 y-from-top 那次，整组被画到"天上"，却一声不吭。
+      warnings.push(...anchorConventionWarnings(conventions))
       const composed = composeBaseline(inputs, {
         ...(typeof args.gap === 'number' ? { gap: args.gap } : {}),
         ...(typeof args.background === 'string' && args.background.trim() !== '' ? { background: args.background.trim() } : {}),
@@ -1712,6 +1730,8 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         height: composed.height,
         baselineY: composed.baselineY,
         headTopY: composed.headTopY,
+        background: composed.background,
+        cellIndexUsed: { mode, perItem: selections },
         items: composed.items,
         warnings,
       }
@@ -2165,16 +2185,13 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
     async autotune(args) {
       // 默认目标照评审文档 B9：`minSubjectCoverage` 取 **0.6** 而不是 0.98——
       // 人物是镂空形状，bbox 里天然有 30~40% 是空的；拿 0.98 当目标会让"已经完美"的参数被判未达标。
-      const goal: AutotuneGoal = {
-        maxBgResidual: args.goal?.maxBgResidual ?? 0.005,
-        minSubjectCoverage: args.goal?.minSubjectCoverage ?? 0.6,
-        maxEdgeGreen: args.goal?.maxEdgeGreen ?? 0.02,
-      }
+      const goal = resolveAutotuneGoal(args.goal)
       const iters = Math.max(1, Math.min(12, args.maxIters ?? 6))
       const frame = Math.max(0, args.frame ?? 0)
-      // 自动采色：键色错的话后面怎么调都没用（P3）。
-      let params: KeyParams = {
-        colorHex: (await this.probeColor({ frame })).keyColor,
+      // 起点 = 调用方给的参数（P1-3）+ 缺的项补默认值。**这一套在未达标时会原样返回**，
+      // 不再像以前那样把"搜索到最后一轮"的参数当结果（越调越糟）。
+      const caller = args.params ?? {}
+      const startParams: KeyParams = {
         mode: args.space?.mode?.[0] ?? 'advanced',
         intensity: args.space?.intensity?.[0] ?? 60,
         softness: 60,
@@ -2182,24 +2199,36 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         greenToAlpha: 10,
         aggressive: true,
         autoPlate: false,
+        ...caller,
+        // 自动采色：键色错的话后面怎么调都没用（P3）。调用方显式给了 colorHex 就用它的。
+        colorHex: caller.colorHex ?? (await this.probeColor({ frame })).keyColor,
       }
+      let params: KeyParams = { ...startParams }
       const trace: AutotuneTraceStep[] = []
-      let stats: SpriteStats | undefined
+      let lastStats: SpriteStats | undefined
+      let startStats: SpriteStats | undefined
+      let reachedStep: AutotuneTraceStep | undefined
       for (let round = 0; round < iters; round++) {
         const preview = await this.keyPreview({ ...params, frame })
-        stats = preview.stats
+        const stats = preview.stats
         if (!stats) break
-        trace.push({
+        lastStats = stats
+        if (round === 0) startStats = stats
+        const step: AutotuneTraceStep = {
           round,
           params: { ...params },
           bgResidual: stats.bgResidual,
           subjectCoverage: stats.subjectCoverage,
           edgeGreen: stats.edgeGreen,
-        })
-        const bgOk = stats.bgResidual <= (goal.maxBgResidual ?? 0.005)
-        const covOk = stats.subjectCoverage >= (goal.minSubjectCoverage ?? 0.6)
-        const edgeOk = stats.edgeGreen <= (goal.maxEdgeGreen ?? 0.02)
-        if (bgOk && covOk && edgeOk) return { ok: true, params, trace, reachedGoal: true, ...(stats ? { stats } : {}) }
+        }
+        trace.push(step)
+        if (stepReachedGoal(step, goal)) {
+          reachedStep = step
+          break
+        }
+        const bgOk = stats.bgResidual <= goal.maxBgResidual
+        const covOk = stats.subjectCoverage >= goal.minSubjectCoverage
+        const edgeOk = stats.edgeGreen <= goal.maxEdgeGreen
         if (!bgOk && covOk) {
           params = { ...params, intensity: Math.min(args.space?.intensity?.[1] ?? 90, (params.intensity ?? 60) + 10) }
         } else if (!bgOk && !covOk) {
@@ -2209,7 +2238,21 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
           params = { ...params, aggressive: true, greenToAlpha: Math.min(300, (params.greenToAlpha ?? 10) + 10) }
         }
       }
-      return { ok: true, params, trace, reachedGoal: false, ...(stats ? { stats } : {}) }
+      const outcome = resolveAutotune({ startParams, trace, goal, ...(reachedStep ? { reachedStep } : {}) })
+      // `stats` 必须与 `appliedParams` 一致：未达标时生效的是起点那套 ⇒ 报起点那一轮的指标；
+      // 达标时报达标那轮（最后一轮）。拿最后一轮的 stats 配起点参数就是"数字看起来没问题、参数对不上"。
+      const stats = outcome.reachedGoal ? lastStats : startStats
+      return {
+        ok: true,
+        params: outcome.appliedParams,
+        appliedParams: outcome.appliedParams,
+        bestParams: outcome.bestParams,
+        ...(outcome.bestStep ? { bestStep: outcome.bestStep } : {}),
+        trace,
+        reachedGoal: outcome.reachedGoal,
+        ...(outcome.warnings.length > 0 ? { warnings: outcome.warnings } : {}),
+        ...(stats ? { stats } : {}),
+      }
     },
 
     async batch(args) {
@@ -2329,10 +2372,15 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       const color = await this.probeColor({ frame: 0 })
       stages.push(`probeColor: ${color.keyColor} spread=${color.spread.toFixed(3)}`)
       const tuned = await this.autotune({ frame: 0, maxIters: 6 })
+      // P1-3：未达标时 autotune 的 `params`/`appliedParams` 是"你给的起点"，而 `bestParams`
+      // 才是搜索认为最好的那套。一条龙（没有调用方手调参数）应当用搜索最优解，并把
+      // autotune 的告警一起带出去——否则"调了半天没用"这件事仍然是无声的。
+      const tunedParams: KeyParams = tuned.bestParams ?? tuned.appliedParams ?? tuned.params ?? { colorHex: color.keyColor }
       stages.push(
-        `autotune: ${tuned.reachedGoal ? '达标' : '未达标'}，${tuned.trace.length} 轮，参数 ${JSON.stringify(tuned.params)}`,
+        `autotune: ${tuned.reachedGoal ? '达标' : '未达标（改用搜索最优解，warning 见下）'}，${tuned.trace.length} 轮，参数 ${JSON.stringify(tunedParams)}`,
       )
-      const applied = await this.keyApply({ ...(tuned.params ?? { colorHex: color.keyColor }) })
+      const autotuneWarnings = Array.isArray(tuned.warnings) ? tuned.warnings : []
+      const applied = await this.keyApply({ ...tunedParams })
       stages.push(`keyApply: ${applied.frames} 帧，缓存 ${applied.keyedCount}`)
       // 量「抠图之后」的帧：原帧整幅不透明，量原帧只会得到"整幅高"（评审文档 P6 的根）。
       const measured = await this.measure({ frame: 0, overlay: true })
@@ -2363,7 +2411,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       /* 一条龙最容易"绿着交出烂图"：压边告警（手/特效被抠成主体）必须带到最终结果上 */
       return {
         ...exported,
-        warnings: [...exported.warnings, ...applied.warnings],
+        warnings: [...exported.warnings, ...applied.warnings, ...autotuneWarnings],
         stages,
       }
     },

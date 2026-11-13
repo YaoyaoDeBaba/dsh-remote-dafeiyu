@@ -7,8 +7,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  adaptiveBaselineBackground,
+  anchorConventionWarnings,
+  BASELINE_DARK_BG,
+  BASELINE_LIGHT_BG,
   cellContentOf,
+  clipEdgeThreshold,
   composeBaseline,
+  contentLumaOf,
   createImage,
   deviates,
   drawCellOverlay,
@@ -87,6 +93,53 @@ test('cellContentOf：包围盒、身高、空格子、贴边裁切各有明确�
   assert.equal(clipped.empty, false)
   assert.equal(clipped.soleY, 9)
   assert.equal(clipped.clipped, true, '内容贴到格子边界就该报 clipped')
+  // P1-4：报的时候要说清是哪条边、贴了多少像素（6px 宽横切面 → 远超 10px 格边长的阈值 2px）
+  assert.equal(clipped.edgePx.bottom, 6)
+  assert.deepEqual(clipped.clippedEdges, ['bottom'])
+  assert.equal(clipped.clipThreshold.bottom, 2, '10px 的边 → max(2, ceil(0.2)) = 2')
+})
+
+test('clipEdgeThreshold：按边长 2% 算，下限 2px（小格子不许 1px 就报）', () => {
+  assert.equal(clipEdgeThreshold(217), 5, '217×2% = 4.34 → 5（Boss_Whistle 那批的格宽）')
+  assert.equal(clipEdgeThreshold(337), 7)
+  assert.equal(clipEdgeThreshold(10), 2, '10px 的边 2% 只有 0.2 → 被下限抬到 2')
+  assert.equal(clipEdgeThreshold(20), 2)
+  assert.equal(clipEdgeThreshold(0), 2, '没有边长也保底 2px，不返回 0')
+})
+
+test('P1-4：贴到 pad 边界的细尖**不报** clipped，真被横切的**必须报**', () => {
+  // 40×20 的格子（右边还留 20px，否则最后一格的右边就是图集外边界，不计入贴边统计）
+  // 右边界的阈值 = max(2, ceil(20×2%)=1) = 2px
+  const padOnly = blank(60, 20)
+  fillRect(padOnly, 39, 5, 40, 7) // 只有 2px 贴在右边界（呆毛/抗锯齿那种细尖）
+  const sliver = cellContentOf(padOnly, { x: 0, y: 0, w: 40, h: 20 }, 0, 0, 0)
+  assert.equal(sliver.edgePx.right, 2, '贴边像素数要如实报出来（人自己判断）')
+  assert.deepEqual(sliver.clippedEdges, [], '2px 不比阈值大 → 不算被裁')
+  assert.equal(sliver.clipped, false, '贴 pad 边界不是"被裁"，不许再刷这格')
+
+  // 同一条边上一条 13px 的横切面 = 很像真被裁了
+  const realCut = blank(60, 20)
+  fillRect(realCut, 39, 3, 40, 16)
+  const cut = cellContentOf(realCut, { x: 0, y: 0, w: 40, h: 20 }, 0, 0, 0)
+  assert.equal(cut.edgePx.right, 13)
+  assert.deepEqual(cut.clippedEdges, ['right'])
+  assert.equal(cut.clipped, true, '13px > 阈值 2px：这一格必须报')
+})
+
+test('measureSheet：clipped 汇总说明"按贴边像素数判定"，并给出最严重的一格的数值', () => {
+  const sheet = blank(80, 10) // 3 格 × 20×10（右边还留 20px，否则最后一格的右边就是图集外边界）
+  fillRect(sheet, 3, 2, 8, 8) // 第 0 格：干净
+  fillRect(sheet, 39, 4, 40, 9) // 第 1 格：右边界 5px（>2 → 报）
+  fillRect(sheet, 59, 0, 60, 10) // 第 2 格：右边界 10px（最严重）
+  const measured = measureSheet(sheet, { cols: 3, rows: 1, cellWidth: 20, cellHeight: 10 })
+  assert.deepEqual(
+    measured.perCell.map((cell) => cell.clipped),
+    [false, true, true],
+  )
+  const text = measured.warnings.join('\n')
+  assert.match(text, /贴边像素数/)
+  assert.match(text, /最严重的是第 2 格（right 边 10px \/ 阈值 2px/)
+  assert.match(text, /2\/3 格/, '分母要用量过的格数')
 })
 
 test('measureSheet：聚合用中位数，min/max 给抖动，头脚来自"最接近中位数"的那格', () => {
@@ -138,7 +191,20 @@ test('measureSheet：空格子要报出来，全空要报"量不到内容"，>48
 })
 
 test('deviates：偏离中位数超过 5% 才算异常格', () => {
-  const cell = { index: 0, col: 0, row: 0, bbox: null, charHeightPx: 100, headTopY: 0, soleY: 99, empty: false, clipped: false }
+  const cell = {
+    index: 0,
+    col: 0,
+    row: 0,
+    bbox: null,
+    charHeightPx: 100,
+    headTopY: 0,
+    soleY: 99,
+    empty: false,
+    clipped: false,
+    edgePx: { left: 0, top: 0, right: 0, bottom: 0 },
+    clippedEdges: [],
+    clipThreshold: { left: 2, top: 2, right: 2, bottom: 2 },
+  }
   assert.equal(deviates(cell, 100), false)
   assert.equal(deviates(cell, 105), false, '5% 恰好不算（要用 >）')
   assert.equal(deviates({ ...cell, charHeightPx: 94 }, 100), true)
@@ -275,4 +341,99 @@ test('composeBaseline：锚点越界直接报错（不猜一个"差不多"的位
   assert.throws(() => composeBaseline([cellInput('A', a, 10, 10, 1.2)]), /anchorY 不在 0~1/)
   assert.throws(() => composeBaseline([cellInput('A', a, 10, 10, 0.5, -0.1)]), /anchorX 不在 0~1/)
   assert.throws(() => composeBaseline([]), /至少一张/)
+})
+
+test('contentLumaOf：只算 alpha>阈值 的内容像素，没内容返回 null', () => {
+  const picture = blank(10, 10)
+  fillRect(picture, 0, 0, 10, 10, [0, 0, 0, 255])
+  fillRect(picture, 2, 2, 6, 6, [255, 255, 255, 255]) // 16 个白像素
+  const luma = contentLumaOf(picture, { x: 0, y: 0, w: 10, h: 10 })
+  // 100 个像素里 84 个黑（0）+ 16 个白（255）→ 平均 40.8
+  assert.ok(Math.abs((luma ?? 0) - 40.8) < 0.001, `实测 ${luma}`)
+  assert.equal(contentLumaOf(blank(10, 10), { x: 0, y: 0, w: 10, h: 10 }), null, '全透明不许冒充"亮度 0"')
+})
+
+test('adaptiveBaselineBackground：浅色角色 → 深底、深色角色 → 浅底；量不到就退回老默认', () => {
+  assert.deepEqual(
+    { hex: adaptiveBaselineBackground(216).hex, adaptive: adaptiveBaselineBackground(216).adaptive },
+    { hex: BASELINE_DARK_BG, adaptive: true },
+    '白发带那种浅色角色在深底上才看得清（P2-7）',
+  )
+  assert.equal(adaptiveBaselineBackground(66).hex, BASELINE_LIGHT_BG, '深色角色用浅底')
+  assert.equal(adaptiveBaselineBackground(127).hex, BASELINE_LIGHT_BG, '分界 128：127 还算偏暗')
+  assert.equal(adaptiveBaselineBackground(128).hex, BASELINE_DARK_BG, '128 起算偏亮')
+  const none = adaptiveBaselineBackground(null)
+  assert.equal(none.hex, BASELINE_DARK_BG, '量不到内容亮度时行为与老默认一致')
+  assert.equal(none.adaptive, true)
+  assert.match(String(none.reason), /默认深底/)
+})
+
+test('composeBaseline：不传 background 时按主体亮度自适应，传了就按传的（P2-7）', () => {
+  const light = blank(10, 10)
+  fillRect(light, 2, 2, 8, 9, [240, 245, 250, 255]) // 浅色角色（luma≈244）
+  const lightOut = composeBaseline([cellInput('浅色', light, 10, 10, 0.5)], { gap: 2 })
+  assert.equal(lightOut.background.adaptive, true)
+  assert.equal(lightOut.background.hex, BASELINE_DARK_BG)
+  assert.deepEqual(pixelAt(lightOut.image, 0, 0), [0x20, 0x20, 0x30, 255], '浅色角色 → 深底')
+  assert.match(lightOut.warnings.join('\n'), /底色自适应/)
+
+  const dark = blank(10, 10)
+  fillRect(dark, 2, 2, 8, 9, [20, 20, 20, 255]) // 深色角色（luma=20）
+  const darkOut = composeBaseline([cellInput('深色', dark, 10, 10, 0.5)], { gap: 2 })
+  assert.equal(darkOut.background.hex, BASELINE_LIGHT_BG)
+  assert.deepEqual(pixelAt(darkOut.image, 0, 0), [0xf2, 0xf2, 0xf5, 255], '深色角色 → 浅底')
+
+  // 显式值永远赢（哪怕它"正好"跟自适应结果一样，也必须标成 non-adaptive 且不再警告）
+  const forced = composeBaseline([cellInput('深色', dark, 10, 10, 0.5)], { gap: 2, background: '#112233' })
+  assert.deepEqual(forced.background, { hex: '#112233', meanLuma: 20, adaptive: false })
+  assert.doesNotMatch(forced.warnings.join('\n'), /底色自适应/)
+  assert.deepEqual(pixelAt(forced.image, 0, 0), [0x11, 0x22, 0x33, 255])
+})
+
+test('composeBaseline：items 带上实际用的 cellIndex（tallest/median 时逐条不同，P2-6）', () => {
+  const picture = blank(20, 10) // 2×1 格
+  fillRect(picture, 1, 2, 9, 9) // 第 0 格高 7
+  fillRect(picture, 12, 4, 18, 9) // 第 1 格高 5
+  const withCell = { ...cellInput('A', picture, 10, 10, 0.5), cellIndex: 1 }
+  const composed = composeBaseline([withCell], { gap: 2, background: '#202030' })
+  assert.equal(composed.items[0]!.cellIndex, 1)
+  assert.equal(composed.items[0]!.charHeightPx, 5, '量的是第 1 格（不是第 0 格）')
+})
+
+test('anchorConventionWarnings：口径混用与 anchorYTopDown 对不上都要点名（P2-8）', () => {
+  // 全部一致 → 不出声
+  assert.deepEqual(
+    anchorConventionWarnings([
+      { name: 'a.png', convention: 'y-from-bottom', anchorY: 0.9375, anchorYTopDown: 0.0625 },
+      { name: 'b.png', convention: 'y-from-bottom', anchorY: 0.5 },
+    ]),
+    [],
+  )
+
+  // 一组里混用口径 → 点名是哪几条
+  const mixed = anchorConventionWarnings([
+    { name: '8 条老 meta 之一.png', convention: 'y-from-top', anchorY: 0.9375 },
+    { name: '新的.png', convention: 'y-from-bottom', anchorY: 0.9375 },
+    { name: '没写口径.png', anchorY: 0.5 },
+  ])
+  assert.equal(mixed.length, 1)
+  assert.match(mixed[0]!, /锚点口径混用/)
+  assert.match(mixed[0]!, /8 条老 meta 之一\.png/)
+  assert.match(mixed[0]!, /y-from-top/)
+  assert.match(mixed[0]!, /口径疑似不一致，画出来的地平线可能整体偏移/)
+
+  // 单条自己两个字段对不上 → 点名这一条，且给出两个值
+  const mismatch = anchorConventionWarnings([{ name: 'bad.png', convention: 'y-from-bottom', anchorY: 0.8, anchorYTopDown: 0.8 }])
+  assert.equal(mismatch.length, 1)
+  assert.match(mismatch[0]!, /bad\.png/)
+  assert.match(mismatch[0]!, /anchorY=0\.8/)
+  assert.match(mismatch[0]!, /anchorYTopDown=0\.8/)
+  assert.match(mismatch[0]!, /口径疑似不一致/)
+
+  // 混用 + 单条不一致：两条都要有
+  const both = anchorConventionWarnings([
+    { name: 'a.png', convention: 'y-from-top', anchorY: 0.2 },
+    { name: 'b.png', convention: 'y-from-bottom', anchorY: 0.8, anchorYTopDown: 0.8 },
+  ])
+  assert.equal(both.length, 2)
 })

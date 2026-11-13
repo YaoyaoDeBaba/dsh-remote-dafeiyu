@@ -21,6 +21,31 @@ export const CONTENT_ALPHA_CUT = 32
 export const FULL_SCAN_LIMIT = 48
 export const SAMPLE_LIMIT = 12
 
+/**
+ * 贴边判定的**绝对下限**（P1-4）：一条边上至少这么多像素贴边，才可能是"真被裁"。
+ * 为什么要有下限：10px 的小格子上 2% 只有 1px，拿 1px 当"被裁"会把抗锯齿报成事故。
+ */
+export const CLIP_EDGE_MIN_PX = 2
+
+/**
+ * 贴边判定的**比例阈值**（P1-4）：贴边像素数 > 该边长度 × 2% 才算"可能被裁"。
+ *
+ * 为什么从"贴到边就报"改成"数贴边像素"：真被裁掉的主体在边上是一条**连续横切面**
+ * （一个身体截面在 217px 的边上通常几十像素），而"贴到 pad 边界"的只是细尖
+ * （呆毛/飘带/抗锯齿，1~3px）。老判据等于把两者当同一件事，Boss_Whistle 那段
+ * 33/48 格全在报"内容顶到格子边缘"，实际只是 bbox 落在 pad=2 的内侧。
+ */
+export const CLIP_EDGE_RATIO = 0.02
+
+/**
+ * 一条边要多长的贴边连续像素才算"可能被裁"（P1-4）。
+ * `max(2, ceil(边长 × 2%))`：337px 的边 → 7px；217px 的边 → 5px；10px 的边 → 2px。
+ */
+export function clipEdgeThreshold(edgeLength: number): number {
+  const len = Math.max(0, Math.round(Number(edgeLength) || 0))
+  return Math.max(CLIP_EDGE_MIN_PX, Math.ceil(len * CLIP_EDGE_RATIO))
+}
+
 /** 一个矩形（输入图像素空间）。 */
 export interface PixelRect {
   x: number
@@ -28,6 +53,12 @@ export interface PixelRect {
   w: number
   h: number
 }
+
+/** 格子的四条边（贴边统计用）。 */
+export type CellEdge = 'left' | 'top' | 'right' | 'bottom'
+
+/** 四条边各自的贴边像素数 / 判定阈值。 */
+export type CellEdgeCounts = Record<CellEdge, number>
 
 /** 单格内容的实测结果（**格子坐标**，y-from-top）。 */
 export interface CellContent {
@@ -45,8 +76,14 @@ export interface CellContent {
   soleY: number | null
   /** true = 这一格里一个 alpha>阈值的像素都没有（网格比帧数大时的末尾格子）。 */
   empty: boolean
-  /** true = 内容顶到了格子某条边（缩放/裁剪把主体切了）。 */
+  /** true = 有边的**贴边像素数**超过阈值（缩放/裁剪可能把主体切了）。 */
   clipped: boolean
+  /** 四条边各自的贴边像素数（alpha>阈值；图集外边界恒为 0——那不是"格子切"的锅）。 */
+  edgePx: CellEdgeCounts
+  /** 过阈值的边（空 = 没被判成"可能被裁"）；看它是哪一条边，别只看 true/false。 */
+  clippedEdges: CellEdge[]
+  /** 四条边各自实际用的阈值（垂直边按格高、水平边按格宽算 2%，下限 2px）。 */
+  clipThreshold: CellEdgeCounts
 }
 
 /** `measureSheet` 的口径与聚合结果。 */
@@ -124,7 +161,13 @@ export function sampleCellIndices(total: number, limit = FULL_SCAN_LIMIT, take =
   return out
 }
 
-/** 量一格：只扫这一格的像素，返回内容包围盒（空格子 bbox=null）。 */
+/**
+ * 量一格：只扫这一格的像素，返回内容包围盒 + **四条边的贴边像素数**（空格子 bbox=null）。
+ *
+ * `clipped` 的口径（P1-4）：**不按"贴到边"报，按"贴边像素数超过阈值"报**——
+ * 只有"边上有一条够长的横切面"才可能是主体真被裁了；细尖贴到 pad 边界不报。
+ * 每条边的阈值见 `clipEdgeThreshold`；四条边的原始计数都留在 `edgePx` 里，便于人自己复核。
+ */
 export function cellContentOf(
   image: RgbaImage,
   cell: PixelRect,
@@ -141,6 +184,20 @@ export function cellContentOf(
   let minY = y1
   let maxX = -1
   let maxY = -1
+  // 贴边统计：只在"是格子内边界"的那条边上数（图集自己的外边界不是格子切的锅）。
+  const verticalThreshold = clipEdgeThreshold(y1 - y0)
+  const horizontalThreshold = clipEdgeThreshold(x1 - x0)
+  const clipThreshold: CellEdgeCounts = {
+    left: verticalThreshold,
+    right: verticalThreshold,
+    top: horizontalThreshold,
+    bottom: horizontalThreshold,
+  }
+  const edgePx: CellEdgeCounts = { left: 0, top: 0, right: 0, bottom: 0 }
+  const countLeft = x0 > 0
+  const countTop = y0 > 0
+  const countRight = x1 < image.width
+  const countBottom = y1 < image.height
   for (let y = y0; y < y1; y++) {
     const rowBase = y * image.width
     for (let x = x0; x < x1; x++) {
@@ -149,22 +206,34 @@ export function cellContentOf(
       if (x > maxX) maxX = x
       if (y < minY) minY = y
       if (y > maxY) maxY = y
+      if (countLeft && x === x0) edgePx.left++
+      if (countRight && x === x1 - 1) edgePx.right++
+      if (countTop && y === y0) edgePx.top++
+      if (countBottom && y === y1 - 1) edgePx.bottom++
     }
   }
+  const clippedEdges = (['left', 'top', 'right', 'bottom'] as const).filter(
+    (edge) => edgePx[edge] > clipThreshold[edge],
+  )
+  const clipped = clippedEdges.length > 0
   if (maxX < 0 || maxY < 0) {
-    return { index, col, row, bbox: null, charHeightPx: 0, headTopY: null, soleY: null, empty: true, clipped: false }
+    return {
+      index,
+      col,
+      row,
+      bbox: null,
+      charHeightPx: 0,
+      headTopY: null,
+      soleY: null,
+      empty: true,
+      clipped: false,
+      edgePx: { left: 0, top: 0, right: 0, bottom: 0 },
+      clippedEdges: [],
+      clipThreshold,
+    }
   }
   // 返回**格子坐标**（相对格子左上角），调用方直接拿去画线/对账。
   const bbox: PixelRect = { x: minX - x0, y: minY - y0, w: maxX - minX + 1, h: maxY - minY + 1 }
-  const left = x0 > 0 ? x0 : 0
-  const top = y0 > 0 ? y0 : 0
-  const right = x1 < image.width ? x1 : image.width
-  const bottom = y1 < image.height ? y1 : image.height
-  const clipped =
-    (minX <= left && left > 0) ||
-    (minY <= top && top > 0) ||
-    (maxX >= right - 1 && right < image.width) ||
-    (maxY >= bottom - 1 && bottom < image.height)
   return {
     index,
     col,
@@ -175,6 +244,9 @@ export function cellContentOf(
     soleY: bbox.y + bbox.h - 1,
     empty: false,
     clipped,
+    edgePx,
+    clippedEdges,
+    clipThreshold,
   }
 }
 
@@ -228,11 +300,22 @@ export function measureSheet(image: RgbaImage, options: MeasureSheetOptions): Sh
   }
   const clipped = perCell.filter((cell) => cell.clipped)
   if (clipped.length > 0) {
+    // 最严重的一格：贴边像素数 ÷ 该边阈值 最大的那条（同一格多条边取最大）。
+    let worst: { cell: CellContent; edge: CellEdge; px: number; threshold: number; ratio: number } | undefined
+    for (const cell of clipped) {
+      for (const edge of cell.clippedEdges) {
+        const px = cell.edgePx[edge]
+        const threshold = cell.clipThreshold[edge]
+        const ratio = px / Math.max(1, threshold)
+        if (!worst || ratio > worst.ratio) worst = { cell, edge, px, threshold, ratio }
+      }
+    }
     warnings.push(
-      `有 ${clipped.length} 格的内容顶到了格子边缘（第 ${clipped
-        .slice(0, 3)
-        .map((cell) => cell.index)
-        .join('、')} 格）——缩放/裁剪把主体切了，这一格的身高会偏小。`,
+      `有 ${clipped.length}/${perCell.length} 格的内容**贴边像素数**超过阈值（判定口径：某条边上的贴边像素数 > ` +
+        `max(${CLIP_EDGE_MIN_PX}, ceil(边长×${Math.round(CLIP_EDGE_RATIO * 100)}%))，不是"贴到边就算"）；` +
+        `最严重的是第 ${worst?.cell.index ?? clipped[0]!.index} 格（${worst?.edge ?? clipped[0]!.clippedEdges[0]} 边 ` +
+        `${worst?.px ?? 0}px / 阈值 ${worst?.threshold ?? 0}px；逐格原始计数在 perCell[].edgePx 里）——` +
+        '成片被横切才是真被裁（这一格身高会偏小）；细尖/抗锯齿贴到 pad 边界属于正常。',
     )
   }
 
@@ -506,15 +589,140 @@ export interface BaselineCellInput {
 export interface BaselineOptions {
   /** 格与格之间的横向空隙（像素），默认 8。 */
   gap?: number
-  /** 底色，默认 #202030（中性深灰，品红/青都看得清）。 */
+  /**
+   * 底色。**不给就按主体亮度自适应**（P2-7）：主体偏亮 → 深底、主体偏暗 → 浅底。
+   * 显式给了就一律用给的（不参与自适应）。
+   */
   background?: string
   /** 四周留白，默认 4。 */
   padding?: number
   alphaThreshold?: number
 }
 
+/** 准绳图底色的最终回执（自适应时 `adaptive:true`，`reason` 说明按什么亮度选的）。 */
+export interface BaselineBackground {
+  hex: string
+  /** 各格内容（alpha>阈值）的平均亮度；一格内容都没有时为 null。 */
+  meanLuma: number | null
+  adaptive: boolean
+  reason?: string
+}
+
+/** 深底（品红/青都看得清，偏亮的主体用它）。 */
+export const BASELINE_DARK_BG = '#202030'
+/** 浅底（深色主体用它——白发带那种浅色角色在深底上会糊成一片，见 P2-7）。 */
+export const BASELINE_LIGHT_BG = '#f2f2f5'
+/** 主体平均亮度分界：≥ 它算"偏亮"（用深底），< 它算"偏暗"（用浅底）。128 正好是中灰。 */
+export const BASELINE_LUMA_SPLIT = 128
+
+/**
+ * 一格内容（alpha>阈值）的平均亮度；没有内容返回 null。
+ * 与 `measureSheet` 同一个 alpha 阈值，所以"贴到 pad 的细尖"也算内容——不影响结论。
+ */
+export function contentLumaOf(image: RgbaImage, cell: PixelRect, alphaThreshold = CONTENT_ALPHA_CUT): number | null {
+  const x0 = Math.max(0, Math.round(cell.x))
+  const y0 = Math.max(0, Math.round(cell.y))
+  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(cell.w)))
+  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(cell.h)))
+  let sum = 0
+  let count = 0
+  for (let y = y0; y < y1; y++) {
+    const rowBase = y * image.width
+    for (let x = x0; x < x1; x++) {
+      const at = (rowBase + x) * 4
+      if (image.rgba[at + 3]! <= alphaThreshold) continue
+      sum += (299 * image.rgba[at]! + 587 * image.rgba[at + 1]! + 114 * image.rgba[at + 2]!) / 1000
+      count++
+    }
+  }
+  return count === 0 ? null : sum / count
+}
+
+/**
+ * 按角色亮度挑底色（P2-7）：浅色角色给深底、深色角色给浅底——两个候选底色一个很暗一个很亮，
+ * "取反"就是对比最大的那个。量不到内容亮度时退回老默认（深底），行为与以前一致。
+ */
+export function adaptiveBaselineBackground(meanLuma: number | null): BaselineBackground {
+  if (meanLuma === null || !Number.isFinite(meanLuma)) {
+    return {
+      hex: BASELINE_DARK_BG,
+      meanLuma: null,
+      adaptive: true,
+      reason: `量不到内容亮度，用默认深底 ${BASELINE_DARK_BG}`,
+    }
+  }
+  const luma = Math.round(meanLuma)
+  if (meanLuma >= BASELINE_LUMA_SPLIT) {
+    return {
+      hex: BASELINE_DARK_BG,
+      meanLuma: luma,
+      adaptive: true,
+      reason: `主体平均亮度 ${luma}（偏亮）→ 深底 ${BASELINE_DARK_BG}，浅色角色不会糊在底色里`,
+    }
+  }
+  return {
+    hex: BASELINE_LIGHT_BG,
+    meanLuma: luma,
+    adaptive: true,
+    reason: `主体平均亮度 ${luma}（偏暗）→ 浅底 ${BASELINE_LIGHT_BG}，深色轮廓才看得出来`,
+  }
+}
+
+/** 锚点口径校验的输入：一条图集（已从 meta 读好并归一化成 y-from-bottom）。 */
+export interface AnchorConventionEntry {
+  name: string
+  /** meta 里写的 `anchorConvention`（原样；缺省当 `y-from-bottom`）。 */
+  convention?: string
+  /** 归一化后的锚点 y（**y-from-bottom**，0~1）。 */
+  anchorY: number
+  /** meta 里若同时写了 `anchorYTopDown`（y-from-top 口径），拿来交叉校验。 */
+  anchorYTopDown?: number
+}
+
+/**
+ * 锚点口径校验（P2-8）：**组内混用**、或**同一条的 anchorY 与 anchorYTopDown 对不上**都要出声。
+ *
+ * 为什么必须校验：8 条老 meta 存成了 y-from-top 的那次，baseline 把它们全画到"天上"，
+ * 头顶极差 369px——但当时 `ok:true`、一声不吭。口径错是整组一起平移，身高差看不出来。
+ */
+export function anchorConventionWarnings(entries: AnchorConventionEntry[]): string[] {
+  const warnings: string[] = []
+  const byConvention = new Map<string, string[]>()
+  for (const entry of entries) {
+    const convention = String(entry.convention ?? 'y-from-bottom').trim() || 'y-from-bottom'
+    byConvention.set(convention, [...(byConvention.get(convention) ?? []), entry.name])
+  }
+  if (byConvention.size > 1) {
+    const detail = [...byConvention.entries()].map(([convention, names]) => `${convention}: ${names.join('、')}`).join('；')
+    warnings.push(
+      `一组里锚点口径混用（${detail}）：口径疑似不一致，画出来的地平线可能整体偏移——` +
+        '先统一成 y-from-bottom 再跑准绳图（meta 里写 anchorConvention 也救不了混用的值）',
+    )
+  }
+  for (const entry of entries) {
+    const topDown = entry.anchorYTopDown
+    if (typeof topDown !== 'number' || !Number.isFinite(topDown)) continue
+    const impliedTopDown = 1 - entry.anchorY
+    if (Math.abs(impliedTopDown - topDown) > 1e-3) {
+      warnings.push(
+        `${entry.name} 的 anchorY=${roundOf(entry.anchorY)}（y-from-bottom）反推 y-from-top=${roundOf(impliedTopDown)}，` +
+          `但 meta 里的 anchorYTopDown=${roundOf(topDown)}：口径疑似不一致，画出来的地平线可能整体偏移` +
+          '（本次按 y-from-bottom 处理，先核对 meta 这一对字段）',
+      )
+    }
+  }
+  return warnings
+}
+
+/** 三位小数（口径校验的告警文案用；不动数值本身）。 */
+function roundOf(value: number): number {
+  return Math.round(value * 1000) / 1000
+}
+
 export interface BaselineItem {
   name: string
+  /** 这一条实际取的格子序号（`cellIndex:"tallest"` / `"median"` 时逐条可能不同，P2-6）。 */
+  cellIndex: number
   /** 这一格实测的内容高（成品像素，不是 meta 里的参数回显）。 */
   charHeightPx: number
   anchorX: number
@@ -538,6 +746,8 @@ export interface BaselineComposed {
   baselineY: number
   /** 头顶线（各格实测最高点的中位数），画布坐标；全空时为 null。 */
   headTopY: number | null
+  /** 本次实际用的底色（显式 or 按主体亮度自适应，P2-7）。 */
+  background: BaselineBackground
   items: BaselineItem[]
   warnings: string[]
 }
@@ -564,7 +774,6 @@ export function composeBaseline(inputs: BaselineCellInput[], options: BaselineOp
   const gap = Math.max(0, Math.round(options.gap ?? 8))
   const padding = Math.max(0, Math.round(options.padding ?? 4))
   const alphaThreshold = options.alphaThreshold ?? CONTENT_ALPHA_CUT
-  const background = parseColorHex(options.background ?? '#202030', 'background')
 
   const anchors = inputs.map((input) => {
     if (!(input.anchorX >= 0 && input.anchorX <= 1)) throw new Error(`${input.name} 的 anchorX 不在 0~1：${input.anchorX}`)
@@ -573,40 +782,46 @@ export function composeBaseline(inputs: BaselineCellInput[], options: BaselineOp
     const cellHeight = Math.max(1, Math.round(input.cellHeight))
     const anchorYPx = Math.max(0, Math.min(cellHeight - 1, Math.round((1 - input.anchorY) * cellHeight)))
     const anchorXPx = Math.max(0, Math.min(cellWidth - 1, Math.round(input.anchorX * cellWidth)))
-    return { input, cellWidth, cellHeight, anchorYPx, anchorXPx }
+    const cols = Math.max(1, Math.floor(input.cols))
+    const cellIndex = Math.max(0, Math.floor(input.cellIndex))
+    const rect = { x: (cellIndex % cols) * cellWidth, y: Math.floor(cellIndex / cols) * cellHeight, w: cellWidth, h: cellHeight }
+    return { input, cellWidth, cellHeight, anchorYPx, anchorXPx, cols, cellIndex, rect }
   })
+
+  const warnings: string[] = []
+  // 底色：显式给了就用给的；没给就按**各格内容平均亮度**自适应（P2-7，浅色角色在深底上会糊）。
+  const lumaSamples = anchors
+    .map((one) => contentLumaOf(one.input.image, one.rect, alphaThreshold))
+    .filter((one): one is number => one !== null)
+  const meanLuma = lumaSamples.length === 0 ? null : lumaSamples.reduce((sum, one) => sum + one, 0) / lumaSamples.length
+  const background: BaselineBackground =
+    typeof options.background === 'string'
+      ? { hex: options.background, meanLuma: meanLuma === null ? null : Math.round(meanLuma), adaptive: false }
+      : adaptiveBaselineBackground(meanLuma)
+  if (background.adaptive) warnings.push(`底色自适应：${background.reason}（要固定的底色就显式传 background）`)
+  const fill = parseColorHex(background.hex, 'background')
 
   const topSpace = Math.max(...anchors.map((one) => one.anchorYPx))
   const bottomSpace = Math.max(...anchors.map((one) => one.cellHeight - one.anchorYPx))
   const width = 2 * padding + anchors.reduce((sum, one) => sum + one.cellWidth, 0) + gap * (anchors.length - 1)
   const height = 2 * padding + topSpace + bottomSpace
-  const image = createImage(width, height, background)
+  const image = createImage(width, height, fill)
   const baselineY = padding + topSpace
 
   const items: BaselineItem[] = []
-  const warnings: string[] = []
   let cursorX = padding
   for (const one of anchors) {
-    const { input, cellWidth, cellHeight, anchorYPx, anchorXPx } = one
+    const { input, cellWidth, cellHeight, anchorYPx, anchorXPx, cellIndex, rect } = one
     const drawX = cursorX
     const drawY = baselineY - anchorYPx
-    const cols = Math.max(1, Math.floor(input.cols))
-    const cellIndex = Math.max(0, Math.floor(input.cellIndex))
-    const col = cellIndex % cols
-    const row = Math.floor(cellIndex / cols)
     // 只搬这一格：整张图集可能有几十格，全搬上去就成不了"按顺序排开"的准绳图。
-    blit(image, input.image, drawX, drawY, {
-      x: col * cellWidth,
-      y: row * cellHeight,
-      w: cellWidth,
-      h: cellHeight,
-    })
+    blit(image, input.image, drawX, drawY, rect)
     const content = cellContentOf(
       input.image,
-      { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight },
+      rect,
       cellIndex,
-      col,
-      row,
+      Math.floor(rect.x / cellWidth),
+      Math.floor(rect.y / cellHeight),
       alphaThreshold,
     )
     if (content.empty) {
@@ -614,6 +829,7 @@ export function composeBaseline(inputs: BaselineCellInput[], options: BaselineOp
     }
     items.push({
       name: input.name,
+      cellIndex,
       charHeightPx: content.charHeightPx,
       anchorX: input.anchorX,
       anchorY: input.anchorY,
@@ -669,5 +885,5 @@ export function composeBaseline(inputs: BaselineCellInput[], options: BaselineOp
     }
   }
 
-  return { image, width, height, baselineY, headTopY, items, warnings }
+  return { image, width, height, baselineY, headTopY, background, items, warnings }
 }

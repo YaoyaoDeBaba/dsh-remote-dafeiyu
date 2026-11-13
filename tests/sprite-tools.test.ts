@@ -32,7 +32,7 @@ function stubService() {
     cleanup: record('cleanup'),
     exportSheet: record('exportSheet'),
     baseline: record('baseline'),
-    autotune: async () => ({ ok: true, params: {}, trace: [], reachedGoal: true }),
+    autotune: record('autotune'),
     batch: record('batch'),
     auto: record('auto'),
     stop: async () => undefined,
@@ -306,6 +306,83 @@ test('sprite_cleanup 的 trim 策略与 maskRect=auto 能过到 service', async 
     maskRect: 'auto',
     trim: { mode: 'first-frame', pad: { top: 4, bottom: 6 }, alphaThreshold: 40 },
   })
+})
+
+test('P1-3：sprite_autotune 的起点参数原样过到 service，不认识的键进 ignoredParams', async () => {
+  const { service, calls } = stubService()
+  const autotune = buildTools(service).find((tool) => tool.name === 'sprite_autotune')!
+  const run = (args: unknown): Promise<unknown> => (autotune.execute as (a: unknown) => Promise<unknown>)(args)
+
+  await run({
+    goal: { maxBgResidual: 0.001 },
+    params: { intensity: 85, softness: 100, despill: 70, greenToAlpha: 25, autoPlate: true, nonsense: 1 },
+    maxIters: 4,
+  })
+  const call = calls.find((entry) => entry.name === 'autotune')!
+  assert.deepEqual(call.args, {
+    goal: { maxBgResidual: 0.001 },
+    // 白名单里的都转过去；nonsense 不许静默消失（返回里显形）
+    params: { intensity: 85, softness: 100, despill: 70, greenToAlpha: 25, autoPlate: true },
+    maxIters: 4,
+  })
+  const text = String(await run({ params: { intensity: 85, nonsense: 1 } }))
+  assert.match(text, /ignoredParams/)
+  assert.match(text, /nonsense/)
+
+  // 不传 params 时连键都不许出现（默认值只许有一处：service）
+  await run({ maxIters: 2 })
+  assert.deepEqual(calls.filter((entry) => entry.name === 'autotune').at(-1)!.args, {
+    goal: {},
+    maxIters: 2,
+  })
+})
+
+test('P1-3：sprite_autotune 的描述写清了 appliedParams/bestParams 的语义', () => {
+  const { service } = stubService()
+  const autotune = buildTools(service).find((tool) => tool.name === 'sprite_autotune')!
+  const description = String(autotune.description)
+  assert.match(description, /appliedParams/)
+  assert.match(description, /bestParams/)
+  assert.match(description, /未达标时 appliedParams 就是你给的这套/)
+  const props = (autotune.parameters as { properties: Record<string, { description?: string }> }).properties
+  assert.match(String(props.params?.description), /未达标时\*\*原样保留\*\*/)
+})
+
+test('P2-6：sprite_baseline 的 cellIndex 支持 "tallest"/"median"，数字照旧能过', async () => {
+  const { service, calls } = stubService()
+  const baseline = buildTools(service).find((tool) => tool.name === 'sprite_baseline')!
+  const run = (args: unknown): Promise<unknown> => (baseline.execute as (a: unknown) => Promise<unknown>)(args)
+
+  await run({ paths: ['D:\\out\\idle\\idle_8x6.png'], cellIndex: 'tallest' })
+  assert.deepEqual(calls.filter((entry) => entry.name === 'baseline').at(-1)!.args, {
+    paths: ['D:\\out\\idle\\idle_8x6.png'],
+    cellIndex: 'tallest',
+  })
+  await run({ paths: ['D:\\out\\idle\\idle_8x6.png'], cellIndex: 3 })
+  assert.deepEqual(calls.filter((entry) => entry.name === 'baseline').at(-1)!.args, {
+    paths: ['D:\\out\\idle\\idle_8x6.png'],
+    cellIndex: 3,
+  })
+  await run({ paths: ['D:\\out\\idle\\idle_8x6.png'], cellIndex: 'nonsense' })
+  assert.deepEqual(calls.filter((entry) => entry.name === 'baseline').at(-1)!.args, {
+    paths: ['D:\\out\\idle\\idle_8x6.png'],
+  }, '不认识的字符串不编默认值，交给 service 报错')
+
+  const schema = baseline.parameters as { properties: Record<string, Record<string, unknown>> }
+  assert.deepEqual(schema.properties.cellIndex?.oneOf, [
+    { type: 'number' },
+    { type: 'string', enum: ['tallest', 'median'] },
+  ])
+  assert.match(String(schema.properties.background?.description), /自适应/)
+})
+
+test('P1-补：sprite_loop_scan 的描述点名 suggestedAction / warnings[0]', () => {
+  const { service } = stubService()
+  const scan = buildTools(service).find((tool) => tool.name === 'sprite_loop_scan')!
+  const description = String(scan.description)
+  assert.match(description, /suggestedAction/)
+  assert.match(description, /treat-as-one-shot/)
+  assert.match(description, /warnings\[0\]/)
 })
 
 test('sprite_guide 的正文来自 skill 真源；内置兜底够干活、常驻引导只指路', () => {

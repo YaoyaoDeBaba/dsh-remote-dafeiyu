@@ -19815,45 +19815,45 @@ var PATTERN_IS_COMPLETE = /* @__PURE__ */ new Set([
   "xid"
 ]);
 function generateStringFormatCheck(doc, ctx, def, accessor, needsValue = true) {
-  const fmt = def.format;
-  if (fmt === "base64") {
+  const fmt2 = def.format;
+  if (fmt2 === "base64") {
     const validator = addConstant(ctx, isValidBase64);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt === "base64url") {
+  if (fmt2 === "base64url") {
     const validator = addConstant(ctx, isValidBase64URL);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt === "jwt") {
+  if (fmt2 === "jwt") {
     const validator = addConstant(ctx, isValidJWT);
     const alg = addConstant(ctx, def.alg ?? null);
     doc.write(`if (!${validator}(${accessor}, ${alg})) return INVALID;`);
     return accessor;
   }
-  if (fmt === "ipv6") {
+  if (fmt2 === "ipv6") {
     const validator = addConstant(ctx, isValidIPv6);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt === "cidrv6") {
+  if (fmt2 === "cidrv6") {
     const validator = addConstant(ctx, isValidCIDRv6);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt === "credit_card") {
+  if (fmt2 === "credit_card") {
     const validator = addConstant(ctx, isValidCreditCard);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt === "iban") {
+  if (fmt2 === "iban") {
     const validator = addConstant(ctx, isValidIBAN);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   const formatDef = def;
-  if (fmt === "url" || fmt === "httpurl" || formatDef.normalize || formatDef.hostname !== void 0 || formatDef.protocol !== void 0) {
+  if (fmt2 === "url" || fmt2 === "httpurl" || formatDef.normalize || formatDef.hostname !== void 0 || formatDef.protocol !== void 0) {
     const parseConst = addConstant(ctx, validateURL);
     const defConst = addConstant(ctx, def);
     const trimVar = newVar(ctx);
@@ -19879,12 +19879,12 @@ function generateStringFormatCheck(doc, ctx, def, accessor, needsValue = true) {
   const customFn = def.fn;
   if (customFn) {
     if (isAsyncFunction(customFn))
-      throw new ZodCompileUnsupportedError(`async string format ${fmt}`);
+      throw new ZodCompileUnsupportedError(`async string format ${fmt2}`);
     const fnConst = addConstant(ctx, customFn);
     doc.write(`if (!${fnConst}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (PATTERN_IS_COMPLETE.has(fmt) && def.pattern) {
+  if (PATTERN_IS_COMPLETE.has(fmt2) && def.pattern) {
     const patternConst = addConstant(ctx, def.pattern);
     doc.write(`${patternConst}.lastIndex = 0;`);
     doc.write(`if (!${patternConst}.test(${accessor})) return INVALID;`);
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.81" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.82" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38947,6 +38947,12 @@ function checkGridCapacity(frames, cols, rows) {
 var CONTENT_ALPHA_CUT = 32;
 var FULL_SCAN_LIMIT = 48;
 var SAMPLE_LIMIT = 12;
+var CLIP_EDGE_MIN_PX = 2;
+var CLIP_EDGE_RATIO = 0.02;
+function clipEdgeThreshold(edgeLength) {
+  const len = Math.max(0, Math.round(Number(edgeLength) || 0));
+  return Math.max(CLIP_EDGE_MIN_PX, Math.ceil(len * CLIP_EDGE_RATIO));
+}
 function medianOf(values) {
   if (values.length === 0) throw new Error("medianOf \u9700\u8981\u81F3\u5C11\u4E00\u4E2A\u6570\uFF08\u7A7A\u96C6\u5408\u6CA1\u6709\u4E2D\u4F4D\u6570\uFF09");
   const sorted = [...values].sort((a, b) => a - b);
@@ -38975,6 +38981,19 @@ function cellContentOf(image, cell, index, col, row, alphaThreshold = CONTENT_AL
   let minY = y1;
   let maxX = -1;
   let maxY = -1;
+  const verticalThreshold = clipEdgeThreshold(y1 - y0);
+  const horizontalThreshold = clipEdgeThreshold(x1 - x0);
+  const clipThreshold = {
+    left: verticalThreshold,
+    right: verticalThreshold,
+    top: horizontalThreshold,
+    bottom: horizontalThreshold
+  };
+  const edgePx = { left: 0, top: 0, right: 0, bottom: 0 };
+  const countLeft = x0 > 0;
+  const countTop = y0 > 0;
+  const countRight = x1 < image.width;
+  const countBottom = y1 < image.height;
   for (let y = y0; y < y1; y++) {
     const rowBase = y * image.width;
     for (let x = x0; x < x1; x++) {
@@ -38983,17 +39002,33 @@ function cellContentOf(image, cell, index, col, row, alphaThreshold = CONTENT_AL
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
       if (y > maxY) maxY = y;
+      if (countLeft && x === x0) edgePx.left++;
+      if (countRight && x === x1 - 1) edgePx.right++;
+      if (countTop && y === y0) edgePx.top++;
+      if (countBottom && y === y1 - 1) edgePx.bottom++;
     }
   }
+  const clippedEdges = ["left", "top", "right", "bottom"].filter(
+    (edge) => edgePx[edge] > clipThreshold[edge]
+  );
+  const clipped = clippedEdges.length > 0;
   if (maxX < 0 || maxY < 0) {
-    return { index, col, row, bbox: null, charHeightPx: 0, headTopY: null, soleY: null, empty: true, clipped: false };
+    return {
+      index,
+      col,
+      row,
+      bbox: null,
+      charHeightPx: 0,
+      headTopY: null,
+      soleY: null,
+      empty: true,
+      clipped: false,
+      edgePx: { left: 0, top: 0, right: 0, bottom: 0 },
+      clippedEdges: [],
+      clipThreshold
+    };
   }
   const bbox = { x: minX - x0, y: minY - y0, w: maxX - minX + 1, h: maxY - minY + 1 };
-  const left = x0 > 0 ? x0 : 0;
-  const top = y0 > 0 ? y0 : 0;
-  const right = x1 < image.width ? x1 : image.width;
-  const bottom = y1 < image.height ? y1 : image.height;
-  const clipped = minX <= left && left > 0 || minY <= top && top > 0 || maxX >= right - 1 && right < image.width || maxY >= bottom - 1 && bottom < image.height;
   return {
     index,
     col,
@@ -39003,7 +39038,10 @@ function cellContentOf(image, cell, index, col, row, alphaThreshold = CONTENT_AL
     headTopY: bbox.y,
     soleY: bbox.y + bbox.h - 1,
     empty: false,
-    clipped
+    clipped,
+    edgePx,
+    clippedEdges,
+    clipThreshold
   };
 }
 function measureSheet(image, options) {
@@ -39046,8 +39084,17 @@ function measureSheet(image, options) {
   }
   const clipped = perCell.filter((cell) => cell.clipped);
   if (clipped.length > 0) {
+    let worst;
+    for (const cell of clipped) {
+      for (const edge of cell.clippedEdges) {
+        const px = cell.edgePx[edge];
+        const threshold = cell.clipThreshold[edge];
+        const ratio = px / Math.max(1, threshold);
+        if (!worst || ratio > worst.ratio) worst = { cell, edge, px, threshold, ratio };
+      }
+    }
     warnings.push(
-      `\u6709 ${clipped.length} \u683C\u7684\u5185\u5BB9\u9876\u5230\u4E86\u683C\u5B50\u8FB9\u7F18\uFF08\u7B2C ${clipped.slice(0, 3).map((cell) => cell.index).join("\u3001")} \u683C\uFF09\u2014\u2014\u7F29\u653E/\u88C1\u526A\u628A\u4E3B\u4F53\u5207\u4E86\uFF0C\u8FD9\u4E00\u683C\u7684\u8EAB\u9AD8\u4F1A\u504F\u5C0F\u3002`
+      `\u6709 ${clipped.length}/${perCell.length} \u683C\u7684\u5185\u5BB9**\u8D34\u8FB9\u50CF\u7D20\u6570**\u8D85\u8FC7\u9608\u503C\uFF08\u5224\u5B9A\u53E3\u5F84\uFF1A\u67D0\u6761\u8FB9\u4E0A\u7684\u8D34\u8FB9\u50CF\u7D20\u6570 > max(${CLIP_EDGE_MIN_PX}, ceil(\u8FB9\u957F\xD7${Math.round(CLIP_EDGE_RATIO * 100)}%))\uFF0C\u4E0D\u662F"\u8D34\u5230\u8FB9\u5C31\u7B97"\uFF09\uFF1B\u6700\u4E25\u91CD\u7684\u662F\u7B2C ${worst?.cell.index ?? clipped[0].index} \u683C\uFF08${worst?.edge ?? clipped[0].clippedEdges[0]} \u8FB9 ${worst?.px ?? 0}px / \u9608\u503C ${worst?.threshold ?? 0}px\uFF1B\u9010\u683C\u539F\u59CB\u8BA1\u6570\u5728 perCell[].edgePx \u91CC\uFF09\u2014\u2014\u6210\u7247\u88AB\u6A2A\u5207\u624D\u662F\u771F\u88AB\u88C1\uFF08\u8FD9\u4E00\u683C\u8EAB\u9AD8\u4F1A\u504F\u5C0F\uFF09\uFF1B\u7EC6\u5C16/\u6297\u952F\u9F7F\u8D34\u5230 pad \u8FB9\u754C\u5C5E\u4E8E\u6B63\u5E38\u3002`
     );
   }
   if (filled.length === 0) {
@@ -39221,12 +39268,85 @@ function drawCellOverlay(sheet, measurement, options) {
   }
   return { image, flagged };
 }
+var BASELINE_DARK_BG = "#202030";
+var BASELINE_LIGHT_BG = "#f2f2f5";
+var BASELINE_LUMA_SPLIT = 128;
+function contentLumaOf(image, cell, alphaThreshold = CONTENT_ALPHA_CUT) {
+  const x0 = Math.max(0, Math.round(cell.x));
+  const y0 = Math.max(0, Math.round(cell.y));
+  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(cell.w)));
+  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(cell.h)));
+  let sum = 0;
+  let count = 0;
+  for (let y = y0; y < y1; y++) {
+    const rowBase = y * image.width;
+    for (let x = x0; x < x1; x++) {
+      const at = (rowBase + x) * 4;
+      if (image.rgba[at + 3] <= alphaThreshold) continue;
+      sum += (299 * image.rgba[at] + 587 * image.rgba[at + 1] + 114 * image.rgba[at + 2]) / 1e3;
+      count++;
+    }
+  }
+  return count === 0 ? null : sum / count;
+}
+function adaptiveBaselineBackground(meanLuma) {
+  if (meanLuma === null || !Number.isFinite(meanLuma)) {
+    return {
+      hex: BASELINE_DARK_BG,
+      meanLuma: null,
+      adaptive: true,
+      reason: `\u91CF\u4E0D\u5230\u5185\u5BB9\u4EAE\u5EA6\uFF0C\u7528\u9ED8\u8BA4\u6DF1\u5E95 ${BASELINE_DARK_BG}`
+    };
+  }
+  const luma = Math.round(meanLuma);
+  if (meanLuma >= BASELINE_LUMA_SPLIT) {
+    return {
+      hex: BASELINE_DARK_BG,
+      meanLuma: luma,
+      adaptive: true,
+      reason: `\u4E3B\u4F53\u5E73\u5747\u4EAE\u5EA6 ${luma}\uFF08\u504F\u4EAE\uFF09\u2192 \u6DF1\u5E95 ${BASELINE_DARK_BG}\uFF0C\u6D45\u8272\u89D2\u8272\u4E0D\u4F1A\u7CCA\u5728\u5E95\u8272\u91CC`
+    };
+  }
+  return {
+    hex: BASELINE_LIGHT_BG,
+    meanLuma: luma,
+    adaptive: true,
+    reason: `\u4E3B\u4F53\u5E73\u5747\u4EAE\u5EA6 ${luma}\uFF08\u504F\u6697\uFF09\u2192 \u6D45\u5E95 ${BASELINE_LIGHT_BG}\uFF0C\u6DF1\u8272\u8F6E\u5ED3\u624D\u770B\u5F97\u51FA\u6765`
+  };
+}
+function anchorConventionWarnings(entries) {
+  const warnings = [];
+  const byConvention = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const convention = String(entry.convention ?? "y-from-bottom").trim() || "y-from-bottom";
+    byConvention.set(convention, [...byConvention.get(convention) ?? [], entry.name]);
+  }
+  if (byConvention.size > 1) {
+    const detail = [...byConvention.entries()].map(([convention, names]) => `${convention}: ${names.join("\u3001")}`).join("\uFF1B");
+    warnings.push(
+      `\u4E00\u7EC4\u91CC\u951A\u70B9\u53E3\u5F84\u6DF7\u7528\uFF08${detail}\uFF09\uFF1A\u53E3\u5F84\u7591\u4F3C\u4E0D\u4E00\u81F4\uFF0C\u753B\u51FA\u6765\u7684\u5730\u5E73\u7EBF\u53EF\u80FD\u6574\u4F53\u504F\u79FB\u2014\u2014\u5148\u7EDF\u4E00\u6210 y-from-bottom \u518D\u8DD1\u51C6\u7EF3\u56FE\uFF08meta \u91CC\u5199 anchorConvention \u4E5F\u6551\u4E0D\u4E86\u6DF7\u7528\u7684\u503C\uFF09`
+    );
+  }
+  for (const entry of entries) {
+    const topDown = entry.anchorYTopDown;
+    if (typeof topDown !== "number" || !Number.isFinite(topDown)) continue;
+    const impliedTopDown = 1 - entry.anchorY;
+    if (Math.abs(impliedTopDown - topDown) > 1e-3) {
+      warnings.push(
+        `${entry.name} \u7684 anchorY=${roundOf(entry.anchorY)}\uFF08y-from-bottom\uFF09\u53CD\u63A8 y-from-top=${roundOf(impliedTopDown)}\uFF0C\u4F46 meta \u91CC\u7684 anchorYTopDown=${roundOf(topDown)}\uFF1A\u53E3\u5F84\u7591\u4F3C\u4E0D\u4E00\u81F4\uFF0C\u753B\u51FA\u6765\u7684\u5730\u5E73\u7EBF\u53EF\u80FD\u6574\u4F53\u504F\u79FB\uFF08\u672C\u6B21\u6309 y-from-bottom \u5904\u7406\uFF0C\u5148\u6838\u5BF9 meta \u8FD9\u4E00\u5BF9\u5B57\u6BB5\uFF09`
+      );
+    }
+  }
+  return warnings;
+}
+function roundOf(value) {
+  return Math.round(value * 1e3) / 1e3;
+}
 function composeBaseline(inputs, options = {}) {
   if (inputs.length === 0) throw new Error("\u51C6\u7EF3\u56FE\u9700\u8981\u81F3\u5C11\u4E00\u5F20\u56FE\u96C6");
   const gap = Math.max(0, Math.round(options.gap ?? 8));
   const padding = Math.max(0, Math.round(options.padding ?? 4));
   const alphaThreshold = options.alphaThreshold ?? CONTENT_ALPHA_CUT;
-  const background = parseColorHex(options.background ?? "#202030", "background");
   const anchors = inputs.map((input2) => {
     if (!(input2.anchorX >= 0 && input2.anchorX <= 1)) throw new Error(`${input2.name} \u7684 anchorX \u4E0D\u5728 0~1\uFF1A${input2.anchorX}`);
     if (!(input2.anchorY >= 0 && input2.anchorY <= 1)) throw new Error(`${input2.name} \u7684 anchorY \u4E0D\u5728 0~1\uFF1A${input2.anchorY}`);
@@ -39234,37 +39354,36 @@ function composeBaseline(inputs, options = {}) {
     const cellHeight = Math.max(1, Math.round(input2.cellHeight));
     const anchorYPx = Math.max(0, Math.min(cellHeight - 1, Math.round((1 - input2.anchorY) * cellHeight)));
     const anchorXPx = Math.max(0, Math.min(cellWidth - 1, Math.round(input2.anchorX * cellWidth)));
-    return { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx };
+    const cols = Math.max(1, Math.floor(input2.cols));
+    const cellIndex = Math.max(0, Math.floor(input2.cellIndex));
+    const rect = { x: cellIndex % cols * cellWidth, y: Math.floor(cellIndex / cols) * cellHeight, w: cellWidth, h: cellHeight };
+    return { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx, cols, cellIndex, rect };
   });
+  const warnings = [];
+  const lumaSamples = anchors.map((one) => contentLumaOf(one.input.image, one.rect, alphaThreshold)).filter((one) => one !== null);
+  const meanLuma = lumaSamples.length === 0 ? null : lumaSamples.reduce((sum, one) => sum + one, 0) / lumaSamples.length;
+  const background = typeof options.background === "string" ? { hex: options.background, meanLuma: meanLuma === null ? null : Math.round(meanLuma), adaptive: false } : adaptiveBaselineBackground(meanLuma);
+  if (background.adaptive) warnings.push(`\u5E95\u8272\u81EA\u9002\u5E94\uFF1A${background.reason}\uFF08\u8981\u56FA\u5B9A\u7684\u5E95\u8272\u5C31\u663E\u5F0F\u4F20 background\uFF09`);
+  const fill = parseColorHex(background.hex, "background");
   const topSpace = Math.max(...anchors.map((one) => one.anchorYPx));
   const bottomSpace = Math.max(...anchors.map((one) => one.cellHeight - one.anchorYPx));
   const width = 2 * padding + anchors.reduce((sum, one) => sum + one.cellWidth, 0) + gap * (anchors.length - 1);
   const height = 2 * padding + topSpace + bottomSpace;
-  const image = createImage(width, height, background);
+  const image = createImage(width, height, fill);
   const baselineY = padding + topSpace;
   const items = [];
-  const warnings = [];
   let cursorX = padding;
   for (const one of anchors) {
-    const { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx } = one;
+    const { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx, cellIndex, rect } = one;
     const drawX = cursorX;
     const drawY = baselineY - anchorYPx;
-    const cols = Math.max(1, Math.floor(input2.cols));
-    const cellIndex = Math.max(0, Math.floor(input2.cellIndex));
-    const col = cellIndex % cols;
-    const row = Math.floor(cellIndex / cols);
-    blit(image, input2.image, drawX, drawY, {
-      x: col * cellWidth,
-      y: row * cellHeight,
-      w: cellWidth,
-      h: cellHeight
-    });
+    blit(image, input2.image, drawX, drawY, rect);
     const content = cellContentOf(
       input2.image,
-      { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight },
+      rect,
       cellIndex,
-      col,
-      row,
+      Math.floor(rect.x / cellWidth),
+      Math.floor(rect.y / cellHeight),
       alphaThreshold
     );
     if (content.empty) {
@@ -39272,6 +39391,7 @@ function composeBaseline(inputs, options = {}) {
     }
     items.push({
       name: input2.name,
+      cellIndex,
       charHeightPx: content.charHeightPx,
       anchorX: input2.anchorX,
       anchorY: input2.anchorY,
@@ -39318,7 +39438,7 @@ function composeBaseline(inputs, options = {}) {
       );
     }
   }
-  return { image, width, height, baselineY, headTopY, items, warnings };
+  return { image, width, height, baselineY, headTopY, background, items, warnings };
 }
 
 // src/sprite/encode.ts
@@ -40986,6 +41106,34 @@ function scanRangeFor(frames, preFps, minPeriodSec) {
   }
   return { lo, hi, warnings };
 }
+var ONE_SHOT_ACTION = "treat-as-one-shot";
+var ONE_SHOT_ACTION_TEXT = "\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406\uFF08\u522B\u505A\u5FAA\u73AF\u95ED\u5408\uFF09";
+function lowConfidenceWarning(reason) {
+  const detail = String(reason ?? "").trim() || "\u81EA\u76F8\u5173\u66F2\u7EBF\u5E73\u7F13\uFF0C\u5468\u671F\u5224\u4E0D\u6E05";
+  if (detail.includes("\u4E00\u6B21\u6027\u52A8\u4F5C")) return `${detail}\uFF08confidence:"low"\uFF09`;
+  return `${ONE_SHOT_ACTION_TEXT}\uFF1A${detail}`;
+}
+function finalizeLoopScan(input2) {
+  const warnings = [...input2.warnings];
+  const low = input2.confidence === "low";
+  if (low) warnings.unshift(lowConfidenceWarning(input2.reason));
+  const scoreCurve = [...input2.curve].sort((a, b) => a.score - b.score).slice(0, 5).map((point) => ({ frames: point.L, score: point.score }));
+  return {
+    ok: true,
+    periodFrames: input2.periodFrames,
+    periodSec: round4(input2.periodFrames / input2.fps),
+    suggestedFps: input2.suggested.fps,
+    targetFrames: input2.suggested.targetFrames,
+    scoreCurve,
+    closureScore: input2.closureScore,
+    confidence: input2.confidence,
+    ...input2.reason ? { reason: input2.reason } : {},
+    ...low ? { suggestedAction: ONE_SHOT_ACTION } : {},
+    warnings,
+    scanned: input2.scanned,
+    elapsedMs: input2.elapsedMs
+  };
+}
 
 // src/sprite/types.ts
 var KEY_PARAM_KEYS = [
@@ -41589,6 +41737,204 @@ function resolveMeasuredBasis(input2) {
     charHeightPx: bboxHeight,
     warnings: [BBOX_BASIS_WARNING, ...input2.guessReason ? [`\u8BED\u4E49\u8EAB\u9AD8\u6CA1\u731C\u51FA\u6765\uFF1A${input2.guessReason}`] : []]
   };
+}
+
+// src/sprite/select.ts
+var SELECT_SEMANTIC_LIMIT = 12;
+function cropCell(image, rect) {
+  const x0 = Math.max(0, Math.round(rect.x));
+  const y0 = Math.max(0, Math.round(rect.y));
+  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(rect.w)));
+  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(rect.h)));
+  const width = Math.max(1, x1 - x0);
+  const height = Math.max(1, y1 - y0);
+  const rgba = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const srcRow = (y0 + y) * image.width;
+    for (let x = 0; x < width; x++) {
+      const from = (srcRow + x0 + x) * 4;
+      const to = (y * width + x) * 4;
+      rgba[to] = image.rgba[from];
+      rgba[to + 1] = image.rgba[from + 1];
+      rgba[to + 2] = image.rgba[from + 2];
+      rgba[to + 3] = image.rgba[from + 3];
+    }
+  }
+  return { width, height, rgba };
+}
+function selectBaselineCell(image, grid, mode, alphaThreshold = CONTENT_ALPHA_CUT) {
+  const cols = Math.max(1, Math.floor(grid.cols));
+  const rows = Math.max(1, Math.floor(grid.rows));
+  const cellWidth = Math.max(1, Math.round(grid.cellWidth));
+  const cellHeight = Math.max(1, Math.round(grid.cellHeight));
+  const totalCells = cols * rows;
+  if (typeof mode === "number") {
+    const cellIndex = Math.max(0, Math.floor(mode));
+    if (cellIndex >= totalCells) {
+      throw new Error(`cellIndex=${cellIndex} \u8D85\u51FA\u7F51\u683C\uFF08${cols}\xD7${rows}\uFF0C\u6700\u5927\u5E8F\u53F7 ${totalCells - 1}\uFF09`);
+    }
+    return { cellIndex, basis: "fixed", heightPx: 0, cellsScanned: 0, semanticCells: 0 };
+  }
+  const cells = Array.from({ length: totalCells }, (_one, index) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const rect = { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight };
+    const content = cellContentOf(image, rect, index, col, row, alphaThreshold);
+    return { index, rect, heightPx: content.charHeightPx, empty: content.empty };
+  });
+  const filled = cells.filter((cell) => !cell.empty);
+  if (filled.length === 0) {
+    return {
+      cellIndex: 0,
+      basis: "bbox",
+      heightPx: 0,
+      cellsScanned: totalCells,
+      semanticCells: 0,
+      note: `\u5168\u91CF\u91CF\u4E86 ${totalCells} \u683C\uFF0C\u4E00\u683C\u5185\u5BB9\u90FD\u6CA1\u6709\uFF08\u62FC\u9519/\u5168\u900F\uFF1F\uFF09\uFF0C\u9000\u56DE\u7B2C 0 \u683C`
+    };
+  }
+  const heights = filled.map((cell) => cell.heightPx);
+  const medianHeight = medianOf(heights);
+  if (mode === "median") {
+    let chosen = filled[0];
+    for (const cell of filled) {
+      const gap = Math.abs(cell.heightPx - medianHeight);
+      const best2 = Math.abs(chosen.heightPx - medianHeight);
+      if (gap < best2 || gap === best2 && cell.heightPx > chosen.heightPx || gap === best2 && cell.heightPx === chosen.heightPx && cell.index < chosen.index) {
+        chosen = cell;
+      }
+    }
+    return {
+      cellIndex: chosen.index,
+      basis: "bbox",
+      heightPx: chosen.heightPx,
+      cellsScanned: totalCells,
+      semanticCells: 0,
+      note: `cellIndex=median\uFF1A\u91CF\u4E86 ${filled.length}/${totalCells} \u683C\uFF0Cbbox \u9AD8\u4E2D\u4F4D\u6570 ${medianHeight}px \u2192 \u7B2C ${chosen.index} \u683C\uFF08${chosen.heightPx}px\uFF09`
+    };
+  }
+  const shortlist = [...filled].sort((a, b) => b.heightPx - a.heightPx || a.index - b.index).slice(0, SELECT_SEMANTIC_LIMIT);
+  const ranked = shortlist.map((cell) => {
+    const guess = guessSemanticHeight(cropCell(image, cell.rect));
+    const semantic = guess.ok && typeof guess.height === "number" && guess.height > 0 ? guess.height : null;
+    return {
+      index: cell.index,
+      bboxHeightPx: cell.heightPx,
+      semanticHeightPx: semantic,
+      usePx: semantic ?? cell.heightPx
+    };
+  });
+  let best = ranked[0];
+  for (const entry of ranked) {
+    const better = entry.usePx > best.usePx || entry.usePx === best.usePx && entry.bboxHeightPx > best.bboxHeightPx || entry.usePx === best.usePx && entry.bboxHeightPx === best.bboxHeightPx && entry.index < best.index;
+    if (better) best = entry;
+  }
+  const semanticCells = ranked.filter((entry) => entry.semanticHeightPx !== null).length;
+  const basis = best.semanticHeightPx === null ? "bbox" : "semantic";
+  const note = `cellIndex=tallest\uFF1A\u91CF\u4E86 ${filled.length}/${totalCells} \u683C\uFF0C\u5728 bbox \u6700\u9AD8\u7684 ${ranked.length} \u683C\u91CC\u731C\u8BED\u4E49\u8EAB\u9AD8\uFF08\u731C\u51FA ${semanticCells} \u683C\uFF09\u2192 \u7B2C ${best.index} \u683C\uFF08${basis === "semantic" ? `\u8BED\u4E49\u9AD8 ${best.semanticHeightPx}px` : `bbox \u9AD8 ${best.bboxHeightPx}px\uFF08\u8BED\u4E49\u8EAB\u9AD8\u6CA1\u731C\u51FA\u6765\uFF09`}\uFF09`;
+  return { cellIndex: best.index, basis, heightPx: best.usePx, cellsScanned: totalCells, semanticCells, note };
+}
+
+// src/sprite/tuning.ts
+function resolveAutotuneGoal(goal) {
+  return {
+    maxBgResidual: Number.isFinite(goal?.maxBgResidual) ? Number(goal?.maxBgResidual) : 5e-3,
+    minSubjectCoverage: Number.isFinite(goal?.minSubjectCoverage) ? Number(goal?.minSubjectCoverage) : 0.6,
+    maxEdgeGreen: Number.isFinite(goal?.maxEdgeGreen) ? Number(goal?.maxEdgeGreen) : 0.02
+  };
+}
+function autotunePenalty(step, goal) {
+  const bg = step.bgResidual / Math.max(goal.maxBgResidual, 1e-6);
+  const edge = step.edgeGreen / Math.max(goal.maxEdgeGreen, 1e-6);
+  const coverage = (goal.minSubjectCoverage - step.subjectCoverage) / Math.max(goal.minSubjectCoverage, 1e-6);
+  return bg + edge + coverage;
+}
+function stepReachedGoal(step, goal) {
+  return step.bgResidual <= goal.maxBgResidual && step.subjectCoverage >= goal.minSubjectCoverage && step.edgeGreen <= goal.maxEdgeGreen;
+}
+function autotuneMissedReasons(step, goal) {
+  const out = [];
+  if (!(step.bgResidual <= goal.maxBgResidual)) {
+    out.push(`bgResidual ${fmt(step.bgResidual)} > \u76EE\u6807 ${fmt(goal.maxBgResidual)}`);
+  }
+  if (!(step.subjectCoverage >= goal.minSubjectCoverage)) {
+    out.push(`subjectCoverage ${fmt(step.subjectCoverage)} < \u76EE\u6807 ${fmt(goal.minSubjectCoverage)}`);
+  }
+  if (!(step.edgeGreen <= goal.maxEdgeGreen)) {
+    out.push(`edgeGreen ${fmt(step.edgeGreen)} > \u76EE\u6807 ${fmt(goal.maxEdgeGreen)}`);
+  }
+  return out;
+}
+function fmt(value) {
+  if (!Number.isFinite(value)) return String(value);
+  return Math.abs(value) >= 1 ? value.toFixed(3) : value.toFixed(4);
+}
+function pickAutotuneBest(trace, goal) {
+  let best;
+  let bestPenalty = Number.POSITIVE_INFINITY;
+  for (const step of trace) {
+    const penalty = autotunePenalty(step, goal);
+    if (penalty < bestPenalty) {
+      best = step;
+      bestPenalty = penalty;
+    }
+  }
+  return best;
+}
+function resolveAutotune(input2) {
+  const startStep = input2.trace[0];
+  if (input2.reachedStep) {
+    return {
+      appliedParams: { ...input2.reachedStep.params },
+      bestParams: { ...input2.reachedStep.params },
+      bestStep: input2.reachedStep,
+      reachedGoal: true,
+      warnings: [],
+      ...startStep ? { startStep } : {}
+    };
+  }
+  const best = pickAutotuneBest(input2.trace, input2.goal);
+  const appliedParams = { ...input2.startParams };
+  const warnings = [];
+  if (!best) {
+    warnings.push(
+      "autotune \u672A\u8FBE\u6807\uFF0C\u800C\u4E14\u4E00\u8F6E\u6307\u6807\u90FD\u6CA1\u62FF\u5230\uFF08preview \u6CA1\u56DE stats\uFF09\uFF1A\u5DF2\u6309\u4F60\u7ED9\u7684\u53C2\u6570\u8FD4\u56DE\uFF0C\u6CA1\u6709\u751F\u6210\u4EFB\u4F55\u641C\u7D22\u7ED3\u8BBA\u2014\u2014\u5148\u7528 sprite_key_preview \u786E\u8BA4\u9875\u9762\u80FD\u51FA stats \u518D\u91CD\u8DD1"
+    );
+    return { appliedParams, bestParams: appliedParams, reachedGoal: false, warnings };
+  }
+  const missed = startStep ? autotuneMissedReasons(startStep, input2.goal) : [];
+  const missedText = missed.length > 0 ? missed.join("\uFF1B") : "\u76EE\u6807\u6CA1\u8FBE\u6210";
+  if (!startStep || best.round === startStep.round) {
+    warnings.push(
+      `autotune \u672A\u8FBE\u6807\uFF08${missedText}\uFF09\uFF1A**\u5DF2\u4FDD\u7559\u4F60\u7ED9\u7684\u53C2\u6570**\uFF0C\u800C\u4E14\u641C\u7D22\u6CA1\u627E\u5230\u66F4\u597D\u7684\u7EC4\u5408\uFF08bestParams \u4E0E\u4F60\u7ED9\u7684\u5B8C\u5168\u76F8\u540C\uFF09\u2014\u2014\u76F4\u63A5\u7528 appliedParams\uFF0C\u522B\u53BB trace \u91CC\u6311\u66F4\u5DEE\u7684\u8F6E\u6B21`
+    );
+    return {
+      appliedParams,
+      bestParams: { ...best.params },
+      bestStep: best,
+      reachedGoal: false,
+      warnings,
+      ...startStep ? { startStep } : {}
+    };
+  }
+  warnings.push(
+    `autotune \u672A\u8FBE\u6807\uFF08${missedText}\uFF09\uFF1A**\u5DF2\u4FDD\u7559\u4F60\u7ED9\u7684\u53C2\u6570**\uFF08\u6CA1\u88AB\u641C\u7D22\u4E2D\u7684\u52A3\u89E3\u8986\u76D6\uFF09\uFF1B\u641C\u7D22\u5230\u7684\u6700\u4F18\u89E3\u662F\u7B2C ${best.round} \u8F6E ${describeStep(best, input2.goal)}\u3002\u4E0E\u4F60\u7684\u53C2\u6570\u76F8\u6BD4\uFF1A${compareSteps(startStep, best)}\u2014\u2014\u8981\u4E0D\u8981\u7528\u5B83\u81EA\u5DF1\u51B3\u5B9A\uFF08appliedParams \u662F\u4F60\u73B0\u5728\u8FD9\u5957\uFF0CbestParams \u662F\u641C\u7D22\u8BA4\u4E3A\u66F4\u597D\u7684\u90A3\u5957\uFF09`
+  );
+  return {
+    appliedParams,
+    bestParams: { ...best.params },
+    bestStep: best,
+    reachedGoal: false,
+    warnings,
+    ...startStep ? { startStep } : {}
+  };
+}
+function describeStep(step, goal) {
+  return `\uFF08bgResidual ${fmt(step.bgResidual)}/${fmt(goal.maxBgResidual)}\u3001subjectCoverage ${fmt(step.subjectCoverage)}/${fmt(goal.minSubjectCoverage)}\u3001edgeGreen ${fmt(step.edgeGreen)}/${fmt(goal.maxEdgeGreen)}\uFF09`;
+}
+function compareSteps(from, to) {
+  const verdict = (a, b) => b < a - 1e-9 ? "\u66F4\u597D" : b > a + 1e-9 ? "\u66F4\u5DEE" : "\u6301\u5E73";
+  return `bgResidual ${fmt(from.bgResidual)} \u2192 ${fmt(to.bgResidual)}\uFF08${verdict(from.bgResidual, to.bgResidual)}\uFF09\u3001edgeGreen ${fmt(from.edgeGreen)} \u2192 ${fmt(to.edgeGreen)}\uFF08${verdict(from.edgeGreen, to.edgeGreen)}\uFF09`;
 }
 
 // src/sprite/verify.ts
@@ -42224,15 +42570,11 @@ function createSpriteService(options) {
     const firstLast = frameDiff(await pixelsOf(n - 1), await pixelsOf(0), mask);
     const closureScore = round4(firstLast / adjacent);
     const suggested = suggestFps(periodFrames, fps, params.targetMultiples ?? [24, 48]);
-    if (pick2.confidence === "low" && pick2.reason) warnings.push(pick2.reason);
-    const scoreCurve = [...curve].sort((a, b) => a.score - b.score).slice(0, 5).map((point) => ({ frames: point.L, score: point.score }));
-    return {
-      ok: true,
+    return finalizeLoopScan({
       periodFrames,
-      periodSec: round4(periodFrames / fps),
-      suggestedFps: suggested.fps,
-      targetFrames: suggested.targetFrames,
-      scoreCurve,
+      fps,
+      suggested,
+      curve,
       closureScore,
       confidence: pick2.confidence,
       ...pick2.reason ? { reason: pick2.reason } : {},
@@ -42247,7 +42589,7 @@ function createSpriteService(options) {
         range: { lo: range.lo, hi: range.hi }
       },
       elapsedMs: Date.now() - startedAt
-    };
+    });
   };
   const prepareLooped = async (params) => {
     const warnings = [];
@@ -42607,10 +42949,22 @@ function createSpriteService(options) {
       const raw = Array.isArray(args?.paths) ? args.paths : [];
       const wanted = raw.map((one) => String(one ?? "").trim()).filter((one) => one !== "");
       if (wanted.length === 0) throw new Error("\u9700\u8981 paths\uFF1A\u81F3\u5C11\u4E00\u5F20\u56FE\u96C6\u8DEF\u5F84\uFF08\u540C\u76EE\u5F55\u8FD8\u8981\u6709\u914D\u5957\u7684 meta.json\uFF09");
-      const cellIndexWanted = Math.max(0, Math.floor(Number(args.cellIndex ?? 0)));
+      const rawCellIndex = args.cellIndex ?? 0;
+      let selector;
+      if (typeof rawCellIndex === "number") {
+        if (!Number.isFinite(rawCellIndex)) throw new Error(`cellIndex \u4E0D\u662F\u6709\u6548\u6570\u5B57\uFF1A${String(rawCellIndex)}`);
+        selector = Math.max(0, Math.floor(rawCellIndex));
+      } else if (rawCellIndex === "tallest" || rawCellIndex === "median") {
+        selector = rawCellIndex;
+      } else {
+        throw new Error(`cellIndex \u53EA\u80FD\u662F\u683C\u53F7\uFF08\u6570\u5B57\uFF09\u6216 "tallest" / "median"\uFF08\u6536\u5230 ${JSON.stringify(rawCellIndex)}\uFF09`);
+      }
+      const mode = typeof selector === "number" ? "fixed" : selector;
       const inputs = [];
       const resolved = [];
       const warnings = [];
+      const conventions = [];
+      const selections = [];
       for (const target of wanted) {
         const abs = path20.isAbsolute(target) ? target : path20.join(outDirOf(), target);
         if (!existsSync3(abs)) throw new Error(`\u627E\u4E0D\u5230\u8FD9\u5F20\u56FE\u96C6\uFF1A${abs}`);
@@ -42654,26 +43008,36 @@ function createSpriteService(options) {
         if (convention !== "y-from-bottom" && convention !== "y-from-top") {
           warnings.push(`${path20.basename(abs)} \u7684 anchorConvention \u662F\u300C${convention}\u300D\uFF0C\u6309 y-from-bottom \u5904\u7406`);
         }
+        const topDownRaw = Number(meta3.anchorYTopDown);
+        conventions.push({
+          name: path20.basename(abs),
+          convention,
+          anchorY,
+          ...Number.isFinite(topDownRaw) ? { anchorYTopDown: topDownRaw } : {}
+        });
         const cols = Number(meta3.cols) > 0 ? Math.floor(Number(meta3.cols)) : Math.max(1, Math.round(decoded.width / cellWidth));
         const rows = Number(meta3.rows) > 0 ? Math.floor(Number(meta3.rows)) : Math.max(1, Math.round(decoded.height / cellHeight));
-        if (cellIndexWanted >= cols * rows) {
-          throw new Error(
-            `cellIndex=${cellIndexWanted} \u8D85\u51FA\u7F51\u683C\uFF08${path20.basename(abs)} \u662F ${cols}\xD7${rows}\uFF0C\u6700\u5927\u5E8F\u53F7 ${cols * rows - 1}\uFF09`
-          );
-        }
         const name2 = typeof meta3.name === "string" && meta3.name.trim() !== "" ? meta3.name.trim() : path20.basename(abs, path20.extname(abs));
-        inputs.push({
-          name: name2,
-          image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
-          cellIndex: cellIndexWanted,
-          cols,
-          cellWidth,
-          cellHeight,
-          anchorX,
-          anchorY
-        });
+        const image = { width: decoded.width, height: decoded.height, rgba: decoded.rgba };
+        let cellIndex;
+        if (typeof selector === "number") {
+          if (selector >= cols * rows) {
+            throw new Error(
+              `cellIndex=${selector} \u8D85\u51FA\u7F51\u683C\uFF08${path20.basename(abs)} \u662F ${cols}\xD7${rows}\uFF0C\u6700\u5927\u5E8F\u53F7 ${cols * rows - 1}\uFF09`
+            );
+          }
+          cellIndex = selector;
+        } else {
+          const picked = selectBaselineCell(image, { cols, rows, cellWidth, cellHeight }, selector);
+          cellIndex = picked.cellIndex;
+          if (picked.note) warnings.push(`${name2}: ${picked.note}`);
+          selections.push({ name: name2, cellIndex, basis: picked.basis, heightPx: picked.heightPx });
+        }
+        if (typeof selector === "number") selections.push({ name: name2, cellIndex, basis: "fixed", heightPx: 0 });
+        inputs.push({ name: name2, image, cellIndex, cols, cellWidth, cellHeight, anchorX, anchorY });
         resolved.push(abs);
       }
+      warnings.push(...anchorConventionWarnings(conventions));
       const composed = composeBaseline(inputs, {
         ...typeof args.gap === "number" ? { gap: args.gap } : {},
         ...typeof args.background === "string" && args.background.trim() !== "" ? { background: args.background.trim() } : {},
@@ -42692,6 +43056,8 @@ function createSpriteService(options) {
         height: composed.height,
         baselineY: composed.baselineY,
         headTopY: composed.headTopY,
+        background: composed.background,
+        cellIndexUsed: { mode, perItem: selections },
         items: composed.items,
         warnings
       };
@@ -43076,40 +43442,48 @@ function createSpriteService(options) {
       };
     },
     async autotune(args) {
-      const goal = {
-        maxBgResidual: args.goal?.maxBgResidual ?? 5e-3,
-        minSubjectCoverage: args.goal?.minSubjectCoverage ?? 0.6,
-        maxEdgeGreen: args.goal?.maxEdgeGreen ?? 0.02
-      };
+      const goal = resolveAutotuneGoal(args.goal);
       const iters = Math.max(1, Math.min(12, args.maxIters ?? 6));
       const frame = Math.max(0, args.frame ?? 0);
-      let params = {
-        colorHex: (await this.probeColor({ frame })).keyColor,
+      const caller = args.params ?? {};
+      const startParams = {
         mode: args.space?.mode?.[0] ?? "advanced",
         intensity: args.space?.intensity?.[0] ?? 60,
         softness: 60,
         despill: 70,
         greenToAlpha: 10,
         aggressive: true,
-        autoPlate: false
+        autoPlate: false,
+        ...caller,
+        // 自动采色：键色错的话后面怎么调都没用（P3）。调用方显式给了 colorHex 就用它的。
+        colorHex: caller.colorHex ?? (await this.probeColor({ frame })).keyColor
       };
+      let params = { ...startParams };
       const trace = [];
-      let stats;
+      let lastStats;
+      let startStats;
+      let reachedStep;
       for (let round = 0; round < iters; round++) {
         const preview = await this.keyPreview({ ...params, frame });
-        stats = preview.stats;
-        if (!stats) break;
-        trace.push({
+        const stats2 = preview.stats;
+        if (!stats2) break;
+        lastStats = stats2;
+        if (round === 0) startStats = stats2;
+        const step = {
           round,
           params: { ...params },
-          bgResidual: stats.bgResidual,
-          subjectCoverage: stats.subjectCoverage,
-          edgeGreen: stats.edgeGreen
-        });
-        const bgOk = stats.bgResidual <= (goal.maxBgResidual ?? 5e-3);
-        const covOk = stats.subjectCoverage >= (goal.minSubjectCoverage ?? 0.6);
-        const edgeOk = stats.edgeGreen <= (goal.maxEdgeGreen ?? 0.02);
-        if (bgOk && covOk && edgeOk) return { ok: true, params, trace, reachedGoal: true, ...stats ? { stats } : {} };
+          bgResidual: stats2.bgResidual,
+          subjectCoverage: stats2.subjectCoverage,
+          edgeGreen: stats2.edgeGreen
+        };
+        trace.push(step);
+        if (stepReachedGoal(step, goal)) {
+          reachedStep = step;
+          break;
+        }
+        const bgOk = stats2.bgResidual <= goal.maxBgResidual;
+        const covOk = stats2.subjectCoverage >= goal.minSubjectCoverage;
+        const edgeOk = stats2.edgeGreen <= goal.maxEdgeGreen;
         if (!bgOk && covOk) {
           params = { ...params, intensity: Math.min(args.space?.intensity?.[1] ?? 90, (params.intensity ?? 60) + 10) };
         } else if (!bgOk && !covOk) {
@@ -43119,7 +43493,19 @@ function createSpriteService(options) {
           params = { ...params, aggressive: true, greenToAlpha: Math.min(300, (params.greenToAlpha ?? 10) + 10) };
         }
       }
-      return { ok: true, params, trace, reachedGoal: false, ...stats ? { stats } : {} };
+      const outcome = resolveAutotune({ startParams, trace, goal, ...reachedStep ? { reachedStep } : {} });
+      const stats = outcome.reachedGoal ? lastStats : startStats;
+      return {
+        ok: true,
+        params: outcome.appliedParams,
+        appliedParams: outcome.appliedParams,
+        bestParams: outcome.bestParams,
+        ...outcome.bestStep ? { bestStep: outcome.bestStep } : {},
+        trace,
+        reachedGoal: outcome.reachedGoal,
+        ...outcome.warnings.length > 0 ? { warnings: outcome.warnings } : {},
+        ...stats ? { stats } : {}
+      };
     },
     async batch(args) {
       const items = args.items ?? [];
@@ -43227,10 +43613,12 @@ function createSpriteService(options) {
       const color = await this.probeColor({ frame: 0 });
       stages.push(`probeColor: ${color.keyColor} spread=${color.spread.toFixed(3)}`);
       const tuned = await this.autotune({ frame: 0, maxIters: 6 });
+      const tunedParams = tuned.bestParams ?? tuned.appliedParams ?? tuned.params ?? { colorHex: color.keyColor };
       stages.push(
-        `autotune: ${tuned.reachedGoal ? "\u8FBE\u6807" : "\u672A\u8FBE\u6807"}\uFF0C${tuned.trace.length} \u8F6E\uFF0C\u53C2\u6570 ${JSON.stringify(tuned.params)}`
+        `autotune: ${tuned.reachedGoal ? "\u8FBE\u6807" : "\u672A\u8FBE\u6807\uFF08\u6539\u7528\u641C\u7D22\u6700\u4F18\u89E3\uFF0Cwarning \u89C1\u4E0B\uFF09"}\uFF0C${tuned.trace.length} \u8F6E\uFF0C\u53C2\u6570 ${JSON.stringify(tunedParams)}`
       );
-      const applied = await this.keyApply({ ...tuned.params ?? { colorHex: color.keyColor } });
+      const autotuneWarnings = Array.isArray(tuned.warnings) ? tuned.warnings : [];
+      const applied = await this.keyApply({ ...tunedParams });
       stages.push(`keyApply: ${applied.frames} \u5E27\uFF0C\u7F13\u5B58 ${applied.keyedCount}`);
       const measured = await this.measure({ frame: 0, overlay: true });
       const span = { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 };
@@ -43259,7 +43647,7 @@ function createSpriteService(options) {
       stages.push(`export: ${exported.pngPath}\uFF08${exported.bytes} B\uFF09`);
       return {
         ...exported,
-        warnings: [...exported.warnings, ...applied.warnings],
+        warnings: [...exported.warnings, ...applied.warnings, ...autotuneWarnings],
         stages
       };
     },
@@ -43544,7 +43932,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_loop_scan",
-      description: '\u626B**\u5F53\u524D\u4F1A\u8BDD\u5DF2\u62BD\u597D\u7684\u5E27**\u7684\u5FAA\u73AF\u5468\u671F\uFF08\u81EA\u76F8\u5173\uFF1Ascore(L)=\u5E73\u5747\u5E27\u5DEE(i,i+L)\uFF09\uFF0C\u53EA\u7ED9\u5EFA\u8BAE\u3001**\u4E0D\u6539\u4F1A\u8BDD\u72B6\u6001**\uFF08\u4E0D\u6539 fps\u3001\u4E0D\u6539\u5E27\u3001\u4E0D\u6539\u951A\u70B9\uFF09\u3002\u8FD4\u56DE {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,warnings}\u3002\u524D\u7F6E\uFF1A\u4F1A\u8BDD fps \u226510 \u4E14\u5E27\u6570 \u226524\uFF08\u4E0D\u591F\u4F1A\u76F4\u63A5\u62A5\u4E2D\u6587\u9519\uFF0C\u8BA9\u4F60\u5148 sprite_prepare \u5230 12fps\uFF09\u3002\u7B97\u6CD5\u53E3\u5F84\uFF1A\u63A9\u819C\u53EA\u7528**\u7B2C 0 \u5E27\u90A3\u5F20** body-core\uFF08\u9010\u5E27\u5404\u7B97\u4F1A\u8BA9\u8FB9\u754C\u53D8\u5316\u5192\u5145\u52A8\u4F5C\u5DEE\u5F02\uFF09\uFF1B\u81EA\u76F8\u5173\u5148\u5728 1/4 \u964D\u91C7\u6837\u4E0A\u626B\uFF08\u5168\u5206\u8FA8\u7387 48 \u5E27\xD719 \u5019\u9009 \u224816 \u4EBF\u6B21\uFF0C\u4F1A\u5361\u6B7B\uFF09\uFF0C\u53EA\u5728\u6700\u4F18 L \u4E0A\u56DE\u5168\u5206\u8FA8\u7387\u590D\u6838 L\xB11\u3002closureScore = \u672B\u5E27\u4E0E\u9996\u5E27\u4E4B\u5DEE \xF7 \u76F8\u90BB\u5E27\u5E73\u5747\u5DEE\uFF1A\u22480 \u8BF4\u660E\u8FD8\u6709\u91CD\u590D\u5E27\u3001\u660E\u663E >1 \u8BF4\u660E\u6CA1\u95ED\u5408\u3002confidence=low \u65F6 reason \u4F1A\u8BF4"\u52A8\u4F5C\u672C\u8EAB\u4E0D\u4E25\u683C\u5468\u671F\uFF0C\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406"\u2014\u2014\u90A3\u5C31\u522B\u95ED\u5408\u3002**\u53EA\u5BF9\u5FAA\u73AF\u52A8\u4F5C\u8C03\u5B83**\uFF1B\u8981\u771F\u6309\u5468\u671F\u91CD\u91C7\uFF0C\u7528 sprite_prepare({loop})\u3002',
+      description: '\u626B**\u5F53\u524D\u4F1A\u8BDD\u5DF2\u62BD\u597D\u7684\u5E27**\u7684\u5FAA\u73AF\u5468\u671F\uFF08\u81EA\u76F8\u5173\uFF1Ascore(L)=\u5E73\u5747\u5E27\u5DEE(i,i+L)\uFF09\uFF0C\u53EA\u7ED9\u5EFA\u8BAE\u3001**\u4E0D\u6539\u4F1A\u8BDD\u72B6\u6001**\uFF08\u4E0D\u6539 fps\u3001\u4E0D\u6539\u5E27\u3001\u4E0D\u6539\u951A\u70B9\uFF09\u3002\u8FD4\u56DE {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,suggestedAction,warnings}\u3002\u524D\u7F6E\uFF1A\u4F1A\u8BDD fps \u226510 \u4E14\u5E27\u6570 \u226524\uFF08\u4E0D\u591F\u4F1A\u76F4\u63A5\u62A5\u4E2D\u6587\u9519\uFF0C\u8BA9\u4F60\u5148 sprite_prepare \u5230 12fps\uFF09\u3002\u7B97\u6CD5\u53E3\u5F84\uFF1A\u63A9\u819C\u53EA\u7528**\u7B2C 0 \u5E27\u90A3\u5F20** body-core\uFF08\u9010\u5E27\u5404\u7B97\u4F1A\u8BA9\u8FB9\u754C\u53D8\u5316\u5192\u5145\u52A8\u4F5C\u5DEE\u5F02\uFF09\uFF1B\u81EA\u76F8\u5173\u5148\u5728 1/4 \u964D\u91C7\u6837\u4E0A\u626B\uFF08\u5168\u5206\u8FA8\u7387 48 \u5E27\xD719 \u5019\u9009 \u224816 \u4EBF\u6B21\uFF0C\u4F1A\u5361\u6B7B\uFF09\uFF0C\u53EA\u5728\u6700\u4F18 L \u4E0A\u56DE\u5168\u5206\u8FA8\u7387\u590D\u6838 L\xB11\u3002closureScore = \u672B\u5E27\u4E0E\u9996\u5E27\u4E4B\u5DEE \xF7 \u76F8\u90BB\u5E27\u5E73\u5747\u5DEE\uFF1A\u22480 \u8BF4\u660E\u8FD8\u6709\u91CD\u590D\u5E27\u3001\u660E\u663E >1 \u8BF4\u660E\u6CA1\u95ED\u5408\u3002**confidence=low \u65F6**\uFF1A\u8FD4\u56DE\u91CC\u4F1A\u6709 `suggestedAction:"treat-as-one-shot"`\uFF0C\u5E76\u4E14 `warnings[0]` \u5C31\u662F"\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406\uFF08\u522B\u505A\u5FAA\u73AF\u95ED\u5408\uFF09"\u2014\u2014\u76F4\u63A5\u7167\u5B83\u529E\uFF0C\u522B\u53EA\u7FFB reason\u3002**\u53EA\u5BF9\u5FAA\u73AF\u52A8\u4F5C\u8C03\u5B83**\uFF1B\u8981\u771F\u6309\u5468\u671F\u91CD\u91C7\uFF0C\u7528 sprite_prepare({loop})\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -43923,16 +44311,34 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_autotune",
-      description: '\u81EA\u52A8\u8C03\u53C2\uFF1A\u5148\u81EA\u52A8\u91C7\u8272\uFF0C\u7136\u540E\u6309\u6307\u6807\u8FED\u4EE3\uFF08bgResidual/subjectCoverage/edgeGreen\uFF09\uFF0C\u8FD4\u56DE {params,trace,reachedGoal}\u3002\u7701\u6389\u4F60"\u8BFB stats \u6539\u53C2\u6570\u8BD5\u4E09\u8F6E"\u3002\u26A0\uFE0F \u5B83\u5185\u90E8\u7528 preview\uFF08\u4F1A\u6E05\u7F13\u5B58\uFF09\uFF0C\u8C03\u5B8C\u8981 sprite_key_apply\u3002',
+      description: '\u81EA\u52A8\u8C03\u53C2\uFF1A\u5148\u81EA\u52A8\u91C7\u8272\uFF0C\u7136\u540E\u6309\u6307\u6807\u8FED\u4EE3\uFF08bgResidual/subjectCoverage/edgeGreen\uFF09\uFF0C\u8FD4\u56DE {params,appliedParams,bestParams,bestStep,trace,reachedGoal,warnings}\u3002\u7701\u6389\u4F60"\u8BFB stats \u6539\u53C2\u6570\u8BD5\u4E09\u8F6E"\u3002\u26A0\uFE0F \u5B83\u5185\u90E8\u7528 preview\uFF08\u4F1A\u6E05\u7F13\u5B58\uFF09\uFF0C\u8C03\u5B8C\u8981 sprite_key_apply\u3002**P1-3 \u53E3\u5F84**\uFF1A`params` \u662F\u8D77\u70B9\uFF08\u4F60\u624B\u8C03\u597D\u7684\u90A3\u5957\u53EF\u4EE5\u4F20\u8FDB\u6765\uFF09\uFF1B**\u672A\u8FBE\u6807\u65F6 appliedParams \u5C31\u662F\u4F60\u7ED9\u7684\u8FD9\u5957**\uFF0C\u4E0D\u4F1A\u88AB\u641C\u7D22\u8FC7\u7A0B\u91CC\u7684\u52A3\u89E3\u8986\u76D6\uFF0C\u5E76\u4E14\u4E00\u5B9A\u5E26\u4E00\u6761 warning\uFF1B\u641C\u7D22\u5230\u7684\u6700\u4F18\u89E3\u5728 `bestParams`\uFF0C\u8981\u548C appliedParams \u6BD4\u8FC7\u518D\u7528\u3002\u8FBE\u6210\u76EE\u6807\u65F6 appliedParams = bestParams = \u8FBE\u6807\u90A3\u4E00\u8F6E\u3002',
       parameters: {
         type: "object",
         properties: {
           goal: {
             type: "object",
             properties: {
-              maxBgResidual: { type: "number", description: "\u9ED8\u8BA4 0.01" },
-              minSubjectCoverage: { type: "number", description: "\u9ED8\u8BA4 0.98" },
-              maxEdgeGreen: { type: "number", description: "\u9ED8\u8BA4 0.10" }
+              maxBgResidual: { type: "number", description: "\u9ED8\u8BA4 0.005\uFF08\u8BC4\u5BA1 B9\uFF09" },
+              minSubjectCoverage: { type: "number", description: "\u9ED8\u8BA4 0.6\uFF08\u4EBA\u7269\u662F\u9542\u7A7A\u5F62\u72B6\uFF0C0.98 \u4F1A\u8BA9\u5B8C\u7F8E\u53C2\u6570\u5224\u672A\u8FBE\u6807\uFF09" },
+              maxEdgeGreen: { type: "number", description: "\u9ED8\u8BA4 0.02" }
+            }
+          },
+          params: {
+            type: "object",
+            description: "\u8D77\u70B9\u53C2\u6570 = \u4F60\u624B\u8C03\u597D\u7684\u90A3\u5957\uFF08\u53EF\u9009\uFF0C\u7F3A\u7684\u9879\u8865\u9ED8\u8BA4\u503C\uFF09\u3002\u672A\u8FBE\u6807\u65F6**\u539F\u6837\u4FDD\u7559**\u5E76\u4F5C\u4E3A appliedParams \u8FD4\u56DE\uFF1B\u5B57\u6BB5\u4E0E sprite_key_apply \u4E00\u81F4\uFF08mode/colorHex/intensity/softness/despill/greenToAlpha/aggressive/autoPlate/advIntensity/advFeather\uFF09\u3002`colorHex` \u4E0D\u7ED9\u5C31\u7528\u81EA\u52A8\u91C7\u8272\u3002\u4E0D\u8BA4\u8BC6\u7684\u952E\u4F1A\u8FDB ignoredParams\u3002",
+            properties: {
+              mode: { type: "string", enum: ["classic", "advanced"] },
+              colorHex: { type: "string", description: "\u952E\u8272 #RRGGBB\uFF1B\u4E0D\u7ED9\u5C31\u81EA\u52A8\u91C7\u8272" },
+              intensity: { type: "number", description: "\u62A0\u8272\u529B\u5EA6 10~90\uFF08\u4E24\u6863\u90FD\u5403\uFF09" },
+              softness: { type: "number", description: "\u8F6F\u8FB9\u5BBD\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
+              despill: { type: "number", description: "\u53BB\u7EFF\u8FB9\u5F3A\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
+              greenToAlpha: { type: "number", description: "\u6B8B\u7EFF\u8F6C\u900F\u660E 0~300\uFF08\u4EC5 advanced\uFF09" },
+              aggressive: { type: "boolean", description: "\u4E3B\u4F53\u8F6E\u5ED3\u4E5F\u53BB\u7EFF\uFF08\u4EC5 advanced\uFF09" },
+              autoPlate: { type: "boolean", description: "\u81EA\u52A8\u80CC\u666F\u677F\uFF08\u53EA\u5728 key_apply \u751F\u6548\uFF09" },
+              feather: { type: "number", description: "\u7FBD\u5316 0~100\uFF08\u4EC5 classic\uFF09" },
+              cleanup: { type: "number", description: "\u53BB\u8272\u6EA2\u51FA 0~100\uFF08\u4EC5 classic\uFF09" },
+              advIntensity: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u5F3A\u5EA6 0~100" },
+              advFeather: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u7FBD\u5316 0~100" }
             }
           },
           space: {
@@ -43952,19 +44358,22 @@ function buildTools(service, options) {
         try {
           const goalRaw = args.goal ?? {};
           const spaceRaw = args.space ?? {};
+          const paramsRaw = args.params ?? {};
           const intensity = Array.isArray(spaceRaw.intensity) && spaceRaw.intensity.length === 2 ? [Number(spaceRaw.intensity[0]), Number(spaceRaw.intensity[1])] : void 0;
-          return json9(
-            await service.autotune({
-              goal: {
-                ...typeof goalRaw.maxBgResidual === "number" ? { maxBgResidual: goalRaw.maxBgResidual } : {},
-                ...typeof goalRaw.minSubjectCoverage === "number" ? { minSubjectCoverage: goalRaw.minSubjectCoverage } : {},
-                ...typeof goalRaw.maxEdgeGreen === "number" ? { maxEdgeGreen: goalRaw.maxEdgeGreen } : {}
-              },
-              ...intensity ? { space: { intensity } } : {},
-              ...typeof args.maxIters === "number" ? { maxIters: args.maxIters } : {},
-              ...typeof args.frame === "number" ? { frame: args.frame } : {}
-            })
-          );
+          const params = keyParamsOf(paramsRaw);
+          const ignoredParams = Object.keys(paramsRaw).filter((key) => !KEY_PARAM_KEYS.includes(key));
+          const result2 = await service.autotune({
+            goal: {
+              ...typeof goalRaw.maxBgResidual === "number" ? { maxBgResidual: goalRaw.maxBgResidual } : {},
+              ...typeof goalRaw.minSubjectCoverage === "number" ? { minSubjectCoverage: goalRaw.minSubjectCoverage } : {},
+              ...typeof goalRaw.maxEdgeGreen === "number" ? { maxEdgeGreen: goalRaw.maxEdgeGreen } : {}
+            },
+            ...Object.keys(params).length > 0 ? { params } : {},
+            ...intensity ? { space: { intensity } } : {},
+            ...typeof args.maxIters === "number" ? { maxIters: args.maxIters } : {},
+            ...typeof args.frame === "number" ? { frame: args.frame } : {}
+          });
+          return json9(ignoredParams.length > 0 ? { ...result2, ignoredParams } : result2);
         } catch (error62) {
           return fail2(error62);
         }
@@ -44308,7 +44717,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_baseline",
-      description: "\u51C6\u7EF3\u56FE\uFF1A\u628A**\u4E00\u7EC4\u56FE\u96C6**\u6309\u5404\u81EA meta \u91CC\u7684 anchorX/anchorY \u5BF9\u9F50\u5230\u540C\u4E00\u6761**\u5730\u5E73\u7EBF**\u3001\u518D\u753B\u4E0A\u5934\u9876\u7EBF\uFF0C\u4F9B\u4EBA\u76EE\u89C6\u9A8C\u6536\uFF08skill \xA79 \u7B2C 3 \u6761\uFF09\u3002\u6BCF\u5F20\u56FE\u53D6\u7B2C cellIndex \u683C\uFF08\u9ED8\u8BA4 0=\u9996\u5E27\uFF09\uFF0C\u6309\u8DEF\u5F84\u987A\u5E8F\u6A2A\u5411\u6392\u5F00\u3002\u753B\u4E09\u6761\u53C2\u8003\u7EBF\uFF1A\u5730\u5E73\u7EBF\uFF08\u9752\uFF0C= \u951A\u70B9\u6240\u5728\u884C\uFF09\u3001\u5934\u9876\u7EBF\uFF08\u54C1\u7EA2\uFF0C= \u5404\u683C\u5B9E\u6D4B\u6700\u9AD8\u70B9\u7684**\u4E2D\u4F4D\u6570**\u884C\uFF09\u3001\u6BCF\u683C\u7684\u7AD6\u5411\u4E2D\u8F74\uFF08\u7EFF\uFF0C= \u951A\u70B9 x\uFF09\uFF1B\u6BCF\u683C\u5934\u9876\u518D\u70B9\u4E00\u4E2A\u5C0F\u5341\u5B57\uFF0C\u770B\u5F97\u51FA\u7EBF\u662F\u600E\u4E48\u6765\u7684\u3002**meta \u662F\u786C\u8981\u6C42**\uFF1A`x.png` \u627E\u540C\u76EE\u5F55 `x.meta.json`\uFF0C\u518D\u9000\u56DE `x.json`\uFF1B\u627E\u4E0D\u5230\u76F4\u63A5\u62A5\u9519\uFF08\u4E0D\u731C\u951A\u70B9\uFF09\uFF0Cmeta \u91CC\u7F3A cellWidth/cellHeight/anchorX/anchorY \u4E5F\u62A5\u9519\uFF08\u8001\u4EA7\u7269\u5148\u91CD\u65B0 export\uFF09\u3002\u26A0\uFE0F \u8FD9\u91CC\u91CF\u7684\u662F**\u6210\u54C1\u50CF\u7D20**\uFF08\u89E3 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2\uFF09\uFF0C\u4E0D\u662F meta \u7684\u53C2\u6570\u56DE\u663E\u3002\u8F93\u51FA `<outDir>/_debug/baseline-<ts>.png`\uFF08outDir \u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09\u3002\u8FD4\u56DE {ok,path,width,height,baselineY,headTopY,items[{name,charHeightPx,anchorX,anchorY,\u2026}],warnings}\uFF1B\u7EC4\u5185\u8EAB\u9AD8\u5DEE >1% \u65F6\u4F1A\u5199 warning\u3002",
+      description: '\u51C6\u7EF3\u56FE\uFF1A\u628A**\u4E00\u7EC4\u56FE\u96C6**\u6309\u5404\u81EA meta \u91CC\u7684 anchorX/anchorY \u5BF9\u9F50\u5230\u540C\u4E00\u6761**\u5730\u5E73\u7EBF**\u3001\u518D\u753B\u4E0A\u5934\u9876\u7EBF\uFF0C\u4F9B\u4EBA\u76EE\u89C6\u9A8C\u6536\uFF08skill \xA79 \u7B2C 3 \u6761\uFF09\u3002\u6BCF\u5F20\u56FE\u53D6 `cellIndex` \u683C\uFF08\u9ED8\u8BA4 0=\u9996\u5E27\uFF1B**\u4E5F\u53EF\u4EE5\u7ED9 "tallest"/"median"**\u2014\u2014\u59FF\u52BF\u5DEE\u5F02\u5927\u7684\u52A8\u753B\u7528\u9996\u5E27\u7684 bbox \u9AD8\u4F1A\u8BEF\u5224\u8EAB\u9AD8\u4E0D\u4E00\u81F4\uFF09\uFF0C\u6309\u8DEF\u5F84\u987A\u5E8F\u6A2A\u5411\u6392\u5F00\u3002\u753B\u4E09\u6761\u53C2\u8003\u7EBF\uFF1A\u5730\u5E73\u7EBF\uFF08\u9752\uFF0C= \u951A\u70B9\u6240\u5728\u884C\uFF09\u3001\u5934\u9876\u7EBF\uFF08\u54C1\u7EA2\uFF0C= \u5404\u683C\u5B9E\u6D4B\u6700\u9AD8\u70B9\u7684**\u4E2D\u4F4D\u6570**\u884C\uFF09\u3001\u6BCF\u683C\u7684\u7AD6\u5411\u4E2D\u8F74\uFF08\u7EFF\uFF0C= \u951A\u70B9 x\uFF09\uFF1B\u6BCF\u683C\u5934\u9876\u518D\u70B9\u4E00\u4E2A\u5C0F\u5341\u5B57\uFF0C\u770B\u5F97\u51FA\u7EBF\u662F\u600E\u4E48\u6765\u7684\u3002**meta \u662F\u786C\u8981\u6C42**\uFF1A`x.png` \u627E\u540C\u76EE\u5F55 `x.meta.json`\uFF0C\u518D\u9000\u56DE `x.json`\uFF1B\u627E\u4E0D\u5230\u76F4\u63A5\u62A5\u9519\uFF08\u4E0D\u731C\u951A\u70B9\uFF09\uFF0Cmeta \u91CC\u7F3A cellWidth/cellHeight/anchorX/anchorY \u4E5F\u62A5\u9519\uFF08\u8001\u4EA7\u7269\u5148\u91CD\u65B0 export\uFF09\u3002\u26A0\uFE0F \u8FD9\u91CC\u91CF\u7684\u662F**\u6210\u54C1\u50CF\u7D20**\uFF08\u89E3 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2\uFF09\uFF0C\u4E0D\u662F meta \u7684\u53C2\u6570\u56DE\u663E\u3002\u5E95\u8272**\u4E0D\u7ED9\u5C31\u6309\u4E3B\u4F53\u4EAE\u5EA6\u81EA\u9002\u5E94**\uFF08\u504F\u4EAE\u2192\u6DF1\u5E95 #202030\u3001\u504F\u6697\u2192\u6D45\u5E95 #f2f2f5\uFF09\uFF0C\u7ED9\u7684\u663E\u5F0F\u503C\u6C38\u8FDC\u8D62\u3002\u951A\u70B9\u53E3\u5F84\u4F1A\u6821\u9A8C\uFF1A\u4E00\u7EC4\u91CC anchorConvention \u6DF7\u7528\u3001\u6216 anchorY \u4E0E anchorYTopDown \u5BF9\u4E0D\u4E0A\u90FD\u4F1A warning\uFF08\u53E3\u5F84\u4E0D\u4E00\u81F4=\u6574\u6761\u5730\u5E73\u7EBF\u5E73\u79FB\uFF09\u3002\u8F93\u51FA `<outDir>/_debug/baseline-<ts>.png`\uFF08outDir \u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09\u3002\u8FD4\u56DE {ok,path,width,height,baselineY,headTopY,background,cellIndexUsed,items[{name,cellIndex,charHeightPx,\u2026}],warnings}\uFF1B\u7EC4\u5185\u8EAB\u9AD8\u5DEE >1% \u65F6\u4F1A\u5199 warning\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -44317,9 +44726,15 @@ function buildTools(service, options) {
             items: { type: "string" },
             description: "\u56FE\u96C6\u8DEF\u5F84\uFF08png\uFF0C\u76F8\u5BF9\u8DEF\u5F84\u6309\u5BFC\u51FA\u76EE\u5F55\u89E3\u6790\uFF09\uFF1B\u987A\u5E8F\u5C31\u662F\u51C6\u7EF3\u56FE\u91CC\u4ECE\u5DE6\u5230\u53F3\u7684\u987A\u5E8F"
           },
-          cellIndex: { type: "number", description: "\u53D6\u6BCF\u5F20\u56FE\u7684\u7B2C\u51E0\u683C\uFF08\u884C\u4F18\u5148\uFF0C\u9ED8\u8BA4 0=\u9996\u5E27\uFF09" },
+          cellIndex: {
+            oneOf: [{ type: "number" }, { type: "string", enum: ["tallest", "median"] }],
+            description: '\u53D6\u54EA\u4E00\u683C\uFF1A\u4E0D\u4F20=0\uFF08\u9996\u5E27\uFF0C\u5411\u540E\u517C\u5BB9\uFF09\uFF1B"tallest"=\u8BED\u4E49\u8EAB\u9AD8\u6700\u5927\u7684\u90A3\u4E00\u683C\uFF08\u731C\u4E0D\u5230\u8BED\u4E49\u8EAB\u9AD8\u5C31\u9000\u56DE bbox \u9AD8\uFF0C\u9002\u5408\u5439\u54E8/\u60CA\u5413\u8FD9\u7C7B\u59FF\u52BF\u5DEE\u5F02\u5927\u7684\u52A8\u753B\uFF09\uFF1B"median"=bbox \u9AD8\u6700\u63A5\u8FD1\u4E2D\u4F4D\u6570\u7684\u90A3\u4E00\u683C\u3002\u56FA\u5B9A\u683C\u53F7\u4ECD\u53EF\u4F20\u6570\u5B57\u3002'
+          },
           gap: { type: "number", description: "\u683C\u4E0E\u683C\u7684\u6A2A\u5411\u7A7A\u9699\uFF08\u50CF\u7D20\uFF0C\u9ED8\u8BA4 8\uFF09" },
-          background: { type: "string", description: "\u5E95\u8272\uFF0C\u9ED8\u8BA4 #202030" },
+          background: {
+            type: "string",
+            description: "\u5E95\u8272 #RRGGBB\u3002\u4E0D\u7ED9\u5C31\u6309\u4E3B\u4F53\u4EAE\u5EA6\u81EA\u9002\u5E94\uFF08\u6D45\u8272\u89D2\u8272\u2192\u6DF1\u5E95\u3001\u6DF1\u8272\u89D2\u8272\u2192\u6D45\u5E95\uFF09\uFF1B\u7ED9\u4E86\u5C31\u7528\u7ED9\u7684"
+          },
           padding: { type: "number", description: "\u56DB\u5468\u7559\u767D\uFF08\u50CF\u7D20\uFF0C\u9ED8\u8BA4 4\uFF09" },
           outDir: { type: "string", description: "\u8F93\u51FA\u6839\u76EE\u5F55\uFF08\u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09" }
         },
@@ -44329,10 +44744,11 @@ function buildTools(service, options) {
       timeoutMs: 12e4,
       async execute(args) {
         try {
+          const cellIndex = args.cellIndex;
           return json9(
             await service.baseline({
               paths: (Array.isArray(args.paths) ? args.paths : []).filter((one) => typeof one === "string"),
-              ...typeof args.cellIndex === "number" ? { cellIndex: args.cellIndex } : {},
+              ...typeof cellIndex === "number" && Number.isFinite(cellIndex) ? { cellIndex } : cellIndex === "tallest" || cellIndex === "median" ? { cellIndex } : {},
               ...typeof args.gap === "number" ? { gap: args.gap } : {},
               ...typeof args.background === "string" ? { background: args.background } : {},
               ...typeof args.padding === "number" ? { padding: args.padding } : {},

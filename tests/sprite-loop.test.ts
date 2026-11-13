@@ -16,8 +16,10 @@ import {
   closureOf,
   downsample,
   downsampleMask,
+  finalizeLoopScan,
   frameDiff,
   fullMask,
+  lowConfidenceWarning,
   lumaOf,
   maskArea,
   pickPeriod,
@@ -278,4 +280,60 @@ test('1/2 周期分数明显更差时不误报', () => {
 
 test('候选太小（<2 帧）不报', () => {
   assert.equal(multipleSuspectWarning(3, 5, 2, 4.9, 20, 12), null)
+})
+
+test('finalizeLoopScan（P1-补）：low 时 suggestedAction + warnings 第一条就是"按一次性动作处理"', () => {
+  const low = finalizeLoopScan({
+    periodFrames: 14,
+    fps: 12,
+    suggested: { fps: 24, targetFrames: 24 },
+    curve: [
+      { L: 14, score: 11.6 },
+      { L: 13, score: 11.9 },
+      { L: 15, score: 11.8 },
+    ],
+    closureScore: 0.9,
+    confidence: 'low',
+    reason: '自相关曲线平缓，建议按一次性动作处理（别硬闭合）',
+    warnings: ['还没 key_apply：这次用原帧扫'],
+    scanned: { frames: 48, fps: 12, mask: 'body-core', source: 'raw', downsample: 4, candidates: 23, range: { lo: 24, hi: 24 } },
+    elapsedMs: 42,
+  })
+  assert.equal(low.confidence, 'low')
+  assert.equal(low.suggestedAction, 'treat-as-one-shot', 'low 时必须有显式的动作建议字段')
+  assert.equal(low.warnings.length, 2, '原有 warning 不许被吃掉')
+  assert.match(low.warnings[0]!, /建议按一次性动作处理/, '第一条必须是那句，不能藏在 reason 里')
+  assert.match(low.warnings[0]!, /confidence:"low"/)
+  assert.match(low.warnings[1]!, /还没 key_apply/, '其余 warning 顺延到后面')
+  assert.match(String(low.reason), /一次性动作/, 'reason 保留（向后兼容）')
+  assert.equal(low.periodSec, 1.1667, '14 帧 @12fps ≈ 1.1667s')
+  assert.deepEqual(low.scoreCurve.map((point) => point.frames), [14, 15, 13], 'scoreCurve 取分数最低的 5 个')
+
+  const high = finalizeLoopScan({
+    periodFrames: 24,
+    fps: 12,
+    suggested: { fps: 12, targetFrames: 24 },
+    curve: [{ L: 24, score: 0 }],
+    closureScore: 0.98,
+    confidence: 'high',
+    warnings: ['已有 warning'],
+    scanned: { frames: 48, fps: 12, mask: 'body-core', source: 'keyed', downsample: 4, candidates: 23, range: { lo: 24, hi: 24 } },
+    elapsedMs: 40,
+  })
+  assert.equal(high.suggestedAction, undefined, 'high 时不许乱塞动作建议')
+  assert.deepEqual(high.warnings, ['已有 warning'], '非 low 时 warnings 顺序与内容都不许变')
+})
+
+test('lowConfidenceWarning：reason 里已经有那句话时不重复说两遍', () => {
+  const withHint = lowConfidenceWarning('自相关曲线平缓，建议按一次性动作处理')
+  assert.equal((withHint.match(/一次性动作/g) ?? []).length, 1, `实测：${withHint}`)
+  assert.match(withHint, /confidence:"low"/)
+
+  const withoutHint = lowConfidenceWarning('扫描区间太窄，判不出锐度')
+  assert.match(withoutHint, /^建议按一次性动作处理/)
+  assert.match(withoutHint, /扫描区间太窄/)
+
+  const noReason = lowConfidenceWarning(undefined)
+  assert.match(noReason, /^建议按一次性动作处理/)
+  assert.match(noReason, /曲线平缓/)
 })

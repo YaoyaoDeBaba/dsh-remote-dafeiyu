@@ -19,6 +19,7 @@
  * 单测直接拿合成像素跑，不起浏览器、不读文件、不碰时钟。
  */
 import { maskFromAlpha, round4, type MaskImage, type RgbaImage } from './match.js'
+import type { LoopScanResult, LoopScorePoint } from './types.js'
 
 /** 自相关扫描前先降到几分之一（方法论 §5.1 的实测结论：1/4 够用）。 */
 export const LOOP_DOWNSAMPLE_FACTOR = 4
@@ -519,4 +520,72 @@ export function scanRangeFor(
     hi = widened
   }
   return { lo, hi, warnings }
+}
+
+// ───────────────── 扫周期结果的装配（含 confidence=low 的动作建议） ─────────────────
+
+/** `confidence:"low"` 时的动作建议码：这段动画不该按循环闭合处理。 */
+export const ONE_SHOT_ACTION = 'treat-as-one-shot' as const
+
+/** 那句人话（`warnings` 第一条 & 工具描述都用它，别在服务层重写一遍）。 */
+export const ONE_SHOT_ACTION_TEXT = '建议按一次性动作处理（别做循环闭合）'
+
+/**
+ * low 置信度的那条 warning（P1-补）。
+ *
+ * 以前这句话只藏在 `reason` 里，调用方读完 `confidence:"low"` 还得自己去 reason 里找
+ * "到底该不该信"；现在它固定进 `warnings[0]`，并且返回里给 `suggestedAction` 字段。
+ */
+export function lowConfidenceWarning(reason?: string): string {
+  const detail = String(reason ?? '').trim() || '自相关曲线平缓，周期判不清'
+  // `pickPeriod` 的 reason 里本来就带这句话（平缓分支），别在同一句里说两遍。
+  if (detail.includes('一次性动作')) return `${detail}（confidence:"low"）`
+  return `${ONE_SHOT_ACTION_TEXT}：${detail}`
+}
+
+export interface LoopScanFinalizeInput {
+  /** 真实周期（帧）。 */
+  periodFrames: number
+  /** 预采样帧率（换算 periodSec 用）。 */
+  fps: number
+  suggested: { fps: number; targetFrames: number }
+  /** 自相关表（`{L, score}`，原样传进来，这里只取最低的 5 个）。 */
+  curve: Array<{ L: number; score: number }>
+  closureScore: number
+  confidence: 'high' | 'medium' | 'low'
+  reason?: string
+  warnings: string[]
+  scanned: LoopScanResult['scanned']
+  elapsedMs: number
+}
+
+/**
+ * 把扫周期的中间结果装配成 `LoopScanResult`（纯函数，测试可以直接钉口径）。
+ *
+ * 与"服务层自己拼对象"相比，这里多管一件事（P1-补）：`confidence:"low"` 时
+ * `warnings` 的**第一条**必须是"建议按一次性动作处理"，并回 `suggestedAction`。
+ */
+export function finalizeLoopScan(input: LoopScanFinalizeInput): LoopScanResult {
+  const warnings = [...input.warnings]
+  const low = input.confidence === 'low'
+  if (low) warnings.unshift(lowConfidenceWarning(input.reason))
+  const scoreCurve: LoopScorePoint[] = [...input.curve]
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 5)
+    .map((point) => ({ frames: point.L, score: point.score }))
+  return {
+    ok: true,
+    periodFrames: input.periodFrames,
+    periodSec: round4(input.periodFrames / input.fps),
+    suggestedFps: input.suggested.fps,
+    targetFrames: input.suggested.targetFrames,
+    scoreCurve,
+    closureScore: input.closureScore,
+    confidence: input.confidence,
+    ...(input.reason ? { reason: input.reason } : {}),
+    ...(low ? { suggestedAction: ONE_SHOT_ACTION } : {}),
+    warnings,
+    scanned: input.scanned,
+    elapsedMs: input.elapsedMs,
+  }
 }

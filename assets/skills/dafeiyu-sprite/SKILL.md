@@ -84,7 +84,7 @@ description: 用 sprite_* 工具把带绿幕的视频做成透明底序列帧精
 
 ## 9. 验证闭环（**导出成功 ≠ 结果正确**）
 
-1. **成品复量**：看 `export` 返回的 `measured`（它把导出的图自己量了一遍）——`achievedPx` 只是参数回显。两者差 >2px 或 >0.5% 会进 `warnings`；
+1. **成品复量**：看 `export` 返回的 `measured`——`achievedPx` 只是参数回显。**先看 `measured.basis`**：`bbox` 口径与语义身高可能差 4~6%（呆毛/尾巴会把 bbox 撑高），要准确就显式给 `span`；给了 `charHeightPx` 时 export 会**自动校正一次**（`correction.passes`），修完仍差会 warning；
 2. **组内一致性**：同一批身高方差 ≤1%、锚点 X 偏差 ≤2px（源）；
 3. **大图准绳**：`sprite_baseline({paths:[…图集]})` 出一张对齐图（同一地平线 + 头顶线 + 每格中轴），目视一遍；`debugOverlay:true` 还能出逐格核对图（异常格标黄）；
 4. **批量自检**：`sprite_verify({paths:[…meta.json]})` —— 组内身高方差 ≤1%、锚点 X 偏差 ≤2px、口径一致；`ok:false` 时 warnings 会逐条点名。

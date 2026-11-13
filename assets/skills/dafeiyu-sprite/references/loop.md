@@ -36,7 +36,7 @@ sprite_export({ cols:8, rows:3, charHeightPx:277, span:{fromY,toY} })
 |---|---|
 | `periodFrames` / `periodSec` | 真实周期（帧 / 秒） |
 | `suggestedFps` / `targetFrames` | 让"周期正好等于 targetFrames 帧"的采样率 |
-| `confidence` | `high` 才直接照做；`medium` 要交叉验证；`low` = 动作不严格周期，**按一次性处理** |
+| `confidence` | `high` 才直接照做；`medium` 要交叉验证；`low` = 动作不严格周期 → 返回里直接给 `suggestedAction:"treat-as-one-shot"`，且 `warnings[0]` 就是"建议按一次性动作处理"（2026-11-13 起不再只藏在 reason 里） |
 | `scoreCurve` | 前 5 名。**看第二名与第一名的差距**：`score(L_best) < 0.85×邻居` 才算赢，勉强赢的就是运气 |
 | `closureScore` | 末帧vs首帧 ÷ 相邻帧平均差。≈0 = 还有重复帧；明显 >1 = 没闭合 |
 

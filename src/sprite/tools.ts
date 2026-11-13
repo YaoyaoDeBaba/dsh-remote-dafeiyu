@@ -271,12 +271,13 @@ export function buildTools(
       name: 'sprite_loop_scan',
       description:
         '扫**当前会话已抽好的帧**的循环周期（自相关：score(L)=平均帧差(i,i+L)），只给建议、**不改会话状态**' +
-        '（不改 fps、不改帧、不改锚点）。返回 {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,warnings}。' +
+        '（不改 fps、不改帧、不改锚点）。返回 {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,suggestedAction,warnings}。' +
         '前置：会话 fps ≥10 且帧数 ≥24（不够会直接报中文错，让你先 sprite_prepare 到 12fps）。' +
         '算法口径：掩膜只用**第 0 帧那张** body-core（逐帧各算会让边界变化冒充动作差异）；' +
         '自相关先在 1/4 降采样上扫（全分辨率 48 帧×19 候选 ≈16 亿次，会卡死），只在最优 L 上回全分辨率复核 L±1。' +
         'closureScore = 末帧与首帧之差 ÷ 相邻帧平均差：≈0 说明还有重复帧、明显 >1 说明没闭合。' +
-        'confidence=low 时 reason 会说"动作本身不严格周期，建议按一次性动作处理"——那就别闭合。' +
+        '**confidence=low 时**：返回里会有 `suggestedAction:"treat-as-one-shot"`，并且 `warnings[0]` 就是' +
+        '"建议按一次性动作处理（别做循环闭合）"——直接照它办，别只翻 reason。' +
         '**只对循环动作调它**；要真按周期重采，用 sprite_prepare({loop})。',
       parameters: {
         type: 'object',
@@ -735,17 +736,42 @@ export function buildTools(
     {
       name: 'sprite_autotune',
       description:
-        '自动调参：先自动采色，然后按指标迭代（bgResidual/subjectCoverage/edgeGreen），返回 {params,trace,reachedGoal}。' +
-        '省掉你"读 stats 改参数试三轮"。⚠️ 它内部用 preview（会清缓存），调完要 sprite_key_apply。',
+        '自动调参：先自动采色，然后按指标迭代（bgResidual/subjectCoverage/edgeGreen），' +
+        '返回 {params,appliedParams,bestParams,bestStep,trace,reachedGoal,warnings}。' +
+        '省掉你"读 stats 改参数试三轮"。⚠️ 它内部用 preview（会清缓存），调完要 sprite_key_apply。' +
+        '**P1-3 口径**：`params` 是起点（你手调好的那套可以传进来）；**未达标时 appliedParams 就是你给的这套**，' +
+        '不会被搜索过程里的劣解覆盖，并且一定带一条 warning；搜索到的最优解在 `bestParams`，要和 appliedParams 比过再用。' +
+        '达成目标时 appliedParams = bestParams = 达标那一轮。',
       parameters: {
         type: 'object',
         properties: {
           goal: {
             type: 'object',
             properties: {
-              maxBgResidual: { type: 'number', description: '默认 0.01' },
-              minSubjectCoverage: { type: 'number', description: '默认 0.98' },
-              maxEdgeGreen: { type: 'number', description: '默认 0.10' },
+              maxBgResidual: { type: 'number', description: '默认 0.005（评审 B9）' },
+              minSubjectCoverage: { type: 'number', description: '默认 0.6（人物是镂空形状，0.98 会让完美参数判未达标）' },
+              maxEdgeGreen: { type: 'number', description: '默认 0.02' },
+            },
+          },
+          params: {
+            type: 'object',
+            description:
+              '起点参数 = 你手调好的那套（可选，缺的项补默认值）。未达标时**原样保留**并作为 appliedParams 返回；' +
+              '字段与 sprite_key_apply 一致（mode/colorHex/intensity/softness/despill/greenToAlpha/aggressive/autoPlate/advIntensity/advFeather）。' +
+              '`colorHex` 不给就用自动采色。不认识的键会进 ignoredParams。',
+            properties: {
+              mode: { type: 'string', enum: ['classic', 'advanced'] },
+              colorHex: { type: 'string', description: '键色 #RRGGBB；不给就自动采色' },
+              intensity: { type: 'number', description: '抠色力度 10~90（两档都吃）' },
+              softness: { type: 'number', description: '软边宽度 0~100（仅 advanced）' },
+              despill: { type: 'number', description: '去绿边强度 0~100（仅 advanced）' },
+              greenToAlpha: { type: 'number', description: '残绿转透明 0~300（仅 advanced）' },
+              aggressive: { type: 'boolean', description: '主体轮廓也去绿（仅 advanced）' },
+              autoPlate: { type: 'boolean', description: '自动背景板（只在 key_apply 生效）' },
+              feather: { type: 'number', description: '羽化 0~100（仅 classic）' },
+              cleanup: { type: 'number', description: '去色溢出 0~100（仅 classic）' },
+              advIntensity: { type: 'number', description: 'advanced 档自己的强度 0~100' },
+              advFeather: { type: 'number', description: 'advanced 档自己的羽化 0~100' },
             },
           },
           space: {
@@ -765,21 +791,25 @@ export function buildTools(
         try {
           const goalRaw = (args.goal ?? {}) as Record<string, unknown>
           const spaceRaw = (args.space ?? {}) as Record<string, unknown>
+          const paramsRaw = (args.params ?? {}) as Record<string, unknown>
           const intensity = Array.isArray(spaceRaw.intensity) && spaceRaw.intensity.length === 2
             ? ([Number(spaceRaw.intensity[0]), Number(spaceRaw.intensity[1])] as [number, number])
             : undefined
-          return json(
-            await service.autotune({
-              goal: {
-                ...(typeof goalRaw.maxBgResidual === 'number' ? { maxBgResidual: goalRaw.maxBgResidual } : {}),
-                ...(typeof goalRaw.minSubjectCoverage === 'number' ? { minSubjectCoverage: goalRaw.minSubjectCoverage } : {}),
-                ...(typeof goalRaw.maxEdgeGreen === 'number' ? { maxEdgeGreen: goalRaw.maxEdgeGreen } : {}),
-              },
-              ...(intensity ? { space: { intensity } } : {}),
-              ...(typeof args.maxIters === 'number' ? { maxIters: args.maxIters } : {}),
-              ...(typeof args.frame === 'number' ? { frame: args.frame } : {}),
-            }),
-          )
+          // 起点参数走同一套白名单；不认识的键显形（P1："传了但被静默丢弃"不许再发生）。
+          const params = keyParamsOf(paramsRaw)
+          const ignoredParams = Object.keys(paramsRaw).filter((key) => !(KEY_PARAM_KEYS as readonly string[]).includes(key))
+          const result = await service.autotune({
+            goal: {
+              ...(typeof goalRaw.maxBgResidual === 'number' ? { maxBgResidual: goalRaw.maxBgResidual } : {}),
+              ...(typeof goalRaw.minSubjectCoverage === 'number' ? { minSubjectCoverage: goalRaw.minSubjectCoverage } : {}),
+              ...(typeof goalRaw.maxEdgeGreen === 'number' ? { maxEdgeGreen: goalRaw.maxEdgeGreen } : {}),
+            },
+            ...(Object.keys(params).length > 0 ? { params } : {}),
+            ...(intensity ? { space: { intensity } } : {}),
+            ...(typeof args.maxIters === 'number' ? { maxIters: args.maxIters } : {}),
+            ...(typeof args.frame === 'number' ? { frame: args.frame } : {}),
+          })
+          return json(ignoredParams.length > 0 ? { ...result, ignoredParams } : result)
         } catch (error) {
           return fail(error)
         }
@@ -1178,14 +1208,17 @@ export function buildTools(
       name: 'sprite_baseline',
       description:
         '准绳图：把**一组图集**按各自 meta 里的 anchorX/anchorY 对齐到同一条**地平线**、再画上头顶线，供人目视验收' +
-        '（skill §9 第 3 条）。每张图取第 cellIndex 格（默认 0=首帧），按路径顺序横向排开。' +
+        '（skill §9 第 3 条）。每张图取 `cellIndex` 格（默认 0=首帧；**也可以给 "tallest"/"median"**——' +
+        '姿势差异大的动画用首帧的 bbox 高会误判身高不一致），按路径顺序横向排开。' +
         '画三条参考线：地平线（青，= 锚点所在行）、头顶线（品红，= 各格实测最高点的**中位数**行）、' +
         '每格的竖向中轴（绿，= 锚点 x）；每格头顶再点一个小十字，看得出线是怎么来的。' +
         '**meta 是硬要求**：`x.png` 找同目录 `x.meta.json`，再退回 `x.json`；找不到直接报错（不猜锚点），' +
         'meta 里缺 cellWidth/cellHeight/anchorX/anchorY 也报错（老产物先重新 export）。' +
         '⚠️ 这里量的是**成品像素**（解 PNG → 按格切 → alpha 包围盒），不是 meta 的参数回显。' +
+        '底色**不给就按主体亮度自适应**（偏亮→深底 #202030、偏暗→浅底 #f2f2f5），给的显式值永远赢。' +
+        '锚点口径会校验：一组里 anchorConvention 混用、或 anchorY 与 anchorYTopDown 对不上都会 warning（口径不一致=整条地平线平移）。' +
         '输出 `<outDir>/_debug/baseline-<ts>.png`（outDir 默认取所有输入路径的公共父目录）。' +
-        '返回 {ok,path,width,height,baselineY,headTopY,items[{name,charHeightPx,anchorX,anchorY,…}],warnings}；' +
+        '返回 {ok,path,width,height,baselineY,headTopY,background,cellIndexUsed,items[{name,cellIndex,charHeightPx,…}],warnings}；' +
         '组内身高差 >1% 时会写 warning。',
       parameters: {
         type: 'object',
@@ -1195,9 +1228,17 @@ export function buildTools(
             items: { type: 'string' },
             description: '图集路径（png，相对路径按导出目录解析）；顺序就是准绳图里从左到右的顺序',
           },
-          cellIndex: { type: 'number', description: '取每张图的第几格（行优先，默认 0=首帧）' },
+          cellIndex: {
+            oneOf: [{ type: 'number' }, { type: 'string', enum: ['tallest', 'median'] }],
+            description:
+              '取哪一格：不传=0（首帧，向后兼容）；"tallest"=语义身高最大的那一格（猜不到语义身高就退回 bbox 高，' +
+              '适合吹哨/惊吓这类姿势差异大的动画）；"median"=bbox 高最接近中位数的那一格。固定格号仍可传数字。',
+          },
           gap: { type: 'number', description: '格与格的横向空隙（像素，默认 8）' },
-          background: { type: 'string', description: '底色，默认 #202030' },
+          background: {
+            type: 'string',
+            description: '底色 #RRGGBB。不给就按主体亮度自适应（浅色角色→深底、深色角色→浅底）；给了就用给的',
+          },
           padding: { type: 'number', description: '四周留白（像素，默认 4）' },
           outDir: { type: 'string', description: '输出根目录（默认取所有输入路径的公共父目录）' },
         },
@@ -1207,10 +1248,17 @@ export function buildTools(
       timeoutMs: 120_000,
       async execute(args: Record<string, unknown>): Promise<string> {
         try {
+          // cellIndex 既可能是数字格号，也可能是 "tallest"/"median"（JSON Schema 里写成 string enum，
+          // 数字照收——两边都过到 service，由 service 统一校验/报错，不在工具层编默认值）。
+          const cellIndex = args.cellIndex
           return json(
             await service.baseline({
               paths: (Array.isArray(args.paths) ? args.paths : []).filter((one): one is string => typeof one === 'string'),
-              ...(typeof args.cellIndex === 'number' ? { cellIndex: args.cellIndex } : {}),
+              ...(typeof cellIndex === 'number' && Number.isFinite(cellIndex)
+                ? { cellIndex }
+                : cellIndex === 'tallest' || cellIndex === 'median'
+                  ? { cellIndex }
+                  : {}),
               ...(typeof args.gap === 'number' ? { gap: args.gap } : {}),
               ...(typeof args.background === 'string' ? { background: args.background } : {}),
               ...(typeof args.padding === 'number' ? { padding: args.padding } : {}),

@@ -74,14 +74,24 @@
               "sampled": false, "source": "sheet-rgba" }
 ```
 
-- `achievedPx` **只是参数回显**（"你给的 span 被缩到了多少"），不是成品里角色有多高。用户连续三次栽在这上面：参数 300，成品实测 382 / 341 / 303；
+- `achievedPx` **只是参数回显**（"你给的 span 被缩到了多少"），不是成品里角色有多高。
+- **`measured.basis` 决定 `charHeightPx` 是哪一种口径**：`semantic`（调用方给了 span / 量到语义点）/ `guessed`（whiteness+luma 猜的，会 warning）/ `bbox`（退而求其次，**与语义身高可能差 4~6%**）。另有 `bboxHeight` / `semanticHeight` 两个并列值供核对。
+- **`correction`**：默认开启的一次收敛闭环（`passes: 0|1`）。给了 `charHeightPx` 且实测超容差时会**再导一次**，返回 `{passes, basis, before, after, target}`；只修正一次、不振荡。`correction:false` 可关。用户连续三次栽在这上面：参数 300，成品实测 382 / 341 / 303；
 - 两者差 **>2px 或 >0.5%**（取宽松的）时 `warnings` 会写"参数回显与成品实测不一致"，并告诉你偏了多少——**按成品对齐请用 `measured.charHeightPx`**；
 - 抽样：≤48 格全量，>48 格等间隔 12 格（含首末），`sampled:true`；
 - `format:"webp"` 解不回像素，不给 `measured` 并明确 warning（不静默）。
 
 **`debugOverlay:true`** 出一张核对图 `<outDir>/_debug/<name>-overlay.png`：每格画品红（头顶）/青（脚底）/白十字（锚点）；**某格身高偏离中位数 >5% 时整格改黄**——异常格一眼能看到。返回 `overlayPath`。
 
+## `clipped` 的新口径（2026-11-13 改）
+
+以前"内容贴到格子边"就算 `clipped`，导致 pad 2px 的边界天天报警（实测 33/48 格误报）。
+现在按**贴边像素数**判：`> max(2px, ceil(边长×2%))` 才报，只数**格子内边界**那几条边。
+`perCell[].edgePx` 给逐边计数、`clippedEdges` 说哪条边超了；判断"真被裁还是只是贴边"看它。
+> 真裁是边上的**一条连续横切面**（几十 px），pad 贴边只是细尖（呆毛/飘带/抗锯齿，1~3px）。
+
 ## 准绳图 `sprite_baseline`
+
 
 把一组动画按锚点对齐到**同一条地平线**、画出**头顶线**和每格的竖向中轴，供目视验收：
 
@@ -91,6 +101,9 @@
 → { "ok": true, "path": ".../_debug/baseline-<ts>.png", "items": [...], "warnings": [] }
 ```
 
+- `cellIndex` 支持 `0`（默认）/ `"tallest"`（语义最高帧，猜不到退回 bbox）/ `"median"`——**姿势不同的动画别用第 0 帧比身高**（首帧手臂下垂会被误判成"身高不一致"）；
+- `background` 缺省时**按主体亮度自适应**（浅色角色→深底，深色角色→浅底），显式传值永远优先；
+- 会校验**锚点口径**：一组里 `anchorConvention` 混用、或 `|(1−anchorY) − anchorYTopDown| > 1e-3` → 直接 warning 点名（曾有一次 8 条老 meta 存成 from-top，准绳图把它们画到了天上）；
 - 每张图的 meta 自动找同名 `.json`（`x.meta.json` 再退 `x.json`），**找不到直接报错**，不猜；
 - 缺 `cellWidth/cellHeight/anchorX/anchorY` 会点名报错；`anchorConvention:"y-from-top"` 会自动翻成 y-from-bottom；
 - 会额外报"身高一样但头顶行错开"（锚点口径不一致，光看身高发现不了）；
