@@ -3,7 +3,46 @@
 > 读这篇的场景：这一轮活干完、判据全绿，准备发一个新版本。
 > 每一步都在下面给了"为什么"；跳步的代价在最末尾的表格里。
 
-## 0. 前置
+## 0. 谁能发版：**只有一个人**，其余人只交分支
+
+2026-11-13 定的规则（多个 agent 并行改这个仓库之后）。**先读这一节，再决定你要不要往下读。**
+
+发版是一条**串行**链路，中间有三样全局单例：
+
+| 全局单例 | 并行会怎样 |
+|---|---|
+| `package.json` 的版本号 | 两个人同时加一 → 撞号；撞号之后 market 里两个不同提交挂同一个版本，装谁看运气 |
+| `dist/bundle/index.js` + `client.cjs` | 构建产物是**整个包合并后的单文件**。各自 build 再合并 = 后合并的把前面的覆盖掉，而且没人能看出来 |
+| `market/index.json` + profile pin | 一个数组 + 一个 sha，并发写必丢更新 |
+
+所以：
+
+### 如果你是「加工具的 agent」
+
+**只交分支，不发版。** 交付形态固定为：
+
+1. 从 `release-main` 开分支 `feat/<域>`，在自己的 **worktree/克隆**里干活（别和别人共用工作区，`git worktree add` 或重新 clone + `pnpm install` 都行）；
+2. 干完跑 `pnpm typecheck && pnpm build && node --test "dist/tests/*.test.js"`（**基线必须全绿**）；
+3. **`dist/` 不要提交**：`pnpm build` 会把它改脏，交之前 `git checkout -- dist/`。
+   理由：产物要在**合并之后**统一生成，你提交的那份一旦被合并顺序打乱，就变成"代码是 A 的、产物是 B 的"；
+4. **不升版本号、不打 tag、不碰 `market/index.json`、不改 profile pin**；
+5. 推分支，然后向发版人报四件事：**分支名 / 改了什么（file:line）/ 测试结果尾部 / 有没有动共享文件**（`src/index.ts`、`src/ports/index.ts`、`package.json`）。
+
+### 如果你是「发版人」（同一时间只有一个）
+
+按 §1 往下走。合并顺序建议：先合没人碰共享文件的，最后合动过 `src/index.ts` 的那个（冲突面最小）。
+
+合并后**要自己再跑一遍** `pnpm typecheck && pnpm build && node --test`——别人的"我这儿是绿的"不算数，
+两个都绿的分支合起来红掉，是这个仓库最常见的事故形状。
+
+### 需要"装上才能验"的改动
+
+默认也不发版。真的必须真机验（比如要宿主重启才生效的东西），**找发版人约一次"验证性重启"**，
+别自己改 profile pin + 重启——那会打断别人正在跑的会话，而且改回来的动作经常被忘掉。
+
+---
+
+## 1. 前置
 
 三样都过：
 
@@ -11,7 +50,7 @@
 $env:PATH = "$env:TEMP\pnpmshim;$env:PATH"
 pnpm typecheck
 pnpm build
-node --test "dist/tests/*.test.js"      # 基线 929 项、fail 0（见 references/testing.md）
+node --test "dist/tests/*.test.js"      # 基线 932 项、fail 0（见 references/testing.md）
 ```
 
 没全绿不发版。**别在自己的对话里重启宿主**——用户在跑别的会话（见 §5）。

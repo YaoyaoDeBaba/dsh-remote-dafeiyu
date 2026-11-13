@@ -74,6 +74,11 @@ description: 给「大肥鱼」DSH 桌面插件（dsh-remote-dafeiyu）新增工
 
 ## 5. 发版（细节在 `references/release.md`）
 
+**先看这一句：同一时间只有一个「发版人」，其余人只交分支，不发版。**
+你如果只是加工具：开分支 → 跑绿 `pnpm typecheck && pnpm build && node --test` → **`git checkout -- dist/`** →
+不升版本、不打 tag、不碰 market 和 profile pin → 推分支 + 报"分支名/改了什么/测试尾部/动没动共享文件"。
+为什么：版本号、构建产物、market 索引、profile pin 都是全局单例，并行必撞（细节见 release.md §0）。
+
 改版本 → `pnpm build` → commit（`build: <版本>`）→ `git tag v0.9.0-dafeiyu.N` → push 分支与 tag →
 跑 `%TEMP%\add-market-version.mjs` 更新 `market/index.json` 并提交（`market: <版本>`）→
 改 profile pin（`C:\Users\htsd\.dsh\profiles\desktop\package.json` 的 git sha）→ `pnpm install`。
