@@ -95,7 +95,7 @@ github:YaoyaoDeBaba/dsh-remote-dafeiyu
 在 profile 的 `package.json` 里把依赖换成：
 
 ```json
-"dsh-remote-dafeiyu": "git+https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu.git#6c27483c4e42cf90d9165d9284aa24bfcb8dd18c"
+"dsh-remote-dafeiyu": "git+https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu.git#<完整 sha>"
 ```
 
 同时要改三处，漏一处启动就会报找不到模块：

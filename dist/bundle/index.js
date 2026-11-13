@@ -40463,10 +40463,34 @@ function buildTools(service, options) {
 }
 
 // src/sprite/skill.ts
-import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync2, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
 import path21 from "node:path";
 var SPRITE_SKILL_NAME = "dafeiyu-sprite";
 var VERSION_FILE = ".dafeiyu-skill-version";
+function fingerprint(dir) {
+  const walk2 = (base, rel) => {
+    let entries;
+    try {
+      entries = readdirSync2(path21.join(base, rel), { withFileTypes: true });
+    } catch {
+      return [];
+    }
+    const out = [];
+    for (const entry of [...entries].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+      const childRel = rel === "" ? entry.name : `${rel}/${entry.name}`;
+      if (entry.isDirectory()) out.push(...walk2(base, childRel));
+      else {
+        try {
+          out.push(`${childRel}:${statSync4(path21.join(base, childRel)).size}`);
+        } catch {
+          out.push(`${childRel}:?`);
+        }
+      }
+    }
+    return out;
+  };
+  return walk2(dir, "").filter((line) => !line.startsWith(VERSION_FILE)).join("|");
+}
 function installBundledSkills(deps) {
   let entries;
   try {
@@ -40480,7 +40504,7 @@ function installBundledSkills(deps) {
     const target = path21.join(deps.dshHome, "skills", entry.name);
     const stamp = path21.join(target, VERSION_FILE);
     try {
-      if (existsSync4(stamp) && readFileSync7(stamp, "utf8").trim() === deps.version) continue;
+      if (existsSync4(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
       mkdirSync7(path21.dirname(target), { recursive: true });
       if (existsSync4(target)) rmSync2(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
@@ -41929,7 +41953,7 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync4, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync4, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync6, writeFileSync as writeFileSync6 } from "node:fs";
 import path27 from "node:path";
 
 // src/backup/config.ts
@@ -42192,7 +42216,7 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync7, readdirSync as readdirSync3, readFileSync as readFileSync10, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync7, readdirSync as readdirSync3, readFileSync as readFileSync10, statSync as statSync5 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
 import path26 from "node:path";
@@ -42207,7 +42231,7 @@ function scanSessions(sessionsRoot) {
         const file2 = path26.join(sessionDir, fileName);
         let stat3;
         try {
-          stat3 = statSync4(file2);
+          stat3 = statSync5(file2);
         } catch {
           continue;
         }
@@ -42443,7 +42467,7 @@ function findProfileDir(profilesRoot, packageNames) {
       const parsed = JSON.parse(readFileSync10(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
-      const mtimeMs = statSync4(manifest).mtimeMs;
+      const mtimeMs = statSync5(manifest).mtimeMs;
       if (mtimeMs > best.mtimeMs) best = { dir, mtimeMs };
     } catch {
       continue;

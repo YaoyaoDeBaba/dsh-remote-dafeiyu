@@ -50,6 +50,31 @@ git push origin v0.9.0-dafeiyu.N
 现状可对照：`git tag --list --points-at <某个 commit>`。上一个版本 `.71` 的 tag 打在
 **market 提交**（`45640e2`）上，而 market 条目与 profile pin 指向的是**build 提交**（`efa4cb5`）。
 
+### ⚠️ 3.1 顺手把 `main` 快进到发版分支（2026-11-13 补）
+
+**这一步漏了，仓库就是"一片旧版"。**
+
+仓库有两条线：`main`（GitHub **默认分支**，别人打开仓库看到的就是它）和 `release-main`（发版线）。
+2026-11-13 实测：`main` 停在 `82fac2e`（**11-05**），落后 `release-main` **152 个提交**。
+后果不是"看不到新代码"这么轻——
+
+- 任何人 `git clone` / 浏览器里翻代码，拿到的都是 8 天前的版本；
+- README 里那个 `github:` 简写**跟的就是默认分支**，等于"按文档装的人装到旧版"；
+- 只有走 market 或 commit-pin 的人才拿到新版 —— 而这两种恰恰是"懂行的人"才会用。
+
+```powershell
+# 纯快进（main 是 release-main 的祖先，不重写历史）
+git push origin origin/release-main:refs/heads/main
+# 验证两条线指向同一个提交
+git rev-parse origin/main; git rev-parse origin/release-main
+```
+
+出过事之后的回退：`git push origin <旧 sha>:refs/heads/main`（要先把工作区切到那个提交，或用 `+` 强推）。
+
+> 更彻底的解法是把 GitHub 的默认分支改成 `release-main`（仓库 Settings → Branches），
+> 但那是网页操作，脚本里做不到；所以发版时**必须**手动快进 `main`。
+
+
 ## 4. 更新 market 索引
 
 脚本：`%TEMP%\add-market-version.mjs`，四个参数 `(file, version, publishTimestamp, commit)`：

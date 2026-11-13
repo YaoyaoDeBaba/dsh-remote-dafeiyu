@@ -17,7 +17,7 @@
  * 三处内容只有一份真源：`assets/skills/dafeiyu-sprite/SKILL.md`。
  * `sprite_guide` 工具与这里都读它，不可能再出现"指南一套、代码一套"。
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { SPRITE_GUIDE } from './guide.js'
 
@@ -43,13 +43,46 @@ export interface SpriteSkillResult {
 }
 
 /**
+ * 目录指纹：`<相对路径>:<字节数>` 的有序拼接。
+ *
+ * 为什么需要它：只按**版本号**决定要不要重铺，会导致"改错别字也要发一版"——
+ * 而文档恰恰是改得最勤、最不该触发发版的东西。用指纹比内容更便宜（只 stat 不读），
+ * 但足够发现"SKILL.md 或 references 有任何增删改"。
+ */
+function fingerprint(dir: string): string {
+  const walk = (base: string, rel: string): string[] => {
+    let entries: Array<{ name: string; isDirectory(): boolean }>
+    try {
+      entries = readdirSync(path.join(base, rel), { withFileTypes: true })
+    } catch {
+      return []
+    }
+    const out: string[] = []
+    for (const entry of [...entries].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+      const childRel = rel === '' ? entry.name : `${rel}/${entry.name}`
+      if (entry.isDirectory()) out.push(...walk(base, childRel))
+      else {
+        try {
+          out.push(`${childRel}:${statSync(path.join(base, childRel)).size}`)
+        } catch {
+          out.push(`${childRel}:?`)
+        }
+      }
+    }
+    return out
+  }
+  return walk(dir, '').filter((line) => !line.startsWith(VERSION_FILE)).join('|')
+}
+
+/**
  * 把**所有**内置 skill 铺到用户 skill 根目录（`assets/skills/<name>/SKILL.md`）。
  *
  * 为什么是"全部"而不是单个：2026-11-13 之后这个插件会有多个 skill
  * （`dafeiyu-sprite` 工具指南、`dafeiyu-plugin-dev` 开发规范…），
  * 每个都写一遍安装逻辑必然会漂。这里只认一个约定：`assets/skills/<name>/SKILL.md` 就是一份 skill。
  *
- * 幂等：版本标记存在且等于当前版本就整批跳过；否则**整份重铺**（避免 SKILL.md 换了 references 还是老的）。
+ * 幂等判据是**内容指纹**（不是版本号）：文档改了就重铺，不用为改一句话发一版。
+ * 重铺是整份替换，避免"SKILL.md 换了 references 还是老的"。
  */
 export function installBundledSkills(deps: {
   dshHome: string
@@ -74,7 +107,8 @@ export function installBundledSkills(deps: {
     const target = path.join(deps.dshHome, 'skills', entry.name)
     const stamp = path.join(target, VERSION_FILE)
     try {
-      if (existsSync(stamp) && readFileSync(stamp, 'utf8').trim() === deps.version) continue
+      // 内容没变就跳过（版本号只写进标记，用来事后核对"这份是从哪版铺的"）
+      if (existsSync(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue
       mkdirSync(path.dirname(target), { recursive: true })
       if (existsSync(target)) rmSync(target, { recursive: true, force: true })
       cpSync(entry.dir, target, { recursive: true })

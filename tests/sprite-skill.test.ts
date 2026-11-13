@@ -133,15 +133,20 @@ test('整批安装：assets/skills 下的每个 SKILL.md 都会铺开，没有 S
   }
 })
 
-test('整批安装幂等：同版本第二次什么都不做', () => {
+test('整批安装幂等判据是内容指纹，不是版本号（改文档不必发版）', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'drc-skills2-'))
   const home = mkdtempSync(path.join(tmpdir(), 'drc-skills2-home-'))
   try {
     mkdirSync(path.join(root, 'alpha'), { recursive: true })
     writeFileSync(path.join(root, 'alpha', 'SKILL.md'), 'a', 'utf8')
     assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '1', log: () => {} }).installed, ['alpha'])
+    // 内容没变：不管版本号动不动都不重铺
     assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '1', log: () => {} }).installed, [])
+    assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '2', log: () => {} }).installed, [], '只改版本号不该重铺')
+    // 内容变了：即使版本号不变也要重铺（否则"改个错别字还得发一版"）
+    writeFileSync(path.join(root, 'alpha', 'SKILL.md'), 'a-much-longer-body', 'utf8')
     assert.deepEqual(installBundledSkills({ dshHome: home, assetsRoot: root, version: '2', log: () => {} }).installed, ['alpha'])
+    assert.equal(readFileSync(path.join(home, 'skills', 'alpha', 'SKILL.md'), 'utf8'), 'a-much-longer-body')
   } finally {
     rmSync(root, { recursive: true, force: true })
     rmSync(home, { recursive: true, force: true })
