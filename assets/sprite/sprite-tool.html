@@ -4240,7 +4240,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 4. 取色（按坐标读像素，不点取色按钮） ---------------- */
   async function pickBgColor(frameIdx, x, y) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       const i = frameIndex(frameIdx);
       if (i < 0) return fail('帧号无效');
       const src = state.frames[i];
@@ -4326,7 +4326,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
      宿主如果要用抠图结果拼图，预览之后必须重新 keyApply()；只读取样请用 keyedDataURL()。 */
   async function keyPreview(frameIdx) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof requestKey !== 'function') return fail('未接通: requestKey');
       const appliedParams = typeof keyRequestParams === 'function' ? keyRequestParams() : null;
       /* 作废缓存（等价 onKeyParamChange 的第一段），但不触发它的防抖预览（这里自己就在预览） */
@@ -4367,7 +4367,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 7. 应用抠图 ---------------- */
   async function keyApply(indices) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       let list;
       if (Array.isArray(indices) && indices.length) {
         const seen = new Set();
@@ -4440,7 +4440,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 8. 蒙版可视化 ---------------- */
   async function maskDataURL(frameIdx) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       const i = frameIndex(frameIdx);
       const src = effectiveFrame(i);          /* 抠图/去水印后的有效帧，没有就走原帧 */
       const c = document.createElement('canvas');
@@ -4479,7 +4479,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
         updateSelCount();
         return { ok: true, rect: null, enabled: false };
       }
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       const f = state.frames[0];
       const x = Math.round(num(rect.x, NaN)), y = Math.round(num(rect.y, NaN));
       const w = Math.round(num(rect.w, NaN)), h = Math.round(num(rect.h, NaN));
@@ -4506,7 +4506,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
 
   async function applyMask() {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (!state.mask.rect) return fail('还没有框选区域，先 setMaskRect({x,y,w,h})');
       if (!state.mask.enabled) { state.mask.enabled = true; setChecked('maskEnabled', true); }
       const indices = ensureSelection();
@@ -4538,7 +4538,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 10. 透明边缘最小化 ---------------- */
   async function computeTrim() {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       ensureSelection();
       const sel = getSelectedFrames();
       if (!sel.length) return fail('没有可扫描的帧');
@@ -4569,7 +4569,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
 
   async function applyTrim() {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (!state.trim.bbox) {
         const r = await computeTrim();
         if (!r.ok) return r;
@@ -4589,7 +4589,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 11. 测高反推缩放 ---------------- */
   async function measureScale(bottomY, topY, targetPx) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       ensureSelection();
       const f = getSelectedFrames()[0];
       if (!f) return fail('没有可测量的帧');
@@ -4665,7 +4665,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 12. 锚点 ---------------- */
   async function setAnchor(x, y) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       const nx = clampv(num(x, state.anchor.x), 0, 1);
       const ny = clampv(num(y, state.anchor.y), 0, 1);
       /* 不走内部 setAnchorValue：那条路会连带把输入框和脏标记一起处理，而我们只需要
@@ -4708,7 +4708,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 13. 拼图 ---------------- */
   async function buildSheetOp(cols, rows) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       ensureSelection();
       const cEl = el('outCols'), rEl = el('outRows');
       if (cols != null && cEl) cEl.value = clampv(Math.round(num(cols, 4)), 1, 100);
@@ -4744,7 +4744,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
 
   async function sheetMeta() {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       ensureSelection();
       const r = buildSheet();
       if (!r) return fail('拼图失败（没有可输出帧）');
@@ -4767,7 +4767,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   /* ---------------- 14. 原图 ---------------- */
   async function frameDataURL(frameIdx) {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       const i = frameIndex(frameIdx);
       const f = state.frames[i];
       return { ok: true, dataURL: f.toDataURL('image/png'), frame: i, width: f.width, height: f.height };
@@ -4931,7 +4931,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function probeColor(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof effectiveFrame !== 'function') return fail('未接通: effectiveFrame');
       const i = frameIndex(o.frame);
       const f = effectiveFrame(i);
@@ -5712,7 +5712,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function measure(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof alphaBBox !== 'function') return fail('未接通: alphaBBox');
       const beta = has(o, 'alphaThreshold')
         ? clampv(Math.round(num(o.alphaThreshold, state.trim.alphaThreshold)), 0, 255)
@@ -5921,7 +5921,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function overlay(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof effectiveFrame !== 'function') return fail('未接通: effectiveFrame');
       const i = frameIndex(o.frame);
       const src = effectiveFrame(i);
@@ -6006,7 +6006,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
 
   async function getAnchor() {
     try {
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (!state.anchor) return fail('未接通: state.anchor');
       const cell = anchorCellFrame();
       if (!cell) return fail('当前没有可预览的帧（先在帧列表里勾选）');
@@ -6037,7 +6037,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function setAnchorPx(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (!state.anchor) return fail('未接通: state.anchor');
       if (typeof renderAnchorPreview !== 'function') return fail('未接通: renderAnchorPreview');
       const cell = anchorCellFrame();
@@ -6097,7 +6097,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function scaleTo(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof applyOutScale !== 'function') return fail('未接通: applyOutScale');
       ensureSelection();
       const sel = getSelectedFrames();
@@ -6195,7 +6195,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function trim(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof computeTrimCore !== 'function' || typeof applyTrimResult !== 'function') {
         return fail('未接通: computeTrimCore / applyTrimResult');
       }
@@ -6942,7 +6942,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
       const n = state.frames.length;
-      if (!n) return fail('还没有帧，先 extract()');
+      if (!n) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (n < 2) return fail('至少需要 2 帧才能判断「固定」角标');
       const t0 = nowMs();
       const thr = state.trim.alphaThreshold | 0;
@@ -7039,7 +7039,7 @@ $('statusText').textContent = '就绪 — 导入素材开始';
   async function buildSheetDataURL(opts) {
     try {
       const o = (opts && typeof opts === 'object') ? opts : {};
-      if (!state.frames.length) return fail('还没有帧，先 extract()');
+      if (!state.frames.length) return fail('还没有帧，先 sprite_prepare 抽帧');
       if (typeof buildSheet !== 'function') return fail('未接通: buildSheet');
       ensureSelection();
       const cEl = el('outCols'), rEl = el('outRows');

@@ -25,7 +25,17 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import { analyzeSpritePng, borderOpaqueRatio, borderOpaqueWarning, type SpriteStats } from './analyze.js'
-import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, pickWorst } from './guard.js'
+import {
+  assertKeyedPresent,
+  assertNotOpaque,
+  checkGridCapacity,
+  defaultFileNames,
+  gridFor,
+  measuredMismatchWarning,
+  pickWorst,
+} from './guard.js'
+import { composeBaseline, drawCellOverlay, measureSheet, type BaselineCellInput, type SheetMeasurement } from './contact.js'
+import { encodePng } from './encode.js'
 import { launchBrowser, type CdpSession } from './browser.js'
 import {
   cropRgba,
@@ -44,6 +54,8 @@ import type {
   AutotuneGoal,
   AutotuneSpace,
   AutotuneTraceStep,
+  BaselineArgs,
+  BaselineResult,
   ExportOptions,
   ExportResult,
   FeatureFitInput,
@@ -203,6 +215,8 @@ export interface BatchResultItem {
   anchorY?: number
   stats?: { worst?: WorstFrame }
   overlayPath?: string
+  /** 成品实测（见 `ExportResult.measured`）；batch 透传每条自己的实测。 */
+  measured?: SheetMeasurement
   warnings: string[]
   error?: string
 }
@@ -229,6 +243,11 @@ export interface SpriteService {
   silhouetteFit(args: SilhouetteFitInput): Promise<SilhouetteFitResult>
   /** 一批产物的一致性自检（纯读 meta，不解码图片）。 */
   verify(args: VerifyArgs): Promise<VerifyResult>
+  /**
+   * 准绳图：把几张图集按 meta 的锚点对齐到**同一条地平线**，画上地平线/头顶线/每格中轴，
+   * 供人目视验收（skill §9 第 3 条）。
+   */
+  baseline(args: BaselineArgs): Promise<BaselineResult>
   getAnchor(): Promise<AnchorInfo>
   setAnchorPx(args: { x?: number; y?: number; convention?: 'y-from-bottom' | 'y-from-top' }): Promise<AnchorInfo>
   cleanup(args: { maskRect?: Rect | 'auto' | null; maskMode?: 'auto' | 'corner'; trim?: TrimOptions }): Promise<CleanupResult>
@@ -947,6 +966,102 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
       })
     },
 
+    async baseline(args) {
+      const raw = Array.isArray(args?.paths) ? args.paths : []
+      const wanted = raw.map((one) => String(one ?? '').trim()).filter((one) => one !== '')
+      if (wanted.length === 0) throw new Error('需要 paths：至少一张图集路径（同目录还要有配套的 meta.json）')
+      const cellIndexWanted = Math.max(0, Math.floor(Number(args.cellIndex ?? 0)))
+      const inputs: BaselineCellInput[] = []
+      const resolved: string[] = []
+      const warnings: string[] = []
+      for (const target of wanted) {
+        const abs = path.isAbsolute(target) ? target : path.join(outDirOf(), target)
+        if (!existsSync(abs)) throw new Error(`找不到这张图集：${abs}`)
+        let decoded
+        try {
+          decoded = decodePng(readFileSync(abs))
+        } catch (error) {
+          throw new Error(`读不了这张图集（${abs}）：${String((error as Error)?.message ?? error).slice(0, 150)}`)
+        }
+        const candidates = metaPathCandidates(abs)
+        const metaFile = candidates.find((file) => existsSync(file))
+        if (!metaFile) {
+          // 没有 meta 就没法知道锚点在哪——猜一个只会把整张准绳图对歪，宁可报错。
+          throw new Error(`找不到同名 meta.json：${candidates.join(' / ')}（准绳图要靠它拿 anchorX/anchorY/cellWidth/cellHeight，不许猜）`)
+        }
+        let meta: Record<string, unknown>
+        try {
+          const parsed: unknown = JSON.parse(readFileSync(metaFile, 'utf8'))
+          if (!parsed || typeof parsed !== 'object') throw new Error('不是对象')
+          meta = parsed as Record<string, unknown>
+        } catch (error) {
+          throw new Error(`读不了 meta（${metaFile}）：${String((error as Error)?.message ?? error).slice(0, 150)}`)
+        }
+        const numberOr = (key: string): number => {
+          const value = Number(meta[key])
+          return Number.isFinite(value) ? value : Number.NaN
+        }
+        const cellWidth = numberOr('cellWidth')
+        const cellHeight = numberOr('cellHeight')
+        const anchorX = numberOr('anchorX')
+        const metaAnchorY = numberOr('anchorY')
+        const missing: string[] = []
+        if (!(cellWidth > 0)) missing.push('cellWidth')
+        if (!(cellHeight > 0)) missing.push('cellHeight')
+        if (!(anchorX >= 0 && anchorX <= 1)) missing.push('anchorX(0~1)')
+        if (!(metaAnchorY >= 0 && metaAnchorY <= 1)) missing.push('anchorY(0~1)')
+        if (missing.length > 0) {
+          throw new Error(`meta 里缺 ${missing.join('/')}：${metaFile}（老产物？重新 export 一次，或手工补上再跑准绳图）`)
+        }
+        // 锚点口径：meta 里 anchorY 一律 y-from-bottom；万一写的是 y-from-top，这里翻过来（口径不一致会把线对歪）。
+        const convention = typeof meta.anchorConvention === 'string' ? meta.anchorConvention : 'y-from-bottom'
+        const anchorY = convention === 'y-from-top' ? 1 - metaAnchorY : metaAnchorY
+        if (convention !== 'y-from-bottom' && convention !== 'y-from-top') {
+          warnings.push(`${path.basename(abs)} 的 anchorConvention 是「${convention}」，按 y-from-bottom 处理`)
+        }
+        const cols = Number(meta.cols) > 0 ? Math.floor(Number(meta.cols)) : Math.max(1, Math.round(decoded.width / cellWidth))
+        const rows = Number(meta.rows) > 0 ? Math.floor(Number(meta.rows)) : Math.max(1, Math.round(decoded.height / cellHeight))
+        if (cellIndexWanted >= cols * rows) {
+          throw new Error(
+            `cellIndex=${cellIndexWanted} 超出网格（${path.basename(abs)} 是 ${cols}×${rows}，最大序号 ${cols * rows - 1}）`,
+          )
+        }
+        const name = typeof meta.name === 'string' && meta.name.trim() !== '' ? meta.name.trim() : path.basename(abs, path.extname(abs))
+        inputs.push({
+          name,
+          image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
+          cellIndex: cellIndexWanted,
+          cols,
+          cellWidth,
+          cellHeight,
+          anchorX,
+          anchorY,
+        })
+        resolved.push(abs)
+      }
+      const composed = composeBaseline(inputs, {
+        ...(typeof args.gap === 'number' ? { gap: args.gap } : {}),
+        ...(typeof args.background === 'string' && args.background.trim() !== '' ? { background: args.background.trim() } : {}),
+        ...(typeof args.padding === 'number' ? { padding: args.padding } : {}),
+      })
+      warnings.push(...composed.warnings)
+      const root = typeof args.outDir === 'string' && args.outDir.trim() !== '' ? args.outDir.trim() : commonParentDir(resolved)
+      const debugDir = path.join(root, '_debug')
+      mkdirSync(debugDir, { recursive: true })
+      const outPath = path.join(debugDir, `baseline-${Date.now()}.png`)
+      writeFileSync(outPath, encodePng(composed.image))
+      return {
+        ok: true,
+        path: outPath,
+        width: composed.width,
+        height: composed.height,
+        baselineY: composed.baselineY,
+        headTopY: composed.headTopY,
+        items: composed.items,
+        warnings,
+      }
+    },
+
     async match(args) {
       if (!args.templateRect || typeof args.templateRect !== 'object') {
         throw new Error('需要 templateRect（模板矩形，源帧像素 {x,y,w,h}）')
@@ -1283,6 +1398,35 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
           `cellHeight*rows=${cellHeightOut * rows} 与图集高 ${sheetHeightOut} 差 ${sheetHeightOut - cellHeightOut * rows}px（缩放取整）`,
         )
       }
+      // 4.5) **成品实测**：把"自己导出的这张图"解回来，按格切、量 alpha 包围盒、取中位数。
+      //      achievedPx 只是参数回显（用户实测三次：回显 300，成品 382/341/303），
+      //      这里量到的才是成品里角色真有高——两个数对不上就写进 warnings。
+      let measured: SheetMeasurement | undefined
+      let decodedSheet: ReturnType<typeof decodePng> | undefined
+      if (format === 'png') {
+        try {
+          decodedSheet = decodePng(buffer)
+          measured = measureSheet(
+            { width: decodedSheet.width, height: decodedSheet.height, rgba: decodedSheet.rgba },
+            {
+              cols,
+              rows,
+              cellWidth: cellWidthOut ?? Math.max(1, Math.round(decodedSheet.width / cols)),
+              cellHeight: cellHeightOut ?? Math.max(1, Math.round(decodedSheet.height / rows)),
+            },
+          )
+          warnings.push(...measured.warnings)
+          const mismatch = measuredMismatchWarning(scaled.achievedPx, measured.charHeightPx)
+          if (mismatch) warnings.push(mismatch)
+        } catch (error) {
+          // 量不出就明说：不许让调用方以为"没有 measured 就是没问题"。
+          warnings.push(
+            `成品实测失败（${String((error as Error)?.message ?? error).slice(0, 120)}）：这张图没能自证，别只信 achievedPx`,
+          )
+        }
+      } else {
+        warnings.push('format=webp 解不回像素：这次没有 measured（成品实测），要验身高请用 png 导出')
+      }
       const meta = buildExportMeta({
         built,
         name,
@@ -1300,6 +1444,32 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         warnings.push(
           `想要 ${args.charHeightPx ?? args.targetHeight ?? '?'}px，但工具缩放上限 300%，实际只有 ${scaled.achievedPx}px`,
         )
+      }
+      // 4.6) 核对图：在**成品副本**上逐格画实测头顶/脚底/锚点十字，异常格标黄。
+      let overlayPath: string | undefined
+      if (args.debugOverlay === true) {
+        if (!measured || !decodedSheet) {
+          warnings.push('debugOverlay 只在 png 导出时生效（webp 解不回像素），这次没出核对图')
+        } else {
+          try {
+            const overlay = drawCellOverlay(decodedSheet, measured, { anchorX: anchor.anchorX, anchorY: anchor.anchorY })
+            overlayPath = path.join(debugDirOf(args.outDir), `${name}-overlay.png`)
+            writeFileSync(overlayPath, encodePng(overlay.image))
+            if (measured.sampled) {
+              warnings.push(`核对图只画了抽样的 ${measured.perCell.length} 格（共 ${measured.totalCells} 格）`)
+            }
+            if (overlay.flagged.length > 0) {
+              warnings.push(
+                `核对图里 ${overlay.flagged.length} 格身高偏离中位数 >5%，已标黄（第 ${overlay.flagged
+                  .slice(0, 5)
+                  .join('、')} 格）`,
+              )
+            }
+          } catch (error) {
+            warnings.push(`核对图没画出来：${String((error as Error)?.message ?? error).slice(0, 150)}`)
+            overlayPath = undefined
+          }
+        }
       }
       let worst: WorstFrame | undefined
       if (format === 'png') {
@@ -1322,6 +1492,8 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
         format,
         bytes: buffer.byteLength,
         ...(worst ? { stats: { worst } } : {}),
+        ...(measured ? { measured } : {}),
+        ...(overlayPath ? { overlayPath } : {}),
         reported: { meta },
         warnings,
       }
@@ -1460,6 +1632,7 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
               ? { stats: { ...(applied.worst ? { worst: applied.worst } : {}), ...(applied.stats ? { first: applied.stats } : {}) } as never }
               : {}),
             ...(measured.overlayPath ? { overlayPath: measured.overlayPath } : {}),
+            ...(exported.measured ? { measured: exported.measured } : {}),
             warnings: [
               ...exported.warnings,
               ...applied.warnings,
@@ -1528,9 +1701,41 @@ export function createSpriteService(options: SpriteServiceOptions): SpriteServic
   }
 }
 
+/**
+ * 一张图集的配套 meta 候选路径（按顺序找）：
+ * `idle_8x6.png` → `idle_8x6.meta.json`，再退回 `idle_8x6.json`。
+ * 两份都没有就报错——准绳图不猜锚点。
+ */
+export function metaPathCandidates(imagePath: string): string[] {
+  const ext = path.extname(imagePath)
+  const stem = ext === '' ? imagePath : imagePath.slice(0, imagePath.length - ext.length)
+  return [`${stem}.meta.json`, `${stem}.json`]
+}
+
+/**
+ * 一组路径的公共父目录（准绳图的默认输出根）。
+ *
+ * 典型用法：`D:\out\idle\idle_8x6.png` + `D:\out\walk\walk_8x6.png` → `D:\out`
+ * ——准绳图落在 `D:\out\_debug\`，跟用户文档里的约定一致。
+ * 只有一个路径、或跨盘对不上时，退回第一张图所在目录（总能落盘，不会抛）。
+ */
+export function commonParentDir(paths: string[]): string {
+  const dirs = paths.map((one) => path.dirname(path.resolve(one)))
+  if (dirs.length === 0) return process.cwd()
+  const parts = dirs.map((one) => one.split(path.sep))
+  let common = parts[0]!.slice()
+  for (const other of parts.slice(1)) {
+    let i = 0
+    while (i < common.length && i < other.length && common[i] === other[i]) i++
+    common = common.slice(0, i)
+  }
+  if (common.length === 0) return dirs[0]!
+  const joined = common.join(path.sep)
+  return joined === '' ? dirs[0]! : joined
+}
+
 /** 供测试/诊断用：算一份稳定指纹（避免同一路径被两份实例乱用）。 */
-export function fingerprintOf(file: string): string {
-  try {
+export function fingerprintOf(file: string): string {  try {
     return createHash('sha1').update(`${file}:${statSync(file).size}`).digest('hex').slice(0, 12)
   } catch {
     return 'unknown'

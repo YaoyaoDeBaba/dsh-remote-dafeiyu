@@ -4,6 +4,7 @@
  * 这么做是为了让"契约"只有一份：工具 schema、service 入参、返回字段都从这里取，
  * 免得 schema 说支持 `mode`、service 却没转给页面（`.57` 之前的真实缺陷）。
  */
+import type { SheetMeasurement } from './contact.js'
 
 /** 抠图参数。**哪一档生效**见 `guide.ts` 里的参数语义表（C2）。 */
 export interface KeyParams {
@@ -283,6 +284,12 @@ export interface ExportOptions {
   quality?: number
   /** 用于默认命名的动作名（如 Idle / SneakEat）。 */
   name?: string
+  /**
+   * true = 额外出一张核对图 `<outDir>/_debug/<name>-overlay.png`：
+   * 逐格画实测头顶（品红）/脚底（青）/锚点十字（白），异常格整格变黄。
+   * 只在 png 导出时生效（webp 解不回像素，没法量也没法画）。
+   */
+  debugOverlay?: boolean
 }
 
 export interface ExportResult {
@@ -292,6 +299,11 @@ export interface ExportResult {
   sheet?: { width: number; height: number }
   cell?: { width: number; height: number }
   scale?: number
+  /**
+   * ⚠️ **参数回显**：只是"你给的目标（charHeightPx/span 或整格高）被缩放到了多少"。
+   * 它不等于成品里的真实身高——用户实测三次都是 achievedPx:300 而成品是 382/341/303。
+   * 要判断成品对不对，看 `measured.charHeightPx`（解自己导出的 PNG 量出来的）。
+   */
   achievedPx?: number
   charHeightPx?: number
   scaleClamped?: boolean
@@ -299,9 +311,58 @@ export interface ExportResult {
   bytes?: number
   stats?: { worst?: WorstFrame }
   reported?: Record<string, unknown>
+  /** 成品实测（解导出图 → 按格切 → alpha 包围盒 → 中位数）。webp 导出没有这一项。 */
+  measured?: SheetMeasurement
+  /** 核对图路径（只有 `debugOverlay:true` 且 png 导出时才给）。 */
+  overlayPath?: string
   warnings: string[]
   error?: string
 }
+
+/** `sprite_baseline` 的入参：把一组图集按锚点对齐到同一条地平线。 */
+export interface BaselineArgs {
+  /** 图集路径（png）。配套 meta 自动按同名找：`x.png` → `x.meta.json`，再退回 `x.json`。 */
+  paths: string[]
+  /** 取每张图的第几格（默认 0 = 首帧）。 */
+  cellIndex?: number
+  /** 格与格之间的横向空隙（像素，默认 8）。 */
+  gap?: number
+  /** 底色（默认 #202030）。 */
+  background?: string
+  /** 四周留白（默认 4），给地平线/头顶线留出可见空间。 */
+  padding?: number
+  /** 输出根目录（默认取所有输入路径的公共父目录），图会落在它下面的 `_debug/`。 */
+  outDir?: string
+}
+
+/** `sprite_baseline` 的返回。 */
+export interface BaselineResult {
+  ok: boolean
+  /** 准绳图路径。 */
+  path?: string
+  width?: number
+  height?: number
+  /** 地平线的画布行（所有锚点都落在这一行，y-from-top）。 */
+  baselineY?: number
+  /** 头顶线的画布行（各格实测最高点的中位数）。 */
+  headTopY?: number | null
+  items?: Array<{
+    name: string
+    charHeightPx: number
+    anchorX: number
+    anchorY: number
+    anchorXPx: number
+    anchorYPx: number
+    headTopY: number | null
+    soleY: number | null
+    drawX: number
+    drawY: number
+    empty: boolean
+  }>
+  warnings: string[]
+  error?: string
+}
+
 
 export interface WorstFrame {
   frame: number

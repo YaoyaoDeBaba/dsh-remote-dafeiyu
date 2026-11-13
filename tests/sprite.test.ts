@@ -119,6 +119,7 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
       assert.deepEqual(names, [
         'sprite_auto',
         'sprite_autotune',
+        'sprite_baseline',
         'sprite_batch',
         'sprite_cleanup',
         'sprite_export',
@@ -144,7 +145,7 @@ test('工具页在：注册 5 个工具，名字与形状固定（参数对象 +
       const prepare = registered.find((definition) => definition.name === 'sprite_prepare')!
       const required = (prepare.parameters as { required?: string[] }).required ?? []
       assert.deepEqual(required, ['videoPath'], '预览/应用可以不带参数，但导入必须点名视频')
-      assert.equal(handle.probe.tools, 'registered(18)')
+      assert.equal(handle.probe.tools, 'registered(19)')
     } finally {
       handle.stop()
     }

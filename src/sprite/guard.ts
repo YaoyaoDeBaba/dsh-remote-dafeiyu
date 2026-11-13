@@ -60,8 +60,48 @@ export function pickWorst(candidates: Array<{ frame: number; stats: SpriteStats 
   return worst
 }
 
-/** 默认产物名：`<name>_<cols>x<rows>.<format>`（与 Unity SheetPath 一个习惯）。 */
-export function defaultFileNames(args: {
+/**
+ * 第三道判据：**参数回显 vs 成品实测**。
+ *
+ * `achievedPx` 只是"你给的 span/整格高被缩到了多少"，不是成品里角色有多高。
+ * 2026-11-13 用户连续三次栽在这上面：`achievedPx:300`，解出成品一量是 382 / 341 / 303。
+ * 所以 export 现在自己把导出的图量一遍，差超过容差就把两个数并排放进 warnings。
+ *
+ * 容差口径（2026-11-13 定）：**相对 0.5% 与绝对 2px 取宽松的那个**。
+ * 起因是用户第三次的 300→303 只差 3px（0.99%），按 1% 相对容差**刚好不告警**——
+ * 那正是他最需要被提醒的一次。只按比例又会对大目标把取整噪声当事故，所以两者取 max：\n * 2px 以内算取整，超过 2px 或超过 0.5% 都要说话。
+ *
+ * @param achievedPx 缩放桥接回的参数回显（`scaleTo.achievedPx`）
+ * @param measuredPx 成品实测的身高中位数
+ * @param tolerance 相对容差（默认 0.5%）
+ * @param absolutePx 绝对容差（默认 2px：误差预算里语义点本身就允许 ±2）
+ * @returns 需要告警时的中文文案；在容差内返回 null
+ */
+export const MEASURED_REL_TOLERANCE = 0.005
+export const MEASURED_ABS_TOLERANCE_PX = 2
+
+export function measuredMismatchWarning(
+  achievedPx: number | undefined,
+  measuredPx: number | undefined,
+  tolerance = MEASURED_REL_TOLERANCE,
+  absolutePx = MEASURED_ABS_TOLERANCE_PX,
+): string | null {
+  if (typeof achievedPx !== 'number' || !Number.isFinite(achievedPx)) return null
+  if (typeof measuredPx !== 'number' || !Number.isFinite(measuredPx) || measuredPx <= 0) return null
+  const delta = Math.abs(measuredPx - achievedPx)
+  // 相对 0.5% 与绝对 1px 取宽松的那个：小目标上 3px 已经是 1%，只按比例会漏（用户的 300→303 正是这种）；
+  // 大目标上 1px 的取整噪声也不该天天报警。两者取 max 正好同时满足。
+  if (!(delta > Math.max(absolutePx, measuredPx * tolerance))) return null
+  const percent = Math.round((delta / measuredPx) * 1000) / 10
+  const direction = measuredPx > achievedPx ? '大' : '小'
+  return (
+    `参数回显与成品实测不一致：参数 ${Math.round(achievedPx)}px / 实测 ${Math.round(measuredPx)}px（偏 ${percent}%，差 ${Math.round(delta)}px）。` +
+    `achievedPx 只是"你给的 span/整格高被缩到了多少"，成品里 alpha 的内容高是 ${Math.round(measuredPx)}px` +
+    `（比参数${direction}）——按成品身高对齐请用 measured.charHeightPx 重算，别信 achievedPx。`
+  )
+}
+
+/** 默认产物名：`<name>_<cols>x<rows>.<format>`（与 Unity SheetPath 一个习惯）。 */export function defaultFileNames(args: {
   name: string
   cols: number
   rows: number

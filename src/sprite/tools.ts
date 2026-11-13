@@ -1,5 +1,5 @@
 /**
- * sprite/tools —— 暴露给 LLM 的工具定义（14 个）。
+ * sprite/tools —— 暴露给 LLM 的工具定义（19 个）。
  *
  * 三条纪律（评审文档 A/C 两条主线的落点）：
  * 1. **每个工具只做一件事**，返回一行 JSON 字符串：模型读数字（stats），人读路径（pngPath）。
@@ -535,7 +535,13 @@ export function buildTools(
       description:
         '拼成精灵图并导出（PNG 或 webp）+ meta.json。**导出前必须有抠图缓存**：如果刚跑过 preview 或改过参数，' +
         '它会直接报错让你先 apply（以前这里会静默拼原帧，交出绿底图）。' +
-        '命名默认 <name>_<cols>x<rows>.<format>，dirPerAction 时放进 <outDir>/<name>/。',
+        '命名默认 <name>_<cols>x<rows>.<format>，dirPerAction 时放进 <outDir>/<name>/。' +
+        '返回里 `measured` 是**成品实测**（解自己导出的 PNG → 按格切 → alpha 包围盒 → 取中位数）：' +
+        'charHeightPx/headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"，' +
+        '格子数 >48 时只等间隔抽 12 格并给 sampled:true。**判成品对不对看 measured，别看 achievedPx**——' +
+        'achievedPx 只是"你给的 span/整格高被缩到了多少"的参数回显；两者差 >1% 会在 warnings 里点名。' +
+        'debugOverlay:true 再出一张 <outDir>/_debug/<name>-overlay.png（品红=实测头顶、青=实测脚底、' +
+        '白十字=锚点；身高偏离中位数 >5% 的格整格标黄），路径在 overlayPath。',
       parameters: {
         type: 'object',
         properties: {
@@ -555,9 +561,15 @@ export function buildTools(
           metaName: { type: 'string', description: 'meta 文件名' },
           dirPerAction: { type: 'boolean', description: 'true → 放进 <outDir>/<name>/' },
           overwrite: { type: 'boolean', description: 'false 时目标已存在就报错（默认 true）' },
-          format: { type: 'string', enum: ['png', 'webp'], description: '默认 png；webp 体积小得多' },
+          format: { type: 'string', enum: ['png', 'webp'], description: '默认 png；webp 体积小得多，但 webp 解不回像素 → 没有 measured/overlay' },
           quality: { type: 'number', description: 'webp 质量 0~1，默认 0.9' },
           name: { type: 'string', description: '动作名（用于默认文件名与子目录）' },
+          debugOverlay: {
+            type: 'boolean',
+            description:
+              'true = 额外出一张核对图 <outDir>/_debug/<name>-overlay.png（只在 png 导出时生效）；' +
+              '逐格画像量头顶/脚底横线与锚点十字，异常格标黄；路径回在 overlayPath',
+          },
         },
       },
       output: OUT,
@@ -590,6 +602,7 @@ export function buildTools(
               ...(args.format === 'png' || args.format === 'webp' ? { format: args.format } : {}),
               ...(typeof args.quality === 'number' ? { quality: args.quality } : {}),
               ...(typeof args.name === 'string' ? { name: args.name } : {}),
+              ...(typeof args.debugOverlay === 'boolean' ? { debugOverlay: args.debugOverlay } : {}),
             }),
           )
         } catch (error) {
@@ -1015,6 +1028,54 @@ export function buildTools(
               ...(typeof args.referenceCharHeight === 'number' ? { referenceCharHeight: args.referenceCharHeight } : {}),
               ...(typeof args.heightPct === 'number' ? { heightPct: args.heightPct } : {}),
               ...(typeof args.anchorPx === 'number' ? { anchorPx: args.anchorPx } : {}),
+            }),
+          )
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    },
+    {
+      name: 'sprite_baseline',
+      description:
+        '准绳图：把**一组图集**按各自 meta 里的 anchorX/anchorY 对齐到同一条**地平线**、再画上头顶线，供人目视验收' +
+        '（skill §9 第 3 条）。每张图取第 cellIndex 格（默认 0=首帧），按路径顺序横向排开。' +
+        '画三条参考线：地平线（青，= 锚点所在行）、头顶线（品红，= 各格实测最高点的**中位数**行）、' +
+        '每格的竖向中轴（绿，= 锚点 x）；每格头顶再点一个小十字，看得出线是怎么来的。' +
+        '**meta 是硬要求**：`x.png` 找同目录 `x.meta.json`，再退回 `x.json`；找不到直接报错（不猜锚点），' +
+        'meta 里缺 cellWidth/cellHeight/anchorX/anchorY 也报错（老产物先重新 export）。' +
+        '⚠️ 这里量的是**成品像素**（解 PNG → 按格切 → alpha 包围盒），不是 meta 的参数回显。' +
+        '输出 `<outDir>/_debug/baseline-<ts>.png`（outDir 默认取所有输入路径的公共父目录）。' +
+        '返回 {ok,path,width,height,baselineY,headTopY,items[{name,charHeightPx,anchorX,anchorY,…}],warnings}；' +
+        '组内身高差 >1% 时会写 warning。',
+      parameters: {
+        type: 'object',
+        properties: {
+          paths: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '图集路径（png，相对路径按导出目录解析）；顺序就是准绳图里从左到右的顺序',
+          },
+          cellIndex: { type: 'number', description: '取每张图的第几格（行优先，默认 0=首帧）' },
+          gap: { type: 'number', description: '格与格的横向空隙（像素，默认 8）' },
+          background: { type: 'string', description: '底色，默认 #202030' },
+          padding: { type: 'number', description: '四周留白（像素，默认 4）' },
+          outDir: { type: 'string', description: '输出根目录（默认取所有输入路径的公共父目录）' },
+        },
+        required: ['paths'],
+      },
+      output: OUT,
+      timeoutMs: 120_000,
+      async execute(args: Record<string, unknown>): Promise<string> {
+        try {
+          return json(
+            await service.baseline({
+              paths: (Array.isArray(args.paths) ? args.paths : []).filter((one): one is string => typeof one === 'string'),
+              ...(typeof args.cellIndex === 'number' ? { cellIndex: args.cellIndex } : {}),
+              ...(typeof args.gap === 'number' ? { gap: args.gap } : {}),
+              ...(typeof args.background === 'string' ? { background: args.background } : {}),
+              ...(typeof args.padding === 'number' ? { padding: args.padding } : {}),
+              ...(typeof args.outDir === 'string' ? { outDir: args.outDir } : {}),
             }),
           )
         } catch (error) {

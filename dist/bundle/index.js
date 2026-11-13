@@ -2388,8 +2388,8 @@ var init_mock_kernel = __esm({
         }
         if (this.options.autoReply !== false) {
           const messageId = `msg_${++this.sequence}`;
-          for (const chunk of [`\u6536\u5230\uFF1A`, text.slice(0, 40)]) {
-            this.emit({ kind: "delta", sessionId, messageId, text: chunk, done: false });
+          for (const chunk2 of [`\u6536\u5230\uFF1A`, text.slice(0, 40)]) {
+            this.emit({ kind: "delta", sessionId, messageId, text: chunk2, done: false });
           }
           this.emit({ kind: "delta", sessionId, messageId, text: "", done: true });
         }
@@ -3048,14 +3048,14 @@ var require_permessage_deflate = __commonJS({
       }
     };
     module.exports = PerMessageDeflate2;
-    function deflateOnData(chunk) {
-      this[kBuffers].push(chunk);
-      this[kTotalLength] += chunk.length;
+    function deflateOnData(chunk2) {
+      this[kBuffers].push(chunk2);
+      this[kTotalLength] += chunk2.length;
     }
-    function inflateOnData(chunk) {
-      this[kTotalLength] += chunk.length;
+    function inflateOnData(chunk2) {
+      this[kTotalLength] += chunk2.length;
       if (this[kPerMessageDeflate]._maxPayload < 1 || this[kTotalLength] <= this[kPerMessageDeflate]._maxPayload) {
-        this[kBuffers].push(chunk);
+        this[kBuffers].push(chunk2);
         return;
       }
       this[kError] = new RangeError("Max payload size exceeded");
@@ -3356,7 +3356,7 @@ var require_receiver = __commonJS({
        * @param {Function} cb Callback
        * @private
        */
-      _write(chunk, encoding, cb) {
+      _write(chunk2, encoding, cb) {
         if (this._opcode === 8 && this._state == GET_INFO) return cb();
         if (this._maxBufferedChunks > 0 && this._buffers.length >= this._maxBufferedChunks) {
           cb(
@@ -3370,8 +3370,8 @@ var require_receiver = __commonJS({
           );
           return;
         }
-        this._bufferedBytes += chunk.length;
-        this._buffers.push(chunk);
+        this._bufferedBytes += chunk2.length;
+        this._buffers.push(chunk2);
         this.startLoop(cb);
       }
       /**
@@ -5648,8 +5648,8 @@ var require_websocket = __commonJS({
       this.removeListener("end", socketOnEnd);
       websocket._readyState = WebSocket2.CLOSING;
       if (!this._readableState.endEmitted && !websocket._closeFrameReceived && !websocket._receiver._writableState.errorEmitted && this._readableState.length !== 0) {
-        const chunk = this.read(this._readableState.length);
-        websocket._receiver.write(chunk);
+        const chunk2 = this.read(this._readableState.length);
+        websocket._receiver.write(chunk2);
       }
       websocket._receiver.end();
       this[kWebSocket] = void 0;
@@ -5661,8 +5661,8 @@ var require_websocket = __commonJS({
         websocket._receiver.on("finish", receiverOnFinish);
       }
     }
-    function socketOnData(chunk) {
-      if (!this[kWebSocket]._receiver.write(chunk)) {
+    function socketOnData(chunk2) {
+      if (!this[kWebSocket]._receiver.write(chunk2)) {
         this.pause();
       }
     }
@@ -5765,14 +5765,14 @@ var require_stream = __commonJS({
       duplex._read = function() {
         if (ws.isPaused) ws.resume();
       };
-      duplex._write = function(chunk, encoding, callback) {
+      duplex._write = function(chunk2, encoding, callback) {
         if (ws.readyState === ws.CONNECTING) {
           ws.once("open", function open4() {
-            duplex._write(chunk, encoding, callback);
+            duplex._write(chunk2, encoding, callback);
           });
           return;
         }
-        ws.send(chunk, callback);
+        ws.send(chunk2, callback);
       };
       duplex.on("end", duplexOnEnd);
       duplex.on("error", duplexOnError);
@@ -27846,7 +27846,7 @@ var DeltaWindow = class {
     if (chunks.length === 0) {
       this.emitFrame(entry, "", true);
     } else {
-      chunks.forEach((chunk, index) => this.emitFrame(entry, chunk, index === chunks.length - 1 ? entry.done : false));
+      chunks.forEach((chunk2, index) => this.emitFrame(entry, chunk2, index === chunks.length - 1 ? entry.done : false));
     }
     if (entry.done) this.partCursor.delete(sessionId);
     else this.partCursor.set(sessionId, { messageId: entry.messageId, next: entry.part });
@@ -31685,13 +31685,13 @@ async function readJsonBody(request) {
       done = true;
       resolve(value);
     };
-    request.on("data", (chunk) => {
-      size += chunk.length;
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
       if (size > MAX_CONFIG_BODY_BYTES) {
         finish(void 0);
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => {
       try {
@@ -31783,13 +31783,13 @@ function readJson(request) {
       done = true;
       resolve(value);
     };
-    request.on("data", (chunk) => {
-      size += chunk.length;
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
       if (size > MAX_BODY_BYTES) {
         finish(void 0);
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => {
       try {
@@ -32121,9 +32121,9 @@ function clientReportHandler() {
     }
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk) => {
-      size += chunk.length;
-      if (size <= 4096) chunks.push(chunk);
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
+      if (size <= 4096) chunks.push(chunk2);
     });
     request.on("end", () => {
       try {
@@ -35883,14 +35883,14 @@ function readJsonBody2(request, limit = 512 * 1024) {
       settled = true;
       resolve(value);
     };
-    request.on("data", (chunk) => {
-      size += chunk.length;
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
       if (size > limit) {
         finish(void 0);
         request.destroy?.();
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => {
       if (chunks.length === 0) return finish({});
@@ -36520,14 +36520,14 @@ function readBody(request) {
       settled = true;
       resolve(value);
     };
-    request.on("data", (chunk) => {
-      size += chunk.byteLength;
+    request.on("data", (chunk2) => {
+      size += chunk2.byteLength;
       if (size > MAX_BODY_BYTES2) {
         finish({ ok: false, status: 413, error: "\u8BF7\u6C42\u592A\u5927\uFF08\u56FE\u7247\u4E0A\u9650\u7EA6 20MB\uFF09" });
         request.destroy();
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => finish({ ok: true, text: Buffer.concat(chunks).toString("utf8") }));
     request.on("error", (error62) => finish({ ok: false, status: 400, error: `\u8BFB\u53D6\u8BF7\u6C42\u5931\u8D25\uFF1A${String(error62?.message ?? error62)}` }));
@@ -37080,14 +37080,14 @@ function readBody2(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk) => {
-      size += chunk.byteLength;
+    request.on("data", (chunk2) => {
+      size += chunk2.byteLength;
       if (size > 8 * 1024) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
@@ -37845,14 +37845,14 @@ function readBody3(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk) => {
-      size += chunk.byteLength;
+    request.on("data", (chunk2) => {
+      size += chunk2.byteLength;
       if (size > 16 * 1024) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
@@ -38738,6 +38738,17 @@ function pickWorst(candidates) {
   }
   return worst;
 }
+var MEASURED_REL_TOLERANCE = 5e-3;
+var MEASURED_ABS_TOLERANCE_PX = 2;
+function measuredMismatchWarning(achievedPx, measuredPx, tolerance = MEASURED_REL_TOLERANCE, absolutePx = MEASURED_ABS_TOLERANCE_PX) {
+  if (typeof achievedPx !== "number" || !Number.isFinite(achievedPx)) return null;
+  if (typeof measuredPx !== "number" || !Number.isFinite(measuredPx) || measuredPx <= 0) return null;
+  const delta = Math.abs(measuredPx - achievedPx);
+  if (!(delta > Math.max(absolutePx, measuredPx * tolerance))) return null;
+  const percent = Math.round(delta / measuredPx * 1e3) / 10;
+  const direction = measuredPx > achievedPx ? "\u5927" : "\u5C0F";
+  return `\u53C2\u6570\u56DE\u663E\u4E0E\u6210\u54C1\u5B9E\u6D4B\u4E0D\u4E00\u81F4\uFF1A\u53C2\u6570 ${Math.round(achievedPx)}px / \u5B9E\u6D4B ${Math.round(measuredPx)}px\uFF08\u504F ${percent}%\uFF0C\u5DEE ${Math.round(delta)}px\uFF09\u3002achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\uFF0C\u6210\u54C1\u91CC alpha \u7684\u5185\u5BB9\u9AD8\u662F ${Math.round(measuredPx)}px\uFF08\u6BD4\u53C2\u6570${direction}\uFF09\u2014\u2014\u6309\u6210\u54C1\u8EAB\u9AD8\u5BF9\u9F50\u8BF7\u7528 measured.charHeightPx \u91CD\u7B97\uFF0C\u522B\u4FE1 achievedPx\u3002`;
+}
 function defaultFileNames(args) {
   const safeName = (args.name || "sheet").replace(/[\\/:*?"<>|]/g, "_");
   const base = args.fileName ?? `${safeName}_${args.cols}x${args.rows}`;
@@ -38763,6 +38774,447 @@ function checkGridCapacity(frames, cols, rows) {
     warnings.push(`\u7F51\u683C\u504F\u5927\uFF1A${cols}\xD7${rows}=${capacity} \u683C\u53EA\u653E ${frames} \u5E27\uFF0C\u672B\u5C3E\u4F1A\u7559\u5927\u7247\u7A7A\u683C`);
   }
   return { warnings };
+}
+
+// src/sprite/contact.ts
+var CONTENT_ALPHA_CUT = 32;
+var FULL_SCAN_LIMIT = 48;
+var SAMPLE_LIMIT = 12;
+function medianOf(values) {
+  if (values.length === 0) throw new Error("medianOf \u9700\u8981\u81F3\u5C11\u4E00\u4E2A\u6570\uFF08\u7A7A\u96C6\u5408\u6CA1\u6709\u4E2D\u4F4D\u6570\uFF09");
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 === 1 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+function sampleCellIndices(total, limit = FULL_SCAN_LIMIT, take = SAMPLE_LIMIT) {
+  const count = Math.max(0, Math.floor(total));
+  if (count === 0) return [];
+  if (count <= limit) return Array.from({ length: count }, (_one, index) => index);
+  const picks = Math.max(2, Math.min(count, Math.floor(take)));
+  const step = (count - 1) / (picks - 1);
+  const out = [];
+  for (let i = 0; i < picks; i++) {
+    const index = Math.round(i * step);
+    if (out[out.length - 1] !== index) out.push(index);
+  }
+  return out;
+}
+function cellContentOf(image, cell, index, col, row, alphaThreshold = CONTENT_ALPHA_CUT) {
+  const x0 = Math.max(0, Math.round(cell.x));
+  const y0 = Math.max(0, Math.round(cell.y));
+  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(cell.w)));
+  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(cell.h)));
+  let minX = x1;
+  let minY = y1;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = y0; y < y1; y++) {
+    const rowBase = y * image.width;
+    for (let x = x0; x < x1; x++) {
+      if (image.rgba[(rowBase + x) * 4 + 3] <= alphaThreshold) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0 || maxY < 0) {
+    return { index, col, row, bbox: null, charHeightPx: 0, headTopY: null, soleY: null, empty: true, clipped: false };
+  }
+  const bbox = { x: minX - x0, y: minY - y0, w: maxX - minX + 1, h: maxY - minY + 1 };
+  const left = x0 > 0 ? x0 : 0;
+  const top = y0 > 0 ? y0 : 0;
+  const right = x1 < image.width ? x1 : image.width;
+  const bottom = y1 < image.height ? y1 : image.height;
+  const clipped = minX <= left && left > 0 || minY <= top && top > 0 || maxX >= right - 1 && right < image.width || maxY >= bottom - 1 && bottom < image.height;
+  return {
+    index,
+    col,
+    row,
+    bbox,
+    charHeightPx: maxY - minY + 1,
+    headTopY: bbox.y,
+    soleY: bbox.y + bbox.h - 1,
+    empty: false,
+    clipped
+  };
+}
+function measureSheet(image, options) {
+  const cols = Math.max(1, Math.floor(options.cols));
+  const rows = Math.max(1, Math.floor(options.rows));
+  const cellWidth = Math.max(1, Math.round(options.cellWidth));
+  const cellHeight = Math.max(1, Math.round(options.cellHeight));
+  const alphaThreshold = options.alphaThreshold ?? CONTENT_ALPHA_CUT;
+  const totalCells = cols * rows;
+  const indices = sampleCellIndices(totalCells, options.fullScanLimit ?? FULL_SCAN_LIMIT, options.sampleLimit ?? SAMPLE_LIMIT);
+  const perCell = [];
+  for (const index of indices) {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    perCell.push(
+      cellContentOf(
+        image,
+        { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight },
+        index,
+        col,
+        row,
+        alphaThreshold
+      )
+    );
+  }
+  const filled = perCell.filter((cell) => !cell.empty);
+  const warnings = [];
+  const sampled = indices.length < totalCells;
+  if (sampled) {
+    warnings.push(
+      `\u6210\u54C1\u5171 ${totalCells} \u683C\uFF08>${FULL_SCAN_LIMIT}\uFF09\uFF0C\u53EA\u7B49\u95F4\u9694\u62BD\u4E86 ${indices.length} \u683C\u5B9E\u6D4B\uFF1B\u8981\u5168\u91CF\u770B\u5C31\u7528 sprite_measure \u9010\u5E27\u91CF\u3002`
+    );
+  }
+  if (filled.length === 0) {
+    warnings.push(
+      `\u6210\u54C1\u56FE\u62BD\u6837\u683C\u5B50\u91CC\u91CF\u4E0D\u5230\u4EFB\u4F55\u5185\u5BB9\uFF08alpha>${alphaThreshold} \u7684\u50CF\u7D20\u4E00\u4E2A\u90FD\u6CA1\u6709\uFF09\u2014\u2014\u4E0D\u662F"\u8EAB\u9AD8 0px"\uFF0C\u662F\u8FD9\u5F20\u56FE\u53EF\u80FD\u5168\u900F/\u62FC\u9519\u4E86\uFF0C\u5148\u770B\u6838\u5BF9\u56FE\u3002`
+    );
+  } else if (filled.length < perCell.length) {
+    warnings.push(`\u62BD\u6837 ${perCell.length} \u683C\u91CC\u6709 ${perCell.length - filled.length} \u683C\u662F\u7A7A\u7684\uFF08\u7F51\u683C\u6BD4\u5E27\u6570\u5927\u65F6\u672B\u5C3E\u6B63\u5E38\u7559\u7A7A\uFF09`);
+  }
+  const clipped = perCell.filter((cell) => cell.clipped);
+  if (clipped.length > 0) {
+    warnings.push(
+      `\u6709 ${clipped.length} \u683C\u7684\u5185\u5BB9\u9876\u5230\u4E86\u683C\u5B50\u8FB9\u7F18\uFF08\u7B2C ${clipped.slice(0, 3).map((cell) => cell.index).join("\u3001")} \u683C\uFF09\u2014\u2014\u7F29\u653E/\u88C1\u526A\u628A\u4E3B\u4F53\u5207\u4E86\uFF0C\u8FD9\u4E00\u683C\u7684\u8EAB\u9AD8\u4F1A\u504F\u5C0F\u3002`
+    );
+  }
+  if (filled.length === 0) {
+    return {
+      charHeightPx: 0,
+      headTopY: null,
+      soleY: null,
+      cellWidth,
+      cellHeight,
+      totalCells,
+      perCell,
+      sampled,
+      min: { charHeightPx: 0 },
+      max: { charHeightPx: 0 },
+      source: "sheet-rgba",
+      warnings
+    };
+  }
+  const heights = filled.map((cell) => cell.charHeightPx);
+  const median2 = medianOf(heights);
+  let representative = filled[0];
+  for (const cell of filled) {
+    const gap = Math.abs(cell.charHeightPx - median2);
+    const best = Math.abs(representative.charHeightPx - median2);
+    if (gap < best || gap === best && cell.charHeightPx > representative.charHeightPx) representative = cell;
+  }
+  return {
+    charHeightPx: median2,
+    headTopY: representative.headTopY,
+    soleY: representative.soleY,
+    cellWidth,
+    cellHeight,
+    totalCells,
+    perCell,
+    sampled,
+    min: { charHeightPx: Math.min(...heights) },
+    max: { charHeightPx: Math.max(...heights) },
+    source: "sheet-rgba",
+    warnings
+  };
+}
+function deviates(cell, median2, pct = 0.05) {
+  if (cell.empty || median2 <= 0) return false;
+  return Math.abs(cell.charHeightPx - median2) / median2 > pct;
+}
+function parseColorHex(hex3, label = "color") {
+  const text = String(hex3 ?? "").trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(text)) {
+    throw new Error(`${label} \u4E0D\u662F\u5408\u6CD5\u7684 #RRGGBB\uFF08\u6216 #RRGGBBAA\uFF09\uFF1A${String(hex3)}`);
+  }
+  return {
+    r: Number.parseInt(text.slice(0, 2), 16),
+    g: Number.parseInt(text.slice(2, 4), 16),
+    b: Number.parseInt(text.slice(4, 6), 16),
+    a: text.length === 8 ? Number.parseInt(text.slice(6, 8), 16) : 255
+  };
+}
+function createImage(width, height, fill) {
+  const w = Math.max(1, Math.round(width));
+  const h = Math.max(1, Math.round(height));
+  const rgba = new Uint8Array(w * h * 4);
+  if (fill) {
+    for (let i = 0; i < w * h; i++) {
+      rgba[i * 4] = fill.r;
+      rgba[i * 4 + 1] = fill.g;
+      rgba[i * 4 + 2] = fill.b;
+      rgba[i * 4 + 3] = fill.a;
+    }
+  }
+  return { width: w, height: h, rgba };
+}
+function plotOver(image, x, y, color) {
+  const px = Math.round(x);
+  const py = Math.round(y);
+  if (px < 0 || py < 0 || px >= image.width || py >= image.height) return;
+  const sa = color.a / 255;
+  if (sa <= 0) return;
+  const i = (py * image.width + px) * 4;
+  const da = image.rgba[i + 3] / 255;
+  const outA = sa + da * (1 - sa);
+  if (outA <= 0) {
+    image.rgba[i] = 0;
+    image.rgba[i + 1] = 0;
+    image.rgba[i + 2] = 0;
+    image.rgba[i + 3] = 0;
+    return;
+  }
+  const mix = (s, d) => Math.round((s * sa + d * da * (1 - sa)) / outA);
+  image.rgba[i] = mix(color.r, image.rgba[i]);
+  image.rgba[i + 1] = mix(color.g, image.rgba[i + 1]);
+  image.rgba[i + 2] = mix(color.b, image.rgba[i + 2]);
+  image.rgba[i + 3] = Math.round(outA * 255);
+}
+var HALO = { r: 0, g: 0, b: 0, a: 120 };
+function drawHLine(image, x0, x1, y, color, halo = true) {
+  const from = Math.min(x0, x1);
+  const to = Math.max(x0, x1);
+  if (halo) {
+    for (let x = from; x <= to; x++) {
+      plotOver(image, x, y - 1, HALO);
+      plotOver(image, x, y + 1, HALO);
+    }
+  }
+  for (let x = from; x <= to; x++) plotOver(image, x, y, color);
+}
+function drawVLine(image, x, y0, y1, color, halo = true) {
+  const from = Math.min(y0, y1);
+  const to = Math.max(y0, y1);
+  if (halo) {
+    for (let y = from; y <= to; y++) {
+      plotOver(image, x - 1, y, HALO);
+      plotOver(image, x + 1, y, HALO);
+    }
+  }
+  for (let y = from; y <= to; y++) plotOver(image, x, y, color);
+}
+function drawCross(image, x, y, color, arm = 4) {
+  drawHLine(image, x - arm, x + arm, y, color);
+  drawVLine(image, x, y - arm, y + arm, color);
+}
+function blit(dst, src, dx, dy, region) {
+  const rect = region ?? { x: 0, y: 0, w: src.width, h: src.height };
+  const sx0 = Math.max(0, Math.round(rect.x));
+  const sy0 = Math.max(0, Math.round(rect.y));
+  const sx1 = Math.min(src.width, sx0 + Math.max(0, Math.round(rect.w)));
+  const sy1 = Math.min(src.height, sy0 + Math.max(0, Math.round(rect.h)));
+  for (let y = sy0; y < sy1; y++) {
+    for (let x = sx0; x < sx1; x++) {
+      const i = (y * src.width + x) * 4;
+      const a = src.rgba[i + 3];
+      if (a === 0) continue;
+      plotOver(dst, x - sx0 + dx, y - sy0 + dy, { r: src.rgba[i], g: src.rgba[i + 1], b: src.rgba[i + 2], a });
+    }
+  }
+}
+function cloneImage(image) {
+  return { width: image.width, height: image.height, rgba: new Uint8Array(image.rgba) };
+}
+function drawCellOverlay(sheet, measurement, options) {
+  const image = cloneImage(sheet);
+  const headColor = parseColorHex("#ff00ff", "headColor");
+  const soleColor = parseColorHex("#00e5ff", "soleColor");
+  const anchorColor = parseColorHex("#ffffff", "anchorColor");
+  const warnColor = parseColorHex("#ffd400", "warnColor");
+  const pct = options.deviationPct ?? 0.05;
+  const flagged = [];
+  for (const cell of measurement.perCell) {
+    const cellX = cell.col * measurement.cellWidth;
+    const cellY = cell.row * measurement.cellHeight;
+    const odd = deviates(cell, measurement.charHeightPx, pct);
+    if (odd) flagged.push(cell.index);
+    const head = odd ? warnColor : headColor;
+    const sole = odd ? warnColor : soleColor;
+    if (cell.headTopY !== null) {
+      drawHLine(image, cellX, cellX + measurement.cellWidth - 1, cellY + cell.headTopY, head, true);
+    }
+    if (cell.soleY !== null) {
+      drawHLine(image, cellX, cellX + measurement.cellWidth - 1, cellY + cell.soleY, sole, true);
+    }
+    const ax = cellX + Math.max(0, Math.min(measurement.cellWidth - 1, Math.round(options.anchorX * measurement.cellWidth)));
+    const ay = cellY + Math.max(0, Math.min(measurement.cellHeight - 1, Math.round((1 - options.anchorY) * measurement.cellHeight)));
+    drawCross(image, ax, ay, odd ? warnColor : anchorColor, Math.max(3, Math.round(measurement.cellWidth / 32)));
+  }
+  return { image, flagged };
+}
+function composeBaseline(inputs, options = {}) {
+  if (inputs.length === 0) throw new Error("\u51C6\u7EF3\u56FE\u9700\u8981\u81F3\u5C11\u4E00\u5F20\u56FE\u96C6");
+  const gap = Math.max(0, Math.round(options.gap ?? 8));
+  const padding = Math.max(0, Math.round(options.padding ?? 4));
+  const alphaThreshold = options.alphaThreshold ?? CONTENT_ALPHA_CUT;
+  const background = parseColorHex(options.background ?? "#202030", "background");
+  const anchors = inputs.map((input2) => {
+    if (!(input2.anchorX >= 0 && input2.anchorX <= 1)) throw new Error(`${input2.name} \u7684 anchorX \u4E0D\u5728 0~1\uFF1A${input2.anchorX}`);
+    if (!(input2.anchorY >= 0 && input2.anchorY <= 1)) throw new Error(`${input2.name} \u7684 anchorY \u4E0D\u5728 0~1\uFF1A${input2.anchorY}`);
+    const cellWidth = Math.max(1, Math.round(input2.cellWidth));
+    const cellHeight = Math.max(1, Math.round(input2.cellHeight));
+    const anchorYPx = Math.max(0, Math.min(cellHeight - 1, Math.round((1 - input2.anchorY) * cellHeight)));
+    const anchorXPx = Math.max(0, Math.min(cellWidth - 1, Math.round(input2.anchorX * cellWidth)));
+    return { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx };
+  });
+  const topSpace = Math.max(...anchors.map((one) => one.anchorYPx));
+  const bottomSpace = Math.max(...anchors.map((one) => one.cellHeight - one.anchorYPx));
+  const width = 2 * padding + anchors.reduce((sum, one) => sum + one.cellWidth, 0) + gap * (anchors.length - 1);
+  const height = 2 * padding + topSpace + bottomSpace;
+  const image = createImage(width, height, background);
+  const baselineY = padding + topSpace;
+  const items = [];
+  const warnings = [];
+  let cursorX = padding;
+  for (const one of anchors) {
+    const { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx } = one;
+    const drawX = cursorX;
+    const drawY = baselineY - anchorYPx;
+    const cols = Math.max(1, Math.floor(input2.cols));
+    const cellIndex = Math.max(0, Math.floor(input2.cellIndex));
+    const col = cellIndex % cols;
+    const row = Math.floor(cellIndex / cols);
+    blit(image, input2.image, drawX, drawY, {
+      x: col * cellWidth,
+      y: row * cellHeight,
+      w: cellWidth,
+      h: cellHeight
+    });
+    const content = cellContentOf(
+      input2.image,
+      { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight },
+      cellIndex,
+      col,
+      row,
+      alphaThreshold
+    );
+    if (content.empty) {
+      warnings.push(`${input2.name} \u7684\u7B2C ${cellIndex} \u683C\u662F\u7A7A\u7684\uFF08\u91CF\u4E0D\u5230\u5185\u5BB9\uFF09\uFF0C\u8FD9\u4E00\u6761\u4E0D\u53C2\u4E0E\u5934\u9876\u7EBF`);
+    }
+    items.push({
+      name: input2.name,
+      charHeightPx: content.charHeightPx,
+      anchorX: input2.anchorX,
+      anchorY: input2.anchorY,
+      anchorXPx,
+      anchorYPx,
+      headTopY: content.headTopY,
+      soleY: content.soleY,
+      drawX,
+      drawY,
+      empty: content.empty
+    });
+    cursorX += cellWidth + gap;
+  }
+  const baselineColor = parseColorHex("#00e5ff", "baselineColor");
+  const headColor = parseColorHex("#ff00ff", "headColor");
+  const axisColor = parseColorHex("#33ff99", "axisColor");
+  const filled = items.filter((item) => !item.empty);
+  const headTops = filled.map((item) => item.drawY + (item.headTopY ?? 0));
+  const headTopY = headTops.length > 0 ? medianOf(headTops) : null;
+  for (const item of items) {
+    drawVLine(image, item.drawX + item.anchorXPx, 0, height - 1, axisColor, true);
+  }
+  drawHLine(image, 0, width - 1, baselineY, baselineColor, true);
+  if (headTopY !== null) drawHLine(image, 0, width - 1, headTopY, headColor, true);
+  if (filled.length > 0) {
+    for (const item of filled) {
+      drawCross(image, item.drawX + item.anchorXPx, item.drawY + (item.headTopY ?? 0), headColor, 3);
+    }
+  }
+  const heights = filled.map((item) => item.charHeightPx);
+  if (heights.length > 1) {
+    const median2 = medianOf(heights);
+    const spread = (Math.max(...heights) - Math.min(...heights)) / Math.max(1, median2);
+    if (spread > 0.01) {
+      warnings.push(
+        `\u7EC4\u5185\u8EAB\u9AD8\u5DEE ${(spread * 100).toFixed(1)}%\uFF08\u6700\u5927 ${Math.max(...heights)}px / \u6700\u5C0F ${Math.min(...heights)}px\uFF09\uFF0C\u8D85\u8FC7 1% \u5C31\u8BE5\u67E5\u662F\u54EA\u4E00\u6761\u7684\u7F29\u653E/\u88C1\u526A\u51FA\u4E86\u95EE\u9898\u3002`
+      );
+    }
+    const topSpread = Math.max(...headTops) - Math.min(...headTops);
+    const tolerance = Math.max(2, Math.round(median2 * 0.01));
+    if (topSpread > tolerance) {
+      warnings.push(
+        `\u5404\u683C\u5934\u9876\u884C\u6781\u5DEE ${topSpread}px\uFF08\u5BB9\u5DEE ${tolerance}px\uFF09\uFF1A\u8EAB\u9AD8\u867D\u7136\u4E00\u6837\uFF0C\u4F46\u951A\u70B9/\u951A\u70B9\u53E3\u5F84\u4E0D\u4E00\u81F4\uFF0C\u56FE\u4E0A\u80FD\u770B\u5230\u5934\u9876\u9519\u4F4D\u2014\u2014\u5148\u6838\u5BF9 meta \u7684 anchorX/anchorY \u662F\u5426\u540C\u4E00\u5957\u3002`
+      );
+    }
+  }
+  return { image, width, height, baselineY, headTopY, items, warnings };
+}
+
+// src/sprite/encode.ts
+import { deflateSync } from "node:zlib";
+var SIGNATURE2 = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+var MAX_RGBA_BYTES = 512 * 1024 * 1024;
+var CRC_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) !== 0 ? 3988292384 ^ c >>> 1 : c >>> 1;
+    table[n] = c;
+  }
+  return table;
+})();
+function crc32(bytes) {
+  let crc = 4294967295;
+  for (let i = 0; i < bytes.length; i++) {
+    crc = CRC_TABLE[(crc ^ bytes[i]) & 255] ^ crc >>> 8;
+  }
+  return (crc ^ 4294967295) >>> 0;
+}
+function chunk(type, data) {
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const typeBytes = Buffer.from(type, "latin1");
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([typeBytes, data])), 0);
+  return Buffer.concat([length, typeBytes, data, crc]);
+}
+function assertImage(image) {
+  if (!image || typeof image !== "object") throw new Error("encodePng \u9700\u8981\u4E00\u4E2A {width,height,rgba} \u5BF9\u8C61");
+  const width = Number(image.width);
+  const height = Number(image.height);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new Error(`encodePng \u7684\u5BBD\u9AD8\u5FC5\u987B\u662F\u6B63\u6574\u6570\uFF0C\u6536\u5230 ${String(image.width)}\xD7${String(image.height)}`);
+  }
+  const rgba = image.rgba;
+  if (!(rgba instanceof Uint8Array)) throw new Error("encodePng \u7684 rgba \u5FC5\u987B\u662F Uint8Array");
+  const expected = width * height * 4;
+  if (!Number.isSafeInteger(expected) || expected > MAX_RGBA_BYTES) {
+    throw new Error(`encodePng \u7684\u50CF\u7D20\u91CF\u8FC7\u5927\uFF08${width}\xD7${height}\xD74=${expected} \u5B57\u8282\uFF09\uFF0C\u4E0A\u9650 ${MAX_RGBA_BYTES}`);
+  }
+  if (rgba.length !== expected) {
+    throw new Error(`encodePng \u7684 rgba \u957F\u5EA6\u4E0D\u5BF9\uFF1A${width}\xD7${height}\xD74 \u5E94\u4E3A ${expected}\uFF0C\u5B9E\u9645 ${rgba.length}`);
+  }
+  return { width, height, rgba };
+}
+function encodePng(image) {
+  const { width, height, rgba } = assertImage(image);
+  const stride = width * 4;
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const lineStart = y * (stride + 1);
+    raw[lineStart] = 0;
+    for (let i = 0; i < stride; i++) raw[lineStart + 1 + i] = rgba[y * stride + i];
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
+  return Buffer.concat([
+    SIGNATURE2,
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0))
+  ]);
 }
 
 // src/sprite/browser.ts
@@ -38866,8 +39318,8 @@ async function listOurSpriteBrowsers() {
         { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, cwd: os3.tmpdir() }
       );
       let text = "";
-      ps.stdout?.on("data", (chunk) => {
-        text += chunk.toString("utf8");
+      ps.stdout?.on("data", (chunk2) => {
+        text += chunk2.toString("utf8");
       });
       ps.on("error", () => resolve(""));
       ps.on("close", () => resolve(text));
@@ -38927,7 +39379,7 @@ function getJson(url2, timeoutMs = 2e3) {
   return new Promise((resolve, reject) => {
     const request = http.get(url2, { timeout: timeoutMs }, (response) => {
       const chunks = [];
-      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("data", (chunk2) => chunks.push(chunk2));
       response.on("end", () => {
         try {
           resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
@@ -40683,6 +41135,99 @@ function createSpriteService(options) {
         ...typeof args.anchorPx === "number" ? { anchorPx: args.anchorPx } : {}
       });
     },
+    async baseline(args) {
+      const raw = Array.isArray(args?.paths) ? args.paths : [];
+      const wanted = raw.map((one) => String(one ?? "").trim()).filter((one) => one !== "");
+      if (wanted.length === 0) throw new Error("\u9700\u8981 paths\uFF1A\u81F3\u5C11\u4E00\u5F20\u56FE\u96C6\u8DEF\u5F84\uFF08\u540C\u76EE\u5F55\u8FD8\u8981\u6709\u914D\u5957\u7684 meta.json\uFF09");
+      const cellIndexWanted = Math.max(0, Math.floor(Number(args.cellIndex ?? 0)));
+      const inputs = [];
+      const resolved = [];
+      const warnings = [];
+      for (const target of wanted) {
+        const abs = path20.isAbsolute(target) ? target : path20.join(outDirOf(), target);
+        if (!existsSync3(abs)) throw new Error(`\u627E\u4E0D\u5230\u8FD9\u5F20\u56FE\u96C6\uFF1A${abs}`);
+        let decoded;
+        try {
+          decoded = decodePng(readFileSync6(abs));
+        } catch (error62) {
+          throw new Error(`\u8BFB\u4E0D\u4E86\u8FD9\u5F20\u56FE\u96C6\uFF08${abs}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 150)}`);
+        }
+        const candidates = metaPathCandidates(abs);
+        const metaFile = candidates.find((file2) => existsSync3(file2));
+        if (!metaFile) {
+          throw new Error(`\u627E\u4E0D\u5230\u540C\u540D meta.json\uFF1A${candidates.join(" / ")}\uFF08\u51C6\u7EF3\u56FE\u8981\u9760\u5B83\u62FF anchorX/anchorY/cellWidth/cellHeight\uFF0C\u4E0D\u8BB8\u731C\uFF09`);
+        }
+        let meta3;
+        try {
+          const parsed = JSON.parse(readFileSync6(metaFile, "utf8"));
+          if (!parsed || typeof parsed !== "object") throw new Error("\u4E0D\u662F\u5BF9\u8C61");
+          meta3 = parsed;
+        } catch (error62) {
+          throw new Error(`\u8BFB\u4E0D\u4E86 meta\uFF08${metaFile}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 150)}`);
+        }
+        const numberOr = (key) => {
+          const value = Number(meta3[key]);
+          return Number.isFinite(value) ? value : Number.NaN;
+        };
+        const cellWidth = numberOr("cellWidth");
+        const cellHeight = numberOr("cellHeight");
+        const anchorX = numberOr("anchorX");
+        const metaAnchorY = numberOr("anchorY");
+        const missing = [];
+        if (!(cellWidth > 0)) missing.push("cellWidth");
+        if (!(cellHeight > 0)) missing.push("cellHeight");
+        if (!(anchorX >= 0 && anchorX <= 1)) missing.push("anchorX(0~1)");
+        if (!(metaAnchorY >= 0 && metaAnchorY <= 1)) missing.push("anchorY(0~1)");
+        if (missing.length > 0) {
+          throw new Error(`meta \u91CC\u7F3A ${missing.join("/")}\uFF1A${metaFile}\uFF08\u8001\u4EA7\u7269\uFF1F\u91CD\u65B0 export \u4E00\u6B21\uFF0C\u6216\u624B\u5DE5\u8865\u4E0A\u518D\u8DD1\u51C6\u7EF3\u56FE\uFF09`);
+        }
+        const convention = typeof meta3.anchorConvention === "string" ? meta3.anchorConvention : "y-from-bottom";
+        const anchorY = convention === "y-from-top" ? 1 - metaAnchorY : metaAnchorY;
+        if (convention !== "y-from-bottom" && convention !== "y-from-top") {
+          warnings.push(`${path20.basename(abs)} \u7684 anchorConvention \u662F\u300C${convention}\u300D\uFF0C\u6309 y-from-bottom \u5904\u7406`);
+        }
+        const cols = Number(meta3.cols) > 0 ? Math.floor(Number(meta3.cols)) : Math.max(1, Math.round(decoded.width / cellWidth));
+        const rows = Number(meta3.rows) > 0 ? Math.floor(Number(meta3.rows)) : Math.max(1, Math.round(decoded.height / cellHeight));
+        if (cellIndexWanted >= cols * rows) {
+          throw new Error(
+            `cellIndex=${cellIndexWanted} \u8D85\u51FA\u7F51\u683C\uFF08${path20.basename(abs)} \u662F ${cols}\xD7${rows}\uFF0C\u6700\u5927\u5E8F\u53F7 ${cols * rows - 1}\uFF09`
+          );
+        }
+        const name2 = typeof meta3.name === "string" && meta3.name.trim() !== "" ? meta3.name.trim() : path20.basename(abs, path20.extname(abs));
+        inputs.push({
+          name: name2,
+          image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
+          cellIndex: cellIndexWanted,
+          cols,
+          cellWidth,
+          cellHeight,
+          anchorX,
+          anchorY
+        });
+        resolved.push(abs);
+      }
+      const composed = composeBaseline(inputs, {
+        ...typeof args.gap === "number" ? { gap: args.gap } : {},
+        ...typeof args.background === "string" && args.background.trim() !== "" ? { background: args.background.trim() } : {},
+        ...typeof args.padding === "number" ? { padding: args.padding } : {}
+      });
+      warnings.push(...composed.warnings);
+      const root = typeof args.outDir === "string" && args.outDir.trim() !== "" ? args.outDir.trim() : commonParentDir(resolved);
+      const debugDir = path20.join(root, "_debug");
+      mkdirSync6(debugDir, { recursive: true });
+      const outPath = path20.join(debugDir, `baseline-${Date.now()}.png`);
+      writeFileSync3(outPath, encodePng(composed.image));
+      return {
+        ok: true,
+        path: outPath,
+        width: composed.width,
+        height: composed.height,
+        baselineY: composed.baselineY,
+        headTopY: composed.headTopY,
+        items: composed.items,
+        warnings
+      };
+    },
     async match(args) {
       if (!args.templateRect || typeof args.templateRect !== "object") {
         throw new Error("\u9700\u8981 templateRect\uFF08\u6A21\u677F\u77E9\u5F62\uFF0C\u6E90\u5E27\u50CF\u7D20 {x,y,w,h}\uFF09");
@@ -40957,6 +41502,31 @@ function createSpriteService(options) {
           `cellHeight*rows=${cellHeightOut * rows} \u4E0E\u56FE\u96C6\u9AD8 ${sheetHeightOut} \u5DEE ${sheetHeightOut - cellHeightOut * rows}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
         );
       }
+      let measured;
+      let decodedSheet;
+      if (format === "png") {
+        try {
+          decodedSheet = decodePng(buffer);
+          measured = measureSheet(
+            { width: decodedSheet.width, height: decodedSheet.height, rgba: decodedSheet.rgba },
+            {
+              cols,
+              rows,
+              cellWidth: cellWidthOut ?? Math.max(1, Math.round(decodedSheet.width / cols)),
+              cellHeight: cellHeightOut ?? Math.max(1, Math.round(decodedSheet.height / rows))
+            }
+          );
+          warnings.push(...measured.warnings);
+          const mismatch = measuredMismatchWarning(scaled.achievedPx, measured.charHeightPx);
+          if (mismatch) warnings.push(mismatch);
+        } catch (error62) {
+          warnings.push(
+            `\u6210\u54C1\u5B9E\u6D4B\u5931\u8D25\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09\uFF1A\u8FD9\u5F20\u56FE\u6CA1\u80FD\u81EA\u8BC1\uFF0C\u522B\u53EA\u4FE1 achievedPx`
+          );
+        }
+      } else {
+        warnings.push("format=webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF1A\u8FD9\u6B21\u6CA1\u6709 measured\uFF08\u6210\u54C1\u5B9E\u6D4B\uFF09\uFF0C\u8981\u9A8C\u8EAB\u9AD8\u8BF7\u7528 png \u5BFC\u51FA");
+      }
       const meta3 = buildExportMeta({
         built,
         name: name2,
@@ -40974,6 +41544,29 @@ function createSpriteService(options) {
         warnings.push(
           `\u60F3\u8981 ${args.charHeightPx ?? args.targetHeight ?? "?"}px\uFF0C\u4F46\u5DE5\u5177\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u5B9E\u9645\u53EA\u6709 ${scaled.achievedPx}px`
         );
+      }
+      let overlayPath;
+      if (args.debugOverlay === true) {
+        if (!measured || !decodedSheet) {
+          warnings.push("debugOverlay \u53EA\u5728 png \u5BFC\u51FA\u65F6\u751F\u6548\uFF08webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF09\uFF0C\u8FD9\u6B21\u6CA1\u51FA\u6838\u5BF9\u56FE");
+        } else {
+          try {
+            const overlay = drawCellOverlay(decodedSheet, measured, { anchorX: anchor2.anchorX, anchorY: anchor2.anchorY });
+            overlayPath = path20.join(debugDirOf(args.outDir), `${name2}-overlay.png`);
+            writeFileSync3(overlayPath, encodePng(overlay.image));
+            if (measured.sampled) {
+              warnings.push(`\u6838\u5BF9\u56FE\u53EA\u753B\u4E86\u62BD\u6837\u7684 ${measured.perCell.length} \u683C\uFF08\u5171 ${measured.totalCells} \u683C\uFF09`);
+            }
+            if (overlay.flagged.length > 0) {
+              warnings.push(
+                `\u6838\u5BF9\u56FE\u91CC ${overlay.flagged.length} \u683C\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5%\uFF0C\u5DF2\u6807\u9EC4\uFF08\u7B2C ${overlay.flagged.slice(0, 5).join("\u3001")} \u683C\uFF09`
+              );
+            }
+          } catch (error62) {
+            warnings.push(`\u6838\u5BF9\u56FE\u6CA1\u753B\u51FA\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 150)}`);
+            overlayPath = void 0;
+          }
+        }
       }
       let worst;
       if (format === "png") {
@@ -40995,6 +41588,8 @@ function createSpriteService(options) {
         format,
         bytes: buffer.byteLength,
         ...worst ? { stats: { worst } } : {},
+        ...measured ? { measured } : {},
+        ...overlayPath ? { overlayPath } : {},
         reported: { meta: meta3 },
         warnings
       };
@@ -41120,6 +41715,7 @@ function createSpriteService(options) {
             ...typeof exported.achievedPx === "number" ? { charHeightPx: exported.achievedPx } : {},
             ...applied.stats || applied.worst ? { stats: { ...applied.worst ? { worst: applied.worst } : {}, ...applied.stats ? { first: applied.stats } : {} } } : {},
             ...measured.overlayPath ? { overlayPath: measured.overlayPath } : {},
+            ...exported.measured ? { measured: exported.measured } : {},
             warnings: [
               ...exported.warnings,
               ...applied.warnings,
@@ -41182,6 +41778,25 @@ function createSpriteService(options) {
       if (server) await new Promise((resolve) => server.close(() => resolve()));
     }
   };
+}
+function metaPathCandidates(imagePath) {
+  const ext = path20.extname(imagePath);
+  const stem = ext === "" ? imagePath : imagePath.slice(0, imagePath.length - ext.length);
+  return [`${stem}.meta.json`, `${stem}.json`];
+}
+function commonParentDir(paths) {
+  const dirs = paths.map((one) => path20.dirname(path20.resolve(one)));
+  if (dirs.length === 0) return process.cwd();
+  const parts = dirs.map((one) => one.split(path20.sep));
+  let common = parts[0].slice();
+  for (const other of parts.slice(1)) {
+    let i = 0;
+    while (i < common.length && i < other.length && common[i] === other[i]) i++;
+    common = common.slice(0, i);
+  }
+  if (common.length === 0) return dirs[0];
+  const joined = common.join(path20.sep);
+  return joined === "" ? dirs[0] : joined;
 }
 
 // src/sprite/guide.ts
@@ -41688,7 +42303,7 @@ function buildTools(service, options) {
     },
     {
       name: "sprite_export",
-      description: "\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002",
+      description: '\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002\u8FD4\u56DE\u91CC `measured` \u662F**\u6210\u54C1\u5B9E\u6D4B**\uFF08\u89E3\u81EA\u5DF1\u5BFC\u51FA\u7684 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2 \u2192 \u53D6\u4E2D\u4F4D\u6570\uFF09\uFF1AcharHeightPx/headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"\uFF0C\u683C\u5B50\u6570 >48 \u65F6\u53EA\u7B49\u95F4\u9694\u62BD 12 \u683C\u5E76\u7ED9 sampled:true\u3002**\u5224\u6210\u54C1\u5BF9\u4E0D\u5BF9\u770B measured\uFF0C\u522B\u770B achievedPx**\u2014\u2014achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\u7684\u53C2\u6570\u56DE\u663E\uFF1B\u4E24\u8005\u5DEE >1% \u4F1A\u5728 warnings \u91CC\u70B9\u540D\u3002debugOverlay:true \u518D\u51FA\u4E00\u5F20 <outDir>/_debug/<name>-overlay.png\uFF08\u54C1\u7EA2=\u5B9E\u6D4B\u5934\u9876\u3001\u9752=\u5B9E\u6D4B\u811A\u5E95\u3001\u767D\u5341\u5B57=\u951A\u70B9\uFF1B\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5% \u7684\u683C\u6574\u683C\u6807\u9EC4\uFF09\uFF0C\u8DEF\u5F84\u5728 overlayPath\u3002',
       parameters: {
         type: "object",
         properties: {
@@ -41708,9 +42323,13 @@ function buildTools(service, options) {
           metaName: { type: "string", description: "meta \u6587\u4EF6\u540D" },
           dirPerAction: { type: "boolean", description: "true \u2192 \u653E\u8FDB <outDir>/<name>/" },
           overwrite: { type: "boolean", description: "false \u65F6\u76EE\u6807\u5DF2\u5B58\u5728\u5C31\u62A5\u9519\uFF08\u9ED8\u8BA4 true\uFF09" },
-          format: { type: "string", enum: ["png", "webp"], description: "\u9ED8\u8BA4 png\uFF1Bwebp \u4F53\u79EF\u5C0F\u5F97\u591A" },
+          format: { type: "string", enum: ["png", "webp"], description: "\u9ED8\u8BA4 png\uFF1Bwebp \u4F53\u79EF\u5C0F\u5F97\u591A\uFF0C\u4F46 webp \u89E3\u4E0D\u56DE\u50CF\u7D20 \u2192 \u6CA1\u6709 measured/overlay" },
           quality: { type: "number", description: "webp \u8D28\u91CF 0~1\uFF0C\u9ED8\u8BA4 0.9" },
-          name: { type: "string", description: "\u52A8\u4F5C\u540D\uFF08\u7528\u4E8E\u9ED8\u8BA4\u6587\u4EF6\u540D\u4E0E\u5B50\u76EE\u5F55\uFF09" }
+          name: { type: "string", description: "\u52A8\u4F5C\u540D\uFF08\u7528\u4E8E\u9ED8\u8BA4\u6587\u4EF6\u540D\u4E0E\u5B50\u76EE\u5F55\uFF09" },
+          debugOverlay: {
+            type: "boolean",
+            description: "true = \u989D\u5916\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE <outDir>/_debug/<name>-overlay.png\uFF08\u53EA\u5728 png \u5BFC\u51FA\u65F6\u751F\u6548\uFF09\uFF1B\u9010\u683C\u753B\u50CF\u91CF\u5934\u9876/\u811A\u5E95\u6A2A\u7EBF\u4E0E\u951A\u70B9\u5341\u5B57\uFF0C\u5F02\u5E38\u683C\u6807\u9EC4\uFF1B\u8DEF\u5F84\u56DE\u5728 overlayPath"
+          }
         }
       },
       output: OUT2,
@@ -41737,7 +42356,8 @@ function buildTools(service, options) {
               ...typeof args.overwrite === "boolean" ? { overwrite: args.overwrite } : {},
               ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
               ...typeof args.quality === "number" ? { quality: args.quality } : {},
-              ...typeof args.name === "string" ? { name: args.name } : {}
+              ...typeof args.name === "string" ? { name: args.name } : {},
+              ...typeof args.debugOverlay === "boolean" ? { debugOverlay: args.debugOverlay } : {}
             })
           );
         } catch (error62) {
@@ -42115,6 +42735,44 @@ function buildTools(service, options) {
               ...typeof args.referenceCharHeight === "number" ? { referenceCharHeight: args.referenceCharHeight } : {},
               ...typeof args.heightPct === "number" ? { heightPct: args.heightPct } : {},
               ...typeof args.anchorPx === "number" ? { anchorPx: args.anchorPx } : {}
+            })
+          );
+        } catch (error62) {
+          return fail2(error62);
+        }
+      }
+    },
+    {
+      name: "sprite_baseline",
+      description: "\u51C6\u7EF3\u56FE\uFF1A\u628A**\u4E00\u7EC4\u56FE\u96C6**\u6309\u5404\u81EA meta \u91CC\u7684 anchorX/anchorY \u5BF9\u9F50\u5230\u540C\u4E00\u6761**\u5730\u5E73\u7EBF**\u3001\u518D\u753B\u4E0A\u5934\u9876\u7EBF\uFF0C\u4F9B\u4EBA\u76EE\u89C6\u9A8C\u6536\uFF08skill \xA79 \u7B2C 3 \u6761\uFF09\u3002\u6BCF\u5F20\u56FE\u53D6\u7B2C cellIndex \u683C\uFF08\u9ED8\u8BA4 0=\u9996\u5E27\uFF09\uFF0C\u6309\u8DEF\u5F84\u987A\u5E8F\u6A2A\u5411\u6392\u5F00\u3002\u753B\u4E09\u6761\u53C2\u8003\u7EBF\uFF1A\u5730\u5E73\u7EBF\uFF08\u9752\uFF0C= \u951A\u70B9\u6240\u5728\u884C\uFF09\u3001\u5934\u9876\u7EBF\uFF08\u54C1\u7EA2\uFF0C= \u5404\u683C\u5B9E\u6D4B\u6700\u9AD8\u70B9\u7684**\u4E2D\u4F4D\u6570**\u884C\uFF09\u3001\u6BCF\u683C\u7684\u7AD6\u5411\u4E2D\u8F74\uFF08\u7EFF\uFF0C= \u951A\u70B9 x\uFF09\uFF1B\u6BCF\u683C\u5934\u9876\u518D\u70B9\u4E00\u4E2A\u5C0F\u5341\u5B57\uFF0C\u770B\u5F97\u51FA\u7EBF\u662F\u600E\u4E48\u6765\u7684\u3002**meta \u662F\u786C\u8981\u6C42**\uFF1A`x.png` \u627E\u540C\u76EE\u5F55 `x.meta.json`\uFF0C\u518D\u9000\u56DE `x.json`\uFF1B\u627E\u4E0D\u5230\u76F4\u63A5\u62A5\u9519\uFF08\u4E0D\u731C\u951A\u70B9\uFF09\uFF0Cmeta \u91CC\u7F3A cellWidth/cellHeight/anchorX/anchorY \u4E5F\u62A5\u9519\uFF08\u8001\u4EA7\u7269\u5148\u91CD\u65B0 export\uFF09\u3002\u26A0\uFE0F \u8FD9\u91CC\u91CF\u7684\u662F**\u6210\u54C1\u50CF\u7D20**\uFF08\u89E3 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2\uFF09\uFF0C\u4E0D\u662F meta \u7684\u53C2\u6570\u56DE\u663E\u3002\u8F93\u51FA `<outDir>/_debug/baseline-<ts>.png`\uFF08outDir \u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09\u3002\u8FD4\u56DE {ok,path,width,height,baselineY,headTopY,items[{name,charHeightPx,anchorX,anchorY,\u2026}],warnings}\uFF1B\u7EC4\u5185\u8EAB\u9AD8\u5DEE >1% \u65F6\u4F1A\u5199 warning\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          paths: {
+            type: "array",
+            items: { type: "string" },
+            description: "\u56FE\u96C6\u8DEF\u5F84\uFF08png\uFF0C\u76F8\u5BF9\u8DEF\u5F84\u6309\u5BFC\u51FA\u76EE\u5F55\u89E3\u6790\uFF09\uFF1B\u987A\u5E8F\u5C31\u662F\u51C6\u7EF3\u56FE\u91CC\u4ECE\u5DE6\u5230\u53F3\u7684\u987A\u5E8F"
+          },
+          cellIndex: { type: "number", description: "\u53D6\u6BCF\u5F20\u56FE\u7684\u7B2C\u51E0\u683C\uFF08\u884C\u4F18\u5148\uFF0C\u9ED8\u8BA4 0=\u9996\u5E27\uFF09" },
+          gap: { type: "number", description: "\u683C\u4E0E\u683C\u7684\u6A2A\u5411\u7A7A\u9699\uFF08\u50CF\u7D20\uFF0C\u9ED8\u8BA4 8\uFF09" },
+          background: { type: "string", description: "\u5E95\u8272\uFF0C\u9ED8\u8BA4 #202030" },
+          padding: { type: "number", description: "\u56DB\u5468\u7559\u767D\uFF08\u50CF\u7D20\uFF0C\u9ED8\u8BA4 4\uFF09" },
+          outDir: { type: "string", description: "\u8F93\u51FA\u6839\u76EE\u5F55\uFF08\u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09" }
+        },
+        required: ["paths"]
+      },
+      output: OUT2,
+      timeoutMs: 12e4,
+      async execute(args) {
+        try {
+          return json9(
+            await service.baseline({
+              paths: (Array.isArray(args.paths) ? args.paths : []).filter((one) => typeof one === "string"),
+              ...typeof args.cellIndex === "number" ? { cellIndex: args.cellIndex } : {},
+              ...typeof args.gap === "number" ? { gap: args.gap } : {},
+              ...typeof args.background === "string" ? { background: args.background } : {},
+              ...typeof args.padding === "number" ? { padding: args.padding } : {},
+              ...typeof args.outDir === "string" ? { outDir: args.outDir } : {}
             })
           );
         } catch (error62) {
@@ -42677,14 +43335,14 @@ function readBody4(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk) => {
-      size += chunk.byteLength;
+    request.on("data", (chunk2) => {
+      size += chunk2.byteLength;
       if (size > 16 * 1024) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
@@ -43018,11 +43676,11 @@ var defaultCliRunner = (args, options) => new Promise((resolve) => {
     } catch {
     }
   }, options.timeoutMs);
-  child.stdout?.on("data", (chunk) => {
-    stdout += chunk.toString("utf8");
+  child.stdout?.on("data", (chunk2) => {
+    stdout += chunk2.toString("utf8");
   });
-  child.stderr?.on("data", (chunk) => {
-    stderr += chunk.toString("utf8");
+  child.stderr?.on("data", (chunk2) => {
+    stderr += chunk2.toString("utf8");
   });
   child.on("error", (error62) => {
     clearTimeout(timer);
@@ -43304,14 +43962,14 @@ function readBody5(request) {
       settled = true;
       resolve(value);
     };
-    request.on("data", (chunk) => {
-      size += chunk.byteLength;
+    request.on("data", (chunk2) => {
+      size += chunk2.byteLength;
       if (size > 1024 * 1024) {
         finish({ ok: false, status: 413, error: "\u8BF7\u6C42\u592A\u5927" });
         request.destroy();
         return;
       }
-      chunks.push(chunk);
+      chunks.push(chunk2);
     });
     request.on("end", () => finish({ ok: true, text: Buffer.concat(chunks).toString("utf8") }));
     request.on("error", (error62) => finish({ ok: false, status: 400, error: String(error62?.message ?? error62) }));
@@ -43873,11 +44531,11 @@ function runGitAsync(args, options) {
       timer.unref?.();
       child.stdout?.setEncoding("utf8");
       child.stderr?.setEncoding("utf8");
-      child.stdout?.on("data", (chunk) => {
-        if (stdout.length < MAX_BUFFER) stdout += chunk;
+      child.stdout?.on("data", (chunk2) => {
+        if (stdout.length < MAX_BUFFER) stdout += chunk2;
       });
-      child.stderr?.on("data", (chunk) => {
-        if (stderr.length < MAX_BUFFER) stderr += chunk;
+      child.stderr?.on("data", (chunk2) => {
+        if (stderr.length < MAX_BUFFER) stderr += chunk2;
       });
       child.on("error", () => finish(-1));
       child.on("close", (code) => finish(typeof code === "number" ? code : -1));

@@ -30,6 +30,7 @@ function stubService() {
     setAnchorPx: record('setAnchorPx'),
     cleanup: record('cleanup'),
     exportSheet: record('exportSheet'),
+    baseline: record('baseline'),
     autotune: async () => ({ ok: true, params: {}, trace: [], reachedGoal: true }),
     batch: async () => ({ ok: true, results: [], failures: [] }),
     auto: async () => ({ ok: true, warnings: [], stages: [] }),
@@ -79,12 +80,13 @@ test('ignoredKeysOf：不认识的键要能被算出来（不能静默丢弃）'
   assert.deepEqual(ignoredKeysOf({ mode: 'advanced', frame: 0, nonsense: 1 }), ['nonsense'])
 })
 
-test('18 个工具的名字与必填项是稳定契约', () => {
+test('19 个工具的名字与必填项是稳定契约', () => {
   const { service } = stubService()
   const tools = buildTools(service)
   const byName = new Map(tools.map((tool) => [String(tool.name), tool]))
-  // 2026-11-13：加了三个像素搜索原语（match / feature_fit / silhouette_fit）与一致性自检（verify），14 → 18。
-  assert.equal(byName.size, 18)
+  // 2026-11-13：加了三个像素搜索原语（match / feature_fit / silhouette_fit）与一致性自检（verify），14 → 18；
+  // 同一天最后一批加了准绳图 sprite_baseline（成品实测 measured / overflow 核对图），18 → 19。
+  assert.equal(byName.size, 19)
   const required: Record<string, string[]> = {
     sprite_prepare: ['videoPath'],
     sprite_batch: ['outRoot', 'items'],
@@ -92,6 +94,8 @@ test('18 个工具的名字与必填项是稳定契约', () => {
     // 这三个没有"合理解法"的默认值：不给模板/矩形就只能瞎猜，所以必须点名。
     sprite_match: ['templateRect'],
     sprite_feature_fit: ['templates'],
+    // 准绳图没有路径就什么也排不出来（meta 是配套自动找的，不在这里点名）。
+    sprite_baseline: ['paths'],
   }
   for (const [name, fields] of Object.entries(required)) {
     const params = byName.get(name)!.parameters as { required?: string[] }
@@ -166,6 +170,45 @@ test('sprite_export 的调参都能转到 service（命名/格式/物理量）',
     quality: 0.85,
     name: 'Idle',
   })
+})
+
+test('sprite_export 的 debugOverlay 与 sprite_baseline 的入参都能过到 service', async () => {
+  const { service, calls } = stubService()
+  const tools = new Map(buildTools(service).map((tool) => [String(tool.name), tool]))
+
+  await (tools.get('sprite_export')!.execute as (args: unknown) => Promise<unknown>)({
+    name: 'Idle',
+    debugOverlay: true,
+  })
+  const exported = calls.find((call) => call.name === 'exportSheet')!
+  assert.deepEqual(exported.args, { name: 'Idle', debugOverlay: true })
+
+  await (tools.get('sprite_baseline')!.execute as (args: unknown) => Promise<unknown>)({
+    paths: ['D:\\out\\idle\\idle_8x6.png', 'D:\\out\\walk\\walk_8x6.png'],
+    cellIndex: 2,
+    gap: 12,
+    background: '#101018',
+    padding: 6,
+    outDir: 'D:\\out',
+  })
+  const baseline = calls.find((call) => call.name === 'baseline')!
+  assert.deepEqual(baseline.args, {
+    paths: ['D:\\out\\idle\\idle_8x6.png', 'D:\\out\\walk\\walk_8x6.png'],
+    cellIndex: 2,
+    gap: 12,
+    background: '#101018',
+    padding: 6,
+    outDir: 'D:\\out',
+  })
+})
+
+test('sprite_export 描述里写清了"measured 才是成品实测"（否则模型还是只信 achievedPx）', () => {
+  const { service } = stubService()
+  const exportTool = buildTools(service).find((tool) => tool.name === 'sprite_export')!
+  const description = String(exportTool.description)
+  assert.match(description, /measured/)
+  assert.match(description, /参数回显/)
+  assert.match(description, /sheet-rgba/)
 })
 
 test('sprite_cleanup 的 trim 策略与 maskRect=auto 能过到 service', async () => {

@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, pickWorst } from '../src/sprite/guard.js'
+import { assertKeyedPresent, assertNotOpaque, checkGridCapacity, defaultFileNames, gridFor, measuredMismatchWarning, pickWorst } from '../src/sprite/guard.js'
 import type { SpriteStats } from '../src/sprite/analyze.js'
 
 function stats(over: Partial<SpriteStats> = {}): SpriteStats {
@@ -76,4 +76,38 @@ test('网格：按帧数推（48 沿用 8×6、其它 sqrt）；塞不下必须�
   assert.deepEqual(checkGridCapacity(48, 8, 6), { warnings: [] })
   // 空格过半 → warning（不拦）
   assert.match(checkGridCapacity(20, 8, 6).warnings[0] ?? '', /末尾会留大片空格/)
+})
+test('参数回显 vs 成品实测：差 >1% 必须点名（用户实测三次全是这条）', () => {
+  // 2026-11-13 实测：achievedPx 一直是 300，成品量出来是 382 / 341 / 303。
+  for (const [achieved, measured] of [
+    [300, 382],
+    [300, 341],
+    [300, 303.5],
+  ] as Array<[number, number]>) {
+    const warning = measuredMismatchWarning(achieved, measured)
+    assert.ok(warning, `${achieved} vs ${measured} 应该要告警`)
+    assert.match(warning!, /参数回显与成品实测不一致/)
+    assert.ok(warning!.includes(`参数 ${achieved}px`), '要写出参数回显值')
+    assert.ok(warning!.includes(`实测 ${Math.round(measured)}px`), '要写出成品实测值')
+    assert.match(warning!, /别信 achievedPx/, '要明确说"别只信参数回显"')
+  }
+  // 具体百分比四舍五入到 0.1（分母是**实测值**：|382-300|/382 = 21.5%）
+  assert.match(measuredMismatchWarning(300, 382)!, /偏 21\.5%/)
+  assert.match(measuredMismatchWarning(300, 382)!, /比参数大/, '实测 382 > 参数 300')
+  assert.match(measuredMismatchWarning(400, 380)!, /比参数小/, '实测 380 < 参数 400')
+})
+
+test('参数回显 vs 成品实测：在容差内、或有一头缺失时不吵', () => {
+  assert.equal(measuredMismatchWarning(300, 300), null)
+  // 口径（2026-11-13 改）：绝对 2px 与相对 0.5% 取宽松的那个。
+  // 起因：用户那次 300→303 只差 3px（0.99%），旧口径（相对 1%）刚好放过——那正是他最需要被提醒的一次。
+  assert.equal(measuredMismatchWarning(300, 302), null, '差 2px 算取整噪声，不报')
+  assert.ok(measuredMismatchWarning(300, 303) !== null, '差 3px 必须报（用户真实踩过的那次）')
+  assert.ok(measuredMismatchWarning(300, 304) !== null, '差 4px 要报')
+  assert.ok(measuredMismatchWarning(277, 280) !== null, '小目标上 3px 也要报')
+  assert.equal(measuredMismatchWarning(1000, 1003), null, '大目标上 3px 仍在 0.5% 内，不报')
+  assert.equal(measuredMismatchWarning(undefined, 300), null)
+  assert.equal(measuredMismatchWarning(Number.NaN, 300), null)
+  assert.equal(measuredMismatchWarning(300, 0), null, '实测量不到（0）时这条不管，交给 measured 自己的 warning')
+  assert.equal(measuredMismatchWarning(300, undefined), null)
 })

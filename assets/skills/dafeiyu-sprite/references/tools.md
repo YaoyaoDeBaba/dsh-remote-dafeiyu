@@ -52,6 +52,39 @@
 **已知局限**：纯圆盘/无内部结构的剪影尺度不可辨识（IoU 曲面在尺度方向太平），有肢体结构才准；不估旋转。
 
 
+## 成品实测与验收图（2026-11-13 新增）
+
+`sprite_export` 现在会**把自己导出的图量一遍**，返回 `measured`：
+
+```jsonc
+"measured": { "charHeightPx": 277, "headTopY": 40, "soleY": 317,
+              "cellWidth": 287, "cellHeight": 386,
+              "perCell": [{"index":0,"charHeightPx":277,"headTopY":40,"soleY":317}, …],
+              "sampled": false, "source": "sheet-rgba" }
+```
+
+- `achievedPx` **只是参数回显**（"你给的 span 被缩到了多少"），不是成品里角色有多高。用户连续三次栽在这上面：参数 300，成品实测 382 / 341 / 303；
+- 两者差 **>2px 或 >0.5%**（取宽松的）时 `warnings` 会写"参数回显与成品实测不一致"，并告诉你偏了多少——**按成品对齐请用 `measured.charHeightPx`**；
+- 抽样：≤48 格全量，>48 格等间隔 12 格（含首末），`sampled:true`；
+- `format:"webp"` 解不回像素，不给 `measured` 并明确 warning（不静默）。
+
+**`debugOverlay:true`** 出一张核对图 `<outDir>/_debug/<name>-overlay.png`：每格画品红（头顶）/青（脚底）/白十字（锚点）；**某格身高偏离中位数 >5% 时整格改黄**——异常格一眼能看到。返回 `overlayPath`。
+
+## 准绳图 `sprite_baseline`
+
+把一组动画按锚点对齐到**同一条地平线**、画出**头顶线**和每格的竖向中轴，供目视验收：
+
+```jsonc
+{ "paths": ["D:\\out\\idle\\idle_8x6.png", "D:\\out\\angry\\angry_8x6.png"],
+  "cellIndex": 0, "gap": 8, "background": "#202030" }
+→ { "ok": true, "path": ".../_debug/baseline-<ts>.png", "items": [...], "warnings": [] }
+```
+
+- 每张图的 meta 自动找同名 `.json`（`x.meta.json` 再退 `x.json`），**找不到直接报错**，不猜；
+- 缺 `cellWidth/cellHeight/anchorX/anchorY` 会点名报错；`anchorConvention:"y-from-top"` 会自动翻成 y-from-bottom；
+- 会额外报"身高一样但头顶行错开"（锚点口径不一致，光看身高发现不了）；
+- 用法：一批交付前跑一遍，扫一眼——**脚底齐平 + 头顶线齐平 + 中轴压在门襟列**。
+
 ## meta 里有什么
 
 ```
