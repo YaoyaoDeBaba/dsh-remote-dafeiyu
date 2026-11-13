@@ -176,6 +176,36 @@ function fuseSignals(platform: AbortSignal | undefined, ours: AbortSignal): Abor
   return fused.signal
 }
 
+/**
+ * 毫秒时刻 → ISO 字符串；**不知道就给 `undefined`**，绝不吐一个假的时刻。
+ *
+ * ## 为什么 0 必须是 `undefined`（而不是 `1970-01-01T00:00:00.000Z`）
+ *
+ * `createdAt` 在冷会话上是 **0**：`listDescendants` 刻意不带 createdAt，
+ * `sessions.list()` 又只回活会话。于是面板那边拿到的 `createdAt` / `lastActiveAt`
+ * 是 `1970-01-01…`，用户看到一条"1970 年创建的"子代理；更糟的是 `idleMs`
+ * 用它算出来是"闲置了 56 年"。
+ *
+ * 0 在内核里的意思是"没有这个字段"，不是"纪元零点"。这里把它（以及负数、`NaN`、
+ * `Infinity`）一并挡成 `undefined`——端上对 undefined 的处理就是不显示，
+ * 那才是诚实的缺席。
+ *
+ * 越界（`|n| > 8.64e15`）时 `toISOString` 会抛 `RangeError`，也一并吞成 undefined
+ * （与 `shell/iso.ts` 同一条口径，理由见那个文件）。
+ */
+export function isoOfTime(value: unknown): string | undefined {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value <= 0) return undefined
+    try {
+      return new Date(value).toISOString()
+    } catch {
+      return undefined
+    }
+  }
+  if (typeof value === 'string' && !Number.isNaN(Date.parse(value))) return value
+  return undefined
+}
+
 export interface ServicesOptions {
   clock: Clock
   log?: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
@@ -270,6 +300,28 @@ interface ListedSession {
   origin?: string
   /** 排序用的时间戳；对 sessionQuery 是 header.createdAt，对 sessions.list 是记录自身字段。 */
   headerTime?: number | string
+}
+
+/**
+ * `subagents.listChildren() / listDescendants()` 投影出来的一条（只留我们用得上的字段）。
+ *
+ * 除了 `label`，内核还给我们这几样，且**都是"看得到就拿、看不到就空"**：
+ * - `activity`：`'inactive'` = 这条子代理**没被加载**（进程里没有它的 agent）。
+ *   冷会话的 createdAt 只有持久化那面才有，靠它来决定要不要去查（见 listSubagents）；
+ * - `mode` / `depth` / `hasChildren`：投影顺带给的，界面上暂时不显示，留着免得下次又要回头改一次。
+ */
+interface SubagentCatalogEntry {
+  label?: string
+  activity?: string
+  mode?: string
+  depth?: number
+  hasChildren?: boolean
+}
+
+/** 一次 catalog 探测的结果 + 这次探测可不可信（决定要不要退回"扫全量会话头"）。 */
+interface SubagentCatalogRead {
+  entries: Map<string, SubagentCatalogEntry>
+  trusted: boolean
 }
 
 /** 平台会话记录（`sessionQuery.listSessions()` 的形状，取证 dsh-session-query/lib/types/index.d.ts:55）。 */
@@ -374,7 +426,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * 立刻清掉这两处缓存。
    */
   const CATALOG_FAIL_TTL_MS = 300_000
-  const catalogCache = new Map<string, { at: number; value: { entries: Map<string, { label?: string }>; trusted: boolean }; ttl: number }>()
+  const catalogCache = new Map<string, { at: number; value: SubagentCatalogRead; ttl: number }>()
 
   /**
    * 记一个子代理及其父会话。
@@ -624,11 +676,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
   }
 
-  function iso(value: unknown): string | undefined {
-    if (typeof value === 'number') return new Date(value).toISOString()
-    if (typeof value === 'string' && !Number.isNaN(Date.parse(value))) return value
-    return undefined
-  }
+  /** 见模块级的 `iso`。留一层转调，是为了让下面几十处调用点不必改名字。 */
+  const iso = isoOfTime
 
   async function loadTitles(ids: string[]): Promise<void> {
     const read = fn(services.sessionQuery, 'readTitleSnapshots')
@@ -876,10 +925,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * `sessionQuery.listSessions()` 拉一遍全量会话**（面板 focus/SSE 都会刷新），
    * 这正是"频繁拉全量会话数据"的隐患来源。
    */
-  async function subagentCatalog(
-    parentSessionId: string,
-    descendants: boolean,
-  ): Promise<{ entries: Map<string, { label?: string }>; trusted: boolean }> {
+  async function subagentCatalog(parentSessionId: string, descendants: boolean): Promise<SubagentCatalogRead> {
     const key = `${descendants ? 'd' : 'c'}|${parentSessionId}`
     const now = options.clock.now()
     const cached = catalogCache.get(key)
@@ -894,27 +940,53 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     return value
   }
 
-  async function readSubagentCatalog(
-    parentSessionId: string,
-    descendants: boolean,
-  ): Promise<{ entries: Map<string, { label?: string }>; trusted: boolean }> {
-    const out = new Map<string, { label?: string }>()
+  async function readSubagentCatalog(parentSessionId: string, descendants: boolean): Promise<SubagentCatalogRead> {
+    const out = new Map<string, SubagentCatalogEntry>()
     const service = services.subagents
     if (!service) return { entries: out, trusted: false }
     const call = (name: 'listDescendants' | 'listChildren'): ((...args: unknown[]) => unknown) | undefined =>
       fn(service, name)
+    /**
+     * 读一次投影。**除 label 之外的字段也留着**（2026-11-13）：
+     * `activity === 'inactive'` 是"这条子代理没被加载"的唯一信号，而冷会话的
+     * createdAt 只有持久化那面有——调用方要按它决定"要不要去查那份持久化列表"。
+     * 顺手把 `mode/depth/hasChildren` 一起存下，免得下次想用又得回来改一遍。
+     */
+    /** 投影给的一条（只留我们用得上的字段，其余全走"看不到就空"）。 */
+    type CatalogRow = {
+      id?: unknown
+      label?: unknown
+      depth?: unknown
+      activity?: unknown
+      mode?: unknown
+      hasChildren?: unknown
+    }
     const read = async (name: 'listDescendants' | 'listChildren', directOnly = false): Promise<boolean> => {
       const list = call(name)
       if (!list) return false
       const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4_000)) as Array<
-        { id?: unknown; label?: unknown; depth?: unknown } | undefined
+        CatalogRow | undefined
       >
       for (const row of rows ?? []) {
         if (typeof row?.id !== 'string' || row.id === '') continue
         // `listDescendants` 会把整棵子树都带出来；只要直接子级时按 depth 过滤（缺 depth 视作 1）。
         if (directOnly && row.depth !== undefined && Number(row.depth) !== 1) continue
         const label = typeof row.label === 'string' && row.label.trim() !== '' ? row.label.trim() : undefined
-        out.set(row.id, label === undefined ? {} : { label })
+        const activity =
+          typeof row.activity === 'string' && row.activity.trim() !== '' ? row.activity.trim() : undefined
+        const mode = typeof row.mode === 'string' && row.mode.trim() !== '' ? row.mode.trim() : undefined
+        const depth = typeof row.depth === 'number' && Number.isFinite(row.depth) ? row.depth : undefined
+        const hasChildren = typeof row.hasChildren === 'boolean' ? row.hasChildren : undefined
+        // 两次读（listChildren → 失败后退回 listDescendants）会覆盖同一个 id：
+        // 合并而不是替换，否则后一次缺 label 就把前一次读到的名字抹了。
+        out.set(row.id, {
+          ...(out.get(row.id) ?? {}),
+          ...(label === undefined ? {} : { label }),
+          ...(activity === undefined ? {} : { activity }),
+          ...(mode === undefined ? {} : { mode }),
+          ...(depth === undefined ? {} : { depth }),
+          ...(hasChildren === undefined ? {} : { hasChildren }),
+        })
       }
       // 空数组也是"调用成功"：投影明确回答了这个父会话没有子代理。
       return Array.isArray(rows)
@@ -998,6 +1070,48 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   }
 
   /**
+   * `sessionQuery.listSessions()` 的那一份全量持久化会话（带缓存）。
+   *
+   * 有两个用户：
+   * 1. catalog 不可信时的回退扫描（老路，见 listSubagents）；
+   * 2. **给冷会话补 createdAt**（2026-11-13）。`listDescendants` 刻意不带 createdAt，
+   *    而 `sessions.list()` 只回活会话——于是没被加载过的子代理 `createdAt` 恒为 0，
+   *    端上算出 `idleMs = 0`，把"0 秒"和"不知道"压成同一个 `—`。这份列表是
+   *    唯一同时知道"每条会话"和"它什么时候建的"的地方。
+   *
+   * 缓存：扫到东西 5 秒；扫空（多半是超时）认账 5 分钟，别每半分钟再交一次 2 秒。
+   */
+  async function fallbackSessionRows(): Promise<SessionRecordLike[]> {
+    const read = fn(services.sessionQuery, 'listSessions')
+    if (!read) return []
+    const at = options.clock.now()
+    if (fallbackSessionsCache !== undefined && at - fallbackSessionsCache.at < fallbackSessionsCache.ttl) {
+      return fallbackSessionsCache.rows
+    }
+    // 用 2s 上限，绝不把面板拖成 15s 超时。
+    const scanned = (await withTimeout(
+      Promise.resolve(read.call(services.sessionQuery)),
+      Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
+    ).catch(() => [])) as SessionRecordLike[] | undefined
+    const rows = scanned ?? []
+    fallbackSessionsCache = { at, rows, ttl: rows.length > 0 ? 5_000 : CATALOG_FAIL_TTL_MS }
+    return rows
+  }
+
+  /** 上面那份全量会话的 `id → createdAt`（只用于补 createdAt，别处别拿它当成员表）。 */
+  async function persistedCreatedAt(): Promise<Map<string, number | string>> {
+    const out = new Map<string, number | string>()
+    for (const row of await fallbackSessionRows()) {
+      const id = row?.header?.id
+      const created = row?.header?.createdAt
+      if (typeof id === 'string' && id !== '' && (typeof created === 'number' || typeof created === 'string')) {
+        out.set(id, created)
+      }
+    }
+    return out
+  }
+
+  /**
    * 列某个会话下的 subagent（`cmd.list_subagents` 的落点）。
    *
    * 成员关系取自**子会话头**的 `parentSession`（内核自己写的，比 catalog 投影更直接，
@@ -1040,32 +1154,47 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         sessionsListCache = { at: nowForCache, value: fresh }
       }
       const created = sessionsListCache.value
+      /** 这一轮有没有"连创建时间都不知道"的成员（有才值得去翻持久化那份全量列表）。 */
+      const unknownCreated: string[] = []
       for (const id of catalog.keys()) {
         const header = (liveAgent(id)?.session as { header?: { createdAt?: number | string; cwd?: string } } | undefined)?.header
         const fallbackCreated = header?.createdAt ?? created.get(id)
+        if (fallbackCreated === undefined) unknownCreated.push(id)
         const merged = { ...(header ?? {}), ...(fallbackCreated === undefined ? {} : { createdAt: fallbackCreated }) }
         records.push({ header: { id, parentSession: parentSessionId, ...merged } })
+      }
+      // 冷会话（没被加载过）在这里一定拿不到 createdAt：活 agent 的会话头没有、
+      // `sessions.list()` 里也没有（它只回活会话）。只有持久化那份日志才知道。
+      //
+      // **只对"没被加载"的成员付这笔钱**：`activity === 'inactive'` 是投影自己说的
+      // "进程里没有它的 agent"；活着的子代理上一行就从会话头拿到了 createdAt，
+      // 根本不会进 unknownCreated。所以稳态（有活子代理在跑）一次额外扫描都不发。
+      if (unknownCreated.length > 0) {
+        // 再确认一遍：只有确实"没被加载"的才去查（投影没给 activity 时按会话头缺席判）。
+        const needScan = unknownCreated.filter((id) => {
+          const entry = catalog.get(id)
+          return entry?.activity === undefined || entry.activity === 'inactive' || liveAgent(id) === undefined
+        })
+        if (needScan.length > 0) {
+          const persisted = await persistedCreatedAt()
+          for (const row of records) {
+            const id = String(row.header?.id)
+            if (!needScan.includes(id) || row.header?.createdAt !== undefined) continue
+            const found = persisted.get(id)
+            if (found !== undefined) row.header = { ...row.header, createdAt: found }
+          }
+        }
       }
     } else if (!catalogRead.trusted) {
       // 只有 catalog 缺失/抛错时才退回"列全部会话头"。投影明确答了空数组的场合
       // **不再**扫全量（没子代理的会话每刷新一次就扫一遍，那就是白拉）。
-      // 用 2s 上限，绝不把面板拖成 15s 超时。
-      const read = fn(services.sessionQuery, 'listSessions')
-      if (!read) throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
+      if (!fn(services.sessionQuery, 'listSessions')) {
+        throw new Error('这一代宿主不能列会话（sessionQuery 没有 listSessions）')
+      }
       // 2026-11-12 补：这条回退**也要缓存**。实测（.60 装好之后）每次调用仍然是 2.2~3.8 秒，
       // 因为 catalog 在这台宿主上一直不可信，于是每次刷新都掉进这条"最多等 2 秒"的扫描里。
-      // 只缓存 catalog 是不够的——真正烧时间的在这。
-      const fallbackAt = options.clock.now()
-      if (fallbackSessionsCache === undefined || fallbackAt - fallbackSessionsCache.at >= fallbackSessionsCache.ttl) {
-        const scanned = (await withTimeout(
-          Promise.resolve(read.call(services.sessionQuery)),
-          Math.min(options.historyTimeoutMs ?? HISTORY_TIMEOUT_DEFAULT, 2_000),
-        ).catch(() => [])) as SessionRecordLike[] | undefined
-        const rowsScanned = scanned ?? []
-        // 扫到东西缓存 5 秒；扫空（多半是超时）就认账 5 分钟，别每半分钟再交一次 2 秒。
-        fallbackSessionsCache = { at: fallbackAt, rows: rowsScanned, ttl: rowsScanned.length > 0 ? 5_000 : CATALOG_FAIL_TTL_MS }
-      }
-      records = fallbackSessionsCache.rows.filter((row) => typeof row?.header?.id === 'string')
+      // 只缓存 catalog 是不够的——真正烧时间的在这（缓存在 fallbackSessionRows 里）。
+      records = (await fallbackSessionRows()).filter((row) => typeof row?.header?.id === 'string')
     } else {
       // catalog 可信且为空：这个父会话确实没有子代理，直接回空表。
       return []
@@ -1114,7 +1243,20 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       // 不再读日志：工作时长只由事件流（turn/start→turn/end 与 runningSince）累计，
       // 最后活动时间来自 session/event。子代理监视器因此不会碰 sessionQuery 的 5 格 LRU。
       const createdAt = createdAtOf({ id, createdAt: row.header?.createdAt, headerTime: row.header?.createdAt })
-      const lastActive = lastActivityAt.get(id) ?? (createdAt > 0 ? createdAt : now)
+      /**
+       * 「最后活动」只认**真的观测到的活动**（本进程收到过这条会话的事件）。
+       *
+       * 2026-11-13 之前是 `lastActivityAt.get(id) ?? (createdAt > 0 ? createdAt : now)`：
+       * - 拿 createdAt 顶替活动时刻，于是"创建之后一直在干活、只是这台主机没看见"的
+       *   子代理被写成「闲置 12h」；
+       * - createdAt 为 0（冷会话，见 persistedCreatedAt）时兜了个 `now`，算出 `idleMs = 0`
+       *   —— 端上 `fmtDuration(0)` 与"不知道"都显示 `—`，两种语义就再也分不开。
+       * 现在：不知道就不下发 `idleMs`；只用 createdAt 时标 `idleBasis:'created'`（下界）。
+       */
+      const activeAt = lastActivityAt.get(id)
+      const idleBasis: 'activity' | 'created' | undefined =
+        activeAt !== undefined ? 'activity' : createdAt > 0 ? 'created' : undefined
+      const idleMs = idleBasis === undefined ? undefined : Math.max(0, now - (activeAt ?? createdAt))
       const title = titleCache.get(id)?.title
       const labeled = splitSubagentLabel(labels.get(id))
       const naming = labeled.naming
@@ -1140,10 +1282,15 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         status: running ? 'running' : 'idle',
         ...(isArchived ? { archived: true } : {}),
         ...(iso(createdAt) ? { createdAt: iso(createdAt) } : {}),
-        ...(iso(lastActive) ? { lastActiveAt: iso(lastActive) } : {}),
+        // 只有真活动才叫「最后活动时间」。createdAt 不是活动时刻（它只是下界），
+        // 以前把它当 lastActiveAt 发出去，端上就显示成"最后活动：1970/刚创建那会儿"。
+        ...(idleBasis === 'activity' && iso(activeAt) ? { lastActiveAt: iso(activeAt) } : {}),
         // 内存计时与日志计时取大者：一个记得全但不持久，一个持久但可能被窗口截断
         workMs: subagentWorkMs.get(id) ?? 0,
-        idleMs: Math.max(0, now - (lastActive ?? now)),
+        // 不知道就不写这个键：端上 `fmtDuration(undefined)` 显示 `—`，语义是"不知道"，
+        // 而不是老实现那个"0 秒"（它同样显示 `—`，于是两种意思彻底混在一起）。
+        ...(idleMs === undefined ? {} : { idleMs }),
+        ...(idleBasis === undefined ? {} : { idleBasis }),
         ...(running ? { runningMs: Math.max(0, now - (subagentRunningSince.get(id) ?? now)) } : {}),
       })
     }
@@ -1151,7 +1298,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     out.sort((a, b) => {
       if (a.status !== b.status) return a.status === 'running' ? -1 : 1
       if ((a.archived === true) !== (b.archived === true)) return a.archived === true ? 1 : -1
-      return String(b.lastActiveAt ?? '').localeCompare(String(a.lastActiveAt ?? ''))
+      // 有真活动就按活动时刻排；只有创建时间的退到 createdAt（它只是下界，但排序还能用）。
+      return String(b.lastActiveAt ?? b.createdAt ?? '').localeCompare(String(a.lastActiveAt ?? a.createdAt ?? ''))
     })
     // 归档的默认不下发（语义就是"清理掉"）：手机端不用改就看不见它们。
     // 桌面监视器传 includeArchived 才拿全量，用来显示"已归档 N 个"并给恢复入口。
@@ -1788,6 +1936,17 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
     try {
       await method.call(registry, sessionId)
+      // 2026-11-13：归档**成功了却没推一帧**，于是面板上那张卡片还在（用户点「归档」看起来没反应）。
+      // 面板只在 SSE 帧到来时刷新（它已经没有轮询了），所以这里必须自己叫醒订阅者。
+      //
+      // 先清 1 秒缓存：`subagentSnapshot()` 里那份归档集合可能是刚建好的旧快照，
+      // 不清就会推出一条和上一帧**逐字节相同**的载荷，而总线按字节去重 → 客户端收不到任何东西。
+      try {
+        archivedCache = undefined
+        emitSubagentChange(subagentSnapshot())
+      } catch {
+        // 推不出去（总线订阅方异常）**不许影响归档结果**：归档本身已经成功了。
+      }
       return { ok: true }
     } catch (error) {
       // 内核的 WorkspaceActiveSessionError 在这里被翻成一句话。

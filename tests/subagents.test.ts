@@ -11,7 +11,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createServicesKernel, type ServicesBundle } from '../src/platform/carrier-services.js'
+import { createServicesKernel, isoOfTime, type ServicesBundle } from '../src/platform/carrier-services.js'
+import { formatDuration, isStale, subagentTimeText } from '../src/subagents/idle.js'
 import { readSubagentsConfig, writeSubagentsConfig } from '../src/subagents/config.js'
 import { createGuidancePusher } from '../src/subagents/pusher.js'
 import { startSubagents } from '../src/subagents/start.js'
@@ -128,9 +129,114 @@ test('listSubagents：工作时长/闲置时长/标题仍然照旧', async () =>
   const idle = rows.find((row) => row.id === 'child-idle')!
   assert.equal(run.title, undefined, '标题也不下发，避免带出指令内容')
   assert.equal(run.workMs, 0, '不再读日志：工作时长只由事件流累计（此用例没有事件）')
-  assert.equal(Math.round(run.idleMs / 1000), 600, '没有事件时闲置时间按创建时间兜底')
+  // 2026-11-13：`idleMs` 变成可选（宿主不知道时不下发）。这条用例的场景里 createdAt
+  // 是知道的，所以值照旧是 600 秒——只是类型上要先把"有没有"说清楚。
+  assert.equal(typeof run.idleMs, 'number', 'createdAt 已知时 idleMs 必须下发')
+  assert.equal(Math.round((run.idleMs ?? Number.NaN) / 1000), 600, '没有事件时闲置时间按创建时间兜底')
+  assert.equal(run.idleBasis, 'created', '没有活动记录的必须是"只有创建时间"口径（端上写「已创建」而不是「闲置」）')
+  assert.equal(run.lastActiveAt, undefined, 'createdAt 不是活动时刻，不许冒充 lastActiveAt')
   assert.equal(idle.workMs, 0, '空闲子代理也不读日志')
 })
+
+// ── 2026-11-13：「闲置时间 —」那个症状 ────────────────────────────────────────
+//
+// 现象：面板上每一行的「闲置时间」都是 `—`。
+// 根因：宿主用 `lastActivityAt ?? (createdAt > 0 ? createdAt : now)` 兜底，而冷会话的
+// `createdAt` 是 0（`listDescendants` 不带 createdAt、`sessions.list()` 只回活会话）
+// ⇒ `idleMs = 0` ⇒ 端上 `fmtDuration(±0)` 与"不知道"都显示 `—`，两种语义再也分不开。
+// 下面四条钉住：不知道就不下发、能补的创建时间要补上、0 不是 1970 年、文案要分得开。
+
+test('isoOfTime：0 / 负数 / NaN / 越界都是 undefined（不许吐 1970-01-01）', () => {
+  assert.equal(isoOfTime(0), undefined, '0 是"没有这个字段"，不是纪元零点')
+  assert.equal(isoOfTime(-1), undefined)
+  assert.equal(isoOfTime(Number.NaN), undefined)
+  assert.equal(isoOfTime(Number.POSITIVE_INFINITY), undefined)
+  assert.equal(isoOfTime(8.64e15 + 1), undefined, '越界不许抛（toISOString 会 RangeError）')
+  assert.equal(isoOfTime(NOW), new Date(NOW).toISOString(), '正常时刻照常')
+  assert.equal(isoOfTime('2026-11-13T00:00:00.000Z'), '2026-11-13T00:00:00.000Z', '字符串形状照旧放行')
+})
+
+test('冷会话：没有 createdAt 也不许拿 now 兜底——idleMs 直接不下发（端上显示 —）', async () => {
+  const bundle = services()
+  const inner = bundle.subagents as Record<string, unknown>
+  // 投影说 activity='inactive'：这条子代理**没被加载**（进程里没有它的 agent）
+  inner.listChildren = () =>
+    Promise.resolve([{ id: 'cold-1', label: '冷会话｜没被加载过', depth: 1, activity: 'inactive' }])
+  inner.listDescendants = () => Promise.resolve([])
+  ;(bundle.sessions as { list: () => unknown }).list = () => []
+  ;(bundle.sessionQuery as { listSessions: () => unknown }).listSessions = () => Promise.resolve([])
+  const port = kernel(bundle)
+  const rows = await port.listSubagents!('session-p')
+  const row = rows.find((item) => item.id === 'cold-1')!
+  assert.ok(row, '成员关系来自 catalog，不该因为查不到 createdAt 就丢掉这一行')
+  assert.equal('idleMs' in row, false, '不知道就别下发 idleMs（老实现下发的是 0）')
+  assert.equal(row.idleBasis, undefined)
+  assert.equal(row.lastActiveAt, undefined, '没有活动记录就不许编一个 lastActiveAt 出来')
+  assert.equal(formatDuration(row.idleMs), '—', '端上（同一个 fmtDuration）必须显示 —')
+  assert.equal(subagentTimeText(row, 2 * 60 * 60 * 1000), '闲置时间 —', '文案是"不知道"，不是"0 秒"')
+})
+
+test('冷会话：持久化那份会话列表里有 createdAt 时要补上，并标成"只有创建时间"', async () => {
+  const bundle = services()
+  const inner = bundle.subagents as Record<string, unknown>
+  inner.listChildren = () =>
+    Promise.resolve([{ id: 'cold-2', label: '冷会话｜有创建时间', depth: 1, activity: 'inactive' }])
+  inner.listDescendants = () => Promise.resolve([])
+  ;(bundle.sessions as { list: () => unknown }).list = () => []
+  ;(bundle.sessionQuery as { listSessions: () => unknown }).listSessions = () =>
+    Promise.resolve([
+      {
+        header: {
+          id: 'cold-2',
+          parentSession: 'session-p',
+          delegationDepth: 1,
+          createdAt: NOW - 12 * 60 * 60 * 1000,
+        },
+      },
+    ])
+  const port = kernel(bundle)
+  const rows = await port.listSubagents!('session-p')
+  const row = rows.find((item) => item.id === 'cold-2')!
+  assert.equal(row.createdAt, new Date(NOW - 12 * 60 * 60 * 1000).toISOString(), 'createdAt 要补上来（不许 1970）')
+  assert.equal(row.idleMs, 12 * 60 * 60 * 1000, 'idleMs 按创建时间算（下界）')
+  assert.equal(row.idleBasis, 'created', '口径必须标出来：端上要写「已创建」而不是「闲置」')
+  assert.equal(row.lastActiveAt, undefined, 'createdAt 不是活动时刻')
+  assert.equal(
+    subagentTimeText(row, 2 * 60 * 60 * 1000),
+    '已创建 12h00m（无活动记录） · 建议归档',
+    '没有真实活动时文案必须是「已创建」，不能写成「闲置 12h」',
+  )
+})
+
+test('活着的子代理走快路：console 头的 createdAt 就够，不必去扫全量会话', async () => {
+  const bundle = services()
+  let scans = 0
+  const q = bundle.sessionQuery as { listSessions: () => Promise<unknown> }
+  const raw = q.listSessions
+  q.listSessions = () => {
+    scans += 1
+    return raw()
+  }
+  const port = kernel(bundle)
+  await port.listSubagents!('session-p')
+  assert.equal(scans, 0, 'catalog + sessions.list 都给了 createdAt 时，一次持久化扫描都不该发')
+})
+
+test('formatDuration / isStale：不知道闲置多久时不标黄、不叫建议归档', () => {
+  assert.equal(formatDuration(undefined), '—')
+  assert.equal(formatDuration(0), '—', '0 秒与"不知道"都显示 —，所以宿主干脆不下发 0')
+  assert.equal(formatDuration(90_000), '1m30s')
+  assert.equal(formatDuration(3 * 3600_000 + 65_000), '3h01m')
+  assert.equal(isStale({ status: 'idle' }, 1_000), false, '不知道闲置多久的不许标黄')
+  assert.equal(isStale({ status: 'idle', idleMs: 2_000 }, 1_000), true)
+  assert.equal(isStale({ status: 'running', idleMs: 9_999 }, 1_000), false, '正在跑的不算闲置')
+  assert.equal(
+    subagentTimeText({ status: 'running', runningMs: 5_000 }, 1_000),
+    '工作时间 5s',
+    'running 行仍然显示工作时间',
+  )
+})
+
 
 test('listSubagents：descendants=true 才递归，默认只一层', async () => {
   const bundle = services()
@@ -477,6 +583,52 @@ test('总线：一条 SSE 连接都没有时连定时器都不排', async () => 
     emitSubagentChange('{"s":{"p":[1,0]}}')
     await settle(600)
     assert.equal(seen.length, 0, '没人在听就别干活')
+  } finally {
+    subagentBus.removeListener('change', listener)
+    resetSubagentBusGate()
+    resetSubagentBusState()
+  }
+})
+
+test('归档成功必须推一帧 SSE（否则面板上的卡片永远不消失）', async () => {
+  // 2026-11-13：归档成功后**不发 SSE**，而面板又已经没有轮询（只靠 SSE），
+  // 于是"归档"这个动作在界面上表现为"点了没反应"——卡片还在那儿。
+  //
+  // 这条用例还顺带钉住归档集合那 1 秒缓存必须被清：不清的话第二次归档会撞上
+  // 上一份快照，推出一条与上一帧**逐字节相同**的载荷，总线按字节去重 → 客户端
+  // 一个字节都收不到（而任何日志都是绿的）。
+  resetSubagentBusState()
+  setSubagentBusGate(() => true)
+  const seen: string[] = []
+  const listener = (payload: string): void => void seen.push(payload)
+  subagentBus.on('change', listener)
+  const archivedIds: string[] = []
+  try {
+    const bundle = services({ running: [] }) // 两条都空闲，才归档得动
+    ;(bundle as Record<string, unknown>).workspaceRegistry = {
+      get archivedSessionIds(): string[] {
+        return archivedIds
+      },
+      archiveSession: (id: string) => {
+        archivedIds.push(id)
+      },
+      unarchiveSession: (id: string) => {
+        const at = archivedIds.indexOf(id)
+        if (at >= 0) archivedIds.splice(at, 1)
+      },
+    }
+    const port = kernel(bundle)
+    // 先列一次：`knownSubagentIds` / 父关系是纯内存索引，不列就不知道这两条属于谁
+    await port.listSubagents!('session-p', { includeArchived: true })
+    assert.equal((await port.archiveSession!('child-idle', true)).ok, true)
+    await settle(600)
+    assert.equal((await port.archiveSession!('child-run', true)).ok, true)
+    await settle(600)
+    assert.equal(seen.length, 2, '每次归档成功都要推一帧（第二帧不许被"载荷没变"吃掉）')
+    const first = JSON.parse(seen[0]!) as { s: Record<string, [number, number]> }
+    const second = JSON.parse(seen[1]!) as { s: Record<string, [number, number]> }
+    assert.deepEqual(first.s['session-p'], [1, 0], '归档一条之后剩一条')
+    assert.deepEqual(second.s['session-p'], [0, 0], '再归档一条之后就没了（缓存没清时会错报成 [1,0]）')
   } finally {
     subagentBus.removeListener('change', listener)
     resetSubagentBusGate()

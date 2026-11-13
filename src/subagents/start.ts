@@ -110,14 +110,42 @@ export function startSubagents(
   }
   // ── agent 工具：归档子代理 ──
   // 归档以前只有 HTTP 路由（面板/手机），模型侧没有入口，"主动清点"就只是句空话。
+  //
+  // 2026-11-13：`list_agents` 显示的是**名字/路径**，模型会把 `agent-1` 当 id 传，
+  // 内核回 "hold no such session"（实证：9 个 UUID 成功、7 个名字全灭）。所以工具
+  // 还需要一个"名字 → 真 id"的解析器：内核 `subagents.resolveName(agent, name, signal)`。
+  // 它同样是**软探测**的（这一代不一定有），拿不到时工具会保持原错误并说清原因。
+  const resolveName = async (agent: unknown, name: string, signal?: AbortSignal): Promise<string | undefined> => {
+    let service: unknown
+    try {
+      service = ctx.get?.('subagents', true)
+    } catch {
+      service = undefined
+    }
+    const resolve = (service as { resolveName?: unknown } | undefined)?.resolveName
+    if (typeof resolve !== 'function') {
+      probe.resolver = 'no-resolveName'
+      return undefined
+    }
+    probe.resolver = 'resolveName'
+    const out = await (resolve as (...args: unknown[]) => unknown).call(service, agent, name, signal)
+    return typeof out === 'string' && out !== '' ? out : undefined
+  }
   try {
     const tools = ctx.get?.('tools', true) as
       | { register?: (definition: Record<string, unknown>) => unknown }
       | undefined
     if (tools && typeof tools.register === 'function') {
-      const definitions = buildSubagentTools({ archive: deps.archive, log: deps.log })
+      const definitions = buildSubagentTools({ archive: deps.archive, log: deps.log, resolveName })
       for (const definition of definitions) tools.register(definition)
       probe.tool = definitions.length > 0 ? 'registered' : 'no-archive'
+      // 有解析器才写这一格：没写 = 还没试过；`no-resolveName` = 这一代内核没有（工具会提示"这是名字不是 id"）。
+      try {
+        const service = ctx.get?.('subagents', true) as { resolveName?: unknown } | undefined
+        probe.resolver = typeof service?.resolveName === 'function' ? 'resolveName' : 'no-resolveName'
+      } catch {
+        probe.resolver = 'no-subagents'
+      }
     } else {
       probe.tool = 'no-tools'
     }

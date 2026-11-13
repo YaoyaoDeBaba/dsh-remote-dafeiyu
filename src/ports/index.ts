@@ -24,9 +24,10 @@ import type { ModelOption, QuestionItem, SessionSummary } from '@dsh-remote/prot
  * 一条 subagent（子代理）会话在插件内部的形状——`cmd.list_subagents` 回给手机、
  * PC 端监视器回给页面的都是它。
  *
- * 全部字段都是**观测值**，不是断言：宿主没给的就留空（`title`/`task`），
- * 调用方自己决定怎么降级。`workMs` / `idleMs` 是毫秒，由适配器算好——两个端
- * 都不该各自再算一遍（公式一旦分叉，两台设备上的"工作了 3 分钟"就会不一样）。
+ * 全部字段都是**观测值**，不是断言：宿主没给的就留空（`title`/`task`/`lastActiveAt`/
+ * `idleMs`），调用方自己决定怎么降级（不知道 ≠ 0）。`workMs` / `idleMs` 是毫秒，
+ * 由适配器算好——两个端都不该各自再算一遍（公式一旦分叉，两台设备上的
+ * "工作了 3 分钟"就会不一样）。
  */
 export interface KernelSubagent {
   /** 子会话 id（与 `SessionSummary.id` 同一命名空间）。 */
@@ -62,12 +63,31 @@ export interface KernelSubagent {
   archived?: boolean
   /** 会话创建时间（ISO）。 */
   createdAt?: string
-  /** 最后一次活动时间（ISO）。 */
+  /**
+   * 最后一次活动时间（ISO）。
+   *
+   * **只有真的观测到活动才有**（本进程收到过这条会话的事件）。以前这里会退化成
+   * `createdAt`——那不是一个"最后活动时刻"，只是它的下界，端上却当活动时间显示。
+   */
   lastActiveAt?: string
   /** 累计工作时间（毫秒）。 */
   workMs: number
-  /** 距最后一次活动的闲置时间（毫秒）。 */
-  idleMs: number
+  /**
+   * 距最后一次活动的闲置时间（毫秒）。
+   *
+   * **不知道就不下发这个键**（老实现用 `now` 兜底算出 0，端上把"0 秒"和"不知道"
+   * 压成同一个 `—`，语义就丢了）。端上 `fmtDuration(undefined)` 已经显示 `—`。
+   */
+  idleMs?: number
+  /**
+   * `idleMs` 是按什么算出来的：
+   *
+   * - `activity`：本进程真的见过这条会话的活动事件，时间是可信的；
+   * - `created`：只拿到创建时间，`idleMs` 只是**下界**（"至少闲置了这么久"）。
+   *   端上必须写成「已创建 X」而不是「闲置 X」——创建之后可能一直在干活，
+   *   只是这台主机没看见（例如子代理是在之前那次宿主进程里跑的）。
+   */
+  idleBasis?: 'activity' | 'created'
   /** 本轮已运行时长（毫秒，running 时有效）：端上只显示它，不显示累计 workMs。 */
   runningMs?: number
 }

@@ -16,6 +16,7 @@
  */
 import { resolveHostUrl } from './host-url.js'
 import { makeDraggable } from './draggable.js'
+import { isStale, subagentTimeText } from '../subagents/idle.js'
 
 export interface SubagentRow {
   id: string
@@ -37,7 +38,10 @@ export interface SubagentRow {
   createdAt?: string
   lastActiveAt?: string
   workMs?: number
+  /** 距最后一次活动的毫秒；**缺省 = 宿主不知道**（不是 0），显示成 `—`。 */
   idleMs?: number
+  /** `idleMs` 的口径：`activity` 真的见过活动 / `created` 只有创建时间（下界）。 */
+  idleBasis?: 'activity' | 'created'
   /** 本轮已运行（running 时才有） */
   runningMs?: number
 }
@@ -54,17 +58,6 @@ export interface SubagentMonitorDeps {
 /** 闲置多久开始提示清理（与手机端同一口径：2 小时）。 */
 const IDLE_WARN_MS = 2 * 60 * 60 * 1000
 const POLL_MS = 3_000
-
-function fmtDuration(ms: number | undefined): string {
-  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return '—'
-  const total = Math.floor(ms / 1000)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  if (h > 0) return `${h}h${String(m).padStart(2, '0')}m`
-  if (m > 0) return `${m}m${String(s).padStart(2, '0')}s`
-  return `${s}s`
-}
 
 export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   const doc = (globalThis as { document?: Document }).document
@@ -223,6 +216,8 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   let session = ''
   let timer = 0
   let busy = false
+  /** 刷新撞上"正在刷新"时记一笔，等那次跑完补跑（见 refresh）。 */
+  let pendingRefresh = false
   let opened = false
   let restoring = false
   let numbering = new Map<string, number>()
@@ -357,13 +352,12 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
           ? row.summary
           : '未按要求填写 · 正确格式：名称｜一句话简述'
       card.appendChild(summary)
-      const idleWarn = row.status === 'idle' && (row.idleMs ?? 0) >= idleWarnMs
+      const stale = isStale(row, idleWarnMs)
       const time = doc.createElement('div')
-      time.className = 'time' + (idleWarn ? ' stale' : '')
-      time.textContent =
-        row.status === 'running'
-          ? '工作时间 ' + fmtDuration(row.runningMs ?? row.workMs)
-          : '闲置时间 ' + fmtDuration(row.idleMs) + (idleWarn ? ' · 建议归档' : '')
+      time.className = 'time' + (stale ? ' stale' : '')
+      // 文案口径在 `../subagents/idle.ts`（与宿主同源，由 node 判据钉住）：
+      // 不知道闲置多久 → 「闲置时间 —」；只有创建时间 → 「已创建 …（无活动记录）」。
+      time.textContent = subagentTimeText(row, idleWarnMs)
       card.appendChild(time)
       if (row.status !== 'running') {
         const acts = doc.createElement('div')
@@ -379,9 +373,22 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       body.appendChild(card)
     }
-    const idleCount = active.filter((row) => row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs).length
-    archiveIdle.disabled = idleCount === 0
+    const idleCount = active.filter((row) => isStale(row, idleWarnMs)).length
+    // 2026-11-13：这里原来是 `disabled = idleCount === 0`，而 `idleMs` 恒为 0（宿主
+    // 用 `now` 兜底）⇒ idleCount 恒为 0 ⇒ 按钮**永久 disabled**，用户点了连 click
+    // 都不发，看起来像"按钮坏了"。
+    //
+    // 现在：只要还有"没在跑、也没归档"的行，按钮就是可点的——点了没到阈值时它会
+    // 在底栏说清楚为什么一个都没收（见 archiveIdleNow），而不是变成一个死按钮。
+    const archivable = active.filter((row) => row.status !== 'running')
+    archiveIdle.disabled = archivable.length === 0
     archiveIdle.textContent = idleCount > 0 ? `一键归档闲置 (${idleCount})` : '一键归档闲置'
+    archiveIdle.title =
+      idleCount > 0
+        ? `把闲置超过 ${Math.round(idleWarnMs / 60_000)} 分钟的子代理一次归档（可恢复）`
+        : archivable.length > 0
+          ? `目前没有超过 ${Math.round(idleWarnMs / 60_000)} 分钟没动静的；阈值可在设置页「派活助手」里改`
+          : '没有可归档的子代理'
     foot.textContent = footText()
   }
 
@@ -394,8 +401,17 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
         headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
         body: JSON.stringify({ ids: [id], archived: false }),
       })
-      const answer = (await response.json()) as { ok?: boolean; message?: string }
-      if (answer.ok !== true) throw new Error(answer.message || '恢复失败')
+      const answer = (await response.json()) as {
+        ok?: boolean
+        message?: string
+        error?: string
+        results?: Array<{ message?: string }>
+      }
+      if (answer.ok !== true) {
+        // 207 的精确原因在 `results[].message`（顶层 message 是 2026-11-13 才补的）。
+        // 以前只读 `answer.message` ⇒ 永远拿到 undefined ⇒ 用户只看到「恢复失败」三个字。
+        throw new Error(answer.message ?? answer.results?.[0]?.message ?? answer.error ?? '恢复失败')
+      }
       ledger = ledger.filter((entry) => entry.id !== id)
       saveLedger()
       restoring = ledger.length > 0
@@ -407,12 +423,25 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     }
   }
 
-  /** 顶栏的批量归档：一口气归档所有闲置 ≥ 阈值（设置页可改）且未归档的子代理（逐条走同一归档端口）。 */
+  /**
+   * 顶栏的批量归档：一口气归档所有闲置 ≥ 阈值（设置页可改）且未归档的子代理（逐条走同一归档端口）。
+   *
+   * 没有可归档项时**不再静默 return**：按钮是可点的（见 render），点了就必须说句话——
+   * "点了没反应"正是这一格以前的那个症状。
+   */
   const archiveIdleNow = async (): Promise<void> => {
     const ids = items
-      .filter((row) => row.archived !== true && row.status !== 'running' && (row.idleMs ?? 0) >= idleWarnMs)
+      .filter((row) => row.archived !== true && isStale(row, idleWarnMs))
       .map((row) => row.id)
-    if (ids.length === 0) return
+    if (ids.length === 0) {
+      const waiting = items.filter((row) => row.archived !== true && row.status !== 'running').length
+      setFoot(
+        waiting === 0
+          ? '没有可归档的子代理（都在跑或已归档）'
+          : `没有超过 ${Math.round(idleWarnMs / 60_000)} 分钟没动静的子代理（阈值可改）；要收的话点卡片上的「归档」`,
+      )
+      return
+    }
     archiveIdle.disabled = true
     archiveIdle.textContent = '归档中…'
     try {
@@ -421,14 +450,37 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
         headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
         body: JSON.stringify({ ids, archived: true }),
       })
-      const answer = (await response.json()) as { ok?: boolean }
-      if (answer.ok !== true) archiveIdle.title = '部分归档失败，见宿主日志'
-      rememberArchived(ids)
+      const answer = (await response.json()) as {
+        ok?: boolean
+        message?: string
+        results?: Array<{ sessionId?: string; ok?: boolean; message?: string }>
+      }
+      // 207 里精确原因在 `results[].message`，顶层 message 是 2026-11-13 才补的；
+      // 两个都读，老宿主也不会退化成一句"部分归档失败"。
+      const doneIds = Array.isArray(answer.results)
+        ? answer.results.filter((row) => row.ok === true && typeof row.sessionId === 'string').map((row) => row.sessionId!)
+        : ids
+      if (answer.ok !== true) {
+        const reason = answer.message ?? answer.results?.find((row) => row.ok !== true)?.message ?? '宿主没给原因'
+        archiveIdle.title = `部分归档失败：${reason}`
+        setFoot(`部分归档失败（成功 ${doneIds.length}/${ids.length}）：${reason}`)
+      }
+      if (doneIds.length > 0) {
+        rememberArchived(doneIds)
+        // 先把本地这几行标掉再重画：宿主那一趟刷新可能被合并/延迟，而用户刚点的就是这一行。
+        items = items.map((row) => (doneIds.includes(row.id) ? { ...row, archived: true } : row))
+        apply(items)
+      }
       await refresh()
     } catch (error) {
       archiveIdle.title = String((error as Error)?.message ?? error)
+      setFoot(`归档失败：${String((error as Error)?.message ?? error)}`)
     } finally {
+      // 文案与可点状态交回 render 决定（它知道还剩几行能收）。这里只兜住
+      // "refresh 没能跑成"的那种情况：不能让按钮永久停在「归档中…」且 disabled。
+      if (archiveIdle.textContent === '归档中…') archiveIdle.textContent = '一键归档闲置'
       archiveIdle.disabled = false
+      void refresh()
     }
   }
   archiveIdle.addEventListener('click', (event) => {
@@ -445,9 +497,22 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
         headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
         body: JSON.stringify({ sessionId: id, archived: true }),
       })
-      const answer = (await response.json()) as { ok?: boolean; message?: string }
-      if (answer.ok !== true) throw new Error(answer.message || '归档失败')
+      const answer = (await response.json()) as {
+        ok?: boolean
+        message?: string
+        error?: string
+        results?: Array<{ message?: string }>
+      }
+      if (answer.ok !== true) {
+        // 与 restoreEntry 同一条：207 的真原因在 `results[0].message`，只读顶层
+        // `answer.message` 时永远拿不到，界面就只剩一句「归档失败」。
+        throw new Error(answer.message ?? answer.results?.[0]?.message ?? answer.error ?? '归档失败')
+      }
       rememberArchived([id])
+      // 先本地把这一行标成已归档再重画：宿主那一趟刷新可能被合并/延迟，
+      // 而用户刚点的就是这一行——"点了没反应"就是这么来的。
+      items = items.map((row) => (row.id === id ? { ...row, archived: true } : row))
+      apply(items)
       await refresh()
     } catch (error) {
       button.disabled = false
@@ -519,8 +584,18 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     }, 500) ?? 0
   }
 
+  /**
+   * 刷新列表。
+   *
+   * 2026-11-13：`busy` 时原来是**直接 return**（把这次刷新吞掉）。于是"归档成功 → 立刻
+   * refresh"，正好撞上一次在飞的刷新 ⇒ 这一次被丢掉 ⇒ 面板停在旧列表上（卡片还在）。
+   * 现在改成"记一笔，等手里这次跑完补一次"，既不并发也不丢最后一次。
+   */
   const refresh = async (): Promise<void> => {
-    if (busy) return
+    if (busy) {
+      pendingRefresh = true
+      return
+    }
     const current = deps.getCurrentSession()
     if (!current) {
       // 拿不到当前会话（切换瞬间/推送后上下文更新）时不要清空并关闭面板，
@@ -569,6 +644,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       foot.textContent = `读取失败：${String((error as Error)?.message ?? error)}`
     } finally {
       busy = false
+      // 手里这次跑完了：把"期间被挡掉的那一次"补上（尾随合并，只补一次）。
+      if (pendingRefresh) {
+        pendingRefresh = false
+        void refresh()
+      }
     }
   }
 

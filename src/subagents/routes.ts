@@ -152,8 +152,27 @@ export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
           results.push({ sessionId: id, ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) })
         }
       }
-      const failed = results.filter((row) => !row.ok).length
-      json(response, failed === 0 ? 200 : 207, { ok: failed === 0, results })
+      const failedRows = results.filter((row) => !row.ok)
+      const failed = failedRows.length
+      // 2026-11-13：失败时以前只回 207 + results，**顶层没有 message、一行日志也不写**。
+      // 客户端只读 `answer.message`（见 client/subagent-panel.ts），于是精确原因
+      // （例如「cannot archive session 'agent-1': … hold no such session」）从来没被看见过，
+      // 宿主日志里也查不到——用户侧看到的就是"点了归档没反应"。
+      // 现在：顶层带第一条失败原因，并且逐条写日志（最多记 10 条，别让一次批量刷满日志）。
+      for (const row of failedRows.slice(0, 10)) {
+        deps.log('子代理归档失败', { sessionId: row.sessionId, message: row.message ?? '内核没给原因', archived })
+      }
+      json(response, failed === 0 ? 200 : 207, {
+        ok: failed === 0,
+        ...(failed === 0
+          ? {}
+          : {
+              message: `${failed}/${results.length} 个${archived ? '归档' : '取消归档'}失败：${
+                failedRows[0]?.message ?? '内核没给原因'
+              }`,
+            }),
+        results,
+      })
     } catch (error) {
       json(response, 500, { ok: false, error: String((error as Error)?.message ?? error).slice(0, 200) })
     }
