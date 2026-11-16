@@ -49,6 +49,12 @@ export interface SubagentRow {
 export interface SubagentMonitorDeps {
   /** 入口收在形象菜单里时设 false：不显示独立 🐝 按钮，但面板仍可通过 expose 打开。 */
   showFab?: boolean
+  /**
+   * 现在该不该显示这颗按钮（每次刷新都会问一次）。
+   *
+   * 有悬浮形象时它该收起来（形象菜单里有「派活助手」），没装形象时才独立显示。
+   */
+  shouldShowFab?: () => boolean
   /** 把 open/close 交给外部（虚拟形象菜单）。 */
   expose?: (api: { open: () => void; close: () => void }) => void
   /** 当前选中的会话 id（拿不到就返回 undefined：列表页/设置页都不显示）。 */
@@ -150,7 +156,19 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   badge.hidden = true
   fab.appendChild(badge)
   doc.body.appendChild(fab)
+  // 静态开关（老调用方）与动态判定并存：动态的那条在每次刷新时都会重新问一遍。
   if (deps.showFab === false) fab.hidden = true
+  const applyFabVisibility = (): void => {
+    if (deps.showFab === false) return
+    if (typeof deps.shouldShowFab !== 'function') return
+    try {
+      fab.hidden = deps.shouldShowFab() !== true
+    } catch {
+      // 判定抛错就当「该显示」：宁可多一颗按钮，也不要入口失踪。
+      fab.hidden = false
+    }
+  }
+  applyFabVisibility()
 
   const panel = doc.createElement('div')
   panel.id = 'dafeiyu-subagent-panel'
@@ -527,6 +545,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     // 徽标与 FAB 只算"还在用的"：全归档了就别再挂个 🐝 在那儿。
     const has = items.some((row) => row.archived !== true)
     fab.classList.toggle('has-items', has)
+    applyFabVisibility()
     badge.hidden = !has
     badge.textContent = String(items.filter((row) => row.archived !== true).length)
     // 不要因为“当前会话没有子代理”就自动关面板：从形象菜单手动打开的面板
@@ -568,6 +587,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   const applyCounts = (count: number): void => {
     const has = count > 0
     fab.classList.toggle('has-items', has)
+    applyFabVisibility()
     badge.hidden = !has
     badge.textContent = String(count)
   }

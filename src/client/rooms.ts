@@ -65,6 +65,17 @@ export interface DafeiyuRoom {
 export interface RoomHost {
   version: 1
   register: (room: DafeiyuRoom) => () => void
+  /**
+   * 这间房现在在不在（2026-11-16 加）。
+   *
+   * 用途：**判断"有没有装某个住客"**，从而决定要不要显示独立入口。
+   * 第一个用户是形象——有悬浮形象时，小蜜蜂/小云雀/识图这些独立按钮都该收起来，
+   * 统一从形象的右键菜单进；**没装形象**时才各自露出。
+   *
+   * 为什么由这里回答而不是各自探测 DOM：房间注册是**住客自己宣布"我在"**的唯一权威事实，
+   * 探 DOM 的 id/class 一改就静默失效。
+   */
+  has: (id: string) => boolean
 }
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/
@@ -162,7 +173,7 @@ export function installRoomHost(scope?: { window?: unknown }): boolean {
     | undefined
   if (!target) return false
   if (target.__dafeiyuRooms) return true
-  const host: RoomHost = { version: 1, register: registerRoom }
+  const host: RoomHost = { version: 1, register: registerRoom, has: (id: string) => entries.has(id) }
   target.__dafeiyuRooms = host
   try {
     if (typeof target.dispatchEvent === 'function' && typeof target.CustomEvent === 'function') {

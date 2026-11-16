@@ -25,7 +25,7 @@ import { findCreateElement, mountPill } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
 import { mountDafeiyuSettings } from './dafeiyu-page.js'
-import { installRoomHost } from './rooms.js'
+import { installRoomHost, listRooms } from './rooms.js'
 // 识图那一半（鲸鱼按钮 + 当前会话注入）与小云雀快捷面板 2026-11-16 随独立包
 // `dsh-vision-dafeiyu` 走了：那颗 FAB、那个快捷面板连同它们的路由都由那个包自己挂。
 import { mountSubagentMonitor } from './subagent-panel.js'
@@ -144,6 +144,8 @@ export function apply(ctx: ClientContext): (() => void) | void {
   try {
     subagentsCleanup = mountSubagentMonitor({
       getCurrentSession: resolveCurrentSession(ctx),
+      // 有悬浮形象时收起小蜜蜂：形象右键菜单里已经有「派活助手」（2026-11-16）。
+      shouldShowFab: () => !listRooms().some((room) => room.id === 'avatar'),
       expose: (api) => {
         openSubagents = api.open
       },
