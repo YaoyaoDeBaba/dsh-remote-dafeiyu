@@ -25,10 +25,10 @@ import { findCreateElement, mountPill } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
 import { mountDafeiyuSettings } from './dafeiyu-page.js'
+import { installRoomHost } from './rooms.js'
 // 识图那一半（0.9.0）：聊天页鲸鱼按钮 + 当前会话注入。
 import { mountVisionFab } from './vision-panel.js'
 import { mountSubagentMonitor } from './subagent-panel.js'
-import { mountAvatarWidget } from './avatar-widget.js'
 import { mountXyqQuick } from './xyq-quick.js'
 import { mountHandoffPanel } from './handoff-panel.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
@@ -70,6 +70,15 @@ export const inject = ['slots', 'locale']
 
 export function apply(ctx: ClientContext): (() => void) | void {
   const createElement = findCreateElement()
+
+  // ⓪ 房间注册表（2026-11-16）：**必须是 apply 里最早的一步**——住客（形象、以后的 selfloop 等）
+  // 在别的包里，它们靠 `window.__dafeiyuRooms` 领一间房；本体晚一步，它们就得等事件。
+  // 这里失败也不许影响后面（返回 false 表示没有 window，纯降级）。
+  try {
+    installRoomHost()
+  } catch (error) {
+    swallow('房间注册表挂载失败（已吞掉）', error)
+  }
 
   // ① 会话里那颗 pill（`conversation.composer.dock`，需要会话才渲染）。
   //
@@ -124,12 +133,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
   // 识图那颗鲸鱼按钮（0.9.0）：先探当前会话注入通道，探不到也挂——只是退化成"复制结果"。
   let visionCleanup: (() => void) | undefined
   let openVision: (() => void) | undefined
-  let openSubagents: (() => void) | undefined
   let xyqQuick: ReturnType<typeof mountXyqQuick> | undefined
   try {
     visionCleanup = mountVisionFab({
     injectText: resolveSessionInject(ctx),
-    hideFab: true,
+    // 形象小窗的菜单（现属独立包）通过事件回调这里；`expose` 让本体拿得到 open。
     expose: (api) => {
       openVision = api.open
     },
@@ -140,8 +148,8 @@ export function apply(ctx: ClientContext): (() => void) | void {
 
   // ②b 子代理监视器（2026-11-09）：当前对话有子代理时，右侧出现一颗小图标。
   let subagentsCleanup: (() => void) | undefined
+  let openSubagents: (() => void) | undefined
   let handoffPanel: ReturnType<typeof mountHandoffPanel> | undefined
-  let avatarCleanup: (() => void) | undefined
   try {
     xyqQuick = mountXyqQuick()
   } catch (error) {
@@ -150,38 +158,57 @@ export function apply(ctx: ClientContext): (() => void) | void {
   try {
     subagentsCleanup = mountSubagentMonitor({
       getCurrentSession: resolveCurrentSession(ctx),
-      showFab: false,
       expose: (api) => {
         openSubagents = api.open
       },
     })
+  } catch (error) {
+    swallow('子代理监视器挂载抛错（已吞掉）', error)
+  }
 
-  // 转生 / 分身（0.53）：形象菜单两项，面板走宿主那三条回环路由。
+  // 转生 / 分身（0.53）：面板走宿主那三条回环路由。
   try {
     handoffPanel = mountHandoffPanel({ getCurrentSession: resolveCurrentSession(ctx) })
   } catch (error) {
     swallow('转生/分身面板挂载抛错（已吞掉）', error)
   }
 
-  // avatar widget (0.14): chat page bottom-left, auto-switches by agent status.
-  try {
-    avatarCleanup = mountAvatarWidget({
-      getCurrentSession: resolveCurrentSession(ctx),
-      onMenuAction: (id) => {
-        if (id === 'subagents') openSubagents?.()
-        else if (id === 'vision') openVision?.()
-        else if (id === 'rebirth') handoffPanel?.open('rebirth')
-        else if (id === 'branch') handoffPanel?.open('branch')
-        else if (id === 'sprite') (globalThis as { open?: (url: string, target?: string) => unknown }).open?.(resolveHostUrl('/plugins/dafeiyu-sprite/'), '_blank')
-        else xyqQuick?.open()
-      },
-    })
-  } catch (error) {
-    swallow('avatar widget mount failed (swallowed)', error)
+  /*
+   * 菜单动作桥（2026-11-16，形象拆包之后）。
+   *
+   * 那颗右键菜单在**形象小窗上**，而小窗已搬去独立插件 `dsh-avatar-dafeiyu`；
+   * 但菜单里的动作（识图/派活助手/转生/分身/小云雀/序列帧页）全是**本体的能力**。
+   * 跨包不能 import，所以只共享**一个事件名**：形象包派发 `dafeiyu:action`，
+   * 本体在这里分发。这样菜单只有一份（跟着形象走），能力也各归各。
+   *
+   * `detail.id` 取值：`vision` / `subagents` / `rebirth` / `branch` / `xyq` / `sprite`。
+   */
+  const onAvatarMenuAction = (event: Event): void => {
+    const id = (event as CustomEvent<{ id?: unknown }>).detail?.id
+    if (typeof id !== 'string' || id === '') return
+    try {
+      if (id === 'vision') openVision?.()
+      else if (id === 'subagents') openSubagents?.()
+      else if (id === 'rebirth') handoffPanel?.open('rebirth')
+      else if (id === 'branch') handoffPanel?.open('branch')
+      else if (id === 'xyq') xyqQuick?.open()
+      else if (id === 'sprite') {
+        ;(globalThis as { open?: (url: string, target?: string) => unknown }).open?.(
+          resolveHostUrl('/plugins/dafeiyu-sprite/'),
+          '_blank',
+        )
+      }
+    } catch (error) {
+      swallow(`菜单动作 ${id} 执行失败（已吞掉）`, error)
+    }
   }
-  } catch (error) {
-    swallow('子代理监视器挂载抛错（已吞掉）', error)
-  }
+  // 桥是**增强项**：没有 window / 没有 addEventListener（测试用的假 DOM 就是这样）时静默跳过，
+  // 不能因此留一行 error——那会让"降级"被误判成"故障"。
+  const canListen = typeof window !== 'undefined' && typeof window.addEventListener === 'function'
+  if (canListen) window.addEventListener('dafeiyu:action', onAvatarMenuAction)
+
+  // 形象小窗（0.14 起在聊天页左下角）2026-11-16 搬去独立包 `dsh-avatar-dafeiyu`；
+  // 它的菜单通过上面的 `dafeiyu:action` 事件回来找本体。
 
   let settingsMounted = false
   let dafeiyuMerged = false
@@ -247,14 +274,15 @@ export function apply(ctx: ClientContext): (() => void) | void {
 
   return () => {
     try {
-      subagentsCleanup?.()
+      // 菜单动作桥：不摘掉的话，插件的 client 被卸载后事件还会打到一个死函数上。
+      if (canListen) window.removeEventListener('dafeiyu:action', onAvatarMenuAction)
     } catch {
       /* 卸载动作不许拖住卸载 */
     }
     try {
-      avatarCleanup?.()
+      subagentsCleanup?.()
     } catch {
-      /* avatar cleanup must not throw */
+      /* 卸载动作不许拖住卸载 */
     }
     try {
       xyqQuick?.dispose()

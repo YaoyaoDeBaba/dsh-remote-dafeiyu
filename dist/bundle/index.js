@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path30 from "node:path";
+import path29 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path31) {
-  if (!path31)
+function getElementAtPath(obj, path30) {
+  if (!path30)
     return obj;
-  return path31.reduce((acc, key) => acc?.[key], obj);
+  return path30.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path31, issues) {
+function prefixIssues(path30, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path31);
+    iss.path.unshift(path30);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path31 = []) => {
+  const processError = (error63, path30 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path30, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else {
-        const fullpath = [...path31, ...issue2.path];
+        const fullpath = [...path30, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path31 = []) => {
+  const processError = (error63, path30 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path30, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
       } else {
-        const fullpath = [...path31, ...issue2.path];
+        const fullpath = [...path30, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path31 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path31) {
+  const path30 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path30) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -22058,13 +22058,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json12, params, message) {
+function handleUnrepresentable(schema, ctx, json11, params, message) {
   const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result2 === "any")
     return false;
   if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json12, result2);
+  Object.assign(json11, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -22300,12 +22300,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json12) {
-  const allOf = json12.allOf;
+function foldIntersection(json11) {
+  const allOf = json11.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json12)
+    if (key in json11)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -22324,8 +22324,8 @@ function foldIntersection(json12) {
   }
   if (!folded)
     return;
-  delete json12.allOf;
-  assignProps(json12, folded);
+  delete json11.allOf;
+  assignProps(json11, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -22407,20 +22407,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json12 of [seen.schema, seen.def]) {
-          const allOf = json12?.allOf;
+        for (const json11 of [seen.schema, seen.def]) {
+          const allOf = json11?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json12);
+            existing.push(json11);
           else
-            carriers.set(allOf, [json12]);
+            carriers.set(allOf, [json11]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json12 of carriers.get(allOf) ?? [])
-          foldIntersection(json12);
+        for (const json11 of carriers.get(allOf) ?? [])
+          foldIntersection(json11);
       }
     }
   }
@@ -22655,29 +22655,29 @@ var exactPatterns = /* @__PURE__ */ new Map([
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
 var stringProcessor = (schema, ctx, _json, _params) => {
-  const json12 = _json;
-  json12.type = "string";
+  const json11 = _json;
+  json11.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json12.minLength = minimum;
+    json11.minLength = minimum;
   if (typeof maximum === "number")
-    json12.maxLength = maximum;
+    json11.maxLength = maximum;
   if (format) {
-    json12.format = formatMap[format] ?? format;
-    if (json12.format === "")
-      delete json12.format;
+    json11.format = formatMap[format] ?? format;
+    if (json11.format === "")
+      delete json11.format;
     if (format === "time" || laxFormat) {
-      delete json12.format;
+      delete json11.format;
     }
   }
   if (contentEncoding)
-    json12.contentEncoding = contentEncoding;
+    json11.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const patternList = [...patterns].map(exactPattern);
     if (patternList.length === 1)
-      json12.pattern = patternList[0].source;
+      json11.pattern = patternList[0].source;
     else if (patternList.length > 1) {
-      json12.allOf = [
+      json11.allOf = [
         ...patternList.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -22687,31 +22687,31 @@ var stringProcessor = (schema, ctx, _json, _params) => {
   }
 };
 var numberProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json11 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-  json12.type = isInt ? "integer" : "number";
+  json11.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json12.minimum = exclusiveMinimum;
-      json12.exclusiveMinimum = true;
+      json11.minimum = exclusiveMinimum;
+      json11.exclusiveMinimum = true;
     } else {
-      json12.exclusiveMinimum = exclusiveMinimum;
+      json11.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json12.minimum = minimum;
+    json11.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json12.maximum = exclusiveMaximum;
-      json12.exclusiveMaximum = true;
+      json11.maximum = exclusiveMaximum;
+      json11.exclusiveMaximum = true;
     } else {
-      json12.exclusiveMaximum = exclusiveMaximum;
+      json11.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json12.maximum = maximum;
+    json11.maximum = maximum;
   }
   if (multipleOf) {
     const divisors = /* @__PURE__ */ new Set();
@@ -22719,75 +22719,75 @@ var numberProcessor = (schema, ctx, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema, ctx, json12, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema, ctx, json11, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
-      json12.multipleOf = first;
+      json11.multipleOf = first;
     if (rest.length)
-      json12.allOf = [...json12.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+      json11.allOf = [...json11.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
   }
 };
-var booleanProcessor = (_schema, _ctx, json12, _params) => {
-  json12.type = "boolean";
+var booleanProcessor = (_schema, _ctx, json11, _params) => {
+  json11.type = "boolean";
 };
-var bigintProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx, json12, _params) => {
+var nullProcessor = (_schema, ctx, json11, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json12.type = "string";
-    json12.nullable = true;
-    json12.enum = [null];
+    json11.type = "string";
+    json11.nullable = true;
+    json11.enum = [null];
   } else {
-    json12.type = "null";
+    json11.type = "null";
   }
 };
-var undefinedProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Void cannot be represented in JSON Schema");
 };
-var neverProcessor = (_schema, _ctx, json12, _params) => {
-  json12.not = {};
+var neverProcessor = (_schema, _ctx, json11, _params) => {
+  json11.not = {};
 };
 var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Date cannot be represented in JSON Schema");
 };
-var enumProcessor = (schema, _ctx, json12, _params) => {
+var enumProcessor = (schema, _ctx, json11, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.length === 0) {
-    json12.not = {};
+    json11.not = {};
     return;
   }
   if (values.every((v) => typeof v === "number"))
-    json12.type = "number";
+    json11.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json12.type = "string";
-  json12.enum = values;
+    json11.type = "string";
+  json11.enum = values;
 };
-var literalProcessor = (schema, ctx, json12, params) => {
+var literalProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   if (def.values.length === 0) {
-    json12.not = {};
+    json11.not = {};
     return;
   }
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema, ctx, json12, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json11, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema, ctx, json12, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json11, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -22797,37 +22797,37 @@ var literalProcessor = (schema, ctx, json12, params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json12.type = val === null ? "null" : typeof val;
+    json11.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json12.enum = [val];
+      json11.enum = [val];
     } else {
-      json12.const = val;
+      json11.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json12.type = "number";
+      json11.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json12.type = "string";
+      json11.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json12.type = "boolean";
+      json11.type = "boolean";
     if (vals.every((v) => v === null))
-      json12.type = "null";
-    json12.enum = vals;
+      json11.type = "null";
+    json11.enum = vals;
   }
 };
-var nanProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "NaN cannot be represented in JSON Schema");
 };
-var templateLiteralProcessor = (schema, _ctx, json12, _params) => {
-  const _json = json12;
+var templateLiteralProcessor = (schema, _ctx, json11, _params) => {
+  const _json = json11;
   const pattern = schema._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json12, _params) => {
-  const _json = json12;
+var fileProcessor = (schema, _ctx, json11, _params) => {
+  const _json = json11;
   _json.type = "string";
   _json.format = "binary";
   _json.contentEncoding = "binary";
@@ -22845,34 +22845,34 @@ var fileProcessor = (schema, _ctx, json12, _params) => {
   else
     _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
 };
-var successProcessor = (_schema, _ctx, json12, _params) => {
-  json12.type = "boolean";
+var successProcessor = (_schema, _ctx, json11, _params) => {
+  json11.type = "boolean";
 };
-var customProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Set cannot be represented in JSON Schema");
 };
 var arrayProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json12.minItems = minimum;
+    json11.minItems = minimum;
   if (typeof maximum === "number")
-    json12.maxItems = maximum;
-  json12.type = "array";
-  json12.items = processSchema(def.element, ctx, {
+    json11.maxItems = maximum;
+  json11.type = "array";
+  json11.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -22888,17 +22888,17 @@ function inputOptin(schema) {
   return schema._zod.optin;
 }
 var objectProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json12, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json11, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
-  json12.type = "object";
-  json12.properties = {};
+  json11.type = "object";
+  json11.properties = {};
   for (const key in shape) {
-    assignProp(json12.properties, key, processSchema(shape[key], ctx, {
+    assignProp(json11.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -22911,21 +22911,21 @@ var objectProcessor = (schema, ctx, _json, params) => {
     }
   }
   if (requiredKeys.length > 0) {
-    json12.required = requiredKeys;
+    json11.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
-    json12.additionalProperties = false;
+    json11.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json12.additionalProperties = false;
+      json11.additionalProperties = false;
   } else if (def.catchall) {
-    json12.additionalProperties = processSchema(def.catchall, ctx, {
+    json11.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema, ctx, json12, params) => {
+var unionProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -22933,12 +22933,12 @@ var unionProcessor = (schema, ctx, json12, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json12.oneOf = options;
+    json11.oneOf = options;
   } else {
-    json12.anyOf = options;
+    json11.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json12, params) => {
+var intersectionProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   const a = processSchema(def.left, ctx, {
     ...params,
@@ -22953,13 +22953,13 @@ var intersectionProcessor = (schema, ctx, json12, params) => {
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json12.allOf = allOf;
+  json11.allOf = allOf;
   ctx.intersections.push(allOf);
 };
 var tupleProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
-  json12.type = "array";
+  json11.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
   const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -22981,70 +22981,70 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   const maxItems = def.items.length;
   const isClosed = !def.rest;
   if (ctx.target === "draft-2020-12") {
-    json12.prefixItems = prefixItems;
+    json11.prefixItems = prefixItems;
     if (isClosed) {
-      json12.items = false;
+      json11.items = false;
     } else if (rest) {
-      json12.items = rest;
+      json11.items = rest;
     }
     if (minItems > 0)
-      json12.minItems = minItems;
+      json11.minItems = minItems;
     if (isClosed)
-      json12.maxItems = maxItems;
+      json11.maxItems = maxItems;
   } else if (ctx.target === "openapi-3.0") {
-    json12.items = {
+    json11.items = {
       anyOf: prefixItems
     };
     if (rest) {
-      json12.items.anyOf.push(rest);
+      json11.items.anyOf.push(rest);
     }
     if (minItems > 0)
-      json12.minItems = minItems;
+      json11.minItems = minItems;
     if (isClosed)
-      json12.maxItems = maxItems;
+      json11.maxItems = maxItems;
   } else {
-    json12.items = prefixItems;
+    json11.items = prefixItems;
     if (isClosed) {
-      json12.additionalItems = false;
+      json11.additionalItems = false;
     } else if (rest) {
-      json12.additionalItems = rest;
+      json11.additionalItems = rest;
     }
     if (minItems > 0)
-      json12.minItems = minItems;
+      json11.minItems = minItems;
     if (isClosed)
-      json12.maxItems = maxItems;
+      json11.maxItems = maxItems;
   }
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json12.minItems = minimum;
+    json11.minItems = minimum;
   if (typeof maximum === "number")
-    json12.maxItems = maximum;
+    json11.maxItems = maximum;
 };
-function stringifyKeyNames(bySchema, json12, visited) {
-  if (json12.$ref) {
-    if (visited.has(json12))
-      return json12;
-    visited.add(json12);
-    const def = bySchema.get(json12)?.def;
+function stringifyKeyNames(bySchema, json11, visited) {
+  if (json11.$ref) {
+    if (visited.has(json11))
+      return json11;
+    visited.add(json11);
+    const def = bySchema.get(json11)?.def;
     if (!def)
-      return json12;
+      return json11;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json12 : inlined;
+    return inlined === def ? json11 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json12[keyword];
+    const branches = json11[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json12 = { ...json12, [keyword]: mapped };
+      json11 = { ...json11, [keyword]: mapped };
   }
-  const types = Array.isArray(json12.type) ? json12.type : [json12.type];
+  const types = Array.isArray(json11.type) ? json11.type : [json11.type];
   const numericType = !types.includes("string") && types.some((t) => t === "number" || t === "integer");
-  const values = json12.enum ?? (json12.const !== void 0 ? [json12.const] : void 0);
+  const values = json11.enum ?? (json11.const !== void 0 ? [json11.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json12;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json12;
+    return json11;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json11;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23084,9 +23084,9 @@ function rewriteKeyNames(ctx) {
   }
 }
 var recordProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
-  json12.type = "object";
+  json11.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -23094,13 +23094,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json12.patternProperties = {};
+    json11.patternProperties = {};
     for (const pattern of patterns) {
-      assignProp(json12.patternProperties, exactPattern(pattern).source, valueSchema);
+      assignProp(json11.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json12.propertyNames = processSchema(def.keyType, ctx, {
+      json11.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
@@ -23112,7 +23112,7 @@ var recordProcessor = (schema, ctx, _json, params) => {
       }
       pending2.push(schema);
     }
-    json12.additionalProperties = processSchema(def.valueType, ctx, {
+    json11.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -23122,19 +23122,19 @@ var recordProcessor = (schema, ctx, _json, params) => {
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json12.required = validKeyValues.map(String);
+      json11.required = validKeyValues.map(String);
     }
   }
 };
-var nullableProcessor = (schema, ctx, json12, params) => {
+var nullableProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   const inner = processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json12.nullable = true;
+    json11.nullable = true;
   } else {
-    json12.anyOf = [inner, { type: "null" }];
+    json11.anyOf = [inner, { type: "null" }];
   }
 };
 var nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -23144,7 +23144,7 @@ var nonoptionalProcessor = (schema, ctx, _json, params) => {
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
-function serializeDefaultValue(value, schema, ctx, json12, params) {
+function serializeDefaultValue(value, schema, ctx, json11, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23154,30 +23154,30 @@ function serializeDefaultValue(value, schema, ctx, json12, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema, ctx, json12, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json11, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema, ctx, json12, params) => {
+var defaultProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json12, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json11, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json12.default = value;
+    json11.default = value;
 };
-var prefaultProcessor = (schema, ctx, json12, params) => {
+var prefaultProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json12, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json11, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json12._prefault = value;
+    json11._prefault = value;
 };
-var catchProcessor = (schema, ctx, json12, params) => {
+var catchProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -23186,10 +23186,10 @@ var catchProcessor = (schema, ctx, json12, params) => {
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema, ctx, json12, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema, ctx, json11, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
-  json12.default = catchValue;
+  json11.default = catchValue;
 };
 var pipeProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23199,12 +23199,12 @@ var pipeProcessor = (schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json12, params) => {
+var readonlyProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json12.readOnly = true;
+  json11.readOnly = true;
 };
 var promiseProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23846,7 +23846,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => stringProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => stringProcessor(inst, ctx, json11, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -24205,7 +24205,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => numberProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => numberProcessor(inst, ctx, json11, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -24295,7 +24295,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => booleanProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => booleanProcessor(inst, ctx, json11, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -24305,7 +24305,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => bigintProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => bigintProcessor(inst, ctx, json11, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -24363,7 +24363,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => symbolProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => symbolProcessor(inst, ctx, json11, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -24371,7 +24371,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => undefinedProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => undefinedProcessor(inst, ctx, json11, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -24379,7 +24379,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nullProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nullProcessor(inst, ctx, json11, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -24387,7 +24387,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => anyProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => anyProcessor(inst, ctx, json11, params);
 });
 function any() {
   return _any(ZodAny);
@@ -24395,7 +24395,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => unknownProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => unknownProcessor(inst, ctx, json11, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -24403,7 +24403,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => neverProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => neverProcessor(inst, ctx, json11, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -24411,7 +24411,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => voidProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => voidProcessor(inst, ctx, json11, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -24421,7 +24421,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => dateProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => dateProcessor(inst, ctx, json11, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -24443,7 +24443,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => arrayProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => arrayProcessor(inst, ctx, json11, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -24473,7 +24473,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => objectProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => objectProcessor(inst, ctx, json11, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -24546,7 +24546,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => unionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => unionProcessor(inst, ctx, json11, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -24559,7 +24559,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => unionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => unionProcessor(inst, ctx, json11, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -24585,7 +24585,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => intersectionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => intersectionProcessor(inst, ctx, json11, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -24598,7 +24598,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => tupleProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => tupleProcessor(inst, ctx, json11, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -24631,7 +24631,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => recordProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => recordProcessor(inst, ctx, json11, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -24673,7 +24673,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => mapProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => mapProcessor(inst, ctx, json11, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -24693,7 +24693,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => setProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => setProcessor(inst, ctx, json11, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -24709,7 +24709,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => enumProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => enumProcessor(inst, ctx, json11, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -24762,7 +24762,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => literalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => literalProcessor(inst, ctx, json11, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -24783,7 +24783,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => fileProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => fileProcessor(inst, ctx, json11, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -24795,7 +24795,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => transformProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => transformProcessor(inst, ctx, json11, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -24834,7 +24834,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => optionalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => optionalProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -24846,7 +24846,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => optionalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => optionalProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -24858,7 +24858,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nullableProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nullableProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -24873,7 +24873,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => defaultProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => defaultProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -24889,7 +24889,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => prefaultProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => prefaultProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -24904,7 +24904,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nonoptionalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nonoptionalProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -24917,7 +24917,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => successProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => successProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -24929,7 +24929,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => catchProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => catchProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -24943,7 +24943,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nanProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nanProcessor(inst, ctx, json11, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -24951,7 +24951,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => pipeProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => pipeProcessor(inst, ctx, json11, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -24993,7 +24993,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => readonlyProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => readonlyProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -25005,7 +25005,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => templateLiteralProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => templateLiteralProcessor(inst, ctx, json11, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -25017,7 +25017,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => lazyProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => lazyProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -25029,7 +25029,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => promiseProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => promiseProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -25041,7 +25041,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => functionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => functionProcessor(inst, ctx, json11, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -25053,7 +25053,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => customProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => customProcessor(inst, ctx, json11, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path31 = ref.slice(1).split("/").filter(Boolean);
-  if (path31.length === 0) {
+  const path30 = ref.slice(1).split("/").filter(Boolean);
+  if (path30.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path31[0] === defsKey) {
-    const key = path31[1] === void 0 ? void 0 : decodeJSONPointerSegment(path31[1]);
+  if (path30[0] === defsKey) {
+    const key = path30[1] === void 0 ? void 0 : decodeJSONPointerSegment(path30[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -31580,9 +31580,6 @@ import path6 from "node:path";
 // src/platform/avatar-manifest.ts
 import fs2 from "node:fs";
 import path5 from "node:path";
-function avatarDir(dshHome) {
-  return path5.join(dshHome, "storages", "dsh-remote-dafeiyu", "avatar");
-}
 function sanitizeAvatarState(row) {
   if (!row || typeof row !== "object") return void 0;
   const value = row;
@@ -34817,12 +34814,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path31 = __require("node:path");
-        const fs11 = __require("node:fs");
-        const dir = path31.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs11.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs11.writeFileSync(
-          path31.join(dir, "client-report.json"),
+        const path30 = __require("node:path");
+        const fs10 = __require("node:fs");
+        const dir = path30.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs10.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs10.writeFileSync(
+          path30.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -36325,16 +36322,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path31) {
+function deepGet(value, path30) {
   let cursor = value;
-  for (const key of path31) {
+  for (const key of path30) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path31) {
-  return String(path31 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path30) {
+  return String(path30 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -36370,13 +36367,13 @@ function openAiChatBody(config2, image) {
 function buildRequest(config2, image) {
   const base = trimBase(config2.apiBase);
   const protocol = resolveProtocol(config2);
-  const json12 = { "content-type": "application/json" };
-  if (config2.apiKey) json12.Authorization = `Bearer ${config2.apiKey}`;
+  const json11 = { "content-type": "application/json" };
+  if (config2.apiKey) json11.Authorization = `Bearer ${config2.apiKey}`;
   if (protocol === "openai-chat") {
     return {
       url: `${base}/chat/completions`,
       method: "POST",
-      headers: json12,
+      headers: json11,
       body: openAiChatBody(config2, image),
       extract: (body2) => {
         const content = deepGet(body2, ["choices", "0", "message", "content"]);
@@ -36390,7 +36387,7 @@ function buildRequest(config2, image) {
     return {
       url: `${base}/responses`,
       method: "POST",
-      headers: json12,
+      headers: json11,
       body: JSON.stringify({
         model: config2.model,
         input: [
@@ -36476,7 +36473,7 @@ function buildRequest(config2, image) {
   return {
     url: base,
     method: "POST",
-    headers: json12,
+    headers: json11,
     body,
     extract: (raw) => {
       const text = textFrom(deepGet(raw, splitPath(responsePath)));
@@ -36726,13 +36723,13 @@ async function recognize(config2, image) {
   if (!response.ok) {
     throw new VisionError(`\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE HTTP ${response.status}\uFF1A${errorSnippet(raw) || "\uFF08\u7A7A\u54CD\u5E94\uFF09"}`, response.status);
   }
-  let json12;
+  let json11;
   try {
-    json12 = raw === "" ? {} : JSON.parse(raw);
+    json11 = raw === "" ? {} : JSON.parse(raw);
   } catch {
     throw new VisionError(`\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u7684\u4E0D\u662F JSON\uFF1A${errorSnippet(raw)}`, response.status);
   }
-  const text = prepared.extract(json12);
+  const text = prepared.extract(json11);
   if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u63CF\u8FF0\uFF08\u6362\u4E00\u5F20\u56FE\u6216\u68C0\u67E5\u63D0\u793A\u8BCD\uFF09", response.status);
   return text;
 }
@@ -36752,8 +36749,8 @@ async function listModels(config2) {
   const raw = await response.text();
   if (!response.ok) throw new VisionError(`\u62C9\u6A21\u578B\u5217\u8868\u5931\u8D25 HTTP ${response.status}\uFF1A${errorSnippet(raw)}`, response.status);
   try {
-    const json12 = JSON.parse(raw);
-    const models = Array.isArray(json12.data) ? json12.data.map((item) => typeof item?.id === "string" ? item.id : "").filter((id) => id !== "") : [];
+    const json11 = JSON.parse(raw);
+    const models = Array.isArray(json11.data) ? json11.data.map((item) => typeof item?.id === "string" ? item.id : "").filter((id) => id !== "") : [];
     if (models.length === 0) throw new VisionError("\u6A21\u578B\u5217\u8868\u662F\u7A7A\u7684\uFF08\u8FD9\u4E2A\u63A5\u53E3\u53EF\u80FD\u4E0D\u652F\u6301 /models\uFF09", 0);
     return models;
   } catch (error62) {
@@ -44994,13 +44991,13 @@ ${result2.stderr}`;
     if (auth !== void 0) return { result: result2, message: auth };
     const modelMissing = combined.match(/未找到可用模型[^\n]*/);
     if (modelMissing) return { result: result2, message: modelMissing[0].trim() };
-    const json12 = parseJson(result2.stdout);
+    const json11 = parseJson(result2.stdout);
     if (result2.timedOut) return { result: result2, message: `\u5C0F\u4E91\u96C0\u547D\u4EE4\u8D85\u65F6\uFF08${Math.round(timeoutMs / 1e3)} \u79D2\uFF09` };
-    if (json12 === void 0) {
+    if (json11 === void 0) {
       const reason = result2.stderr.trim() !== "" ? result2.stderr.trim() : result2.stdout.trim();
       return { result: result2, message: reason !== "" ? `\u5C0F\u4E91\u96C0\u8FD4\u56DE\u4E86\u65E0\u6CD5\u89E3\u6790\u7684\u5185\u5BB9\uFF1A${reason.slice(0, 200)}` : "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE\u5185\u5BB9" };
     }
-    return { result: result2, json: json12 };
+    return { result: result2, json: json11 };
   }
   async function poll(threadId, runId, outDir, timeoutMs) {
     const started = (deps.now ?? Date.now)();
@@ -45010,15 +45007,15 @@ ${result2.stderr}`;
         Math.max(3e4, timeoutMs)
       );
       if (answered.message !== void 0) return { ok: false, files: [], message: answered.message };
-      const json12 = answered.json ?? {};
-      const status = typeof json12.status === "string" ? json12.status : "unknown";
-      if (json12.error_message !== void 0 && String(json12.error_message).trim() !== "") {
-        return { ok: false, files: [], status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${String(json12.error_message).slice(0, 200)}` };
+      const json11 = answered.json ?? {};
+      const status = typeof json11.status === "string" ? json11.status : "unknown";
+      if (json11.error_message !== void 0 && String(json11.error_message).trim() !== "") {
+        return { ok: false, files: [], status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${String(json11.error_message).slice(0, 200)}` };
       }
       if (status === "succeeded") {
         const files = [];
         for (const key of ["videos", "images"]) {
-          const list = Array.isArray(json12[key]) ? json12[key] : [];
+          const list = Array.isArray(json11[key]) ? json11[key] : [];
           for (const item of list) {
             if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
           }
@@ -45041,25 +45038,25 @@ ${result2.stderr}`;
     async status() {
       const answered = await call(["status"], 3e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
+      const json11 = answered.json ?? {};
       return {
         ok: true,
-        loggedIn: json12.logged_in === true,
-        source: typeof json12.source === "string" ? json12.source : "",
-        ...json12.logged_in === true ? {} : { message: "Access Key \u672A\u751F\u6548\uFF0C\u8BF7\u68C0\u67E5\u662F\u5426\u8FC7\u671F" }
+        loggedIn: json11.logged_in === true,
+        source: typeof json11.source === "string" ? json11.source : "",
+        ...json11.logged_in === true ? {} : { message: "Access Key \u672A\u751F\u6548\uFF0C\u8BF7\u68C0\u67E5\u662F\u5426\u8FC7\u671F" }
       };
     },
     async balance() {
       const answered = await call(["get-credit-balance"], 3e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      return { ok: true, totalRemain: typeof json12.total_remain_amount === "string" ? json12.total_remain_amount : String(json12.total_remain_amount ?? "") };
+      const json11 = answered.json ?? {};
+      return { ok: true, totalRemain: typeof json11.total_remain_amount === "string" ? json11.total_remain_amount : String(json11.total_remain_amount ?? "") };
     },
     async models(kind) {
       const answered = await call(["model", "list", "--type", kind], 6e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      const list = Array.isArray(json12.models) ? json12.models : [];
+      const json11 = answered.json ?? {};
+      const list = Array.isArray(json11.models) ? json11.models : [];
       return {
         ok: true,
         models: list.filter((row) => typeof row.name === "string" && String(row.name).trim() !== "").map((row) => ({
@@ -45088,9 +45085,9 @@ ${result2.stderr}`;
       if (typeof input2.count === "number" && Number.isFinite(input2.count) && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
       const submitted = await call(args, 12e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
+      const json11 = submitted.json ?? {};
+      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
+      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id\uFF0C\u751F\u6210\u672A\u63D0\u4EA4\u6210\u529F" };
       budget.images += 1;
       const outDir = input2.outDir ?? "xyq_output";
@@ -45101,7 +45098,7 @@ ${result2.stderr}`;
         threadId,
         runId,
         files: polled.files,
-        ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {}
+        ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {}
       };
     },
     /** UI 用：只提交生图任务，返回 thread/run（结果由 queryOnce 轮询）。 */
@@ -45119,12 +45116,12 @@ ${result2.stderr}`;
       if (typeof input2.count === "number" && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
       const submitted = await call(args, 12e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
+      const json11 = submitted.json ?? {};
+      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
+      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
       budget.images += 1;
-      return { ok: true, threadId, runId, ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {} };
+      return { ok: true, threadId, runId, ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {} };
     },
     /** UI 用：只提交生视频任务。 */
     async startVideo(input2) {
@@ -45142,12 +45139,12 @@ ${result2.stderr}`;
       args.push("--task-type", "reference");
       const submitted = await call(args, 18e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
+      const json11 = submitted.json ?? {};
+      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
+      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
       budget.videos += 1;
-      return { ok: true, threadId, runId, ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {} };
+      return { ok: true, threadId, runId, ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {} };
     },
     /** UI 用：查一次任务状态（不轮询、不阻塞）。 */
     async queryOnce(threadId, runId, outDir) {
@@ -45156,15 +45153,15 @@ ${result2.stderr}`;
         12e4
       );
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      const status = typeof json12.status === "string" ? json12.status : "unknown";
-      if (typeof json12.error_message === "string" && json12.error_message !== "") {
-        return { ok: false, status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${json12.error_message.slice(0, 200)}` };
+      const json11 = answered.json ?? {};
+      const status = typeof json11.status === "string" ? json11.status : "unknown";
+      if (typeof json11.error_message === "string" && json11.error_message !== "") {
+        return { ok: false, status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${json11.error_message.slice(0, 200)}` };
       }
       if (status !== "succeeded") return { ok: true, status };
       const files = [];
       for (const key of ["videos", "images"]) {
-        const list = Array.isArray(json12[key]) ? json12[key] : [];
+        const list = Array.isArray(json11[key]) ? json11[key] : [];
         for (const item of list) {
           if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
         }
@@ -45175,8 +45172,8 @@ ${result2.stderr}`;
     async describe(name2, kind) {
       const answered = await call(["model", "describe", name2, "--type", kind], 6e4);
       if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      const model2 = json12.model && typeof json12.model === "object" ? json12.model : void 0;
+      const json11 = answered.json ?? {};
+      const model2 = json11.model && typeof json11.model === "object" ? json11.model : void 0;
       if (model2 === void 0) return { ok: false, message: "\u6CA1\u6709\u62FF\u5230\u6A21\u578B\u8BE6\u60C5" };
       return { ok: true, model: model2 };
     },
@@ -45198,9 +45195,9 @@ ${result2.stderr}`;
       args.push("--task-type", "reference");
       const submitted = await call(args, 18e4);
       if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
+      const json11 = submitted.json ?? {};
+      const threadId = typeof json11.thread_id === "string" ? json11.thread_id : "";
+      const runId = typeof json11.run_id === "string" ? json11.run_id : "";
       if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id\uFF0C\u751F\u6210\u672A\u63D0\u4EA4\u6210\u529F" };
       budget.videos += 1;
       const outDir = input2.outDir ?? "xyq_output";
@@ -45211,7 +45208,7 @@ ${result2.stderr}`;
         threadId,
         runId,
         files: polled.files,
-        ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {}
+        ...typeof json11.web_thread_link === "string" ? { webLink: json11.web_thread_link } : {}
       };
     }
   };
@@ -45400,14 +45397,14 @@ function xyqFileHandler(deps) {
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const target = (url2.searchParams.get("path") ?? "").trim();
     if (target === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
-    const path31 = await import("node:path");
-    const fs11 = await import("node:fs");
-    const resolved = path31.resolve(target);
-    const root = path31.resolve(deps.outDir);
-    if (!resolved.startsWith(root + path31.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
+    const path30 = await import("node:path");
+    const fs10 = await import("node:fs");
+    const resolved = path30.resolve(target);
+    const root = path30.resolve(deps.outDir);
+    if (!resolved.startsWith(root + path30.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
     try {
-      const data = fs11.readFileSync(resolved);
-      const ext = path31.extname(resolved).toLowerCase();
+      const data = fs10.readFileSync(resolved);
+      const ext = path30.extname(resolved).toLowerCase();
       const mime = ext === ".mp4" ? "video/mp4" : ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "application/octet-stream";
       response.writeHead(200, { "Content-Type": mime, "Content-Length": data.byteLength });
       if (request.method === "HEAD") response.end();
@@ -45654,7 +45651,7 @@ function startXyq(ctx, deps) {
         [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
         [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)]
       ];
-      for (const [path31, handler] of registers) disposers.push(web.register({ kind: "exact", path: path31, handler }));
+      for (const [path30, handler] of registers) disposers.push(web.register({ kind: "exact", path: path30, handler }));
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -45759,183 +45756,14 @@ function startXyq(ctx, deps) {
   };
 }
 
-// src/avatar/routes.ts
-import fs10 from "node:fs";
-import path25 from "node:path";
-var AVATAR_BASE = "/api/dsh-remote-dafeiyu/avatar";
-var AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`;
-var AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`;
-var AVATAR_STATE_ROUTE = `${AVATAR_BASE}/state`;
+// src/memory/routes.ts
+var MEMORY_ROUTE = "/api/dsh-remote-dafeiyu/memory";
 function json10(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
 function rejected5(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
-  return void 0;
-}
-function readonly2(request) {
-  return request.method === "GET" || request.method === "HEAD";
-}
-function avatarManifestHandler(dir) {
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const manifest = loadAvatarManifest(dir);
-    response.setHeader("Cache-Control", "no-store");
-    if (manifest === void 0) return json10(response, 200, { ok: true, manifest: null, message: "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5" });
-    json10(response, 200, { ok: true, manifest });
-  };
-}
-function avatarSheetHandler(dir) {
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const id = (url2.searchParams.get("id") ?? "").trim();
-    if (id === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 id" });
-    const manifest = loadAvatarManifest(dir);
-    const state = manifest?.states.find((row) => row.id === id);
-    if (state === void 0) return json10(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u52A8\u4F5C" });
-    const file2 = path25.resolve(dir, state.file);
-    if (!file2.startsWith(path25.resolve(dir) + path25.sep)) return json10(response, 403, { ok: false, error: "path-escape" });
-    let data;
-    try {
-      data = fs10.readFileSync(file2);
-    } catch {
-      return json10(response, 404, { ok: false, error: "\u7D20\u6750\u6587\u4EF6\u4E0D\u5B58\u5728" });
-    }
-    response.writeHead(200, {
-      "Content-Type": "image/webp",
-      "Content-Length": data.byteLength,
-      "Cache-Control": "public, max-age=86400, immutable"
-    });
-    if (request.method === "HEAD") response.end();
-    else response.end(data);
-  };
-}
-function avatarStateHandler(getStatus) {
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
-    if (sessionId === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
-    let status;
-    try {
-      status = getStatus(sessionId);
-    } catch {
-      status = void 0;
-    }
-    json10(response, 200, { ok: true, status: status === "running" ? "running" : "idle" });
-  };
-}
-
-// src/avatar/start.ts
-function startAvatar(ctx, deps) {
-  const probe = {};
-  const dir = avatarDir(deps.dshHome);
-  const disposers = [];
-  let unregister;
-  let web;
-  let started = false;
-  let stopped = false;
-  const tryStart = () => {
-    if (started || stopped || web === void 0) return;
-    started = true;
-    try {
-      disposers.push(web.register({ kind: "exact", path: AVATAR_MANIFEST_ROUTE, handler: avatarManifestHandler(dir) }));
-      disposers.push(web.register({ kind: "exact", path: AVATAR_SHEET_ROUTE, handler: avatarSheetHandler(dir) }));
-      disposers.push(
-        web.register({
-          kind: "exact",
-          path: AVATAR_STATE_ROUTE,
-          handler: avatarStateHandler((sessionId) => {
-            try {
-              const agents = ctx.get?.("agents", true);
-              const agent = agents?.get?.(sessionId);
-              return typeof agent?.status === "string" ? agent.status : void 0;
-            } catch {
-              return void 0;
-            }
-          })
-        })
-      );
-      unregister = () => {
-        for (const dispose of disposers.splice(0)) dispose();
-      };
-      probe.routes = "registered";
-    } catch (error62) {
-      probe.routes = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-      started = false;
-      if (disposers.length > 0) {
-        const registered = disposers.splice(0);
-        unregister = () => {
-          for (const dispose of registered) dispose();
-        };
-      }
-    }
-  };
-  const accept = (value, via) => {
-    if (!value || typeof value !== "object" || typeof value.register !== "function") return false;
-    web = value;
-    probe.webServer = via;
-    tryStart();
-    return true;
-  };
-  try {
-    const found = ctx.get?.("webServer", true);
-    if (found) accept(found, "via get");
-    else probe.webServer = "none";
-  } catch (error62) {
-    probe.webServer = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-  }
-  try {
-    ctx.inject?.(["webServer"], ((scoped) => {
-      const asContext = scoped;
-      let candidate;
-      try {
-        candidate = asContext?.get?.("webServer", true);
-      } catch {
-        candidate = void 0;
-      }
-      if (!accept(candidate, "via inject")) probe.webServer = `${probe.webServer ?? "none"} (inject fired, empty)`;
-    }));
-  } catch (error62) {
-    probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 120);
-  }
-  return {
-    probe,
-    stop() {
-      if (stopped) return;
-      stopped = true;
-      try {
-        unregister?.();
-      } catch {
-      }
-    }
-  };
-}
-
-// src/memory/routes.ts
-var MEMORY_ROUTE = "/api/dsh-remote-dafeiyu/memory";
-function json11(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function rejected6(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -45974,39 +45802,39 @@ function personaOf(request) {
 }
 function memoryHandler(deps) {
   return async (request, response) => {
-    const denied = rejected6(request);
+    const denied = rejected5(request);
     if (denied) {
-      json11(response, 403, { ok: false, error: denied });
+      json10(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
       const persona2 = personaOf(request);
       if (persona2 === "") {
-        json11(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
+        json10(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
         return;
       }
-      json11(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
+      json10(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
       return;
     }
     if (request.method !== "POST") {
-      json11(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     const body = await readBody5(request);
     if (!body.ok) {
-      json11(response, body.status, { ok: false, error: body.error });
+      json10(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json11(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json10(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const persona = typeof parsed.persona === "string" ? parsed.persona.trim() : "";
     if (persona === "") {
-      json11(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
+      json10(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
       return;
     }
     const action = typeof parsed.action === "string" ? parsed.action : "add";
@@ -46014,39 +45842,39 @@ function memoryHandler(deps) {
       const text = typeof parsed.text === "string" ? parsed.text : "";
       const result2 = deps.service.add(persona, text, { importance: parsed.importance, source: "manual" });
       if (!result2.ok) {
-        json11(response, 400, { ok: false, error: result2.error });
+        json10(response, 400, { ok: false, error: result2.error });
         return;
       }
-      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "remove") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.remove(persona, id)) {
-        json11(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json10(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "update") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.update(persona, id, { text: parsed.text, importance: parsed.importance })) {
-        json11(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json10(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "clear") {
       if (!deps.service.clear(persona)) {
-        json11(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
+        json10(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
         return;
       }
-      json11(response, 200, { ok: true, entries: [] });
+      json10(response, 200, { ok: true, entries: [] });
       return;
     }
-    json11(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
+    json10(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
   };
 }
 function registerMemoryRoutes(webServer, deps) {
@@ -46273,11 +46101,11 @@ function startMemory(ctx, deps) {
 
 // src/backup/service.ts
 import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync5, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync6, writeFileSync as writeFileSync6 } from "node:fs";
-import path28 from "node:path";
+import path27 from "node:path";
 
 // src/backup/config.ts
 import { existsSync as existsSync6, readFileSync as readFileSync9 } from "node:fs";
-import path26 from "node:path";
+import path25 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -46289,19 +46117,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path26.join(dshHome, "dsh-backup-git");
+  return path25.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path26.join(backupDir(dshHome), "config.json");
+  return path25.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path26.join(backupDir(dshHome), "credential.json");
+  return path25.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path26.join(backupDir(dshHome), "status.json");
+  return path25.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path26.join(backupDir(dshHome), "work");
+  return path25.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -46538,16 +46366,16 @@ import { createHash as createHash6 } from "node:crypto";
 import { existsSync as existsSync7, readdirSync as readdirSync4, readFileSync as readFileSync10, statSync as statSync5 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path27 from "node:path";
+import path26 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path27.join(sessionsRoot, slug);
+    const slugDir = path26.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path27.join(slugDir, dirName);
+      const sessionDir = path26.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path27.join(sessionDir, fileName);
+        const file2 = path26.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync5(file2);
@@ -46559,7 +46387,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path27.posix.join(slug, dirName, fileName),
+          relPath: path26.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -46608,11 +46436,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path27.join(input2.stagingDir, "latest");
+  const staging = path26.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path27.join(staging, "sessions", entry.relPath);
+    const target = path26.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -46621,20 +46449,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path27.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path26.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path27.join(staging, "profiles", path27.basename(input2.profileDir));
+    const target = path26.join(staging, "profiles", path26.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path27.join(input2.profileDir, name2);
+      const source = path26.join(input2.profileDir, name2);
       if (!existsSync7(source)) continue;
-      await copyFileFresh(source, path27.join(target, name2));
+      await copyFileFresh(source, path26.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path27.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path26.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -46650,17 +46478,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path27.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path26.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path27.join(stagingDir, "archive");
+  const root = path26.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path27.join(root, entry.relPath);
+    const target = path26.join(root, entry.relPath);
     if (existsSync7(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -46706,7 +46534,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path27.join(dir, entry.name);
+    const full = path26.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -46717,7 +46545,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path27.dirname(target), { recursive: true });
+  await mkdir(path26.dirname(target), { recursive: true });
   if (existsSync7(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -46730,7 +46558,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path27.join(sourceDir, name2), path27.join(targetDir, name2));
+    await copyFileFresh(path26.join(sourceDir, name2), path26.join(targetDir, name2));
     names.push(name2);
   }
   return names;
@@ -46743,8 +46571,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path27.join(sourceDir, entry.name);
-    const target = path27.join(targetDir, entry.name);
+    const source = path26.join(sourceDir, entry.name);
+    const target = path26.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -46779,8 +46607,8 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync7(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path27.join(profilesRoot, name2);
-    const manifest = path27.join(dir, "package.json");
+    const dir = path26.join(profilesRoot, name2);
+    const manifest = path26.join(dir, "package.json");
     if (!existsSync7(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync10(manifest, "utf8"));
@@ -47032,13 +46860,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path28.join(base, "staging"),
-      hotRepo: path28.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path28.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path28.join(this.deps.dshHome, "sessions"),
-      storagesDir: path28.join(this.deps.dshHome, "storages"),
-      profilesRoot: path28.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path28.join(this.deps.dshHome, "attachments")
+      staging: path27.join(base, "staging"),
+      hotRepo: path27.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path27.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path27.join(this.deps.dshHome, "sessions"),
+      storagesDir: path27.join(this.deps.dshHome, "storages"),
+      profilesRoot: path27.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path27.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -47061,7 +46889,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync9(repo, { recursive: true });
-    if (!existsSync8(path28.join(repo, ".git"))) {
+    if (!existsSync8(path27.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -47081,7 +46909,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path28.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path27.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync8(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -47127,11 +46955,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync9(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path28.join(base, "askpass.cmd");
+      const file3 = path27.join(base, "askpass.cmd");
       if (!existsSync8(file3)) writeFileSync6(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path28.join(base, "askpass.sh");
+    const file2 = path27.join(base, "askpass.sh");
     if (!existsSync8(file2)) {
       writeFileSync6(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -47155,31 +46983,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path28.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path27.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path28.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path28.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path27.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path27.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path28.join(staging, "latest");
-      const restoredHot = existsSync8(path28.join(restoreLatest, "sessions")) ? countSessionFiles(path28.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path27.join(staging, "latest");
+      const restoredHot = existsSync8(path27.join(restoreLatest, "sessions")) ? countSessionFiles(path27.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path28.join(this.deps.dshHome, name2);
+        const target = path27.join(this.deps.dshHome, name2);
         if (existsSync8(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path28.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path28.join(restoreLatest, "storages"), path28.join(this.deps.dshHome, "storages"));
-      if (existsSync8(path28.join(restoreLatest, "attachments"))) {
-        await mergeTree(path28.join(restoreLatest, "attachments"), path28.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path27.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path27.join(restoreLatest, "storages"), path27.join(this.deps.dshHome, "storages"));
+      if (existsSync8(path27.join(restoreLatest, "attachments"))) {
+        await mergeTree(path27.join(restoreLatest, "attachments"), path27.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path28.join(staging, "archive"), sessionsRoot);
-      const profiles = path28.join(restoreLatest, "profiles");
+      await mergeTree(path27.join(staging, "archive"), sessionsRoot);
+      const profiles = path27.join(restoreLatest, "profiles");
       if (existsSync8(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -47216,15 +47044,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync5(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path28.join(repo, entry.name);
+    const target = path27.join(repo, entry.name);
     rmSync4(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync8(source)) return;
   for (const entry of readdirSync5(source, { withFileTypes: true })) {
-    const from = path28.join(source, entry.name);
-    const to = path28.join(target, entry.name);
+    const from = path27.join(source, entry.name);
+    const to = path27.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync9(to, { recursive: true });
       await mergeTree(from, to);
@@ -47240,12 +47068,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync8(profilesRoot)) return;
   for (const entry of readdirSync5(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path28.join(source, entry.name);
-    const to = path28.join(profilesRoot, entry.name);
+    const from = path27.join(source, entry.name);
+    const to = path27.join(profilesRoot, entry.name);
     if (!existsSync8(to)) continue;
     for (const file2 of readdirSync5(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path28.join(from, file2.name), path28.join(to, file2.name));
+      await copyFileFresh(path27.join(from, file2.name), path27.join(to, file2.name));
     }
   }
 }
@@ -47259,7 +47087,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path28.join(dir, entry.name);
+      const full = path27.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -47275,7 +47103,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync12 } from "node:fs";
-import path29 from "node:path";
+import path28 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -47305,8 +47133,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path29.dirname(statusFile2) : dataDir();
-  return path29.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path28.dirname(statusFile2) : dataDir();
+  return path28.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -47320,12 +47148,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path29.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path28.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path29.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path28.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -47364,7 +47192,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path29.dirname(file2));
+    ensureSecureDir(path28.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -47547,7 +47375,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path30.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path29.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -47570,7 +47398,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path30.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path29.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -48119,7 +47947,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path30.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path29.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -48301,7 +48129,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path30.dirname(path30.dirname(config2.statusFile)) : path30.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path29.dirname(path29.dirname(config2.statusFile)) : path29.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -48429,15 +48257,6 @@ function applyInner(ctx, injected, clock) {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
-  let avatarHandle;
-  try {
-    avatarHandle = startAvatar(ctx, { dshHome: resolveDshHome(process.env), log });
-  } catch (error62) {
-    avatarHandle = void 0;
-    log("\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u8DEF\u7531\u8D77\u4E0D\u6765\uFF08\u4E0D\u5F71\u54CD\u5176\u5B83\u529F\u80FD\uFF09", {
-      message: String(error62?.message ?? error62).slice(0, 200)
-    });
-  }
   let xyqHandle;
   try {
     xyqHandle = startXyq(ctx, { dshHome: resolveDshHome(process.env), log });
@@ -48532,10 +48351,6 @@ function applyInner(ctx, injected, clock) {
       }
       try {
         xyqHandle?.stop();
-      } catch {
-      }
-      try {
-        avatarHandle?.stop();
       } catch {
       }
       try {

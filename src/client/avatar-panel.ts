@@ -1,11 +1,20 @@
 /**
- * avatar-panel — 设置页「形象」分栏：播放 8 个 sprite 动画。
+ * avatar-panel — 设置页「形象」分栏：**素材查看器**（拿 div 当画布逐帧播，不是配置表单）。
  *
  * 素材：`manifest.json` + `<id>.webp`（8×6 网格、48 帧），由宿主
  * `/api/dsh-remote-dafeiyu/avatar/manifest` 与 `/avatar/sheet?id=` 提供。
  *
  * 渲染：一个 div 当画布，`background-size: 800% 600%`，每帧只改 `background-position`
  * 的百分比（col/(cols-1)、row/(rows-1)），不重建 DOM、不占 canvas。24fps。
+ *
+ * ## 2026-11-16：形象功能拆包后的降级
+ *
+ * 三条只读路由与悬浮小窗搬去了独立包 `dsh-avatar-dafeiyu`，面板留在大肥鱼当查看器。
+ * 那个包**没装**时路由整条不存在（404 / 非 JSON / 甚至连接被拒），所以这里：
+ *
+ * 1. 任何失败都收敛成**同一个**「未安装」提示（`AVATAR_MISSING_HINT`），不抛、不空白；
+ * 2. 只请求**一次**，失败不重试、不打轮询——装没装不会因为多试几次就变；
+ * 3. 读不到素材时 `current` 为空 ⇒ 播片那条 effect 直接 return，不起任何定时器。
  */
 import { callJson } from './host-api.js'
 
@@ -28,8 +37,52 @@ export interface AvatarStateView {
   anchorY?: number
 }
 
+/** 形象插件（`dsh-avatar-dafeiyu`）没装时，面板上那一行话。判据钉的就是这句。 */
+export const AVATAR_MISSING_HINT = '形象插件未安装（dsh-avatar-dafeiyu）：装好后刷新此页。'
+
+/** 一次素材读取的两种结局：能播 / 素材不在（= 插件没装或没铺素材）。 */
+export type AvatarManifestRead =
+  | { kind: 'ready'; states: AvatarStateView[]; version: number }
+  | { kind: 'missing'; message: string }
+
 const BASE = '/api/dsh-remote-dafeiyu/avatar'
 const FPS = 24
+
+/**
+ * 把 `GET /avatar/manifest` 的响应归一成两态。纯函数：没有 fetch、没有 DOM，判据直接钉它。
+ *
+ * 非 JSON 的 404、`ok:false`、`states` 空数组——全都算"素材不在"。这里**刻意不区分**
+ * "没装"与"装了但没铺素材"：对用户而言下一步一样（装包 / 刷新），两句话只会更糊涂。
+ */
+export function readAvatarManifestResult(
+  result: Record<string, unknown> | null | undefined,
+): AvatarManifestRead {
+  const manifest = (result?.manifest ?? null) as { version?: number; states?: AvatarStateView[] } | null
+  const states = manifest && Array.isArray(manifest.states) ? manifest.states : []
+  if (result?.ok === true && states.length > 0) {
+    return {
+      kind: 'ready',
+      states,
+      version: typeof manifest?.version === 'number' ? manifest.version : 0,
+    }
+  }
+  return { kind: 'missing', message: AVATAR_MISSING_HINT }
+}
+
+/**
+ * 走**一次** manifest 请求。`fetchJson` 注入进来（真身是 `callJson`），所以判据能用桩打
+ * "404 / 抛网络错"而不碰真网络。任何失败都收敛成 `missing`——**绝不外抛**：面板抛一次，
+ * 宿主那一格就整块空白，连"没装"都看不见。
+ */
+export async function loadAvatarManifest(
+  fetchJson: (path: string) => Promise<Record<string, unknown> | null | undefined>,
+): Promise<AvatarManifestRead> {
+  try {
+    return readAvatarManifestResult(await fetchJson(`${BASE}/manifest?t=${Date.now()}`))
+  } catch {
+    return { kind: 'missing', message: AVATAR_MISSING_HINT }
+  }
+}
 
 const buttonStyle: Record<string, string> = {
   padding: '4px 12px',
@@ -58,23 +111,18 @@ export function buildAvatarPanel(deps: { createElement: CreateElement; hooks: Ho
 
     useEffect?.(() => {
       let cancelled = false
-      void (async () => {
-        try {
-          const result = await callJson(`${BASE}/manifest?t=${Date.now()}`, undefined)
-          const manifest = result.manifest as { version?: number; states?: AvatarStateView[] } | null | undefined
-          if (cancelled) return
-          if (result.ok === true && manifest && Array.isArray(manifest.states) && manifest.states.length > 0) {
-            setStates(manifest.states)
-            setVersion(typeof manifest.version === 'number' ? manifest.version : 0)
-            setStatus(`共 ${manifest.states.length} 个动作`)
-            if (!manifest.states.some((state) => state.id === 'idle')) setActive(manifest.states[0]!.id)
-          } else {
-            setStatus(String(result.message ?? '虚拟形象素材未安装'))
-          }
-        } catch (error) {
-          if (!cancelled) setStatus(`读取失败：${String((error as Error)?.message ?? error)}`)
+      // 只请求一次：插件没装时重试不会让它出现，反复失败只会在控制台刷屏。
+      void loadAvatarManifest((path) => callJson(path, undefined)).then((read) => {
+        if (cancelled) return
+        if (read.kind === 'missing') {
+          setStatus(read.message)
+          return
         }
-      })()
+        setStates(read.states)
+        setVersion(read.version)
+        setStatus(`共 ${read.states.length} 个动作`)
+        if (!read.states.some((state) => state.id === 'idle')) setActive(read.states[0]!.id)
+      })
       return () => {
         cancelled = true
       }

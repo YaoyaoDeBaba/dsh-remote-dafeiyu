@@ -25,21 +25,22 @@ import { buildVisionPanel } from './vision-panel.js'
 import { buildMemoryPanel } from './memory-panel.js'
 import { buildSubagentsPanel } from './subagents-settings.js'
 import { buildXyqPanel } from './xyq-panel.js'
-import { buildAvatarPanel } from './avatar-panel.js'
+import { listRooms, onRoomsChange, type DafeiyuRoom } from './rooms.js'
 
 /** 三个分栏的 id。 */
 export const DAFEIYU_TAB_REMOTE = 'remote'
 export const DAFEIYU_TAB_PERSONA = 'persona'
-export const DAFEIYU_TAB_AVATAR = 'avatar'
 export const DAFEIYU_TAB_SUBAGENTS = 'subagents'
 export const DAFEIYU_TAB_XYQ = 'xyq'
 
 const TAB_LABELS: Record<string, string> = {
   [DAFEIYU_TAB_REMOTE]: '远程控制',
   [DAFEIYU_TAB_PERSONA]: '人设',
-  [DAFEIYU_TAB_AVATAR]: '形象',
   [DAFEIYU_TAB_SUBAGENTS]: '派活助手',
   [DAFEIYU_TAB_XYQ]: '小云雀',
+  // ⚠️ 「形象」不在这里了（2026-11-16）：它搬去独立包 `dsh-avatar-dafeiyu`，
+  // 由那个包通过 `rooms.ts` 的 `registerRoom({ id:'avatar', label:'形象' })` 领一间房。
+  // **没装就没有这个 tab**——这正是"房间协议"要的效果，不是回归。
 }
 
 export interface DafeiyuPageDeps {
@@ -77,8 +78,6 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks })
   // 小云雀（CLI 生图/生视频）：Key、预算、自由度。
   const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks })
-  // 形象：sprite 动画面板（素材在动态形象存储里）。
-  const avatarPanel = buildAvatarPanel({ createElement, hooks: reactHooks })
 
   let cleanupRemote: (() => void) | undefined
   const attach = (node: unknown): void => {
@@ -101,53 +100,122 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     }
   }
 
+  /*
+   * 房间的挂载点（2026-11-16）。住客来自**别的包**，只认 `./rooms.ts` 的契约：
+   * 给它一个容器，它自己装修，返回清理函数。这里负责三件事——
+   *   ① 切走时先拆上一间（顺序不能反：先挂新的会出现两份叠着）；
+   *   ② 住客 `mount` 抛错只影响它自己那一栏，页面其余照常；
+   *   ③ 整个设置页卸载时也拆掉（`ref` 收到 null 就是这条路）。
+   */
+  let currentRoom: { id: string; dispose?: () => void } | undefined
+  const disposeRoom = (): void => {
+    const room = currentRoom
+    currentRoom = undefined
+    if (!room) return
+    try {
+      room.dispose?.()
+    } catch (error) {
+      try {
+        console.warn(`[dsh-remote-control settings] 房间 ${room.id} 清理抛错`, error)
+      } catch {
+        /* 日志不许抛 */
+      }
+    }
+  }
+  const attachRoom = (room: DafeiyuRoom) => (node: unknown): void => {
+    const element = node as HTMLElement | null
+    if (!element || typeof element.appendChild !== 'function') {
+      if (currentRoom?.id === room.id) disposeRoom()
+      return
+    }
+    if (currentRoom?.id !== room.id) {
+      disposeRoom()
+      currentRoom = { id: room.id }
+    } else {
+      return
+    }
+    try {
+      const cleanup = room.mount(element)
+      if (currentRoom) currentRoom.dispose = typeof cleanup === 'function' ? cleanup : undefined
+      room.onShow?.()
+    } catch (error) {
+      // 住客起不来：它那一栏说人话，别把整页带崩（这是验收里"装坏"那一态）。
+      const message = String((error as Error)?.message ?? error).slice(0, 160)
+      element.textContent = `这个模块起不来：${room.label}（${message}）`
+      try {
+        console.warn(`[dsh-remote-control settings] 房间 ${room.id} 挂载失败`, error)
+      } catch {
+        /* 日志不许抛 */
+      }
+    }
+  }
+
   const TabPage = (): unknown => {
     const [tab, setTab] = useState<string>(DAFEIYU_TAB_REMOTE)
+    /*
+     * 房间表的版本号：住客可能在设置页**打开之后**才注册（插件晚挂载/热重载），
+     * 所以订阅一次变化，变化就重渲染。`useState` 的 setter 只收值不收函数（宿主给的就是两参式），
+     * 所以这里用一个闭包计数，不写 `setRooms(n => n + 1)`。
+     */
+    const [roomsVersion, setRoomsVersion] = useState<number>(0)
+    let bump = roomsVersion
+    const useEffect = reactHooks?.useEffect
+    if (typeof useEffect === 'function') {
+      useEffect(() => onRoomsChange(() => setRoomsVersion(++bump)), [])
+    }
+    const rooms = listRooms()
+    const tabs: Array<[string, string]> = [...Object.entries(TAB_LABELS), ...rooms.map((room) => [room.id, room.label] as [string, string])]
+    // 当前 tab 的住客被注销了（插件卸载）→ 回到远程控制，别停在一间不存在的房上
+    if (!tabs.some(([id]) => id === tab)) {
+      disposeRoom()
+    }
+    const activeTab = tabs.some(([id]) => id === tab) ? tab : DAFEIYU_TAB_REMOTE
     // ⚠️ 本仓的 CreateElement 是 (type, props) 两参式（React 的 children 走 props.children）——
     // 与 jsxRuntime 同款，别写成 (type, props, ...children)。
     const tabBar = createElement('div', {
       style: { display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' },
-      children: Object.entries(TAB_LABELS).map(([id, label]) =>
+      children: tabs.map(([id, label]) =>
         createElement('button', {
           type: 'button',
           key: id,
-          style: tab === id ? activeTabStyle : tabStyle,
-          onClick: () => setTab(id),
+          style: activeTab === id ? activeTabStyle : tabStyle,
+          onClick: () => {
+            // 先拆上一间再切：反过来会出现两份叠着（验收里专门有一条）
+            disposeRoom()
+            setTab(id)
+          },
           children: label,
         }),
       ),
     })
     let body: unknown = null
-    if (tab === DAFEIYU_TAB_REMOTE) {
+    if (activeTab === DAFEIYU_TAB_REMOTE) {
       body = createElement('div', { ref: attach })
-    } else if (tab === DAFEIYU_TAB_XYQ) {
+    } else if (activeTab === DAFEIYU_TAB_XYQ) {
       body = xyqPanel
         ? createElement(xyqPanel, {})
         : createElement('p', {
             style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
             children: '小云雀面板起不来（宿主没给 react hooks）。',
           })
-    } else if (tab === DAFEIYU_TAB_SUBAGENTS) {
+    } else if (activeTab === DAFEIYU_TAB_SUBAGENTS) {
       body = subagentsPanel
         ? createElement(subagentsPanel, {})
         : createElement('p', {
             style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
             children: '派活助手面板起不来（宿主没给 react hooks）。',
           })
-    } else if (tab === DAFEIYU_TAB_PERSONA) {
+    } else if (activeTab === DAFEIYU_TAB_PERSONA) {
       const extras: unknown[] = []
       if (visionPanel) extras.push(createElement(visionPanel, {}))
       if (memoryPanel) extras.push(createElement(memoryPanel, {}))
       body = createElement('div', {
         children: [createElement(personaSettings, { t: personaT }), ...extras],
       })
-    } else if (tab === DAFEIYU_TAB_AVATAR) {
-      body = avatarPanel
-        ? createElement(avatarPanel, {})
-        : createElement('p', {
-            style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
-            children: '形象面板起不来（宿主没给 react hooks）。',
-          })
+    } else if (rooms.some((room) => room.id === activeTab)) {
+      // 住客的房间：只给容器，装修它自己来（`attachRoom` 管挂载/清理/崩了说人话）
+      const room = rooms.find((candidate) => candidate.id === activeTab) as DafeiyuRoom
+      body = createElement('div', { ref: attachRoom(room), 'data-room': room.id })
     } else {
       body = createElement('p', {
         style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },

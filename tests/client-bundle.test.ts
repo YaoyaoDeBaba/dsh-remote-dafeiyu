@@ -41,9 +41,11 @@ const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
 /** 会话备份那张卡那条路由（2026-10-28 加）。同上：字面量，由产物那条判据对齐。 */
 const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 /**
- * 序列帧工具页（0.55）：形象菜单「🎞 序列帧工具」的跳转目标。
- * 与 `src/sprite/routes.ts` 的 `SPRITE_PAGE_ROUTE` 逐字一致——拼错一个字符就是 404，
- * 而 404 在这条路上表现为「点了没反应」，日志里全是绿的。
+ * 序列帧工具页（0.55）。
+ *
+ * 2026-11-16 起它**不再是**「浏览器这一半跳转的目标」：形象小窗（含那颗 🎞 菜单）搬去独立包
+ * `dsh-avatar-dafeiyu`，本体浏览器半不再引用这条路径。留下这组判据是为了钉住**宿主侧**
+ * 仍然注册着它（工具页、e2e 装置、agent 工具都还靠它）。
  */
 const SPRITE_PAGE_ROUTE = '/plugins/dafeiyu-sprite/'
 import {
@@ -878,7 +880,12 @@ test('0.8.0 合页：设置页只有一格、id 是 dafeiyu，渲染出来含三
   const text = JSON.stringify(root)
   assert.ok(text.includes('远程控制'), '分栏一：远程控制')
   assert.ok(text.includes('人设'), '分栏二：人设')
-  assert.ok(text.includes('形象'), '分栏三：形象')
+  // ⚠️ 「形象」自 2026-11-16 起**不在本体**：它搬去 `dsh-avatar-dafeiyu`，
+  // 由那个包通过房间协议 `registerRoom({ id:'avatar', label:'形象' })` 领一间房。
+  // 所以这里断言的是"**没有形象时**页面上不该出现它"——这正是房间协议要的效果。
+  assert.ok(!text.includes('形象'), '没住客时不该有形象分栏（空 tab 是缺陷，不是留白）')
+  assert.ok(text.includes('派活助手'), '分栏三：派活助手')
+  assert.ok(text.includes('小云雀'), '分栏四：小云雀')
   assert.equal(harness.errors.length, 0, '合页不是故障，不许有 error')
 })
 
@@ -1677,7 +1684,9 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
       CLIENT_REPORT_ROUTE,
       // 2026-10-28 加：设置页「会话备份（git）」那张卡（字面量与宿主侧逐字一致）。
       BACKUP_ROUTE,
-      // 2026-11-11 加：序列帧工具（形象菜单里那一项）。
+      // 2026-11-16 更正：形象小窗（连同它那颗 🎞 菜单）搬去了独立包 `dsh-avatar-dafeiyu`，
+      // 但**「打开序列帧工具页」这个动作留在了本体**——菜单只负责派发 `dafeiyu:action`，
+      // 由本体的 `onAvatarMenuAction` 执行跳转。所以这条路径仍然在浏览器半里。
       SPRITE_PAGE_ROUTE,
     ].sort(),
   )
