@@ -37561,20 +37561,49 @@ function startHandoff(ctx, input2) {
       });
     }
   };
-  try {
-    const tools = ctx.get?.("tools", true);
-    if (tools && typeof tools.register === "function") {
+  let toolsRegistered = false;
+  const acceptTools = (value, via) => {
+    if (toolsRegistered) return true;
+    if (!value || typeof value !== "object") return false;
+    const tools = value;
+    if (typeof tools.register !== "function") {
+      probe.tool = "object without register()";
+      return false;
+    }
+    try {
       const definitions = buildHandoffTools({
         service: { start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary) },
         log: input2.log
       });
       for (const definition of definitions) tools.register(definition);
-      probe.tool = "registered";
-    } else {
-      probe.tool = "no-tools";
+      toolsRegistered = true;
+      probe.tool = `${via}:${definitions.length}`;
+      return true;
+    } catch (error62) {
+      probe.tool = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+      return false;
     }
+  };
+  try {
+    const found = ctx.get?.("tools", true);
+    if (!acceptTools(found, "via get")) probe.tool = probe.tool ?? "none";
   } catch (error62) {
-    probe.tool = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+    probe.tool = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+  }
+  try {
+    ctx.inject?.(["tools"], ((...args) => {
+      try {
+        for (const candidate of [...args, ctx]) {
+          const value = candidate?.get?.("tools", true);
+          if (acceptTools(value ?? candidate, "via inject")) return;
+        }
+        probe.tool = `${probe.tool ?? "none"} (inject fired, empty)`;
+      } catch (error62) {
+        probe["injectThrew:tools"] = String(error62?.message ?? error62).slice(0, 160);
+      }
+    }));
+  } catch (error62) {
+    probe["injectThrew:tools"] = String(error62?.message ?? error62).slice(0, 160);
   }
   const acceptWeb = (value, via) => {
     if (!value || typeof value !== "object") return false;

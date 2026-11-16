@@ -109,24 +109,56 @@ export function startHandoff(
   /*
  * 给 agent 的两个工具（2026-11-16）：转生 / 分身 原来只能人点，模型没法发起。
  * 工具不重写逻辑，调的就是面板调的那个 `service.start()`。
- * 拿不到 tools 服务只写 probe，不影响路由与面板。
+ *
+ * ⚠️ **`tools` 是晚到的服务**（真机探针：t0 时 `ctx.get('tools')` 是 undefined，
+ * 要到 t8000 之后才变成对象）。只试一次的结果是「工具永远注册不上，而且没有任何报错」——
+ * 我第一版就是这么写的，用新开的 agent 验出来清单里根本没有 handoff_*。
+ * 所以这里照 `webServer` 那套：先试一次，再 `ctx.inject(['tools'])` 等它到。
  */
-try {
-  const tools = ctx.get?.('tools', true) as
-    | { register?: (definition: Record<string, unknown>) => unknown }
-    | undefined
-  if (tools && typeof tools.register === 'function') {
+let toolsRegistered = false
+const acceptTools = (value: unknown, via: string): boolean => {
+  if (toolsRegistered) return true
+  if (!value || typeof value !== 'object') return false
+  const tools = value as { register?: (definition: Record<string, unknown>) => unknown }
+  if (typeof tools.register !== 'function') {
+    probe.tool = 'object without register()'
+    return false
+  }
+  try {
     const definitions = buildHandoffTools({
       service: { start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary) },
       log: input.log,
     })
     for (const definition of definitions) tools.register(definition)
-    probe.tool = 'registered'
-  } else {
-    probe.tool = 'no-tools'
+    toolsRegistered = true
+    probe.tool = `${via}:${definitions.length}`
+    return true
+  } catch (error) {
+    probe.tool = `register threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+    return false
   }
+}
+
+try {
+  const found = ctx.get?.('tools', true)
+  if (!acceptTools(found, 'via get')) probe.tool = probe.tool ?? 'none'
 } catch (error) {
-  probe.tool = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+  probe.tool = `get threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+}
+try {
+  ctx.inject?.(['tools'], ((...args: unknown[]) => {
+    try {
+      for (const candidate of [...args, ctx]) {
+        const value = (candidate as { get?: (n: string, optional: true) => unknown })?.get?.('tools', true)
+        if (acceptTools(value ?? candidate, 'via inject')) return
+      }
+      probe.tool = `${probe.tool ?? 'none'} (inject fired, empty)`
+    } catch (error) {
+      probe['injectThrew:tools'] = String((error as Error)?.message ?? error).slice(0, 160)
+    }
+  }) as never)
+} catch (error) {
+  probe['injectThrew:tools'] = String((error as Error)?.message ?? error).slice(0, 160)
 }
 
 const acceptWeb = (value: unknown, via: string): boolean => {
