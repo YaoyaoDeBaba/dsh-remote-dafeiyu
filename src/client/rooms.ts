@@ -217,7 +217,15 @@ export function syncAvatarEntryGate(scope?: { document?: unknown }): void {
       }
     | undefined
   if (!doc?.documentElement) return
-  const present = entries.has('avatar')
+  // 两个信号取"或"：房间表（注册了没）+ DOM（形象小窗真在不在）。
+  // 只认房间表时，客户端注销/重注册会让属性闪一下 → FAB 冒出来；DOM 这条补住它。
+  let domPresent = false
+  try {
+    domPresent = (doc as { getElementById?: (id: string) => unknown }).getElementById?.('dafeiyu-avatar-widget') != null
+  } catch {
+    domPresent = false
+  }
+  const present = entries.has('avatar') || domPresent
   try {
     if (present) doc.documentElement.setAttribute?.(AVATAR_ATTR, '1')
     else doc.documentElement.removeAttribute?.(AVATAR_ATTR)
@@ -251,12 +259,53 @@ export function startAvatarEntryGate(scope?: { document?: unknown }): () => void
   syncAvatarEntryGate(scope)
   const off = onRoomsChange(() => syncAvatarEntryGate(scope))
   entryGateOff = off
+
+  /*
+   * v2（2026-11-16）：再挂一个 DOM 观察者。
+   *
+   * 为什么 v1 没治好「刚重启没有、跑一会又冒出来」：v1 只信房间注册表，
+   * 而形象客户端在某些时机会注销再重注册房间（客户端重挂/热重载），
+   * 每次注销都会把 html 属性摘掉一瞬——FAB 就在那一瞬被画出来，之后又保留着。
+   *
+   * DOM 是**最靠得住的真相**：形象小窗的元素在，属性就在；它被重建，
+   * 观察者下一次回调立刻重算。这里只观察 childList/子树，不做任何轮询。
+   */
+  let observer: { disconnect?: () => void } | undefined
+  try {
+    const doc = (scope?.document ?? (globalThis as { document?: unknown }).document) as
+      | {
+          body?: {
+            addEventListener?: (type: string, fn: () => void) => void
+            removeEventListener?: (type: string, fn: () => void) => void
+          }
+        }
+      | undefined
+    const MO = (globalThis as { MutationObserver?: new (cb: () => void) => { observe: (n: unknown, o: unknown) => void; disconnect: () => void } })
+      .MutationObserver
+    if (MO && doc?.body) {
+      const sync = (): void => syncAvatarEntryGate(scope)
+      const mo = new MO(sync)
+      mo.observe(doc.body, { childList: true, subtree: true })
+      observer = mo
+      // 兜底：形象小窗也可能只是被 hide（display:none），不是被移除 —— 属性照旧按"元素在不在"算
+      sync()
+    }
+  } catch {
+    /* 没有 MutationObserver 就只靠订阅 + 启动时那一次 */
+  }
+
   return () => {
     try {
       off()
     } catch {
       /* 清理不许抛 */
     }
+    try {
+      observer?.disconnect?.()
+    } catch {
+      /* 清理不许抛 */
+    }
+    observer = undefined
     entryGateOff = undefined
   }
 }
