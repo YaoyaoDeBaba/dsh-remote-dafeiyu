@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.98" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.99" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37812,7 +37812,7 @@ var EXTENSIONS = [
     label: "\u80A5\u9C7C\u81EA\u6CBB\uFF08Selfloop\uFF09",
     description: "\u628A\u300C\u6539\u53C2\u6570 \u2192 \u89C2\u6D4B \u2192 \u5224\u636E \u2192 \u641C\u7D22\u300D\u7684\u95ED\u73AF\u8DD1\u8D77\u6765\uFF0C\u4EA7\u51FA\u53EF\u590D\u9A8C\u7684\u8BC1\u636E\u5305\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin",
-    commit: "fe3dfb75ec8949096419f9444e16c03916dee6cd"
+    commit: "47ff78542269c41c8512580ca942b038d788cd85"
   },
   {
     id: "vision",
