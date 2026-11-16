@@ -295,6 +295,10 @@ interface Harness {
   liveTimerCount(): number
   fire(index: number): void
   fireAndFlush(index: number): Promise<void>
+  /** 打一次沙箱里那个假的 `setTimeout`（危险区「再点一次确认」的 4 秒退回）。 */
+  fireTimeout(index: number): void
+  /** 沙箱里排过几个 `setTimeout`。 */
+  timeoutCount(): number
   /** pill 注册进槽位时 `register` 收到的入参。 */
   slotRegisters(): Array<{ definition: Record<string, unknown>; component?: () => unknown }>
   /** 只有 `lateSlots` 用：把宿主欠我们的那次 `inject(['slots'], cb)` 回调补上。 */
@@ -539,6 +543,17 @@ function load(options: LoadOptions = {}): Harness {
    */
   const timers: Array<{ id: number; callback: () => void; cleared: boolean }> = []
   /**
+   * `setTimeout` 的假实现（2026-11-16 加，为了那条"危险操作 4 秒不点自动退回"）。
+   *
+   * 与 `setInterval` 同一套记账口径：**只记录、不自动 fire**，由判据自己打（`fireTimeout`）。
+   * 真定时器在这里是灾难：4 秒的等待会让一条判据挂 4 秒，而且它会在测试结束之后
+   * 才动那个已经没人看的 DOM。
+   *
+   * ⚠️ 只在这一半的**浏览器产物**里生效（`settings.ts` 的包装条 / 复制链接的 flash
+   * 是仅有的两处用它）；顶层 `flush()` 用的是 Node 那个真 setTimeout，两者不搭界。
+   */
+  const timeouts: Array<{ id: number; callback: () => void; cleared: boolean; ms: number }> = []
+  /**
    * 假墙钟。**必须给**：`pill.ts` 里倒计时读的是 `Date.now()`，而 vm 上下文自带的是真
    * `Date`，测试没法推进它——于是"后台冻结两分钟"这种时序在夹具里根本演不出来，
    * 而那正是 2026-10-07 审出的倒计时漂移的现场形状。
@@ -577,6 +592,16 @@ function load(options: LoadOptions = {}): Harness {
     },
     clearInterval: (id: number) => {
       const timer = timers.find((candidate) => candidate.id === id)
+      if (timer) timer.cleared = true
+    },
+    // ⚠️ 沙箱里**必须给** setTimeout：`settings.ts` 的危险区二次确认靠它做"4 秒自动退回"，
+    // 不给的话那一支在 vm 里静悄悄走"没有定时器"的退路（退回这件事就测了个空）。
+    setTimeout: (callback: () => void, ms: number) => {
+      timeouts.push({ id: timeouts.length + 1, callback, cleared: false, ms })
+      return timeouts.length
+    },
+    clearTimeout: (id: number) => {
+      const timer = timeouts.find((candidate) => candidate.id === id)
       if (timer) timer.cleared = true
     },
     fetch: async (
@@ -776,6 +801,15 @@ function load(options: LoadOptions = {}): Harness {
       assert.ok(timers[index], `第 ${index} 个节拍不存在（一共 ${timers.length} 个）`)
       timers[index]!.callback()
     },
+    /** 打一次那个假的 `setTimeout`（危险区二次确认的 4 秒退回靠它）。 */
+    fireTimeout(index: number) {
+      const timer = timeouts[index]
+      assert.ok(timer, `第 ${index} 个 setTimeout 不存在（一共 ${timeouts.length} 个）`)
+      assert.equal(timer!.ms, 4000, `危险区那道确认的等待应该是 4 秒，实际排了 ${timer!.ms}ms`)
+      timer!.cleared = true
+      timer!.callback()
+    },
+    timeoutCount: () => timeouts.length,
     async fireAndFlush(index: number) {
       timers[index]?.callback()
       await flush()
@@ -1635,27 +1669,36 @@ test('卸载（宿主把 pill 摘掉）之后节拍停、文档监听摘干净',
 
 test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉的表现是"点了没反应而日志全绿"）', () => {
   const bundle = readFileSync(CLIENT, 'utf8')
-  for (const constant of [PAIR_NEW_ROUTE, PAIR_IMAGE_ROUTE, PAIR_STATUS_ROUTE, PAIR_UNPAIR_ROUTE, PAIR_MARKER_HEADER]) {
+  for (const constant of [
+    PAIR_NEW_ROUTE,
+    PAIR_IMAGE_ROUTE,
+    PAIR_STATUS_ROUTE,
+    PAIR_UNPAIR_ROUTE,
+    PAIR_MARKER_HEADER,
+    // 2026-11-16 起也钉放行那条：审批中那一屏有两颗按钮（一致，允许 / 不一致，拒绝）。
+    PAIR_APPROVE_ROUTE,
+  ]) {
     assert.ok(bundle.includes(constant), `client.cjs 里缺 ${constant}`)
   }
   /**
-   * ⚠️ `PAIR_APPROVE_ROUTE` **不在**上面那个集合里，这是对的（2026-10-21 晚）：
-   * 主机改成**自动放行**、确认只留在手机端之后，**浏览器这一半不再请求它** ⇒
-   * 它不该出现在 `client.cjs` 里（出现了就说明客户端还在找那个入口）。
+   * ⚠️ `PAIR_APPROVE_ROUTE` **在**上面那个集合里（2026-11-16 翻转）。
    *
-   * 而**宿主侧那条路由仍然在**（`pill/routes.ts`）：它是 e2e 装置与排错的兜底开关。
-   * 下面单独断言这一点。
+   * 上一版（2026-10-21 晚）钉的是"产物里不许有它"：主机改成**自动放行**、确认只留在
+   * 手机端之后，浏览器这一半不再请求那条路由。当前裁决变了——已批准的样板
+   * （`remote-panel-mockup-20261116.html`）的**审批中**那一屏明确要求
+   * 「一致，允许 / 不一致，拒绝」两颗按钮，设计说明 §3.2 的表格也写着同样两列。
+   * ⇒ 客户端重新请求那条路由，判据跟着翻面：**它必须在产物里**，
+   *   而且仍然必须在宿主侧注册着（下面那条照旧）。
    */
-  assert.equal(
+  assert.ok(
     bundle.includes(PAIR_APPROVE_ROUTE),
-    false,
-    '浏览器这一半不再调用放行那条路由了，产物里不该还留着它（留着 = 客户端还在找那个入口）',
+    '审批中那一屏的「一致，允许」必须打宿主那条放行路由：产物里没有它 = 那颗按钮点了没反应',
   )
   const hostRoutes = readFileSync(
     path.join(path.dirname(fileURLToPath(import.meta.url)), '../../src/pill/routes.ts'),
     'utf8',
   )
-  assert.ok(hostRoutes.includes(PAIR_APPROVE_ROUTE), '宿主侧那条放行路由必须还在：自动放行没赶上时它是唯一的兜底')
+  assert.ok(hostRoutes.includes(PAIR_APPROVE_ROUTE), '宿主侧那条放行路由必须还在：那颗按钮直接打它')
   // 序列帧工具页：浏览器这一半跳转的那条路径，宿主侧必须真的注册了（否则点菜单就是 404）。
   assert.ok(
     readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../src/sprite/routes.ts'), 'utf8').includes(
@@ -1675,6 +1718,8 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
       PAIR_IMAGE_ROUTE,
       PAIR_STATUS_ROUTE,
       PAIR_UNPAIR_ROUTE,
+      // 2026-11-16：审批中那一屏的「一致，允许」走这条（见上面那段翻转说明）。
+      PAIR_APPROVE_ROUTE,
       // 2026-10-11 加：设置页「进阶」那一栏（自部署地址 / token）。
       // ⚠️ 它**不在** `pill/routes.ts` 的 `PAIR_*` 那六个常量里，而在 `config-routes.ts` 里
       // （注册点是同一个 `registerPillRoutes`）—— 两边拼错一个字符的表现是
@@ -2226,17 +2271,25 @@ test('设置分区：未配对时给出二维码 + 6 位码 + 倒计时（与 pi
   )
 })
 
-test('设置分区：点"换一张"会重新发码（POST + 那个 CSRF 头），不是只重画', async () => {
-  const harness = load({ react: FAKE_REACT, slots: true })
+test('设置分区：失败那一屏的「重试」会真的再发一次码（POST + 那个 CSRF 头）', async () => {
+  /**
+   * ⚠️ 2026-11-16 重排：原来这条点的是②标题行右端那颗「换一张」。
+   * 已批准的样板里**没有**那颗按钮 —— 未配对态的主操作就是"扫码"，换码靠倒计时归零自动补
+   * （见下一条）。用户在界面上唯一还能主动重发码的入口是**失败那一屏的「重试」**
+   * （以及已配对态的「重新配对」），所以判据改钉它：
+   * "点了必须真的再发一次码、且带那道守卫头"这个不变式一个字没松。
+   */
+  const harness = load({ react: FAKE_REACT, slots: true, newAnswer: { state: 'failed', error: 'relay-down' } })
   await flush()
   const root = mountSettings(harness)
   await flush()
+  assert.equal(root.find('drc-fail-why')?.textContent?.startsWith('发不出配对码：'), true, '前提：这一屏是失败态')
   const before = harness.requests.filter((url) => url.includes('/pairing/new')).length
-  const actions = root.find('drc-sec-actions')
-  assert.ok(actions, '动作那一排没画出来')
-  const button = actions!.children.find((child) => child.tag === 'button')
-  assert.ok(button, '动作那一排要有按钮')
-  button!.emit('click')
+  const row = root.find('drc-sec-actions')
+  assert.ok(row, '失败那一屏要有动作排（重试 / 看日志）')
+  const retry = row!.children.find((child) => child.textContent === '重试')
+  assert.ok(retry, `要有「重试」，实际：${row!.children.map((c) => c.textContent).join(' / ')}`)
+  retry!.emit('click')
   await flush()
   const after = harness.requests.filter((url) => url.includes('/pairing/new')).length
   assert.equal(after, before + 1, '点一下必须真的再发一次码（夹具顺带断言了那个 marker 头）')
@@ -2267,21 +2320,52 @@ test('设置分区：倒计时按墙钟走，归零**自动换一张**（2026-10
   assert.notEqual(root.find('drc-count')?.textContent, '0 秒后过期', '不许停在 0 秒那格')
 })
 
-test('设置分区：已配对上时给"退出配对"，点了会 POST /unpair 并且还要带那个头', async () => {
+test('设置分区：已配对时给「重新配对 / 取消配对…」，取消要过危险区那道二次确认才 POST /unpair', async () => {
+  /**
+   * 2026-11-16 重排：②已配对那一屏的两颗按钮换成样板的「重新配对」「取消配对…」。
+   * · 「重新配对」= 再发一张码（幂等那条路）；
+   * · 「取消配对…」带省略号 = **去危险区过二次确认**，不在这里直接踢人。
+   *
+   * ⚠️ 判据守的不变式没变：**踢掉手机这件事必须真的打 `/unpair`，且带那道守卫头**
+   * （夹具会断言 marker 头）。变的是"点几下"：样板要求危险操作二次确认，
+   * 所以现在是"②的按钮只负责滚过去 + 展开 → 危险区那颗点两次才发请求"。
+   */
   const harness = load({ react: FAKE_REACT, slots: true, status: { ...DEFAULT_STATUS, pairings: 1, paired: 1 } })
   await flush()
   const root = mountSettings(harness)
   await flush()
-  const actions = root.find('drc-sec-actions')
-  const unpair = actions?.children.find((child) => child.tag === 'button' && child.textContent === '退出配对')
-  assert.ok(unpair, `已配对时必须给退出按钮，实际按钮：${actions?.children.map((c) => c.textContent).join(' / ')}`)
+  const row = root.find('drc-sec-actions')
+  const labels = (row?.children ?? []).map((child) => child.textContent)
+  assert.ok(labels.includes('重新配对'), `已配对时必须给「重新配对」，实际：${labels.join(' / ')}`)
+  const disarm = row!.children.find((child) => child.textContent === '取消配对…')
+  assert.ok(disarm, `必须给「取消配对…」（进危险区），实际：${labels.join(' / ')}`)
+
   const before = harness.requests.filter((url) => url.includes('/unpair')).length
-  unpair!.emit('click')
+  disarm!.emit('click')
+  await flush()
+  assert.equal(
+    harness.requests.filter((url) => url.includes('/unpair')).length,
+    before,
+    '②那颗只负责把人送到危险区：真实请求必须等危险区那道二次确认走完',
+  )
+
+  // 危险区那颗：第一次点只武装，第二次才真发请求。
+  const cancel = root.findAll('drc-sec-btn').find((node) => node.textContent === '取消配对')
+  assert.ok(cancel, '危险区要有「取消配对」那颗')
+  cancel!.emit('click')
+  await flush()
+  assert.equal(cancel!.textContent, '再点一次确认', '第一次点只武装：按钮文案必须变成「再点一次确认」')
+  assert.equal(
+    harness.requests.filter((url) => url.includes('/unpair')).length,
+    before,
+    '武装那一下不许打请求（否则二次确认等于不存在）',
+  )
+  cancel!.emit('click')
   await flush()
   assert.equal(
     harness.requests.filter((url) => url.includes('/unpair')).length,
     before + 1,
-    '退出配对必须真的打那条路由（夹具会断言 marker 头）',
+    '第二次点必须真的打那条路由（夹具会断言 marker 头）',
   )
 })
 
@@ -2386,52 +2470,72 @@ test('反转时钟也认得：拿不到 react 时**两个面都不注册**，且
 // 标题、状态行、二维码卡片、键值行、按钮。用户那次看到的是一列裸文本——
 // 功能全在、样样都对，就是没有版式。⇒ 光测"元素存在"挡不住它，必须连**结构与取值**一起钉。
 
-/** 取注入到 `<head>` 里的那份 CSS 文本（宿主认领的那张 `<style>`）。 */
-function injectedCss(harness: ReturnType<typeof load>): string {
-  const style = harness.fakeDocument().head.children.find((node) => node.tag === 'style')
-  assert.ok(style, '必须往 <head> 里插一张 <style>，否则这一页只有结构没有样子')
-  return style!.textContent
+/**
+ * 取注入到 `<head>` 里的那份 CSS 文本（宿主认领的那张 `<style>`）。
+ *
+ * 2026-11-16：页面会注入两张表（`pill.ts` 的共用表 + `settings.ts` 那张），
+ * 所以这里可以按 `data-plugin-css` 精确取第二张；不给 id 就取第一张（老行为）。
+ */
+function injectedCss(harness: ReturnType<typeof load>, styleId?: string): string {
+  const styles = harness.fakeDocument().head.children.filter((node) => node.tag === 'style')
+  assert.ok(styles.length > 0, '必须往 <head> 里插一张 <style>，否则这一页只有结构没有样子')
+  if (styleId === undefined) return styles[0]!.textContent
+  const found = styles.find((node) => node.getAttribute('data-plugin-css') === styleId)
+  assert.ok(found, `没注入 data-plugin-css="${styleId}" 那张表：结构有了但没有版式`)
+  return found!.textContent
 }
 
-test('排版：分区有标题、状态行、二维码卡片、键值行、按钮这一套结构', async () => {
+test('排版：分区有标题、状态 pill、二维码卡片、动作按钮这一套结构', async () => {
   const harness = load({ react: FAKE_REACT, slots: true })
   await flush()
   const root = mountSettings(harness)
   await flush()
-  assert.equal(root.find('drc-sec-title')?.textContent, '远程控制', '分区要有自己的标题（宿主分区就是 h2）')
   /**
-   * 「连上没有」必须**独立成一条**，不能缩在配对卡里的一行小字。
-   *
-   * ⚠️ 旧版面就是那样：状态行（灯 + 结论）是配对卡的**第一个子节点**，
-   * 夹在标题、二维码、6 位码与说明文字之间，第一眼读不到
-   * （用户 2026-10-09：「设计和排版还是很大问题」）。
+   * ⚠️ 2026-11-16 重排：抬头标题从「远程控制」变成「大肥鱼 · 远程控制」。
+   * 依据是已批准的样板（`remote-panel-mockup-20261116.html` 第 174 行 `大肥鱼 · 远程控制`）
+   * 与设计说明 §3 的图：这一栏是「大肥鱼」合页里的一个分栏，抬头要把产品名带上，
+   * 否则用户从导航点进来只看到"远程控制"四个字，不知道自己在哪个插件里。
    */
-  const statusBar = root.find('drc-sec-status')
-  assert.ok(statusBar, '状态条（灯 + 结论）必须独立成一条，不许缩回卡里')
-  assert.ok(statusBar!.find('drc-sec-statustext')?.textContent, '状态条上要有那句结论')
-  const card = root.find('drc-sec-card')
-  assert.ok(card, '二维码要装在一张卡片里，不能裸着放在一列文本中')
-  assert.ok(card!.find('drc-qr'), '卡片里要有二维码')
-  assert.ok(card!.find('drc-code'), '卡片里要有那 6 位码')
-  assert.ok(card!.find('drc-count'), '卡片里要有倒计时')
+  assert.equal(root.find('drc-sec-title')?.textContent, '大肥鱼 · 远程控制', '分区要有自己的标题（宿主分区就是 h2）')
   /**
-   * 元信息压成**一行 meta**，不再是四行键值表、更不是一张卡。
-   * 实测（2026-10-09，headless Chrome）：旧版面「连接」+「怎么用」两张卡
-   * 合计 510px，占整栏 802px 的 63% —— 那是"大空间放小内容"的另一半。
-   */
-  /**
-   * ⚠️ 2026-10-11（用户裁决）：元信息与页脚**整段删除**。
+   * 「连上没有」必须**独立可见**，不能缩在配对卡里的一行小字。
    *
-   * 这一段原来钉的是「meta 至少两项（中继 + 版本）+ 三步齐全」。两样都拿掉了，
-   * 所以这里改成**反向断言**（见本文件另一条专门讲这件事的判据，这里只做结构层的兜底）：
-   * 页面上**不许**再有这些容器。
+   * ⚠️ 2026-11-16：它从"整行状态条"（`.drc-sec-status`）收成**抬头右上角那颗 pill**
+   * （`.drc-sec-pill`），因为原来那一行回答的问题与①的四格完全重复
+   * （连上没有 / 配没配上）。判据钉的仍是同一件事：结论在抬头、单独成一块、文案非空。
+   */
+  const pill = root.find('drc-sec-pill')
+  assert.ok(pill, '状态 pill 必须独立成一块（抬头右上角），不许缩回卡里')
+  assert.ok(pill!.find('drc-sec-statustext')?.textContent, '状态 pill 上要有那句结论')
+  assert.equal(root.find('drc-sec-status'), undefined, '旧那条整行状态条已经并入①的四格 + 抬头 pill')
+  /**
+   * ②那张卡：**从 `data-role` 取**，不能再拿"第一张卡"当配对卡 ——
+   * 重排后第一张卡是①「状态总览」。
+   */
+  const pair = root.findAll('drc-sec-card').find((node) => node.getAttribute('data-role') === 'pair')
+  assert.ok(pair, '②「连接手机」那张卡必须在')
+  assert.ok(pair!.find('drc-qr'), '卡片里要有二维码')
+  assert.ok(pair!.find('drc-code'), '卡片里要有那 6 位码')
+  assert.ok(pair!.find('drc-count'), '卡片里要有倒计时')
+  /**
+   * 元信息压成**一行 meta**、页脚那三段说明，2026-10-11 已整段删除 —— 这里保留反向断言
+   * （页面上**不许**再有这些容器）。
    */
   assert.equal(root.find('drc-sec-meta'), undefined, '底部那行元信息（中继/版本）已删')
   assert.equal(root.find('drc-sec-steps'), undefined, '三步说明已删')
   assert.equal(root.find('drc-sec-footer'), undefined, '页脚容器已删')
   const actions = root.find('drc-sec-actions')?.children ?? []
-  assert.ok(actions.length >= 1, '要有动作按钮（删页脚不许把按钮一起删掉）')
-  for (const node of actions) assert.equal(node.className, 'drc-sec-btn', '按钮要走同一套样式')
+  /**
+   * 未配对那一屏**没有**主操作按钮（主操作就是扫码）：页面上唯一那一排动作是
+   * ③下载折叠条里的「复制下载链接」。这条同时钉住"③不是一张独立卡、它没给自己再长一排入口"。
+   */
+  assert.deepEqual(
+    actions.map((node) => node.textContent),
+    ['复制下载链接'],
+    `未配对那一屏只该有下载区那一排（复制链接），实得：${actions.map((node) => node.textContent).join(' / ')}`,
+  )
+  const buttons = root.findAll('drc-sec-btn')
+  for (const node of buttons) assert.equal(node.className, 'drc-sec-btn', '按钮要走同一套样式')
 })
 
 test('排版：注入的 CSS 真的带着宿主分区的取值（不是只有结构没有样子）', async () => {
@@ -2442,42 +2546,89 @@ test('排版：注入的 CSS 真的带着宿主分区的取值（不是只有结
   mountSettings(harness)
   await flush()
   const css = injectedCss(harness)
-  // 结构与样式必须成对出现：只有结构 = "完全没有排版"，只有样式 = 画不出东西。
-  // 2026-10-09 重排后新增的每一层都要在这张表里：两栏容器、栏、卡片标题、
-  // 说明列表（词头 + 正文）、静态小程序码。少一个的表现都是"结构在那儿、样子没有"。
-  for (const selector of [
+  /**
+   * 页面现在注入**两张**表：`pill.ts` 那张共用表（`.drc-pill` + 设置页的公共骨架）
+   * 与 `settings.ts` 那张（`dsh-remote-control/settings.css`，本轮新增的区块全在里面）。
+   * 结构类名分属两张表，所以判据也要分两张读 —— 否则"结构有了、样式没有"这种错
+   * 会在另一张表里悄悄漏过去。
+   */
+  const secCss = injectedCss(harness, 'dsh-remote-control/settings.css')
+  /**
+   * 结构与样式必须成对出现：只有结构 = "完全没有排版"，只有样式 = 画不出东西。
+   *
+   * ⚠️ 2026-11-16 重排后这张清单**整段换过**（它原来钉的是「状态条 / 元信息那一行 /
+   * 静态小程序码 / headrow」——那几样在重排后的页面上一个都不产出了）。
+   * 判据钉一个已经不存在的版面 = 纯噪音，而本文件自己也反复写过这一条纪律。
+   * 现在钉的是**页面上真的在用的**那一套类名，按所属样式表分成两组。
+   */
+  const pillSelectors = [
+    '.drc-sec',
     '.drc-sec-title',
     '.drc-sec-sub',
-    '.drc-sec-grid',
     '.drc-sec-card',
     '.drc-sec-heading',
-    '.drc-sec-headrow',
-    // ⚠️ `.drc-sec-head` / `.drc-sec-doc*` / `.drc-sec-term` / `.drc-sec-text` /
-    // `.drc-sec-row` **不在这个清单里**（2026-10-09 重排 + 深度 review）：
-    // 它们服务的结构（键值表那一张卡、四条 2×2 说明）已经被状态条与页脚取代，
-    // 产它们的 `row()` / `docItem()` 也随之删掉了。
-    // 留着它们会造出**一对互相打架的判据**：样式必须留着、节点必须永远不出现
-    // （而 `findAll('drc-sec-doc-item').length === 0` 那条正是后者）。
-    '.drc-sec-status',
-    '.drc-sec-meta',
-    '.drc-sec-steps',
-    '.drc-sec-footnote',
-    '.drc-mp',
     '.drc-sec-btn',
-  ]) {
-    /**
-     * ⚠️ **必须带右边界的匹配**（2026-10-09 深度 review 的 B4）：
-     * `css.includes('.drc-sec-head')` 对 `.drc-sec-headrow` / `.drc-sec-header` /
-     * `.drc-sec-heading` **全部为真** ⇒ 我把那两条独立规则删掉重跑，这两条判据照样绿。
-     * 也就是说它们钉不住任何东西 —— 而这个文件自己在 2002 行刚因为
-     * "判据读的是那段文字在不在"栽过一次（同一族）。
-     */
-    const boundary = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-zA-Z0-9_-])')
-    assert.ok(
-      boundary.test(css),
-      `CSS 里缺 ${selector} 这条独立规则：结构有了但没有版式，就是用户看到的那一屏` +
-        '（注意要带右边界匹配，否则它是别的东西的前缀 ⇒ 恒绿）',
-    )
+    '.drc-sec-actions',
+    '.drc-sec-guide',
+    '.drc-sec-state',
+    '.drc-code',
+    '.drc-count',
+    '.drc-qr',
+    '.drc-qr-loading',
+    '.drc-dot',
+  ]
+  const secSelectors = [
+    // 抬头那颗 pill
+    '.drc-sec-pill',
+    // 审批中那 6 位（这两条规则住在 settings.ts 那张表里）
+    '.drc-sec-sas',
+    '.drc-sec-sasnote',
+    // ① 状态总览
+    '.drc-overview',
+    '.drc-stat',
+    '.drc-stat-k',
+    '.drc-stat-v',
+    // ② 连接手机的五个屏块
+    '.drc-pair',
+    '.drc-pair-qr',
+    '.drc-codewrap',
+    '.drc-paired',
+    '.drc-avatar',
+    '.drc-approval',
+    '.drc-fail',
+    // ③ 下载折叠条
+    '.drc-appline',
+    '.drc-appbox',
+    '.drc-app-qr',
+    // ④⑤ 两个折叠区
+    '.drc-fold-summary',
+    '.drc-fold-body',
+    '.drc-cols',
+    '.drc-col',
+    '.drc-danger-row',
+    // 表单
+    '.drc-adv-grid',
+    '.drc-adv-input',
+  ]
+  for (const [sheet, sheetCss, selectors] of [
+    ['pill.ts 那张共用表', css, pillSelectors],
+    ['settings.ts 那张表', secCss, secSelectors],
+  ] as const) {
+    for (const selector of selectors) {
+      /**
+       * ⚠️ **必须带右边界的匹配**（2026-10-09 深度 review 的 B4）：
+       * `css.includes('.drc-sec-head')` 对 `.drc-sec-headrow` / `.drc-sec-header` /
+       * `.drc-sec-heading` **全部为真** ⇒ 我把那两条独立规则删掉重跑，这两条判据照样绿。
+       * 也就是说它们钉不住任何东西 —— 而这个文件自己在 2002 行刚因为
+       * "判据读的是那段文字在不在"栽过一次（同一族）。
+       */
+      const boundary = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-zA-Z0-9_-])')
+      assert.ok(
+        boundary.test(sheetCss),
+        `${sheet} 里缺 ${selector} 这条独立规则：结构有了但没有版式，就是用户看到的那一屏` +
+          '（注意要带右边界匹配，否则它是别的东西的前缀 ⇒ 恒绿）',
+      )
+    }
   }
   /**
    * 取值必须与宿主自己的分区一致（照抄，不是自定义）：
@@ -2489,13 +2640,22 @@ test('排版：注入的 CSS 真的带着宿主分区的取值（不是只有结
   assert.match(css, /\.drc-sec-title \{[^}]*font-weight: 600/, '标题字重照宿主（600）')
   assert.match(css, /\.drc-sec-card \{[^}]*border-radius: 12px/, '卡片圆角照宿主（12px）')
   assert.match(css, /\.drc-sec-card \{[^}]*border: 1px solid/, '卡片要有边框（宿主的卡片是一条 1px 边）')
-  // ⚠️ 这条原先钉的是 `.drc-sec-row` 的细线，而那个结构（一张「连接」卡里的键值表）
-  // 已经在 2026-10-09 重排里被状态条与页脚取代 ⇒ 留着它就等于**判据在钉一个不存在的版面**。
-  // ⇒ 换成新结构里真正需要分隔的那一处：元信息那一行。
+  /**
+   * ⚠️ 这两条原先钉的是 `.drc-sec-meta-item`（底部「中继 / 版本」那条元信息），
+   * 而那个容器 2026-10-11 就删了、2026-11-16 也没有以别的形式回来
+   * ⇒ 换成重排后**真的需要版式**的那几处：四格（①②的观感全靠它）与折叠区的开合行。
+   */
   assert.match(
-    css,
-    /\.drc-sec-meta-item \{[^}]*display: inline-flex/,
-    '元信息那一行要有版式：没有它三段字会挤成一坨（它接替的是原先键值表那几条细线）',
+    secCss,
+    /\.drc-sec-pill \{[^}]*display: inline-flex/,
+    '抬头那颗状态 pill 要有版式：不然灯与那句话会竖着排成两行',
+  )
+  assert.match(secCss, /\.drc-overview \{[^}]*display: grid/, '①四格必须是网格：没有它四个小卡会挤成一坨')
+  assert.match(secCss, /\.drc-stat \{[^}]*cursor: pointer/, '①四格是"只读但可点"：必须给出可点的视觉信号')
+  assert.match(
+    secCss,
+    /details\.drc-sec-card > summary\.drc-fold-summary \{[^}]*display: flex/,
+    '折叠区的开合行要有版式（标题 + 右端箭头同一行），否则箭头会掉到下一行',
   )
   /**
    * ⚠️ 上面每一条读的都是**源码文本**，所以它们全都拦不住真正的那个错：
@@ -2523,9 +2683,6 @@ test('排版：注入的 CSS 真的带着宿主分区的取值（不是只有结
     [/\.drc-sec \{[^}]*color: var\(--dsw-alias-label-primary/, '分区正文色'],
     [/\.drc-sec-card \{[^}]*border: 1px solid var\(--dsw-alias-border-l2/, '卡片那条 1px 边（丢过）'],
     [/\.drc-sec-card \{[^}]*background: var\(--dsw-alias-bg-layer-3/, '卡片底色（丢过）'],
-    // ⚠️ 原先这一条钉的是 .drc-sec-row 的细线，而那个结构（一张「连接」卡里的键值表）
-    // 已在 2026-10-09 重排里被状态条与页脚取代 ⇒ 换成新结构里真正需要分隔的那一处。
-    [/\.drc-sec-meta-item \{[^}]*display: inline-flex/, '元信息那一行要有版式（它接替的是原先键值表那几条细线）'],
     [
       // ⚠️ 这一条 2026-10-09 改过：原先钉的是 brand-primary，而那个填充在深色主题下≈近白，
       // 配写死的白字就成了"按钮消失"。宿主主按钮真正用的是 button-primary-fill。
@@ -2536,6 +2693,29 @@ test('排版：注入的 CSS 真的带着宿主分区的取值（不是只有结
   for (const [pattern, what] of mustSubstitute) {
     assert.match(css, pattern, `${what}没有插值成 var(--dsw-alias-…)：这条声明在浏览器里会被整条丢弃`)
   }
+  /**
+   * 第二张表（`settings.ts` 那张）同样要过**同一条插值纪律**：它 4 年前的那一场事故
+   * （取值写成字面文本 ⇒ 浏览器整条丢弃 ⇒ 卡片没边框没底色）与 pill 那张是同一个形状。
+   *
+   * ⚠️ 这一条替掉了原来钉 `.drc-sec-meta-item` 的那句 —— 那个容器 2026-10-11 就删了、
+   * 2026-11-16 也没有以别的形式回来，留着它就是"判据钉一个不存在的版面"。
+   * 现在钉的是重排后真的在屏上的那块（①的四格）。
+   */
+  assert.match(
+    secCss,
+    /\.drc-stat \{[^}]*border: 1px solid var\(--dsw-alias-border-l1/,
+    '①四格的边框只许走宿主令牌：写死色号在另一套主题下就是一条看不见的边',
+  )
+  const secHostVars = [...secCss.matchAll(/var\(--dsw-alias-[a-z0-9-]+, /g)].length
+  assert.ok(
+    secHostVars >= 20,
+    `settings.ts 那张表里只有 ${secHostVars} 处 var(--dsw-alias-…)：少了八成是有人把取值写成了字面文本`,
+  )
+  assert.ok(!secCss.includes('${'), 'settings.ts 那张表里还留着未求值的模板片段：说明它没被真当成模板跑过')
+  assert.ok(
+    !secCss.replace(/\/\*[\s\S]*?\*\//g, '').includes('!important'),
+    'settings.ts 那张表也不许用 !important 绕开宿主样式',
+  )
   /**
    * 主动作必须能在 **hover / focus** 状态下守住自己的底色（2026-10-09 真屏幕截图抓到）。
    *
@@ -2595,44 +2775,295 @@ test('排版：注入的 CSS 真的带着宿主分区的取值（不是只有结
   )
 })
 
-test('排版：值空的那一项根本不画（空值行比少一行更让人困惑）', async () => {
-  // 这一档把版本与中继地址都抽掉：只剩中继那一项
-  const harness = load({ react: FAKE_REACT, slots: true, status: { relay: 'online' } })
+test('① 状态总览：四格的取值全部来自 /status（主机 / 中继 / 已配对 / 待处理）', async () => {
+  /**
+   * 2026-11-16 新增（样板第一块）。这一条原来钉的是「值空的那一项根本不画」
+   * ——那说的是 pager 底部那行 meta（2026-10-11 就删了），判据留在那儿只是噪音。
+   *
+   * 现在钉的是重排后**最值钱的那个新视图**：用户来这一栏最常问的三个问题
+   * （配上了吗 / 连上了吗 / 有没有事等我）必须一眼读完，且四个值都能对回 `/status`：
+   *
+   * | 格 | 取值 |
+   * |---|---|
+   * | 主机 | `relay === 'idle'` ⇒ 已停止，否则 运行中 |
+   * | 中继 | online 已连接 / connecting 连接中 / offline 连不上 / idle 未启动 |
+   * | 已配对 | `pairings`（密钥簿条数）：0 ⇒ 未配对，否则 `N 台` |
+   * | 待处理 | `waiting`（审批 + 提问挂起数） |
+   *
+   * ⚠️ 设计说明 §3.1 写的是"主机读 `/status` 的 `status` 字段"——**那个字段不存在**，
+   * 宿主那条路由的白名单里只有 relay/paired/pairings/serverUrl/version/waiting/
+   * waitingOldestSec/pairApproval/pairing/lastPairApproval。所以主机那一格读 `relay`，
+   * 这也是本轮**没有新增任何宿主路由**的原因。
+   */
+  /** 取一个节点的全部文字，去掉首尾空白（假 DOM 的 allText 会插分隔空格）。 */
+  const flat = (node?: FakeElement): string => String(node?.allText() ?? '').trim()
+  const readCells = (root: FakeElement): string[] =>
+    root.findAll('drc-stat').map((cell) => `${flat(cell.find('drc-stat-k'))}=${flat(cell.find('drc-stat-v'))}`)
+
+  const cases: Array<{ status: Record<string, unknown>; want: string[] }> = [
+    {
+      status: { ...DEFAULT_STATUS, pairings: 1, waiting: 0 },
+      want: ['主机=运行中', '中继=已连接', '已配对=1 台', '待处理=0'],
+    },
+    {
+      status: { ...DEFAULT_STATUS, relay: 'connecting' },
+      want: ['主机=运行中', '中继=连接中', '已配对=未配对', '待处理=0'],
+    },
+    {
+      status: { ...DEFAULT_STATUS, relay: 'offline', pairings: 2, waiting: 3 },
+      want: ['主机=运行中', '中继=连不上', '已配对=2 台', '待处理=3'],
+    },
+    {
+      // idle = runtime 还没起来 ⇒ "这台主机没在跑远控"
+      status: { ...DEFAULT_STATUS, relay: 'idle' },
+      want: ['主机=已停止', '中继=未启动', '已配对=未配对', '待处理=0'],
+    },
+  ]
+  for (const item of cases) {
+    const harness = load({ react: FAKE_REACT, slots: true, status: item.status })
+    await flush()
+    const root = mountSettings(harness)
+    await flush()
+    const cells = readCells(root)
+    assert.equal(cells.length, 4, `四格：实得 ${cells.length}`)
+    assert.deepEqual(cells, item.want)
+  }
+  /**
+   * 四格**只读但可点**：点一下要滚到对应区块。假 DOM 没有 `scrollIntoView`，
+   * 所以这里只钉"它有 click 监听、点了不抛"（真机上的滚动是另一条验收）。
+   */
+  const harness = load({ react: FAKE_REACT, slots: true, status: { ...DEFAULT_STATUS, pairings: 1 } })
   await flush()
   const root = mountSettings(harness)
   await flush()
-  // ⚠️ 一项都没有时**整块不画**（`if (meta.children.length > 0)`），那也是合法的"没有就不画"，
-  // 所以这条判据分成两句：一项都没有 ⇒ 不许画空块；有 ⇒ 每项都要有值。
-  const items = root.findAll('drc-sec-meta-item')
-  if (items.length === 0) {
-    assert.equal(root.find('drc-sec-meta'), undefined, '一项都没有却画了一个空的 meta 容器')
+  for (const cell of root.findAll('drc-stat')) cell.emit('click')
+  await flush()
+  assert.ok(root.find('drc-stat'), '点完四格之后这一块仍然在（点它们只滚动，不该重建页面）')
+})
+
+test('② 连接手机：五种态各自显示什么、且同一时刻只出一屏', async () => {
+  /**
+   * 2026-11-16 新增。样板 §3.2 的表格要求五态齐全（未配对 / 加载中 / 失败 / 已配对 / 审批中），
+   * 而"出哪一屏"由 `/status` 与发码结果共同决定。这条把五屏的**关键字**各钉一遍 ——
+   * 一张屏出错了（比如已配对却还在出二维码），下面任何一个 `assert` 都会红。
+   */
+  const has = (root: FakeElement, name: string): boolean => root.find(name) !== undefined
+  /**
+   * ②那张卡里的按钮文案。
+   *
+   * ⚠️ 必须**收窄到②那一张卡**：整页还有折叠区里的 7 颗（保存 / 清除口令 / 恢复默认 /
+   * 保存 / 启用备份 / 立即推送 / 从备份恢复）与危险区的 2 颗 —— 那些不属于"这一屏出什么"。
+   */
+  const pairButtons = (root: FakeElement): string[] => {
+    const pair = root.findAll('drc-sec-card').find((node) => node.getAttribute('data-role') === 'pair')!
+    return pair.findAll('drc-sec-btn').map((node) => String(node.textContent))
   }
-  for (const item of items) {
-    assert.ok(
-      String(item.children[1]!.textContent).trim().length > 0,
-      `这一项没有值却画出来了：${item.children[0]!.textContent} / ${item.children[1]!.textContent}`,
-    )
+
+  // ① 未配对：码 + 6 位 + 倒计时 + 引导（③那条折叠条也在这里）
+  {
+    const harness = load({ react: FAKE_REACT, slots: true })
+    await flush()
+    const root = mountSettings(harness)
+    await flush()
+    assert.ok(has(root, 'drc-pair'), '未配对那一屏要有码与码字的并排块')
+    assert.ok(has(root, 'drc-qr') && has(root, 'drc-code') && has(root, 'drc-count'))
+    assert.match(String(root.find('drc-sec-guide')?.textContent ?? ''), /用微信扫这张码/)
+    assert.ok(!has(root, 'drc-fail') && !has(root, 'drc-paired') && !has(root, 'drc-approval'))
+    assert.ok(has(root, 'drc-appline'), '③「没有 App？下载安卓版」折叠条挂在未配对那一屏下面')
+  }
+
+  // ② 加载中：那句「正在生成配对码…」+ 灰掉的重试（挂载那一刻还没发码回来）
+  {
+    const harness = load({ react: FAKE_REACT, slots: true })
+    await flush()
+    const root = mountSettings(harness) // 刻意不 flush：这正是"码还没回来"的那一拍
+    assert.equal(root.find('drc-sec-state')?.textContent, '正在生成配对码…')
+    const retry = root.findAll('drc-sec-btn').find((node) => node.textContent === '重试')
+    assert.ok(retry, '加载中也要有一颗「重试」（样板是灰的）')
+    assert.equal((retry as unknown as { disabled?: boolean }).disabled, true, '加载中那颗重试必须是灰的/禁用的')
+    assert.equal(root.find('drc-qr'), undefined, '码还没回来时不许画一个空框（那是"取不到"的样子）')
+  }
+
+  // ③ 失败：左侧红条 + 「发不出配对码：<原因>」+ 重试 / 看日志
+  {
+    const harness = load({
+      react: FAKE_REACT,
+      slots: true,
+      newAnswer: { state: 'failed', error: 'relay-down' },
+    })
+    await flush()
+    const root = mountSettings(harness)
+    await flush()
+    assert.ok(has(root, 'drc-fail'), '失败那一屏要有那条红色左条')
+    assert.match(String(root.find('drc-fail-why')?.textContent ?? ''), /^发不出配对码：/, '失败原因要写在红条里')
+    const labels = pairButtons(root)
+    assert.deepEqual(labels, ['重试', '看日志'], `失败那一屏的按钮：${labels.join(' / ')}`)
+    assert.equal(root.find('drc-fail-log'), undefined, '「看日志」默认不展开')
+    root.findAll('drc-sec-btn').find((node) => node.textContent === '看日志')!.emit('click')
+    await flush()
+    assert.ok(root.find('drc-fail-log'), '点了「看日志」要就地给出失败现场在哪儿看（这一页没有日志路由，要说清）')
+  }
+
+  // ④ 已配对：头像位 + N 台手机 + 最近在线 + 两颗按钮，且**不出二维码**
+  {
+    const harness = load({ react: FAKE_REACT, slots: true, status: { ...DEFAULT_STATUS, pairings: 1, paired: 1 } })
+    await flush()
+    const root = mountSettings(harness)
+    await flush()
+    assert.ok(has(root, 'drc-paired'), '已配对那一屏要有头像位那一行')
+    assert.equal(root.find('drc-paired-who')?.textContent, '1 台手机')
+    assert.match(String(root.find('drc-paired-meta')?.textContent ?? ''), /最近在线/)
+    assert.equal(root.find('drc-qr'), undefined, '已配对就不许再出二维码：配对已经发生过，再摆一张只会让人以为还要扫')
+    assert.deepEqual(pairButtons(root), ['重新配对', '取消配对…'])
+  }
+
+  // ⑤ 审批中：SAS 六位 + 一句对照说明 + 两颗按钮
+  {
+    const harness = load({
+      react: FAKE_REACT,
+      slots: true,
+      status: { ...DEFAULT_STATUS, pairApproval: { sas: '482917', remainSec: 40 } },
+    })
+    await flush()
+    const root = mountSettings(harness)
+    await flush()
+    assert.ok(has(root, 'drc-approval'), '审批中那一屏')
+    assert.equal(root.find('drc-sec-sas')?.textContent, '482917', '六位原样显示')
+    assert.match(String(root.find('drc-sec-sasnote')?.textContent ?? ''), /两处一致/)
+    assert.deepEqual(pairButtons(root), ['一致，允许', '不一致，拒绝'])
+    assert.equal(root.find('drc-qr'), undefined, '审批中不出二维码')
   }
 })
 
-test('反向判据：把标题或键值行去掉 ⇒ 结构与取值两条立刻红', async () => {
+test('③ 下载折叠条：默认收起、点开、2 秒重画之后仍然展开（状态在闭包里）', async () => {
+  /**
+   * 2026-11-16：原来那张「手机 App（安卓）」独立卡收成②下面一条折叠条。
+   *
+   * ⚠️ 这条判据的**重点**是那个"2 秒之后仍然展开"：
+   * 折叠条住在②里，而②是每 2 秒整块重画的区域。展开态若只记在节点上，
+   * 用户点开之后两秒它就自己合上（焦点、滚动位置一起丢）——
+   * 所以状态存在 `appOpen`（闭包）里，重画只是把 data-open 重新画一遍。
+   */
+  const harness = load({ react: FAKE_REACT, slots: true })
+  await flush()
+  const root = mountSettings(harness)
+  await flush()
+
+  const line = root.find('drc-appline')!
+  const box = root.find('drc-appbox')!
+  assert.equal(line.getAttribute('data-open'), '0', '默认收起')
+  assert.equal(box.getAttribute('data-open'), '0', '默认收起（盒子不占位）')
+  assert.match(String(line.allText() ?? ''), /没有 App？下载安卓版/)
+  assert.ok(box.find('drc-app-qr'), '展开区里要有那张下载码（不是配对码那张 240px 的）')
+  // 两个类名不许混：`drc-qr` 是配对码（共用表里钉成 240px 的白纸），下载码是 `drc-app-qr`。
+  assert.equal(root.findAll('drc-qr').length, 1, '页面上的 drc-qr 只有配对码那一张')
+  assert.equal(root.findAll('drc-app-qr').length, 1, '下载码一张（drc-app-qr）')
+  assert.ok(String(box.allText()).includes('复制下载链接'), '展开区要有复制链接（剪贴板被拒时长按那行也能复制）')
+
+  line.emit('click')
+  await flush()
+  const opened = root.find('drc-appbox')!
+  assert.equal(root.find('drc-appline')?.getAttribute('data-open'), '1', '点一下要展开')
+  assert.equal(opened.getAttribute('data-open'), '1')
+
+  // 打一拍状态轮询（它一定会整块重画②）
+  await harness.fireAndFlush(0)
+  await flush()
+  assert.equal(root.find('drc-appbox')?.getAttribute('data-open'), '1', '重画之后仍然展开：状态不许只活在节点上')
+})
+
+test('④⑤ 两个折叠区：默认收起、标题正确、危险区红字、六个输入框都在本机设置里', async () => {
+  const harness = load({ react: FAKE_REACT, slots: true })
+  await flush()
+  const root = mountSettings(harness)
+  await flush()
+  const folds = root.findAll('drc-sec-card').filter((node) => node.getAttribute('data-role') === 'settings' || node.getAttribute('data-role') === 'danger')
+  assert.equal(folds.length, 2, '两个折叠区：本机设置 + 危险操作')
+  const settingsFold = folds.find((node) => node.getAttribute('data-role') === 'settings')!
+  const dangerFold = folds.find((node) => node.getAttribute('data-role') === 'danger')!
+  assert.equal(settingsFold.tag, 'details', '折叠区必须是 <details>（宿主不需要 JS 就能开合）')
+  assert.equal(settingsFold.getAttribute('open'), undefined, '「本机设置」默认收起（details 不写 open）')
+  assert.equal(dangerFold.getAttribute('open'), undefined, '「危险操作」默认收起')
+  assert.equal(settingsFold.find('drc-fold-summary')?.textContent, '本机设置', '折叠标题就是「本机设置」')
+  assert.ok(settingsFold.find('drc-fold-summary')?.find('drc-fold-chev'), '折叠标题右端要有一个开合箭头')
+  assert.equal(dangerFold.find('drc-fold-summary')?.textContent, '危险操作')
+  /**
+   * 六个输入框全在「本机设置」这一棵子树里（中继地址 / 口令 / 仓库 / PAT / 间隔 / 冷却）——
+   * 它们住在**永不重画**的折叠区里，所以打字不会丢焦点（另一条判据按对象身份钉这件事）。
+   */
+  assert.equal(settingsFold.findAll('drc-adv-input').length, 6, `六个输入框：实得 ${settingsFold.findAll('drc-adv-input').length}`)
+  assert.equal(root.findAll('drc-adv-input').length, 6, '页面上只有这六个输入框（没有第二个表单区）')
+  const cols = settingsFold.findAll('drc-col')
+  assert.equal(cols.length, 2, '展开之后是两列：中继 / 会话备份')
+  assert.deepEqual(
+    cols.map((col) => col.getAttribute('data-role')),
+    ['advanced', 'backup'],
+  )
+  // 危险区两颗按钮，且是另一档按钮（红字红边）
+  assert.deepEqual(
+    root.findAll('drc-sec-btn').filter((node) => node.getAttribute('data-kind') === 'danger').map((node) => node.textContent),
+    ['取消配对', '删除'],
+  )
+})
+
+test('⑤ 二次确认：第一次点只武装、4 秒不点自动退回、再点一次才真发请求', async () => {
+  /**
+   * 2026-11-16 新增（样板 `confirmDanger` 那一段）。为什么不用 `window.confirm`：
+   * 它在部分宿主壳里被策略拦掉（返回 undefined），那时"确认"这一步会**静默消失** ——
+   * 而这两颗按钮一颗会踢掉手机、一颗会删本地备份。
+   */
+  const harness = load({ react: FAKE_REACT, slots: true })
+  await flush()
+  const root = mountSettings(harness)
+  await flush()
+  const cancel = root.findAll('drc-sec-btn').find((node) => node.textContent === '取消配对')!
+  const before = harness.requests.filter((url) => url.includes('/unpair')).length
+
+  cancel.emit('click')
+  await flush()
+  assert.equal(cancel.textContent, '再点一次确认', '第一次点：按钮自己变成确认语')
+  assert.equal(cancel.getAttribute('data-armed'), '1', '武装态写在属性上（CSS 靠它变红底）')
+  assert.equal(harness.requests.filter((url) => url.includes('/unpair')).length, before, '武装那一下不许打请求')
+
+  // 4 秒不点 ⇒ 自动退回原样（时间由判据手工打：`fireTimeout` 顺带断言它排的是 4000ms）
+  harness.fireTimeout(0)
+  assert.equal(cancel.textContent, '取消配对', '4 秒不点要退回原样（不让一颗按钮永远处于武装态）')
+  assert.equal(cancel.getAttribute('data-armed'), '0')
+  assert.equal(harness.requests.filter((url) => url.includes('/unpair')).length, before, '退回当然也不打请求')
+
+  // 再点两次 ⇒ 真的打那条路由
+  cancel.emit('click')
+  await flush()
+  cancel.emit('click')
+  await flush()
+  assert.equal(cancel.textContent, '已确认')
+  assert.equal((cancel as unknown as { disabled?: boolean }).disabled, true, '确认之后按钮禁用（别再点第三次）')
+  assert.equal(
+    harness.requests.filter((url) => url.includes('/unpair')).length,
+    before + 1,
+    '第二次点必须真的打 /unpair（夹具断言了 marker 头）',
+  )
+})
+
+test('反向判据：把标题或四格去掉 ⇒ 结构与取值两条立刻红', async () => {
   const harness = load({ react: FAKE_REACT, slots: true })
   await flush()
   const root = mountSettings(harness)
   await flush()
   // ⚠️ 2026-10-11：这条原来拿 `drc-sec-meta-item`（底部元信息的两格）当"键值行"样本，
   // 而那些节点随页脚一起删掉了 ⇒ 夹具自检 `length >= 2` 恒不成立，这条**自己红了**。
-  // ⇒ 样本换成**删掉页脚之后仍然存在**的结构：状态行与动作区。
+  // ⇒ 样本换成**删掉页脚之后仍然存在**的结构：抬头标题、状态 pill、①的四格。
+  // （2026-11-16 重排：状态条 → 抬头 pill；四格是新增的第一块。）
   assert.ok(root.find('drc-sec-title'), '夹具自检：标题在')
-  assert.ok(root.find('drc-sec-statushead'), '夹具自检：状态行在')
-  assert.ok((root.find('drc-sec-actions')?.children ?? []).length >= 1, '夹具自检：动作区非空')
+  assert.ok(root.find('drc-sec-pill'), '夹具自检：状态 pill 在')
+  assert.equal(root.findAll('drc-stat').length, 4, '夹具自检：①的四格在')
 
   // 把标题摘掉之后，"有标题"这条必须不成立
   root.find('drc-sec-title')!.remove()
   assert.equal(root.find('drc-sec-title'), undefined, '摘掉之后必须找不到标题')
-  // 把动作区清空之后，"至少一个按钮"这条必须不成立
-  for (const node of root.find('drc-sec-actions')!.children) node.remove()
-  assert.equal((root.find('drc-sec-actions')?.children ?? []).length, 0, '清空之后一个按钮都不许剩')
+  // 把四格清空之后，"正好四格"这条必须不成立
+  for (const node of root.findAll('drc-stat')) node.remove()
+  assert.equal(root.findAll('drc-stat').length, 0, '清空之后一格都不许剩')
 })
 
 // ── 设置页 2026-10-09 的重排（用户："排版还是比较乱……大空间放小内容"）──────
@@ -2648,77 +3079,104 @@ test('反向判据：把标题或键值行去掉 ⇒ 结构与取值两条立刻
 // 右边那张是长期有效的**小程序码**。混在一起（同尺寸、同标题、"扫这张码"）就会出现
 // "拿小程序码去配这台主机"——扫了没反应，且没有任何地方解释为什么。
 
-test('版面：两栏各半、等高——左=配对这台主机 / 右=进阶（3.2 起只有这两张）', async () => {
+test('版面：单列自上而下 ①状态总览 → ②连接手机 → ④本机设置 → ⑤危险操作（2026-11-16 重排）', async () => {
   const harness = load({ react: FAKE_REACT, slots: true })
   await flush()
   const root = mountSettings(harness)
   await flush()
-  const grid = root.find('drc-sec-grid')
-  assert.ok(grid, '网格容器必须在：一列码放的毛病正是"大空间放小内容"')
   /**
-   * 3.2 起设置页只有**两张卡**：配对 + 进阶。
+   * ## 这条判据翻转了（2026-11-16）
    *
-   * 「手机端」那张静态入口码随旧 `dshr:` 码一起删了（一张小程序码本身就是入口）；
-   * 进阶从"独占一行"挪进右列 —— 用户 2026-10-21 的截图标注：「移到右上，与码并列，等高」。
-   */
-  /**
-   * ⚠️ 2026-10-22：网格的**直接子节点是两个列容器**，卡片在列里。
+   * 旧版面钉的是「两栏各半、等高：左=配对这台主机 / 右=进阶」，那是 2026-10-21 的用户标注。
+   * 已批准的样板改成**单列自上而下**：总览 → 连接手机（含下载折叠条）→ 本机设置（折叠）
+   * → 危险操作（折叠）。理由在设计说明 §3：这一栏按"多久用一次"排序，两栏并排之后
+   * 那两个"一次配完就不碰"的表单占掉了一半屏宽，等于把主操作挤成半屏。
    *
-   * 为什么中间多这一层：状态轮询每 2 秒重画一次，而右列那张「进阶」卡里有两个 `<input>`。
-   * 把卡片直接放在"每次重建的 grid"下 ⇒ 每 2 秒它被摘出 DOM 再插回去 ⇒ **焦点每 2 秒丢一次**
-   * （用户报的"输入框一直被页面刷新，焦点一直丢失"）。
-   * ⇒ 右列容器**常驻**、永不重画；左列容器只在内部换内容。
-   * 「两栏各半、等高」这条视觉没变：`data-two` 仍管两列，等高改由 `.drc-sec-col` 的 flex 接管。
+   * ⇒ 判据改成钉**顺序与层级**（这正是重排的验收点）：
+   *   1. 不再有 `drc-sec-grid` 两栏容器（那条 `data-two` 的 CSS 还在共用表里，页面不产出）；
+   *   2. `box` 的直接子节点按顺序是：抬头host → 总览host → 连接host → 本机设置 → 危险操作；
+   *   3. 前三个 host 里各只有一块（标题在 header、两张卡各一张）。
    */
-  assert.equal(grid!.children.length, 2, `网格里正好两列，实得 ${grid!.children.length}`)
-  for (const item of grid!.children) assert.equal(item.className, 'drc-sec-col', '网格的子节点是列容器')
-  const cards = grid!.children.map((column) => column.children[0])
-  for (const card of cards) assert.equal(card?.className, 'drc-sec-card', '每列一张卡')
-  assert.ok(cards[0]!.find('drc-qr'), '第一张是配对卡，里面就该是那张码')
-  assert.equal(grid!.getAttribute('data-two'), '1', '两栏各半 + 等高（data-two 那条 CSS）')
-  const headings = [...root.findAll('drc-sec-heading'), ...root.findAll('drc-sec-headrow')].map((node) =>
-    String(node.textContent),
-  )
-  for (const expected of ['配对这台主机', '进阶：自部署 / 自定义']) {
-    assert.ok(headings.includes(expected), `少了一张「${expected}」卡：实得 ${headings.join(' / ')}`)
+  assert.equal(root.find('drc-sec-grid'), undefined, '两栏网格已经去掉：样板是单列')
+  const box = root.find('drc-sec')!
+  const order = box.children.map((node) => {
+    if (node.className === 'drc-sec-header') return 'header'
+    const role = node.getAttribute('data-role')
+    if (role) return role
+    // 三个常驻 host：凭里面装的东西认（假 DOM 没有子选择器，只能自己判）
+    if (node.find('drc-overview')) return 'overview-host'
+    if (node.find('drc-sec-title')) return 'header-host'
+    if (node.find('drc-pair') ?? node.find('drc-fail') ?? node.find('drc-paired') ?? node.find('drc-approval')) {
+      return 'pair-host'
+    }
+    return `?${node.className}`
+  })
+  assert.deepEqual(order, ['header-host', 'overview-host', 'pair-host', 'settings', 'danger'], `区块顺序不对：${order.join(' → ')}`)
+
+  // ①那张卡的标题
+  const overview = root.findAll('drc-sec-card').find((node) => node.getAttribute('data-role') === 'overview')
+  assert.ok(overview, '①「状态总览」那张卡必须在')
+  assert.equal(overview!.find('drc-sec-heading')?.textContent, '状态总览')
+  // ②那张卡的标题
+  const pair = root.findAll('drc-sec-card').find((node) => node.getAttribute('data-role') === 'pair')
+  assert.equal(pair?.find('drc-sec-heading')?.textContent, '连接手机')
+  // 不再有「配对这台主机」「进阶：自部署 / 自定义」「手机 App（安卓）」「会话备份（git）」这几张独立卡
+  const headings = root.findAll('drc-sec-heading').map((node) => String(node.textContent))
+  for (const gone of ['配对这台主机', '进阶：自部署 / 自定义', '手机 App（安卓）', '会话备份（git）']) {
+    assert.ok(!headings.includes(gone), `「${gone}」不该再是一张独立卡（已并入②或折叠区）：${headings.join(' / ')}`)
   }
+  assert.deepEqual(headings, ['状态总览', '连接手机'], `卡标题只剩这两张，实得 ${headings.join(' / ')}`)
 })
 
-test('重排：动作在卡片**右上角**（标题行右端），不在卡片底部', async () => {
-  // 2026-10-09 用户定的：放右上角比放底部好看，与状态栏那颗 pill 的抬头同一形状
-  // （那边是「左侧状态 + 右侧动作」）。放在底部除了把下面的事实表推远，没有别的作用。
-  const harness = load({ react: FAKE_REACT, slots: true })
-  await flush()
-  const root = mountSettings(harness)
-  await flush()
-  const pair = root.find('drc-sec-card')!
-  const headrow = pair.children[0]!
-  assert.equal(headrow.className, 'drc-sec-headrow', '第一张卡的第一个子节点必须是标题行')
-  assert.equal(headrow.children[0]!.textContent, '配对这台主机', '标题在标题行的左端')
-  assert.equal(headrow.children[1]!.className, 'drc-sec-actions', '动作在标题行的右端')
-  const buttons = headrow.children[1]!.children
-  assert.equal(buttons[0]!.textContent, '换一张', '主动作那颗')
-  assert.equal(
-    buttons[0]!.getAttribute('data-kind'),
-    'primary',
-    '主动作必须带 data-kind，否则填色那条选择器根本选不到它',
-  )
-  // 整张卡里只许有一排动作（它现在住在标题行内，所以按后代数而不是直接子节点）
-  assert.equal(
-    pair.findAll('drc-sec-actions').length,
-    1,
-    '动作只许出现一次：在卡片底部再放一排就是两处入口，用户会不知道该点哪个',
-  )
+test('重排：动作在**状态块下面一排**，且每张卡只有一排（不在标题行、也不重复）', async () => {
   /**
-   * 2026-10-21：配对卡末尾多了一个折叠块（旧版 `dshr:` 码，默认收起），
-   * 所以"最后一个子节点是引导句"这条不再成立。**真正要钉的是"动作不在卡片底部"**——
-   * 判据钉的是一个已经不存在的版面时，它就成了纯粹的噪音（本仓 F2 那条纪律）。
+   * 2026-10-09 用户定的是"动作放卡片右上角比放底部好看"，那时卡片只有一个动作。
+   * **2026-11-16 的样板把这条推翻了**：②连接手机的五种态里，动作都在状态块**下面一行**
+   * （未配对没有动作、加载中一颗灰的、失败两颗、已配对两颗、审批中两颗），
+   * 因为标题行要留给"现在是什么状态"，两颗按钮挤进标题行会把标题压断行。
+   *
+   * ⇒ 判据改成钉重排后真正成立的两条不变式：
+   *   1. 动作**不是**卡片内容的第一行（标题行里不许有按钮）；
+   *   2. 每张卡**只有一排**动作 —— 两处入口等于让用户不知道该点哪个。
    */
-  assert.ok(
-    !String(pair.children[pair.children.length - 1]!.className).includes('actions'),
-    '动作若还在卡片底部就说明没搬走（末尾现在是旧码那个折叠块）',
-  )
-  assert.ok(pair.find('drc-sec-guide'), '引导句仍在卡里，只是不再是最后一个子节点')
+  for (const options of [
+    { status: { ...DEFAULT_STATUS }, state: 'unpaired' },
+    { status: { ...DEFAULT_STATUS, pairings: 1, paired: 1 }, state: 'paired' },
+    {
+      status: { ...DEFAULT_STATUS, pairApproval: { sas: '123456', remainSec: 40 } },
+      state: 'approval',
+    },
+  ]) {
+    const harness = load({ react: FAKE_REACT, slots: true, status: options.status })
+    await flush()
+    const root = mountSettings(harness)
+    await flush()
+    const pair = root.findAll('drc-sec-card').find((node) => node.getAttribute('data-role') === 'pair')!
+    assert.equal(pair.children[0]!.className, 'drc-sec-heading', '第一张子节点是标题（标题行里不放按钮）')
+    /**
+     * 每张卡只有一排动作（两处入口 = 用户不知道该点哪个）。
+     * 未配对那一屏唯一那排是③下载折叠条里的「复制下载链接」（它自己也是折叠的）。
+     */
+    const rows = pair.findAll('drc-sec-actions')
+    assert.equal(rows.length, 1, `${options.state} 态的动作排数量：实得 ${rows.length}`)
+    for (const row of rows) {
+      assert.ok(row.children.length >= 1, '动作排不许是空的')
+      for (const node of row.children) assert.equal(node.className, 'drc-sec-btn', '排里只放按钮')
+      /**
+       * 动作排**不许排在状态块之前**：它若成了卡片的第一个子节点，就等于回到
+       * "标题下面第一行就是按钮"，而这一屏要先把状态说清楚（样板里动作在状态块下面）。
+       */
+      const direct = pair.children.indexOf(row)
+      assert.ok(direct !== 0, '动作排不许是卡片的第一个子节点（那会抢在状态块前面）')
+    }
+    assert.equal(pair.find('drc-sec-headrow'), undefined, '标题行里不许有动作（headrow 那一套已经不用了）')
+    const labels = rows[0]!.children.map((node) => String(node.textContent))
+    assert.deepEqual(
+      labels,
+      options.state === 'unpaired' ? ['复制下载链接'] : options.state === 'paired' ? ['重新配对', '取消配对…'] : ['一致，允许', '不一致，拒绝'],
+      `${options.state} 态的动作：${labels.join(' / ')}`,
+    )
+  }
 })
 
 test('设置页只有一张码：3.2 起没有「第二个入口码」这个概念了', async () => {
@@ -2753,7 +3211,7 @@ test('设置页只有一张码：3.2 起没有「第二个入口码」这个概�
   }
 })
 
-test('设置页与 pill 同步：有人等着放行时显示 6 位确认码（不再要主机点按钮）', async () => {
+test('设置页与 pill 同步：有人等着放行时出「审批中」那一屏——6 位数字 + 允许/拒绝两颗按钮', async () => {
   /**
    * 2026-10-21「双码合一」：手机扫的是**小程序码**（码里只有配对码，没有密钥），
    * 密钥由主机在用户比对过这 6 位之后加密送去。⇒ 桌面这一侧**必须**出现这 6 位，
@@ -2762,10 +3220,15 @@ test('设置页与 pill 同步：有人等着放行时显示 6 位确认码（�
    * 设置页与 pill 是**两个入口、同一份状态**，所以两边都要有 —— 在设置页配对的人
    * 看不到 pill（那时可能一个会话都没有）。
    *
-   * ⚠️ **2026-10-21 晚：主机端不再有「数字一致，允许」按钮**（用户裁决"只保留一边确认"）。
-   * 理由：主机那一次点击**不增加任何安全性** —— 它只是把"用户已经看过手机上的数字"
-   * 这件事说了一遍；而真正的比对必须在**持有手机**的那一端做。
-   * ⇒ 确认只留在手机端，主机端只**显示**那 6 位数字供对照。
+   * ## ⚠️ 这条判据在 2026-11-16 翻面了（第二次）
+   *
+   * · 上一版（2026-10-21 晚）钉的是「主机端**没有**放行按钮」，理由是"主机那一次点击
+   *   不增加安全性，真正的比对必须在持有手机的那一端"。
+   * · 已批准的样板（`remote-panel-mockup-20261116.html` 的审批中屏）与设计说明 §3.2 的
+   *   表格都明确要求那颗按钮：`一致，允许` / `不一致，拒绝`。
+   * ⇒ 判据跟着翻：两颗按钮**必须**在，而且必须真的打到对的路由
+   *   （允许 → `POST /pair/approve`；拒绝 → `POST /unpair`，宿主没有 deny 那条路由，
+   *   而"拒绝这次配对"在主机侧就是作废配对通道）。
    */
   const harness = load({
     react: FAKE_REACT,
@@ -2776,18 +3239,30 @@ test('设置页与 pill 同步：有人等着放行时显示 6 位确认码（�
   const root = mountSettings(harness)
   await flush()
   assert.equal(root.find('drc-sec-sas')?.textContent, '123456', '6 位必须原样显示（用户要拿它比对）')
-  // 数字要在那张码**之前**：先比对再扫，比扫完回头找数字少一次来回。
-  const order = root.find('drc-sec-card')!.children.findIndex((node) => node.className === 'drc-sec-sas')
-  const imageIndex = root.find('drc-sec-card')!.children.findIndex((node) => node.className === 'drc-qr')
-  assert.ok(order >= 0 && order < imageIndex, `数字必须排在码之前（数字 ${order} / 码 ${imageIndex}）`)
-  // 主机端**不再有放行按钮**（确认在手机端）。
-  const allow = root.findAll('drc-sec-btn').find((node) => node.textContent === '数字一致，允许')
-  assert.equal(allow, undefined, '主机端不该再要人点一次：确认只保留在手机端')
-  // 也不该偷偷去打那条放行路由。
+  assert.match(String(root.find('drc-sec-sasnote')?.textContent ?? ''), /一致/, '要说清"两处一致才点允许"')
+  // 审批中那一屏只出这一屏（不出二维码：这一屏没有别的东西好扫，比对才是唯一要做的事）
+  assert.equal(root.find('drc-qr'), undefined, '审批中不出二维码（那是未配对那一屏的事）')
+
+  const buttons = root.findAll('drc-sec-btn')
+  const allow = buttons.find((node) => node.textContent === '一致，允许')
+  const deny = buttons.find((node) => node.textContent === '不一致，拒绝')
+  assert.ok(allow, `审批中必须有「一致，允许」，实际：${buttons.map((n) => n.textContent).join(' / ')}`)
+  assert.ok(deny, `审批中必须有「不一致，拒绝」，实际：${buttons.map((n) => n.textContent).join(' / ')}`)
+  assert.equal(allow!.getAttribute('data-kind'), 'primary', '「一致，允许」是这一屏的主动作（填色那颗）')
+
+  const approveBefore = harness.requests.filter((url) => url.includes(PAIR_APPROVE_ROUTE)).length
+  const unpairBefore = harness.requests.filter((url) => url.includes('/unpair')).length
+  allow!.emit('click')
+  await flush()
   assert.equal(
-    harness.requests.some((url: string) => url.includes(PAIR_APPROVE_ROUTE)),
-    false,
-    '主机端不该再主动放行（自动放行是宿主内部的事，不经 UI）',
+    harness.requests.filter((url) => url.includes(PAIR_APPROVE_ROUTE)).length,
+    approveBefore + 1,
+    '「一致，允许」必须真的打放行那条路由（夹具断言了 marker 头）',
+  )
+  assert.equal(
+    harness.requests.filter((url) => url.includes('/unpair')).length,
+    unpairBefore,
+    '放行不许顺手把配对通道作废掉',
   )
 })
 

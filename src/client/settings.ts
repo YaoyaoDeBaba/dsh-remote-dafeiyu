@@ -52,7 +52,6 @@ import {
   panelViewFor,
   pairingCount,
   pillLabel,
-  relayStateRow,
   secondsText,
   warnSection,
   type CreateElement,
@@ -91,6 +90,15 @@ export const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
 export const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 
 /**
+ * 「一致，允许」那条放行路由（2026-11-16 重新接上）。
+ *
+ * ⚠️ 逐字等于宿主侧 `src/pill/routes.ts` 的 `PAIR_APPROVE_ROUTE`，而这里**不 import 它**：
+ * 那个模块 import 了 `node:http`，打进浏览器产物会把整条宿主路由链拖进去
+ * （与 `CONFIG_ROUTE` 那条同一个理由，判据也同一个形状）。
+ */
+export const APPROVE_ROUTE = '/plugins/dsh-remote-control/pair/approve'
+
+/**
  * 「进阶」那一栏**自带**的一张小样式表。
  *
  * 为什么不并进 `pill.ts` 那张：`pill.ts` 是**只读**的（用户裁决：那颗 pill 只负责
@@ -103,10 +111,31 @@ export const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 const ADV_STYLE_ID = 'dsh-remote-control/settings.css'
 /** 宿主变量的取值形态：以 `--dsw-alias-*` 为名、带回退值。与 `pill.ts` 的 `hostVar` 同一形状。 */
 const hostVar = (name: string, fallback: string): string => `var(--dsw-alias-${name}, ${fallback})`
+/**
+ * **绝对的白**（照 `pill.ts` 同名常量的口径）。
+ *
+ * 只给两处：那张二维码的纸、危险按钮确认后的字色。**故意不走主题 token**——
+ * 码能不能被扫出来由码点与纸的对比度决定，不跟主题走；而确认态是红底，
+ * 红底上的字同理不能用 `label-primary`（暗主题下那是近白，可读性靠巧合）。
+ */
+const FIXED_WHITE = '#ffffff'
+
 const ADV_CSS = `
-.drc-adv-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 12px;
+/*
+ * 表单格：**标签在上、输入在下**（一列）。
+ *
+ * ⚠️ 2026-11-16 改：原来是 max-content + 1fr 两列（标签在左、输入在右），那是这两个表单
+ * 各占**整屏**时的排版。收进「本机设置」之后它们只占**半列**（约 320px），
+ * 而「间隔（小时，0 = 只手动）」这一行标签自己就要 180px ⇒ 输入框被挤出卡片右边
+ * （无头 Edge 截图实测溢出 30px）。样板本身也是标签在上、输入在下（.field 是 flex 列）。
+ * 一列排不会溢出，也不再依赖"标签有多长"。
+ *
+ * ⚠️ 这段注释在 CSS 模板字符串里：**一个反引号都不许出现**（出现即截断整张表）。
+ */
+.drc-adv-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 12px;
   align-items: center; }
-.drc-adv-label { font-size: 13px; line-height: 20px; color: ${hostVar('label-secondary', '#6b7280')}; }
+.drc-adv-label { margin-top: 6px; font-size: 13px; line-height: 20px; color: ${hostVar('label-secondary', '#6b7280')}; }
+.drc-adv-label:first-child { margin-top: 0; }
 .drc-adv-input { appearance: none; box-sizing: border-box; width: 100%; min-width: 0; font: inherit;
   font-size: 13px; line-height: 20px; padding: 4px 8px; border-radius: 8px;
   border: 1px solid ${hostVar('border-l2', 'rgba(128,128,128,.35)')};
@@ -122,22 +151,114 @@ const ADV_CSS = `
   color: ${hostVar('label-primary', 'inherit')}; }
 .drc-sec-sasnote { margin: 0 0 8px; font-size: 12px; line-height: 18px;
   color: ${hostVar('label-secondary', '#6b7280')}; }
-.drc-sec-fold { margin-top: 10px; }
-.drc-sec-fold > summary { cursor: pointer; font-size: 12px; line-height: 18px;
-  color: ${hostVar('label-tertiary', '#8a8f98')}; }
-.drc-sec-foldimg { display: block; width: 148px; height: 148px; margin: 8px 0 0; }
-/*
- * 两列容器（2026-10-22）。
- *
- * 为什么有它：状态轮询每 2 秒重画一次，而"进阶"那张卡里有两个 <input>。
- * 原来那张卡住在每次重建的 grid 里 ⇒ 每 2 秒被摘出 DOM 再插回去 ⇒ **焦点必然丢**。
- * ⇒ 把它挪进**常驻**的右列，这一列一次都不重画。
- *
- * ⚠️ "两卡等高"（用户明确要的，2026-10-21）原来是 grid 的 align-items:stretch 给的；
- * 拆出列容器后由这里的 flex 接管 —— 视觉不变。
- */
-.drc-sec-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.drc-sec-col > .drc-sec-card { flex: 1 1 auto; }
+
+/* ── 抬头那颗状态（2026-11-16 重排：原来那条独立的「状态条」收成抬头右上角一颗）── */
+.drc-sec-pill { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  padding: 2px 10px; border-radius: 999px; font-size: 12px; line-height: 18px;
+  border: 1px solid ${hostVar('border-l1', 'rgba(0,0,0,.1)')};
+  background: ${hostVar('bg-layer-1', '#ffffff')}; }
+
+/* ── ① 状态总览：四格，只读但可点（点了滚到对应区块）──────────────────── */
+.drc-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .drc-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.drc-stat { appearance: none; font: inherit; text-align: left; display: flex; flex-direction: column;
+  gap: 6px; min-width: 0; padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid ${hostVar('border-l1', 'rgba(0,0,0,.1)')};
+  background: ${hostVar('bg-layer-1', '#ffffff')}; color: inherit; }
+.drc-stat:hover { background: ${hostVar('interactive-bg-hover', 'rgba(0,0,0,.04)')}; }
+.drc-stat:focus-visible { outline: 2px solid ${hostVar('brand-primary', '#247bbf')}; outline-offset: 1px; }
+.drc-stat-k { font-size: 12px; line-height: 16px; color: ${hostVar('label-tertiary', '#9aa0a6')}; }
+.drc-stat-v { display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px;
+  font-weight: 600; color: ${hostVar('label-primary', 'inherit')}; }
+.drc-stat-v[data-tone="on"] { color: ${hostVar('state-success-primary', '#52c41a')}; }
+.drc-stat-v[data-tone="wait"] { color: ${hostVar('state-warn-primary', '#faad14')}; }
+.drc-stat-v[data-tone="error"] { color: ${hostVar('state-error-primary', '#ff4d4f')}; }
+
+/* ── ② 连接手机：未配对那一屏是「左边一张码、右边码字与引导」──────────── */
+.drc-pair { display: grid; grid-template-columns: minmax(0, 256px) minmax(0, 1fr);
+  gap: 18px; align-items: start; }
+@media (max-width: 620px) { .drc-pair { grid-template-columns: minmax(0, 1fr); } }
+/* 左边那一格：占位与图叠在同一列（图没到时占位撑住尺寸，图到了它自己收起） */
+.drc-pair-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
+.drc-codewrap { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* 右列里的这几行改成左对齐：它们已经在码的右边，再居中会跟码抢视线 */
+.drc-codewrap .drc-sec-code { align-items: flex-start; }
+.drc-codewrap .drc-code { text-align: left; font-size: 26px; line-height: 34px; letter-spacing: 6px; }
+.drc-codewrap .drc-count { text-align: left; }
+.drc-codewrap .drc-sec-guide { text-align: left; }
+/* ③ 手机 App 下载：并进②，一条折叠条（不再是独立一张卡） */
+.drc-appline { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 4px;
+  padding: 12px 0 0; border: 0; border-top: 1px dashed ${hostVar('border-l1', 'rgba(0,0,0,.1)')};
+  background: transparent; color: ${hostVar('label-secondary', '#6b7280')};
+  font: inherit; font-size: 13px; line-height: 20px; text-align: left; cursor: pointer; }
+.drc-appline:hover { color: ${hostVar('label-primary', 'inherit')}; }
+.drc-appline-chev { color: ${hostVar('label-tertiary', '#9aa0a6')}; }
+.drc-appline[data-open="1"] .drc-appline-chev { display: inline-block; transform: rotate(90deg); }
+.drc-appbox { display: flex; align-items: center; gap: 14px; margin-top: 10px; padding: 12px;
+  border-radius: 10px; border: 1px solid ${hostVar('border-l1', 'rgba(0,0,0,.1)')};
+  background: ${hostVar('bg-layer-1', '#ffffff')}; }
+.drc-appbox[data-open="0"] { display: none; }
+.drc-appbox-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.drc-appbox-title { font-size: 13px; font-weight: 600; line-height: 20px; }
+/* 下载码那张小纸：与配对码同一个理由（绝对白），只是小一号 */
+.drc-app-qr { display: block; width: 96px; height: 96px; flex: 0 0 auto; padding: 6px;
+  border-radius: 8px; background: ${FIXED_WHITE}; image-rendering: pixelated; }
+
+/* ── ② 已配对 / 审批中 / 失败 三屏 ───────────────────────────────────── */
+.drc-paired { display: flex; align-items: center; gap: 14px; }
+.drc-avatar { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto;
+  border-radius: 12px; font-size: 20px; border: 1px solid ${hostVar('border-l1', 'rgba(0,0,0,.1)')};
+  background: ${hostVar('bg-layer-1', '#ffffff')}; }
+.drc-paired-who { font-size: 14px; font-weight: 600; line-height: 20px; }
+.drc-paired-meta { margin-top: 2px; font-size: 12px; line-height: 18px;
+  color: ${hostVar('label-secondary', '#6b7280')}; }
+.drc-approval { display: flex; flex-direction: column; gap: 8px; }
+/* 失败那一屏：左边一条红，把"这不是引导、是故障"摆在眼睛前面 */
+.drc-fail { display: flex; flex-direction: column; gap: 6px; padding-left: 12px;
+  border-left: 3px solid ${hostVar('state-error-primary', '#ff4d4f')}; }
+.drc-fail-why { margin: 0; font-size: 13px; line-height: 20px;
+  color: ${hostVar('state-error-primary', '#ff4d4f')}; }
+.drc-fail-log { white-space: pre-wrap; word-break: break-word; }
+
+/* ── ④⑤ 两个折叠区（本机设置 / 危险操作）────────────────────────────── */
+details.drc-sec-card { display: block; padding: 0; overflow: hidden; }
+details.drc-sec-card > summary.drc-fold-summary { display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; cursor: pointer; list-style: none;
+  font-size: 13px; font-weight: 600; line-height: 20px;
+  color: ${hostVar('label-secondary', '#6b7280')}; }
+details.drc-sec-card > summary.drc-fold-summary::-webkit-details-marker { display: none; }
+details.drc-sec-card[open] > summary.drc-fold-summary {
+  border-bottom: 1px solid ${hostVar('border-l1', 'rgba(0,0,0,.1)')}; }
+.drc-fold-chev { margin-left: auto; color: ${hostVar('label-tertiary', '#9aa0a6')}; }
+details.drc-sec-card[open] > summary.drc-fold-summary .drc-fold-chev { transform: rotate(90deg); }
+.drc-fold-body { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.drc-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 620px) { .drc-cols { grid-template-columns: minmax(0, 1fr); } }
+.drc-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* 折叠区里的说明文字**左对齐**：.drc-sec-note 在共用表里是居中的（那是给"一张卡里只有
+   一张图 + 两行字"的版式准备的），搬进半宽的表单列之后居中会读成一块标语。 */
+.drc-col .drc-sec-note { text-align: left; }
+.drc-col-title { margin: 0; font-size: 12px; line-height: 18px; font-weight: 600;
+  color: ${hostVar('label-tertiary', '#9aa0a6')}; }
+/* 危险区：标题红字，条目之间一条细线，与常规按钮拉开距离 */
+details.drc-sec-card[data-role="danger"] > summary.drc-fold-summary {
+  color: ${hostVar('state-error-primary', '#ff4d4f')}; }
+.drc-danger-row { display: flex; align-items: center; gap: 12px; padding-top: 12px;
+  border-top: 1px solid ${hostVar('border-l1', 'rgba(0,0,0,.1)')}; }
+.drc-danger-row:first-child { padding-top: 0; border-top: 0; }
+.drc-danger-text { flex: 1 1 auto; min-width: 0; }
+.drc-danger-title { display: block; font-size: 13px; font-weight: 600; line-height: 20px; }
+.drc-danger-desc { display: block; margin-top: 2px; font-size: 12px; line-height: 18px;
+  color: ${hostVar('label-tertiary', '#9aa0a6')}; }
+/* 按钮另外两档：danger（红字红边）与 danger 已武装（红底白字）。
+   ⚠️ 这两条必须写在 [data-kind="primary"] 那三条**之后**（同特异度、后写的赢）；
+   它们住在另一张表里，而这张表注入得更晚 —— 顺序天然成立。 */
+.drc-sec-btn:disabled { opacity: .45; cursor: not-allowed; }
+.drc-sec-btn[data-kind="danger"] { color: ${hostVar('state-error-primary', '#ff4d4f')};
+  border-color: ${hostVar('state-error-primary', '#ff4d4f')}; }
+.drc-sec-btn[data-kind="danger"][data-armed="1"] {
+  background: ${hostVar('state-error-primary', '#ff4d4f')}; color: ${FIXED_WHITE};
+  border-color: ${hostVar('state-error-primary', '#ff4d4f')}; }
 `
 
 /** 注入「进阶」那张小样式表（幂等：已插过就按内容对齐；与 `ensureStyle` 同一套做法）。 */
@@ -217,43 +338,38 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
   root.appendChild(box)
 
   /**
-   * ── 常驻骨架（2026-10-22）────────────────────────────────────────────
+   * ── 常驻骨架（2026-10-22 立，2026-11-16 重排后仍保留）─────────────────
    *
    * ## 为什么要有它
    * 状态轮询每 2 秒 `paint()` 一次，而 `paint()` 原来做的是
    * `box.replaceChildren(...children)` —— **整棵子树换掉**。
-   *
-   * 「进阶」那张卡（`advancedCard`）虽然**只建一次**，却被塞进每次重建的 `grid` 里
-   * ⇒ **每 2 秒它被摘出 DOM 再插回去**
-   * ⇒ 里面那两个 `<input>`（中继地址 / 主机口令）的**焦点必然丢**
+   * 「进阶」那张卡（现在是「本机设置」里的一列）虽然**只建一次**，却被塞进每次重建的
+   * `grid` 里 ⇒ **每 2 秒它被摘出 DOM 再插回去** ⇒ 里面那些 `<input>`
+   * （中继地址 / 主机口令 / 备份仓库 / PAT / 间隔 / 冷却天数）的**焦点必然丢**
    * ⇒ 用户在填表单时，键盘每 2 秒合一次（真机报："输入框一直被页面刷新，焦点一直丢失"）。
    *
    * ## 拆法：把"每次都变的"与"带输入框的"分成两棵树
    * ```
-   * box            ← 常驻，永不换
-   *  ├ topHost     ← 常驻容器，**内部**每次重画（抬头 + 状态条）
-   *  └ grid        ← 常驻
-   *     ├ leftCol  ← 常驻容器，**内部**每次重画（配对那张卡）
-   *     └ rightCol ← 常驻容器，装 advancedCard，**永不重画**
+   * box           ← 常驻，永不换
+   *  ├ topHost    ← 常驻容器，**内部**每次重画（抬头 + 状态 pill）
+   *  ├ overviewHost ← 常驻容器，**内部**每次重画（① 状态总览四格）
+   *  ├ pairHost   ← 常驻容器，**内部**每次重画（② 连接手机 + ③ 下载折叠条）
+   *  ├ settingsFold ← **只建一次，永不重画**（④ 本机设置：六个 input 都在这棵树下）
+   *  └ dangerFold  ← **只建一次，永不重画**（⑤ 危险操作：二次确认的状态活在节点上）
    * ```
-   * ⇒ 只有 `topHost` / `leftCol` 的**内部**被换
+   * ⇒ 只有前三个容器的**内部**被换
    * ⇒ 带 input 的那棵树**一个节点都不动** ⇒ 焦点与已输入的内容都保住。
    *
-   * ⚠️ "两卡等高"原来靠 grid 的 `align-items: stretch`（用户明确要的），
-   * 拆了列容器就由 `.drc-sec-col` 的 flex 接管（见 ADV_CSS）。
+   * ⚠️ 2026-11-16 的重排把"两栏等高"（`.drc-sec-grid[data-two="1"]`）**去掉了**：
+   * 样板是单列自上而下（总览 → 连接 → 折叠区），两栏并排的语义不复存在。
+   * 那条 CSS 还留在 `pill.ts` 那张共用表里（那张表本轮不动），但页面上不再产出它。
    */
   const topHost = doc.createElement('div')
-  const grid = doc.createElement('div')
-  grid.className = 'drc-sec-grid'
-  grid.setAttribute('data-two', '1')
-  const leftCol = doc.createElement('div')
-  leftCol.className = 'drc-sec-col'
-  const rightCol = doc.createElement('div')
-  rightCol.className = 'drc-sec-col'
-  grid.appendChild(leftCol)
-  grid.appendChild(rightCol)
+  const overviewHost = doc.createElement('div')
+  const pairHost = doc.createElement('div')
   box.appendChild(topHost)
-  box.appendChild(grid)
+  box.appendChild(overviewHost)
+  box.appendChild(pairHost)
 
   let disposed = false
   let statusTimer: ReturnType<typeof setInterval> | undefined
@@ -269,13 +385,45 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
    * 与 `pill.ts` 的 `countNode` 同一个理由。
    */
   let countNode: HTMLElement | undefined
-  /** 已经发过码没有：决定动作那一排给"刷新"还是"退出配对"。 */
+  /** 配对簿里还有几次会话（= 配过对）。决定②那一屏给"未配对"还是"已配对"。 */
   let paired = false
   /**
+   * 最后一次**看到手机连着**的墙钟时刻（`Date.now()`）。
+   *
+   * 为什么要在客户端记：`/status` 只给 `paired`（此刻连着几台），**没有**"最近在线"的时间戳，
+   * 而②的已配对那一屏要写「最近在线 X 前」。⇒ 用桌面这一侧每次轮询的观测时间当代理，
+   * 语义是"这台主机最后一次看到它在线是什么时候"——比编一个假时间诚实。
+   * ⚠️ 它活在闭包里，刷新设置页会清零（那时显示"刚刚"），这是已知取舍。
+   */
+  let lastOnlineAt = 0
+  /**
    * 挂着的配对授权（小程序码路线，2026-10-21）：手机扫了码、主机还没放行。
-   * 与 pill 同一个字段、同一套断言（"有就显示 6 位 + 允许"），两条路不许分叉。
+   * 与 pill 同一个字段、同一套断言（"有就显示 6 位"）。
    */
   let lastApproval: { sas: string; remainSec: number } | null = null
+  /**
+   * ③ 下载折叠条是不是展开着。
+   *
+   * ⚠️ 状态必须存在**闭包**里、不能只存在 DOM 上：那条折叠条住在②的重画区里，
+   * 每 2 秒整块换新 —— 状态若只写在节点上，用户点开 2 秒后自己合上（还顺带丢掉焦点）。
+   */
+  let appOpen = false
+  /**
+   * 失败那一屏里「看日志」展开没有。同样活在闭包里（那一屏每 2 秒重画一次）。
+   *
+   * ⚠️ 这一页**读不到日志**：没有那条路由（`/backup` 只认 save/run/restore，
+   * `/status` 只给 relay 与 pairing）。所以这颗按钮给的是"失败现场在哪儿看"，
+   * 不是一份真日志 —— 写清楚比假装能给好。
+   */
+  let failLogShown = false
+  /**
+   * ②那一屏的**动作结果**（放行失败 / 已拒绝……）。
+   *
+   * 为什么不是一个 DOM 引用：②整块每 2 秒重画一次，节点存不住。所以存成一行文本，
+   * 由 `paint()` 决定这一拍画不画它（与 `countNode` 那条"存引用"的取舍相反，
+   * 因为那一行只在本拍有效）。
+   */
+  let pairNote = ''
   /**
    * ── 「进阶」那一栏（自部署地址 / token，2026-10-11 加）────────────────────
    *
@@ -283,17 +431,27 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
    * 自定义**的人——它必须留着：默认改成官方之后**自部署用户会连错**
    * （用户裁决：自定义项不是可选项）。
    *
-   * ⚠️ 这张卡**只建一次**（`advancedCard`），不跟着 `paint()` 重建：
-   * 状态轮询每 2 秒 `paint()` 一次，重建会把用户正在输入的内容抹掉。
+   * ⚠️ 2026-11-16 起它住进「本机设置」折叠区（`settingsFold`），而那个 `<details>`
+   * **只建一次**：状态轮询每 2 秒 `paint()` 一次，重建会把用户正在输入的内容抹掉。
    */
   let cfg: ConfigAnswer | undefined
-  let advancedCard: HTMLElement | undefined
   let advUrlInput: HTMLInputElement | undefined
   let advTokenInput: HTMLInputElement | undefined
   let advHint: HTMLElement | undefined
   let advNote: HTMLElement | undefined
-  /** 「手机 App（安卓）」那张卡：同样只建一次（内容全是静态的，重画没有意义）。 */
-  let appCard: HTMLElement | undefined
+  /** ④ 本机设置那个 `<details>`：**只建一次**，装 6 个 input/4 颗按钮。 */
+  let settingsFold: HTMLElement | undefined
+  /** ⑤ 危险操作那个 `<details>`：同样只建一次（二次确认的武装态写在按钮属性上）。 */
+  let dangerFold: HTMLElement | undefined
+  /** ⑤ 里那颗「取消配对」：②那一屏的「取消配对…」把它滚进视野并聚焦。 */
+  let dangerCancelBtn: HTMLElement | undefined
+  /** ② 这张卡：①的四格要靠它滚过去，所以每次重画都要记下新节点。 */
+  let pairCard: HTMLElement | undefined
+
+  /** 危险按钮的二次确认态（照样板：第一次点变「再点一次确认」，4 秒不点自动退回）。 */
+  let armedBtn: HTMLElement | undefined
+  let armedLabel = ''
+  let armedTimer: unknown
 
   /**
    * 小程序码那张图的加载态（`loading` / `ready` / `failed`）——**与 pill 同一份实现**
@@ -352,7 +510,7 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     }
   }
 
-  /** 取状态：只读，用于抬头那句与三行事实。 */
+  /** 取状态：只读，用于抬头那颗 pill 与①的四格。 */
   const loadStatus = async (): Promise<void> => {
     if (disposed) return
     const answer = await call(`${STATUS_ROUTE}?t=${Date.now()}`, { method: 'GET' })
@@ -360,6 +518,12 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     if (answer.ok && answer.body && typeof answer.body === 'object') {
       status = answer.body as StatusShape
       paired = pairingCount(status) > 0
+      /**
+       * 「最近在线 X 前」的观测点：这一拍看到手机连着，就把"最后一次看到"刷成现在。
+       * （理由见 `lastOnlineAt` 的说明：`/status` 没有这个时间戳，只能由这一侧观测。）
+       */
+      const connectedNow = typeof status?.paired === 'number' ? status.paired : 0
+      if (connectedNow > 0) lastOnlineAt = Date.now()
       /**
        * 那 6 位确认码（2026-10-21）：**两个来源，谁先有值用谁**。
        *  · `pairApproval` —— **还挂着**的申请（还没放行）。
@@ -424,6 +588,47 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     if (!disposed) await mint()
   }
 
+  /**
+   * 「一致，允许」：把这条申请的密钥放出去（`POST /pair/approve`，带同一个守卫头）。
+   *
+   * ⚠️ 2026-10-21 的用户裁决是"主机端不要放行按钮"（理由：主机那一次点击不增加任何安全性，
+   * 真正的比对必须在持有手机的那一端）。**2026-11-16 的样板把这一颗加回来了**，
+   * 这是样板明确要求的（审批中态的两颗按钮），本轮照办。
+   * 它在语义上仍是"我已经在手机上比对过、两处一致"的确认 —— 不是主机替用户决定。
+   */
+  const approvePair = async (): Promise<void> => {
+    if (disposed) return
+    const answer = await call(APPROVE_ROUTE, { method: 'POST', headers: MARKER })
+    if (disposed) return
+    if (!answer.ok) {
+      /**
+       * 409 / `state:"stale"` = 这条申请已经作废（超时 / 已放行过）——
+       * 那不是故障，要说成"没人在等了"，而不是一个红色 HTTP 码。
+       */
+      pairNote =
+        answer.status === 409 || answer.body.state === 'stale'
+          ? '这条申请已经作废了（可能超时，或已经在手机上放行过）。'
+          : `放行失败：HTTP ${answer.status}`
+      paint()
+      return
+    }
+    pairNote = ''
+    lastApproval = null
+    await loadStatus()
+  }
+
+  /**
+   * 「不一致，拒绝」：宿主**没有** deny 那条路由（`pill/routes.ts` 只有
+   * new / png / status / unpair / pair/approve），而"拒绝一次配对"在主机这一侧
+   * 的动作就是**作废这次的配对通道** —— 所以它走 `/unpair`，然后回到未配对 + 一张新码。
+   */
+  const rejectPair = async (): Promise<void> => {
+    if (disposed) return
+    pairNote = '已拒绝这次配对，手机需要重新扫码。'
+    await unpair()
+    if (!disposed) paint()
+  }
+
   const startCountdown = (): void => {
     if (countTimer !== undefined) clearInterval(countTimer)
     if (view.kind !== 'qr' || expiresInMs <= 0) {
@@ -454,43 +659,144 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
   }
 
   /**
-   * 一张卡片：标题 + 任意内容。四张卡的边框/底色/圆角/内边距全走同一套类。
+   * 一张卡片：标题 + 任意内容。所有卡的边框/底色/圆角/内边距全走同一套类。
    *
-   * `trailing` 放进**标题行右端**（2026-10-09 用户定的：动作放卡片右上角比放底部好看）。
-   * ⚠️ 标题行是 `.drc-sec-headrow` 而不是标题自己：动作与标题必须同一行，
-   * 而 `.drc-sec-actions` 的 `margin-left:auto` 靠的是 flex 行上下文。
-   * 传了 `trailing` 的那张卡标题会带这个类——判据（`client-bundle.test.ts`）按 className
-   * 精确匹配，所以**不要**再给标题叠加第二个类名。
+   * 2026-11-16 重排：**`trailing` 那个参数删了**。样板里没有任何一张卡把动作放在标题行
+   * 右端 —— ②的主操作（重新配对 / 一致允许 / 重试）都在状态块**下面一行**，①③④⑤根本没有
+   * 标题行动作。留着那条分支就是留一段"能画但没人调"的代码（上一轮判据正是被这类死结构
+   * 绊住的）。`drc-sec-headrow` 那条 CSS 仍在共用表里（本轮不动 `pill.ts`），页面上不产出。
    */
-  const card = (heading: string, trailing?: HTMLElement): HTMLElement => {
+  const card = (heading: string): HTMLElement => {
     const node = doc.createElement('section')
     node.className = 'drc-sec-card'
-    const title = text('h3', 'drc-sec-heading', heading)
-    if (!trailing) {
-      node.appendChild(title)
-      return node
-    }
-    // ⚠️ 标题与动作必须**同在一个 flex 行**里（.drc-sec-headrow），动作才能靠
-    // margin-left:auto 贴到右端。第一版把 `.drc-sec-headrow` 直接当标题的类名用，
-    // 于是 flex 行挂在 h3 自己身上、动作成了它的兄弟 —— 那一行根本没形成，
-    // 动作仍旧掉到卡片底部。判据见 client-bundle.test.ts「动作在卡片右上角」那条。
-    const row = doc.createElement('div')
-    row.className = 'drc-sec-headrow'
-    row.appendChild(title)
-    trailing.className = 'drc-sec-actions'
-    row.appendChild(trailing)
-    node.appendChild(row)
+    node.appendChild(text('h3', 'drc-sec-heading', heading))
     return node
   }
 
-  /** 按钮：`kind: 'primary'` 是填色的主动作，其余是次级。 */
-  const button = (label: string, onClick: () => void, kind?: 'primary'): HTMLElement => {
+  /**
+   * 按钮：`kind: 'primary'` 是填色的主动作，`'danger'` 是危险区那一档（红字红边，
+   * 武装后红底白字 —— 见 ADV_CSS），不给就是次级。
+   */
+  const button = (label: string, onClick: () => void, kind?: 'primary' | 'danger'): HTMLElement => {
     const node = doc.createElement('button')
     node.type = 'button'
     node.className = 'drc-sec-btn'
     if (kind) node.setAttribute('data-kind', kind)
     node.textContent = label
     node.addEventListener('click', onClick)
+    return node
+  }
+
+  /** 一排动作（`.drc-sec-actions` 那条 flex 行）。 */
+  const actionRow = (...nodes: HTMLElement[]): HTMLElement => {
+    const row = doc.createElement('div')
+    row.className = 'drc-sec-actions'
+    for (const node of nodes) row.appendChild(node)
+    return row
+  }
+
+  /**
+   * 滚到某一区块（①的四格用它）。
+   *
+   * 两处都包了 try：假 DOM（判据用的那个）没有 `scrollIntoView`，而 `<details>` 的
+   * `open` 属性在那边只是个普通属性；真浏览器里这两下都是"点一下就过去的"。
+   */
+  const reveal = (node: HTMLElement | undefined, openFold = false): void => {
+    if (!node) return
+    try {
+      if (openFold) (node as HTMLDetailsElement).open = true
+      const scroller = node as { scrollIntoView?: (options?: unknown) => void }
+      scroller.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+    } catch {
+      /* 滚不过去不影响正确性：用户自己滚 */
+    }
+  }
+
+  /** ②「取消配对…」：滚到危险区并把它展开 —— 真正的取消要过那里那道二次确认。 */
+  const focusDanger = (): void => {
+    reveal(dangerFold, true)
+    try {
+      dangerCancelBtn?.focus()
+    } catch {
+      /* 假 DOM 里 focus 是个空实现；真浏览器里是"光标落到那颗按钮上" */
+    }
+  }
+
+  /**
+   * 「最近在线」那句的人话：刚看过就"刚刚"，一分钟以上报分钟，再往上报小时/天。
+   *
+   * 不报秒：这一行是扫一眼的（与 `secondsText` 那条"十分钟以上不再报秒"同一取舍）。
+   */
+  const agoText = (ms: number): string => {
+    const sec = Number.isFinite(ms) ? Math.max(0, Math.round(ms / 1000)) : 0
+    if (sec < 60) return '刚刚'
+    const min = Math.floor(sec / 60)
+    if (min < 60) return `${min} 分钟前`
+    const hour = Math.floor(min / 60)
+    if (hour < 24) return `${hour} 小时前`
+    return `${Math.floor(hour / 24)} 天前`
+  }
+
+  // ── ⑤ 危险操作的二次确认（照样板：第一次点武装，4 秒不点自动退回）──────
+
+  /** 定时器口子：老环境 / 判据夹具可能没有 setTimeout，拿不到就不武装超时。 */
+  const timers = globalThis as {
+    setTimeout?: (fn: () => void, ms: number) => unknown
+    clearTimeout?: (id: unknown) => void
+  }
+
+  const disarmDanger = (): void => {
+    const node = armedBtn
+    armedBtn = undefined
+    if (armedTimer !== undefined) {
+      try {
+        timers.clearTimeout?.(armedTimer)
+      } catch {
+        /* 没有 clearTimeout 就让它空跑一次，回调里会自己判 */ 
+      }
+      armedTimer = undefined
+    }
+    if (!node) return
+    node.setAttribute('data-armed', '0')
+    node.textContent = armedLabel
+    ;(node as HTMLButtonElement).disabled = false
+  }
+
+  /**
+   * 危险按钮：**第一次点不执行**，只把按钮换成「再点一次确认」；再点才真干。
+   *
+   * 为什么不用 `window.confirm`：`confirm` 在部分宿主壳里被策略拦掉（返回 undefined），
+   * 那时"确认"这一步会静默消失 —— 而这两颗按钮一颗会踢掉手机、一颗会删本地备份。
+   * 写成"两次点击 + 4 秒自动退回"就与宿主有没有 dialog 无关了。
+   */
+  const armDanger = (node: HTMLElement, label: string, run: () => void): void => {
+    if (armedBtn === node) {
+      disarmDanger()
+      node.setAttribute('data-armed', 'done')
+      node.textContent = '已确认'
+      ;(node as HTMLButtonElement).disabled = true
+      run()
+      return
+    }
+    disarmDanger()
+    armedBtn = node
+    armedLabel = label
+    node.setAttribute('data-armed', '1')
+    node.textContent = '再点一次确认'
+    armedTimer = timers.setTimeout?.(() => {
+      // 4 秒内没再点 ⇒ 退回原样（`data-armed` 回 0 就是"没武装"）。
+      if (armedBtn === node) disarmDanger()
+    }, 4000)
+  }
+
+  /** 危险按钮的工厂：把"武装 → 再点一次 → 执行"这一套收在一处，两颗按钮不各写一遍。 */
+  const dangerButton = (label: string, run: () => void): HTMLElement => {
+    const node = doc.createElement('button')
+    node.type = 'button'
+    node.className = 'drc-sec-btn'
+    node.setAttribute('data-kind', 'danger')
+    node.textContent = label
+    node.addEventListener('click', () => armDanger(node, label, run))
     return node
   }
 
@@ -620,14 +926,20 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
   }
 
   /**
-   * 建这一栏的 DOM。**只调用一次**（`paint()` 里懒建之后复用同一个节点）。
+   * ④「本机设置」的**左列**：中继地址 / 主机口令 / 保存。
    *
-   * 它刻意长得像"另一张卡"而不是并进配对卡：这一栏是**给进阶玩家的**，
-   * 摆在配对卡里会让"我该不该动它"变成每个用户都要回答的问题。
+   * **只建一次**（由 `buildSettingsFold()` 调，那个 `<details>` 永不重画）：
+   * `paint()` 每 2 秒被状态轮询调一次，重建会把用户正在输入的内容抹掉、把焦点丢掉。
+   *
+   * 2026-11-16 重排前它是独立一张卡（标题「进阶：自部署 / 自定义」），现在并进折叠区，
+   * 标题降成列标题 —— 折叠区标题统一叫「本机设置」，因为这一块是"这台机器的配置"，
+   * 「进阶」两个字吓走过人（用户原话：「我该不该动它」）。
    */
-  const buildAdvanced = (): HTMLElement => {
-    const section = card('进阶：自部署 / 自定义')
+  const buildAdvancedColumn = (): HTMLElement => {
+    const section = doc.createElement('div')
+    section.className = 'drc-col'
     section.setAttribute('data-role', 'advanced')
+    section.appendChild(text('h4', 'drc-col-title', '中继'))
     section.appendChild(
       text(
         'p',
@@ -665,12 +977,13 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     for (const node of [urlLabel, urlInput, tokenLabel, tokenInput]) grid.appendChild(node)
     section.appendChild(grid)
 
-    const actions = doc.createElement('div')
-    actions.className = 'drc-sec-actions'
-    actions.appendChild(button('保存', () => void submitAdvanced(), 'primary'))
-    actions.appendChild(button('清除口令', () => void clearTokenAdvanced()))
-    actions.appendChild(button('恢复默认', () => void resetAdvanced()))
-    section.appendChild(actions)
+    section.appendChild(
+      actionRow(
+        button('保存', () => void submitAdvanced(), 'primary'),
+        button('清除口令', () => void clearTokenAdvanced()),
+        button('恢复默认', () => void resetAdvanced()),
+      ),
+    )
 
     advHint = text('p', 'drc-adv-note', '正在读取当前配置…')
     section.appendChild(advHint)
@@ -681,50 +994,68 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
   }
 
   /**
-   * ── 「手机 App（安卓）」那张卡（dsh-remote-dafeiyu 追加）───────────────
+   * ── ③「没有 App？下载安卓版」那条折叠条（2026-11-16 并进②）─────────────
    *
-   * 为什么在这一页：用户在这台电脑上装完插件，接下来要做的唯一一件事就是
-   * **把手机端也装上**。把这个动作放在插件自己的设置页里，就不用再去翻 README、
-   * 记一个 GitHub 地址——扫码即装。
+   * 重排前它是一张独立卡（「手机 App（安卓）」），和配对卡各说一遍"扫码"——
+   * 两块讲同一件事（设计说明 §2 第 2 条）。现在收成②下面的一条折叠条：
+   * 默认收起，展开才是那张下载码 + 复制链接。
    *
    * 二维码是**预生成的 data URL**（`copy/app-qr.ts`），不走主机路由：
    * 它指向的是一个永久链接，内容不会变，于是这一页离线也能显示、也不占一条路由。
    *
-   * 链接文字**始终显示在卡片里**：剪贴板在部分环境下会被拒（非安全上下文、
+   * ⚠️ 链接文字**始终在展开区里**：剪贴板在部分环境下会被拒（非安全上下文、
    * 权限策略），那时用户还能长按那一行自己复制——不给"复制按钮是唯一出路"。
+   *
+   * ⚠️ 展开与否存在闭包的 `appOpen` 里，因为这条折叠条住在**每 2 秒重画一次**的②里
+   * （理由见 `appOpen` 的说明）。
    */
-  const buildAppCard = (): HTMLElement => {
-    const section = card('手机 App（安卓）')
-    section.setAttribute('data-role', 'app-download')
-    section.appendChild(
-      text('p', 'drc-sec-note', '扫码下载「大肥鱼远控」。装好打开，和这台主机配对后就能发指令。'),
-    )
+  const buildAppDownload = (): HTMLElement => {
+    const wrap = doc.createElement('div')
+    wrap.setAttribute('data-role', 'app-download')
+    const line = doc.createElement('button')
+    line.type = 'button'
+    line.className = 'drc-appline'
+    line.setAttribute('data-open', appOpen ? '1' : '0')
+    line.appendChild(text('span', 'drc-appline-chev', '▸'))
+    line.appendChild(text('span', '', '没有 App？下载安卓版'))
+    line.addEventListener('click', () => {
+      appOpen = !appOpen
+      paint()
+    })
+    wrap.appendChild(line)
+
+    const box = doc.createElement('div')
+    box.className = 'drc-appbox'
+    box.setAttribute('data-open', appOpen ? '1' : '0')
     const image = doc.createElement('img')
-    image.className = 'drc-qr'
+    // ⚠️ 类名是 `drc-app-qr` 而**不是** `drc-qr`：后者在共用表里被钉成 240px 的配对码
+    // （那张纸的尺寸与"扫得出来"有关）。下载码是另一件事，小一号。
+    image.className = 'drc-app-qr'
     image.setAttribute('alt', '手机 App 下载二维码')
     image.setAttribute('src', APP_QR_DATA_URL)
-    section.appendChild(image)
+    box.appendChild(image)
 
-    const actions = doc.createElement('div')
-    actions.className = 'drc-sec-actions'
+    const body = doc.createElement('div')
+    body.className = 'drc-appbox-text'
+    body.appendChild(text('span', 'drc-appbox-title', '大肥鱼远控 · 安卓'))
+    body.appendChild(text('span', 'drc-sec-note', '扫码下载最新版（约 8 MB）。装好打开，和这台主机配对后就能发指令。'))
     const copyBtn = button('复制下载链接', () => copyDownloadUrl(copyBtn))
-    actions.appendChild(copyBtn)
-    section.appendChild(actions)
-
+    body.appendChild(actionRow(copyBtn))
     const urlLine = text('p', 'drc-sec-note', APP_DOWNLOAD_URL)
     urlLine.setAttribute('data-role', 'app-download-url')
-    section.appendChild(urlLine)
-    return section
+    body.appendChild(urlLine)
+    box.appendChild(body)
+    wrap.appendChild(box)
+    return wrap
   }
 
   /** 复制下载链接：成功闪一下文案，失败就直说"长按那一行"。 */
   const copyDownloadUrl = (btn: HTMLElement): void => {
-    const timers = (globalThis as { setTimeout?: (fn: () => void, ms: number) => unknown }).setTimeout
     const flash = (label: string): void => {
       const before = btn.textContent ?? ''
       btn.textContent = label
-      if (typeof timers !== 'function') return
-      timers(() => {
+      if (typeof timers.setTimeout !== 'function') return
+      timers.setTimeout(() => {
         btn.textContent = before
       }, 1500)
     }
@@ -752,7 +1083,6 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
    * ⚠️ token 输入框默认空着、占位符写"已设置"：与「进阶」那栏同一条纪律，
    * 无条件提交空串就等于每保存一次把凭据清空一次。
    */
-  let backupCard: HTMLElement | undefined
   let bkNote: HTMLElement | undefined
   let bkStatusLine: HTMLElement | undefined
   let bkUrlInput: HTMLInputElement | undefined
@@ -860,9 +1190,22 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     await postBackup(payload, '已保存。改了节奏立刻生效，不用重启。')
   }
 
-  const buildBackup = (): HTMLElement => {
-    const section = card('会话备份（git）')
+  /**
+   * ④「本机设置」的**右列**：会话备份（git，2026-10-28 加，2026-11-16 并进折叠区）。
+   *
+   * 与远控**同一个插件**，但它是**旁路**：默认关闭、坏了也只影响卡片上的那一行红字。
+   *
+   * 三个动作都是"起个头就回来"（宿主那边回 202，真正的进度靠轮询 `GET` 的 `status`），
+   * 因为一次备份要传几十 MB，浏览器那侧的超时是 8 秒——在这一页等它等于必然超时。
+   *
+   * ⚠️ token 输入框默认空着、占位符写"已设置"：与左列同一条纪律，
+   * 无条件提交空串就等于每保存一次把凭据清空一次。
+   */
+  const buildBackupColumn = (): HTMLElement => {
+    const section = doc.createElement('div')
+    section.className = 'drc-col'
     section.setAttribute('data-role', 'backup')
+    section.appendChild(text('h4', 'drc-col-title', '会话备份（git）'))
     section.appendChild(
       text(
         'p',
@@ -914,33 +1257,30 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     }
     section.appendChild(grid)
 
-    const actions = doc.createElement('div')
-    actions.className = 'drc-sec-actions'
     const toggle = button('启用备份', () => {
       bkEnabled = !bkEnabled
       void saveBackup()
     }, 'primary')
     bkToggleBtn = toggle
-    actions.appendChild(button('保存', () => void saveBackup(), 'primary'))
-    actions.appendChild(toggle)
-    actions.appendChild(
-      button('立即备份', () => {
-        bkSetNote('已开始，跑完这一行会自己更新（几分钟）', 'ok')
-        void postBackup({ action: 'run' }, '已开始备份…')
-      }),
+    section.appendChild(
+      actionRow(
+        button('保存', () => void saveBackup(), 'primary'),
+        toggle,
+        button('立即推送', () => {
+          bkSetNote('已开始，跑完这一行会自己更新（几分钟）', 'ok')
+          void postBackup({ action: 'run' }, '已开始推送…')
+        }),
+        button('从备份恢复', () => {
+          // 恢复会覆盖本机 `~/.dsh/sessions`（旧的改名留底），所以问一次。
+          const view = doc.defaultView as { confirm?: (message: string) => boolean } | null
+          const sure = typeof view?.confirm === 'function'
+            ? view.confirm('要用仓库里的备份覆盖本机会话吗？现有会话会被改名留底，不会删除。')
+            : true
+          if (!sure) return
+          void postBackup({ action: 'restore' }, '已开始恢复，完成后重启飞鱼')
+        }),
+      ),
     )
-    actions.appendChild(
-      button('从备份恢复', () => {
-        // 恢复会覆盖本机 `~/.dsh/sessions`（旧的改名留底），所以问一次。
-        const view = doc.defaultView as { confirm?: (message: string) => boolean } | null
-        const sure = typeof view?.confirm === 'function'
-          ? view.confirm('要用仓库里的备份覆盖本机会话吗？现有会话会被改名留底，不会删除。')
-          : true
-        if (!sure) return
-        void postBackup({ action: 'restore' }, '已开始恢复，完成后重启飞鱼')
-      }),
-    )
-    section.appendChild(actions)
 
     bkStatusLine = text('p', 'drc-adv-note', '正在读取备份状态…')
     section.appendChild(bkStatusLine)
@@ -951,125 +1291,244 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
   }
 
   /**
-   * 整块重画。只在"状态真的变了"的时候调用，倒计时那一拍只改一行文本。
+   * ── ① 状态总览：四格（2026-11-16 新增，照样板）───────────────────────
    *
-   * ## 版式（2026-10-09 重排）
+   * 用户来这一栏最常问的是「配好了吗 / 手机连上了吗 / 有没有事等我」，
+   * 而重排前这三个答案分散在配对卡、状态条与扩展列表里，没有一处能一眼读完。
    *
-   * 抬头一行（标题 + 一句它在讲什么），下面是**两栏卡片**：
-   *
+   * **数据全部来自现有 `GET /status`**（`PillStatus` 那八个字段），一条宿主路由都不加：
    * ```
-   * ┌ 配对这台主机 ─────┐ ┌ 手机端 ───────────┐
-   * │ 状态灯 + 结论      │ │ 小程序码（静态）    │
-   * │ 配对二维码（限时）  │ │ 黑鲸远控 · 微信小程序│
-   * │ 6 位码 + 倒计时    │ └───────────────────┘
-   * │ 引导句            │ ┌ 怎么用 ───────────┐
-   * │ [换一张][退出配对] │ │ 手机端 / 再连一次   │
-   * └──────────────────┘ │ 安全 / 连不上      │
-   * ┌ 连接 ────────────┐ └───────────────────┘
-   * │ 中继状态 …        │
-   * └──────────────────┘
+   * 主机   relay === 'idle' ? 已停止 : 运行中        ← relay
+   * 中继   online 已连接 / connecting 连接中 / offline 连不上 / idle 未启动   ← relay
+   * 已配对 pairingCount(status) > 0 ? N 台 : 未配对  ← pairings（密钥簿条数）
+   * 待处理 status.waiting                             ← waiting
    * ```
+   * ⚠️ 设计说明 §3.1 写的是「主机读 `/status` 的 `status` 字段」——**那个字段不存在**
+   * （`pill/routes.ts` 的白名单只有 relay/paired/pairings/serverUrl/version/waiting/
+   * waitingOldestSec/pairApproval/pairing/lastPairApproval）。`relay: 'idle'` 的语义是
+   * "runtime 还没起来"，那就是"这台主机没在跑远控"，所以主机那一格读它。
+   * 想让它显示真·进程状态就得往 `/status` 加字段 —— 那是宿主侧的改动，本轮不做。
    *
-   * 左栏是"这台主机"（要动手的那件事 + 它的读数），右栏是"手机端"（去哪儿装客户端 +
-   * 怎么用）。窄屏由 CSS 自己折成一列——判据见 `client-bundle.test.ts` 的「排版」那一组。
-   *
-   * ⚠️ 两张码同时出现，是这一版最容易出错的地方：左边的**配对二维码**每次配对现生成、
-   * 带 PSK、过几分钟就作废；右边的**小程序码**是静态的客户端入口图，长期有效。
-   * 所以两张卡各有各的标题，尺寸也差一档（200px / 148px）——不能让用户拿小程序码
-   * 去配这台主机，那是"扫了没反应且没有任何提示"。
+   * 四格**只读、但可点**：点了滚到对应区块（中继那一格还会把「本机设置」展开，
+   * 因为改中继地址就在那里）。
    */
-  const paint = (): void => {
-    if (disposed) return
-    /**
-     * 两组"这次要画的东西"（2026-10-22）：
-     * · `topChildren` —— 抬头 + 状态条，放进常驻的 `topHost`；
-     * · `leftChildren` —— 配对那张卡，放进常驻的 `leftCol`。
-     *
-     * ⚠️ **「进阶」那张卡不在这里**：它住在常驻的 `rightCol` 里，
-     * 一次都不许被摘出来重插（那会让 input 失焦 —— 见上面「常驻骨架」的说明）。
-     */
-    const topChildren: unknown[] = []
-    const leftChildren: unknown[] = []
-    countNode = undefined
+  const statCell = (key: string, value: string, tone: 'on' | 'wait' | 'error' | 'idle', onPick: () => void): HTMLElement => {
+    const node = doc.createElement('button')
+    node.type = 'button'
+    node.className = 'drc-stat'
+    node.appendChild(text('span', 'drc-stat-k', key))
+    const line = text('span', 'drc-stat-v', undefined)
+    line.setAttribute('data-tone', tone)
+    if (tone === 'on' || tone === 'wait' || tone === 'error') {
+      const dot = doc.createElement('span')
+      dot.className = 'drc-dot'
+      dot.setAttribute('data-tone', tone)
+      dot.setAttribute('aria-hidden', 'true')
+      line.appendChild(dot)
+    }
+    line.appendChild(text('span', '', value))
+    node.appendChild(line)
+    node.addEventListener('click', onPick)
+    return node
+  }
 
-    // ── 抬头：标题 + 一句"这一页是干什么的" ──────────────────────────
-    const header = doc.createElement('div')
-    header.className = 'drc-sec-header'
-    header.appendChild(text('h2', 'drc-sec-title', SETTINGS_LABEL))
-    header.appendChild(
-      text('p', 'drc-sec-sub', '用微信小程序远程操作这台主机上的 DSH 会话：发指令、看流式输出、审批工具调用。'),
-    )
-    topChildren.push(header)
-    /**
-     * ── 状态条：一整行回答「现在连上没有」 ──────────────────────────
-     *
-     * 2026-10-09 用户判定旧版"排版很大问题"之后重排的关键一条：
-     * **"连上没有"这件事原来藏在配对卡里的一行小字**，而那一行小字
-     * 与二维码、6 位码、说明文字挤在同一张卡里，第一眼根本读不到。
-     *
-     * ⇒ 把它提到整栏最上面，左边一颗灯 + 结论，右边一行元信息。
-     * 元信息（中继 / 版本 / 待处理）也在这里读完 —— 它们原来各占**一整张卡**，
-     * 两张加起来 510px，占整栏高度的 63%（实测 802px 里的 510px）。
-     */
-    const statusBar = doc.createElement('div')
-    statusBar.className = 'drc-sec-status'
-    const barHead = doc.createElement('div')
-    barHead.className = 'drc-sec-statushead'
-    const dot = doc.createElement('span')
-    dot.className = 'drc-dot'
-    dot.setAttribute('data-tone', pillLabel(status).tone)
-    dot.setAttribute('aria-hidden', 'true')
-    barHead.appendChild(dot)
-    barHead.appendChild(text('strong', 'drc-sec-statustext', pillLabel(status).text))
-    barHead.appendChild(text('span', 'drc-sec-statushint', relayStateRow(status)))
-    statusBar.appendChild(barHead)
-    topChildren.push(statusBar)
+  /** ① 的那张卡：每次重画都新建（里面没有输入框，重建零成本）。 */
+  const buildOverview = (): HTMLElement => {
+    const section = card('状态总览')
+    section.setAttribute('data-role', 'overview')
+    const grid = doc.createElement('div')
+    grid.className = 'drc-overview'
+    const relay = status?.relay
+    const hostDown = relay === 'idle'
+    const relays: Record<string, { text: string; tone: 'on' | 'wait' | 'error' | 'idle' }> = {
+      online: { text: '已连接', tone: 'on' },
+      connecting: { text: '连接中', tone: 'wait' },
+      offline: { text: '连不上', tone: 'error' },
+      idle: { text: '未启动', tone: 'idle' },
+    }
+    const relayCell = relays[typeof relay === 'string' ? relay : ''] ?? { text: '未知', tone: 'idle' as const }
+    const count = pairingCount(status)
+    const waiting = typeof status?.waiting === 'number' && status.waiting > 0 ? Math.floor(status.waiting) : 0
+    grid.appendChild(statCell('主机', hostDown ? '已停止' : '运行中', hostDown ? 'idle' : 'on', () => reveal(pairCard)))
+    grid.appendChild(statCell('中继', relayCell.text, relayCell.tone, () => reveal(settingsFold, true)))
+    grid.appendChild(statCell('已配对', count > 0 ? `${count} 台` : '未配对', 'idle', () => reveal(pairCard)))
+    grid.appendChild(statCell('待处理', String(waiting), waiting > 0 ? 'wait' : 'idle', () => reveal(pairCard)))
+    section.appendChild(grid)
+    return section
+  }
 
-    // ── 第一张卡：配对（这一页的主动作） ────────────────────────────
-    //
-    // 动作**先建好再传给 card()**：它落在标题行右端，而不是卡片底部。
-    const actions = doc.createElement('div')
-    actions.appendChild(button(view.kind === 'qr' ? '换一张' : '生成配对码', () => void mint(), 'primary'))
-    if (paired) actions.appendChild(button('退出配对', () => void unpair()))
-    /**
-     * 主卡：**这一页唯一的大块**。二维码能给到多大取决于这一张有多宽，
-     * 所以它不再和「手机端」那张图并排挤成两列 353px（实测那张次卡里只有一张图 + 两行字，
-     * 却被迫和主卡等高到 468px —— 就是用户说的"大空间放小内容"）。
-     */
-    const pair = card('配对这台主机', actions)
-    pair.setAttribute('data-role', 'pair')
+  /**
+   * ④「本机设置」整块（`<details>`，默认收起）。**只建一次**。
+   *
+   * 合并前的两张卡（「进阶：自部署 / 自定义」+「会话备份（git）」）都是"配一次就再也不碰"
+   * 的东西，却和主操作抢同样的版面（设计说明 §2 第 1、4 条）。收进一个折叠区之后，
+   * ②上面那张码才是这一页唯一的主角。
+   */
+  const buildSettingsFold = (): HTMLElement => {
+    const details = doc.createElement('details')
+    details.className = 'drc-sec-card'
+    details.setAttribute('data-role', 'settings')
+    // 没有 `open` 属性 = 默认收起（HTML 语义，不需要额外记状态）。
+    const summary = text('summary', 'drc-fold-summary', '本机设置')
+    summary.appendChild(text('span', 'drc-fold-chev', '▸'))
+    details.appendChild(summary)
+    const body = doc.createElement('div')
+    body.className = 'drc-fold-body'
+    const cols = doc.createElement('div')
+    cols.className = 'drc-cols'
+    cols.appendChild(buildAdvancedColumn())
+    cols.appendChild(buildBackupColumn())
+    body.appendChild(cols)
+    details.appendChild(body)
+    return details
+  }
 
-    /**
-     * 确认码在**卡片内容的最前面**，与"这一屏长什么样"无关（2026-10-21 真机事故）。
-     *
-     * ⚠️ **3.2.5 起主机端没有放行按钮**：确认只留在手机端，主机自动放行；
-     * 这里只剩那 6 位数字给人比对。但"必须每一屏都能显示"的理由没变。
-     *
-     * 原来它只画在 `view.kind === 'qr'` 那一支里。而这一页在**已配对**时
-     * 根本不走那一支（不出二维码）⇒ **主机明明挂着一条待放行的申请，
-     * 界面上却没有那 6 位数字** ⇒ 用户无从比对 ⇒ 主机永远不回 `pair-grant`
-     * ⇒ 手机永远卡在"正在连接…"。
-     *
-     * 而"已配对"读的是**密钥簿**（"配过对"），与"此刻有没有人在等你放行"是两件事。
-     *
-     * ⇒ 确认码属于"有申请"这件事，不属于"哪一屏"。
-     * 放在**最前面**是为了保住"数字排在码之前"那条约定（用户先比对再扫，
-     * 比扫完回头找数字少一次来回）。与 pill 弹窗同一套断言、同一句话，两条路不许分叉。
-     */
-    if (lastApproval !== null) {
-      pair.appendChild(text('p', 'drc-sec-sas', lastApproval.sas))
-      pair.appendChild(text('p', 'drc-sec-sasnote', '手机上也显示这串数字，两处不一致就在手机上选不一致'))
+  /**
+   * ⑤「危险操作」整块（`<details>`，默认收起，标题红字）。**只建一次**。
+   *
+   * ## 为什么单独一块
+   * 重排前「取消配对」和「保存中继地址」长得一模一样（设计说明 §2 第 4 条）。
+   * 危险操作用的是另一档按钮（红字红边 → 武装后红底白字），且整块默认收起。
+   *
+   * ## 「删除本地会话备份」为什么是禁用的
+   * 宿主那侧**没有这条接口**：`src/backup/routes.ts` 只认 `save` / `run` / `restore`，
+   * `service.ts` 里唯一能删的是 `resetBackupState()`（注释写明"只给测试用"）。
+   * 而本轮**不许新增宿主路由**（任务约束）。⇒ 按钮画出来、说清为什么点不了，
+   * 比画一个假装能用的按钮诚实；接上它需要宿主侧加一个 `purge` 动作（另一件事）。
+   */
+  const buildDangerFold = (): HTMLElement => {
+    const details = doc.createElement('details')
+    details.className = 'drc-sec-card'
+    details.setAttribute('data-role', 'danger')
+    const summary = text('summary', 'drc-fold-summary', '危险操作')
+    summary.appendChild(text('span', 'drc-fold-chev', '▸'))
+    details.appendChild(summary)
+    const body = doc.createElement('div')
+    body.className = 'drc-fold-body'
+
+    const unpaired = doc.createElement('div')
+    unpaired.className = 'drc-danger-row'
+    const text1 = doc.createElement('div')
+    text1.className = 'drc-danger-text'
+    text1.appendChild(text('b', 'drc-danger-title', '取消配对'))
+    text1.appendChild(text('span', 'drc-danger-desc', '手机会被踢下线，需要重新扫码。'))
+    unpaired.appendChild(text1)
+    dangerCancelBtn = dangerButton('取消配对', () => void unpair())
+    unpaired.appendChild(dangerCancelBtn)
+    body.appendChild(unpaired)
+
+    const wipe = doc.createElement('div')
+    wipe.className = 'drc-danger-row'
+    const text2 = doc.createElement('div')
+    text2.className = 'drc-danger-text'
+    text2.appendChild(text('b', 'drc-danger-title', '删除本地会话备份'))
+    text2.appendChild(text('span', 'drc-danger-desc', '这一版宿主还没有这条接口（备份路由只认 save / run / restore）。'))
+    wipe.appendChild(text2)
+    const wipeBtn = dangerButton('删除', () => {
+      // 走到这里说明用户已经点了两次；没有接口就明说，不假装成功。
+      bkSetNote('没删：这一版宿主没有「删除本地备份」的接口（需要新增一条写路由）。', 'failed')
+    })
+    ;(wipeBtn as HTMLButtonElement).disabled = true
+    wipeBtn.setAttribute('data-role', 'backup-purge')
+    wipe.appendChild(wipeBtn)
+    body.appendChild(wipe)
+
+    details.appendChild(body)
+    return details
+  }
+
+  /**
+   * ②「连接手机」那张卡 —— **五种态**（照样板，同一时刻只出一屏）：
+   *
+   * | 态 | 主内容 | 主按钮 | 次按钮 |
+   * |---|---|---|---|
+   * | 未配对 | 二维码 + 6 位码 + 倒计时 + 扫码引导 | （扫就行） | （③那条折叠条） |
+   * | 加载中 | 正在生成配对码… | 重试（灰） | — |
+   * | 失败 | 左侧红条 + 发不出配对码：<原因> | 重试 | 看日志 |
+   * | 已配对 | 头像位 + N 台手机 + 最近在线 X 前 | 重新配对 | 取消配对… |
+   * | 审批中 | SAS 六位数字 + 一句对照说明 | 一致，允许 | 不一致，拒绝 |
+   *
+   * ⚠️ **优先级**：审批中 > 已配对 > 未配对三态。
+   *  · 未配对且有挂起申请 ⇒ 审批中（这一屏没有别的东西好扫，比对才是唯一要做的事）；
+   *  · **已配对**时若还有 6 位数字（`lastPairApproval` 放行后还要留 90 秒给用户对照），
+   *    那一屏仍以"已配对"为主，把 6 位数字**附在最前面**——2026-10-21 的真机事故就是
+   *    "已配对"把 6 位吃掉了：主机挂着待放行申请、屏幕上却没有数字 ⇒ 用户无从比对
+   *    ⇒ 手机永远卡在"正在连接…"。这条不许再破。
+   */
+  const buildPairCard = (): HTMLElement => {
+    const section = card('连接手机')
+    section.setAttribute('data-role', 'pair')
+
+    // ── 审批中 ────────────────────────────────────────────────────
+    if (lastApproval !== null && !paired) {
+      const block = doc.createElement('div')
+      block.className = 'drc-approval'
+      block.setAttribute('data-state', 'approval')
+      block.appendChild(text('p', 'drc-sec-sasnote', '手机上会显示同一串数字，两处一致才点允许。'))
+      /**
+       * ⚠️ 6 位**原样**输出、不加分隔：判据钉的是它 `textContent` 恰好是那 6 位
+       * （`client-bundle.test.ts`），而它是用户要逐位比对的东西 ——
+       * 样板里写成「482 917」只是排版好看，机器核对与用户念读都不如原串直接。
+       */
+      block.appendChild(text('p', 'drc-sec-sas', lastApproval.sas))
+      section.appendChild(block)
+      section.appendChild(
+        actionRow(
+          button('一致，允许', () => void approvePair(), 'primary'),
+          button('不一致，拒绝', () => void rejectPair()),
+        ),
+      )
+      if (pairNote !== '') section.appendChild(text('p', 'drc-sec-guide', pairNote))
+      return section
     }
 
-    if (view.kind === 'loading') {
-      pair.appendChild(text('p', 'drc-sec-state', '正在生成配对码…'))
-    } else if (view.kind === 'qr') {
+    // ── 已配对 ────────────────────────────────────────────────────
+    if (paired) {
       /**
-       * ── 有人在等放行：先给 6 位确认码，再给那张码 ──────────────────
-       *
-       * 顺序刻意是"先数字后码"——用户先比对再扫，比先扫完再回头找数字少一次来回。
-       * 与 pill 弹窗同一个顺序、同一句话，两条路不许分叉。
+       * 6 位数字属于"有申请"这件事，不属于"哪一屏"（见上面的优先级说明）。
+       * 附在最前面：先比对，再谈"已经配上了"。
        */
+      if (lastApproval !== null) {
+        section.appendChild(text('p', 'drc-sec-sas', lastApproval.sas))
+        section.appendChild(text('p', 'drc-sec-sasnote', '手机上也显示这串数字，两处不一致就在手机上选不一致'))
+      }
+      const block = doc.createElement('div')
+      block.className = 'drc-paired'
+      block.setAttribute('data-state', 'paired')
+      block.appendChild(text('div', 'drc-avatar', '🐋'))
+      const who = doc.createElement('div')
+      /**
+       * 手机名：`/status` **不带**主机/手机名（`pill/routes.ts` 的白名单里没有这一格），
+       * 所以这里只能报"几台"。真要显示「小米 14」得给 `/status` 加一个字段 ——
+       * 那是宿主侧改动，本轮不做（见①那段注释里同一条理由）。
+       */
+      who.appendChild(text('div', 'drc-paired-who', `${pairingCount(status)} 台手机`))
+      const ago = agoText(Date.now() - lastOnlineAt)
+      const connectedNow = typeof status?.paired === 'number' ? status.paired : 0
+      who.appendChild(
+        text('div', 'drc-paired-meta', `最近在线 ${ago}${connectedNow > 0 ? '' : ' · 自动重连中'}`),
+      )
+      block.appendChild(who)
+      section.appendChild(block)
+      section.appendChild(
+        actionRow(
+          button('重新配对', () => void mint(), 'primary'),
+          // 带省略号 = "去危险区过那道二次确认"，不在这里直接踢人。
+          button('取消配对…', () => focusDanger()),
+        ),
+      )
+      if (pairNote !== '') section.appendChild(text('p', 'drc-sec-guide', pairNote))
+      return section
+    }
+
+    // ── 未配对三态 ────────────────────────────────────────────────
+    if (view.kind === 'qr') {
+      const grid = doc.createElement('div')
+      grid.className = 'drc-pair'
+      grid.setAttribute('data-state', 'unpaired')
+
+      const left = doc.createElement('div')
+      left.className = 'drc-pair-qr'
       /**
        * 那张码。
        *
@@ -1088,9 +1547,12 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
        * 而 `<img>` 在它落地之前是**一个空框**——用户分不清"正在取"与"取不到"。
        */
       const loadState = mpCode.state()
-      if (loadState !== 'ready') pair.appendChild(mpCodeLoadingBox(doc, loadState))
-      pair.appendChild(image)
+      if (loadState !== 'ready') left.appendChild(mpCodeLoadingBox(doc, loadState))
+      left.appendChild(image)
+      grid.appendChild(left)
 
+      const codeWrap = doc.createElement('div')
+      codeWrap.className = 'drc-codewrap'
       /**
        * 6 位码与它上面那行小字分两个节点：判据钉的是 `drc-code` 的 `textContent`
        * **恰好是那 6 位**（`client-bundle.test.ts`），说明文字混进去会让"手输这条路"
@@ -1100,118 +1562,151 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
       code.className = 'drc-sec-code'
       code.appendChild(text('span', 'drc-sec-code-label', '或在小程序里手输这 6 位码'))
       code.appendChild(text('p', 'drc-code', view.token))
-      pair.appendChild(code)
+      codeWrap.appendChild(code)
 
       countNode = text('p', 'drc-count', `${secondsText(expiresInMs)}后过期`)
       if (expiresInMs <= 30_000) countNode.setAttribute('data-kind', 'urgent')
-      pair.appendChild(countNode)
+      codeWrap.appendChild(countNode)
 
-      pair.appendChild(
+      codeWrap.appendChild(
         text('p', 'drc-sec-guide', '用微信扫这张码。扫一次以后这台主机就在小程序的列表里，之后自动连上。'),
       )
-    } else if (view.kind === 'unavailable') {
-      pair.appendChild(text('p', 'drc-sec-state', view.reason))
-    } else if (view.kind === 'failed') {
-      const node = text('p', 'drc-sec-state', `发不出配对码：${view.detail}`)
-      node.setAttribute('data-kind', 'failed')
-      pair.appendChild(node)
-    } else {
-      /**
-       * 已配对：**不出二维码**（配对已经发生过，再摆一张只会让人以为还要扫），
-       * 但也不该拿一大块空白说一句话 —— 一行字 + 主机标识就够，
-       * 高度交给下面那张「手机端」卡去消化。
-       */
-      const done = doc.createElement('p')
-      done.className = 'drc-sec-state drc-sec-done'
-      done.appendChild(text('span', '', '已配对，不用再扫码。'))
-      pair.appendChild(done)
+      grid.appendChild(codeWrap)
+      section.appendChild(grid)
+      // ③ 手机 App 下载：一条折叠条，不再是独立一张卡。
+      section.appendChild(buildAppDownload())
+      if (pairNote !== '') section.appendChild(text('p', 'drc-sec-guide', pairNote))
+      return section
     }
 
-    leftChildren.push(pair)
-
-    // ⚠️ **原来那张「连接」卡整张删掉了**（2026-10-09 重排）。
-    // ⚠️ 这里原来构造 `meta`（中继 / 版本 / 待处理 三条 `drc-sec-meta-item`），
-    // 它**只被页脚 push** —— 2026-10-11 删掉页脚后它就成了"建了没人用"的死代码，一并删。
-    //
-    // 「中继地址」与「主机版本」属于**只读诊断**：这一页是给小白配东西的地方，
-    // 把诊断摆在配置页底部只会让人以为"我该去改它"。要排错走 status.json 与 host-doctor。
-    //
-    // ⚠️ 这里**不再**把 grid 塞进整棵子树（2026-10-22）：grid 是常驻节点，
-    // 每次重画只换它**内部**那两个列容器的内容 ⇒ 「进阶」那张卡里的 input 不会被移动。
-    // ⚠️ 这里原来有一段「── 第四张卡：怎么用 ──」的注释，列着四条说明文案，
-    // 而**它描述的结构在这一轮重排里已经不存在了**（下一段就是页脚）。
-    // 留着它 = 下一位读代码会以为页面上还有那四条说明 —— 而实际上「环境自检」
-    // 「不用再扫」这两条**页面上一个都不存在**（它们在别的文档里，不在这一栏）。
-
-    // ── 页脚：2026-10-11 **整段删除**（用户裁决）────────────────────────
-    //
-    // 删掉的是三样东西：
-    //   1. 「扫上面的码 / 在手机上下指令 / 审批工具调用」这三步；
-    //   2. 那条脚注（「扫不出怎么办 · 端到端加密 · 退出配对会作废钥匙」）；
-    //   3. 底部那行「中继 <地址>　版本 <x.y.z>」元信息（`meta`）。
-    //
-    // 为什么这次连"排错时会用到"的理由也不保留：那一段的论证是"比正文低一等但删不得"，
-    // 而低一等的东西在这一页恰恰是**用户根本不会去找**的 —— 它假设用户已经知道
-    // "小程序里有手动输入""退出配对会作废钥匙"，而这两件事都属于**不该让用户知道**的内部。
-    //
-    // 「中继地址 / 版本」同理：这两个值属于**只读诊断**，而这一页是**给小白配东西的地方**，
-    // 把诊断信息摆在配置页底部只会让人以为"我该去改它"。要排错走 status.json 与 host-doctor。
+    if (view.kind === 'loading' || view.kind === 'info') {
+      section.appendChild(text('p', 'drc-sec-state', '正在生成配对码…'))
+      const retry = button('重试', () => void mint())
+      ;(retry as HTMLButtonElement).disabled = true
+      section.appendChild(actionRow(retry))
+      return section
+    }
 
     /**
-     * ── 「进阶：自部署 / 自定义」那一张卡（2026-10-11 加）──────────────
+     * 失败 / 中继不在线 / 发不出码：**同一屏**，只是原因不同。
      *
-     * ⚠️ **只建一次**：`paint()` 每 2 秒被状态轮询调一次，每次重建这张卡会把
-     * 用户正在输入的内容抹掉（输入框的值只活在节点上）。所以这里复用同一个节点，
-     * 表单值由 `loadConfig()` / 提交结果**就地更新**。
+     * 形状是"左边一条红 + 一句为什么 + 下一步"，因为这不是引导、是故障
+     * （重排前它与那张码挤在同一张卡里，长得跟引导一模一样）。
      */
-    if (!advancedCard) {
-      advancedCard = buildAdvanced()
-      /**
-       * ⚠️ 插进**常驻**的右列，而且**只插这一次**（2026-10-22）。
-       *
-       * 原来它被塞进每次重建的 `grid` ⇒ 每 2 秒被摘出 DOM 再插回去
-       * ⇒ 里面两个 `<input>` 的焦点每 2 秒丢一次（真机报："焦点一直丢失"）。
-       */
-      rightCol.appendChild(advancedCard)
+    const reason =
+      view.kind === 'failed' ? view.detail : view.kind === 'unavailable' ? view.reason : '中继不在线'
+    const block = doc.createElement('div')
+    block.className = 'drc-fail'
+    block.setAttribute('data-state', 'failed')
+    block.appendChild(text('p', 'drc-fail-why', `发不出配对码：${reason}`))
+    block.appendChild(text('p', 'drc-sec-guide', '检查网络，或到「本机设置」确认中继地址。'))
+    section.appendChild(block)
+    if (failLogShown) {
+      section.appendChild(
+        text(
+          'p',
+          'drc-fail-log',
+          `这一页读不到日志文件（宿主没有日志路由）。失败现场在 status.json（relay / pairing）与 Harness 日志里，本次原因：${reason}`,
+        ),
+      )
     }
+    section.appendChild(
+      actionRow(
+        button('重试', () => void mint(), 'primary'),
+        button('看日志', () => {
+          failLogShown = !failLogShown
+          paint()
+        }),
+      ),
+    )
+    if (pairNote !== '') section.appendChild(text('p', 'drc-sec-guide', pairNote))
+    return section
+  }
+
+  /**
+   * 整块重画。只在"状态真的变了"的时候调用，倒计时那一拍只改一行文本。
+   *
+   * ## 版式（2026-11-16 重排，照 `remote-panel-mockup-20261116.html`）
+   *
+   * ```
+   * 抬头：大肥鱼 · 远程控制        [● 已连接]
+   * ┌ ① 状态总览 ── 主机 / 中继 / 已配对 / 待处理（四格，可点）┐
+   * ┌ ② 连接手机 ── 未配对 / 加载中 / 失败 / 已配对 / 审批中（五选一）┐
+   * │   └ 没有 App？下载安卓版 ▸（折叠，原来独立的一张卡）        │
+   * ┌ ▸ 本机设置（折叠，默认收起：中继地址 / 口令 / 备份）        ┐
+   * ┌ ▸ 危险操作（折叠，默认收起，红字，二次确认）                ┐
+   * ```
+   *
+   * ⚠️ 这里**只换三个容器的内部**：`topHost` / `overviewHost` / `pairHost`。
+   * 带 input 的「本机设置」与带武装态的危险区都住在**常驻**节点里，
+   * 建好之后一次都不许被摘出来重插（那会让 input 失焦 —— 见「常驻骨架」的说明）。
+   */
+  const paint = (): void => {
+    if (disposed) return
+    countNode = undefined
+
+    // ── 抬头：标题 + 一句"这一页是干什么的" + 状态 pill ──────────────
+    const header = doc.createElement('div')
+    header.className = 'drc-sec-header'
+    header.appendChild(text('h2', 'drc-sec-title', `大肥鱼 · ${SETTINGS_LABEL}`))
+    header.appendChild(
+      text('p', 'drc-sec-sub', '用微信小程序远程操作这台主机上的 DSH 会话：发指令、看流式输出、审批工具调用。'),
+    )
     /**
-     * 「手机 App」那张卡：与「进阶」同一套纪律——**只建一次**，插进常驻的右列。
-     * 内容全是静态的，重画没有意义；真正的收益是它不会每 2 秒闪一下。
+     * 状态 pill（2026-11-16）：重排前它是一条**独立的整行状态条**，而那一行回答的问题
+     * 与①的四格完全重复（连上没有 / 配没配上）。收成抬头右上角一颗之后，
+     * "第一眼看到什么"由①的四格承担，抬头只留一句结论。
+     * 文案仍走 `pillLabel`（与那颗悬浮 pill 同一份决策，两条路不许分叉）。
      */
-    if (!appCard) {
-      appCard = buildAppCard()
-      rightCol.appendChild(appCard)
-    }
-    /**
-     * 「会话备份（git）」那张卡（2026-10-28）：与上面两张同一套纪律——**只建一次**，
-     * 插进常驻的右列。它里面有四个 input，重建一次就等于把用户正在填的东西抹掉。
-     */
-    if (!backupCard) {
-      backupCard = buildBackup()
-      rightCol.appendChild(backupCard)
-    }
-    /**
-     * ── 放哪儿：右栏，与「配对」那张卡并排、等高（2026-10-21 用户截图三条标注）
-     *
-     * 小程序码成为唯一入口之后，原先右栏那张「手机端」静态码整块删掉；若这一栏仍独占
-     * 一行，一页里就是两块内容各占一条横带、谁也不是主角。⇒ 恒放进网格右列，
-     * `data-two` 负责让两栏各半并等高。
-     */
-    // `data-two` 与两个列容器在**建骨架时**就设好了（常驻），这里不再动它们。
+    const label = pillLabel(status)
+    const pill = doc.createElement('span')
+    pill.className = 'drc-sec-pill'
+    pill.setAttribute('data-tone', label.tone)
+    const pillDot = doc.createElement('span')
+    pillDot.className = 'drc-dot'
+    pillDot.setAttribute('data-tone', label.tone)
+    pillDot.setAttribute('aria-hidden', 'true')
+    pill.appendChild(pillDot)
+    pill.appendChild(text('span', 'drc-sec-statustext', label.text))
+    header.appendChild(pill)
+    topHost.replaceChildren(header)
+
+    // ── ① 状态总览 ────────────────────────────────────────────────
+    overviewHost.replaceChildren(buildOverview())
+
+    // ── ② 连接手机（含③下载折叠条）────────────────────────────────
+    pairCard = buildPairCard()
+    pairHost.replaceChildren(pairCard)
 
     /**
-     * 只换这两处的**内部**（2026-10-22）。
+     * ④⑤：**只建一次**，插进常驻的 `box` 末尾（顺序：本机设置在前、危险操作在后）。
      *
-     * ⚠️ **不许再 `box.replaceChildren(...)`** —— 那会把常驻的 `grid` 一起换掉，
-     * 于是「进阶」那张卡（含两个 input）被摘出再插回 ⇒ **焦点丢**。
+     * ⚠️ 它们里面有六个 `<input>` 与一个"武装态"按钮；`paint()` 每 2 秒来一次，
+     * 重建一次就等于把用户正在填的东西抹掉、把二次确认的武装态清零。
      */
-    topHost.replaceChildren(...(topChildren as Node[]))
-    leftCol.replaceChildren(...(leftChildren as Node[]))
+    if (!settingsFold) {
+      settingsFold = buildSettingsFold()
+      box.appendChild(settingsFold)
+    }
+    if (!dangerFold) {
+      dangerFold = buildDangerFold()
+      box.appendChild(dangerFold)
+    }
   }
 
   paint()
-  void loadStatus()
-  void mint()
+  /**
+   * **先读一次状态，再决定发不发码**（2026-11-16）。
+   *
+   * 重排前是"挂上就发"：已配对的主机每次打开这一页都白烧一张码，而那一屏根本不显示二维码
+   * （②的已配对态）。现在先问 `/status`，只有"没配上"才发。
+   *
+   * ⚠️ 读失败（老宿主 404 / 网络断）时 `paired` 仍是 `false` ⇒ 退化成"照发"——
+   * 不让一次读失败把这一页变成空白。这是刻意的兜底，别把它"修"掉。
+   */
+  void loadStatus().then(() => {
+    if (!disposed && !paired) void mint()
+  })
   // 「进阶」那一栏的读数：与状态轮询分开取（它不在那条 2 秒节拍上——那是"手机上刚扫完，
   // 电脑这一页马上就变"的路，而配置几乎不会在你看这一页的时候变）。
   void loadConfig()
