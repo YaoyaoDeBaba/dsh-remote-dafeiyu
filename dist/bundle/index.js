@@ -45990,6 +45990,9 @@ function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs10 = 
   }
 }
 var PNPM_TIMEOUT_MS = 3e5;
+function pnpmInstallArgs(pnpmScript) {
+  return [pnpmScript, "install"];
+}
 function resolveRuntimeDir(env = process.env, options = {}) {
   const exists = options.exists ?? existsSync6;
   const hasPnpm = (dir) => exists(path25.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
@@ -46044,7 +46047,7 @@ function runPnpmInstall(input2) {
     };
     let child;
     try {
-      child = spawn5(command, [pnpmScript, "install", "--no-audit", "--no-fund"], {
+      child = spawn5(command, pnpmInstallArgs(pnpmScript), {
         cwd: input2.profileDir,
         env,
         windowsHide: true,

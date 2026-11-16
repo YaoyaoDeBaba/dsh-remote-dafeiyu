@@ -401,6 +401,20 @@ export type PnpmRunner = (input: PnpmRunInput) => Promise<PnpmRunOutput>
 export const PNPM_TIMEOUT_MS = 300_000
 
 /**
+ * 跑 `pnpm install` 时给进程的 argv。
+ *
+ * ⚠️ **只给 `install`，不带 `--no-audit` / `--no-fund`**（2026-11-16 实测踩中）：
+ * 那是 npm 的习惯，宿主自带的 pnpm 11 会直接报 `Unknown options: 'audit', 'fund'` 并退出 1，
+ * 于是用户看到的是"安装失败"，真实原因却是我们传了个它不认的参数。
+ * pnpm 默认就不跑 audit，这两个开关纯属多余。
+ *
+ * 抽成纯函数是为了能被判据直接钉住（`tests/extensions.test.ts`）。
+ */
+export function pnpmInstallArgs(pnpmScript: string): string[] {
+  return [pnpmScript, 'install']
+}
+
+/**
  * 找宿主的运行时目录（里面是 `dependencies/node` 与 `dependencies/pnpm`）。
  *
  * 三道来源，先到先得：`DSH_RUNTIME_DIR`（显式）→ `DSH_INSTALL_DIR` 往上找到 `resources`
@@ -483,7 +497,13 @@ export function runPnpmInstall(input: PnpmRunInput): Promise<PnpmRunOutput> {
     }
     let child: ReturnType<typeof spawn>
     try {
-      child = spawn(command, [pnpmScript, 'install', '--no-audit', '--no-fund'], {
+      /*
+       * ⚠️ **不要带 `--no-audit` / `--no-fund`**（2026-11-16 实测踩中）：
+       * 那是 npm 的习惯，宿主自带的 pnpm 11 会直接报 `Unknown options: 'audit', 'fund'` 并退出 1，
+       * 而这条错误会以"安装失败"的形式落到用户面前（真实原因却是我们传了个它不认的参数）。
+       * pnpm 自己默认就不跑 audit，这两个开关纯属多余。
+       */
+      child = spawn(command, pnpmInstallArgs(pnpmScript), {
         cwd: input.profileDir,
         env,
         windowsHide: true,

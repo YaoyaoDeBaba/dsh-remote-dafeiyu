@@ -617,3 +617,14 @@ test('profile 与运行时目录的定位：环境变量说了算，猜不到就
   assert.equal(resolveRuntimeDir({}, { exists: () => false }), undefined)
   assert.equal(resolveRuntimeDir({ DSH_RUNTIME_DIR: 'X:\\rt' }, { exists: (file) => String(file).startsWith('X:\\rt') }), 'X:\\rt')
 })
+
+test('pnpm 参数只给 install：不带 npm 风格的 --no-audit/--no-fund', async () => {
+  // 2026-11-16 实测：带这两个开关时宿主 pnpm 11 报 `Unknown options: 'audit', 'fund'` 并退出 1，
+  // 用户看到的是"安装失败"，真实原因是我们传了它不认的参数。
+  const { pnpmInstallArgs } = await import('../src/extensions/service.js')
+  const args = pnpmInstallArgs('C:/runtime/dependencies/pnpm/bin/pnpm.mjs')
+  assert.ok(args.includes('install'), '必须带 install')
+  assert.ok(!args.includes('--no-audit'), '不该有 --no-audit')
+  assert.ok(!args.includes('--no-fund'), '不该有 --no-fund')
+  assert.equal(args[0], 'C:/runtime/dependencies/pnpm/bin/pnpm.mjs', '第一个参数是 pnpm 脚本路径')
+})
