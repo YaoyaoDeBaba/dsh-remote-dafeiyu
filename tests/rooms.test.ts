@@ -11,6 +11,7 @@ import {
   listRooms,
   onRoomsChange,
   registerRoom,
+  syncAvatarEntryGate,
   resetRooms,
   type DafeiyuRoom,
 } from '../src/client/rooms.js'
@@ -171,4 +172,42 @@ test('房间内容在"换了容器"后必须搬过去（真机 bug：房间 tab 
 
   assert.deepEqual(newBox.childNodes, ['panel-node'], '内容必须落到新容器里')
   assert.deepEqual(oldBox.childNodes, [], '旧容器清空')
+})
+
+test('入口闸门：形象在时给 html 打属性、不在时摘掉，且样式只插一次', () => {
+  // 真机现象：JS 设的 hidden 跑一会就被翻回去。所以入口收起改成 html 属性 + 全局 CSS（!important），
+  // 元素被重建也命中。这里钉的是"属性跟着房间表走"这一条。
+  resetRooms()
+  const attrs: Record<string, string> = {}
+  let styleCount = 0
+  const fakeDoc = {
+    documentElement: {
+      setAttribute: (k: string, v: string) => {
+        attrs[k] = v
+      },
+      removeAttribute: (k: string) => {
+        delete attrs[k]
+      },
+    },
+    getElementById: () => undefined,
+    createElement: () => ({ id: '', textContent: '' }),
+    head: {
+      appendChild: () => {
+        styleCount += 1
+      },
+    },
+  }
+  syncAvatarEntryGate({ document: fakeDoc })
+  assert.equal(attrs['data-dafeiyu-avatar'], undefined, '没形象时不该打属性')
+
+  registerRoom({ id: 'avatar', label: '形象', mount: () => undefined })
+  syncAvatarEntryGate({ document: fakeDoc })
+  assert.equal(attrs['data-dafeiyu-avatar'], '1', '有形象时要打上属性')
+
+  // 样式表靠 getElementById 判重（假 doc 永远返回 undefined 所以每次都会插，这里只验不抛）
+  assert.ok(styleCount >= 1, '样式要被插进去')
+
+  resetRooms()
+  syncAvatarEntryGate({ document: fakeDoc })
+  assert.equal(attrs['data-dafeiyu-avatar'], undefined, '形象没了属性要摘掉')
 })

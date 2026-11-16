@@ -185,6 +185,92 @@ export function installRoomHost(scope?: { window?: unknown }): boolean {
   return true
 }
 
+/**
+ * 有住客「形象」时，把不该出现的独立入口从**样式层**收起来（2026-11-16）。
+ *
+ * 为什么必须走到 CSS：
+ * 真机反馈是「刚重启时独立入口收起来了，跑一会又冒出来」——JS 设的 `hidden`
+ * 会被某些重建/重挂的时机翻回去。属性选择器 + `!important` 是最后一道闸：
+ * 元素被重建也命中，谁的 JS 都翻不回来。
+ *
+ * 覆盖三个已知的独立入口（按 id，都是各自包对外承诺的稳定契约）：
+ *   - `#dafeiyu-subagent-fab` 本体：派活助手
+ *   - `#dafeiyu-vision-fab`   vision 包：肥鱼识图
+ *   - `#dafeiyu-xyq-fab`      vision 包：小云雀
+ *
+ * 属性的来源是**房间注册表**（`has('avatar')`）——住客自己宣布"我在"，是唯一权威事实。
+ */
+const FLOATING_ENTRY_IDS = ['dafeiyu-subagent-fab', 'dafeiyu-vision-fab', 'dafeiyu-xyq-fab']
+const AVATAR_ATTR = 'data-dafeiyu-avatar'
+const AVATAR_STYLE_ID = 'dafeiyu-avatar-entry-gate'
+
+let entryGateTimer: ReturnType<typeof setInterval> | undefined
+let entryGateOff: (() => void) | undefined
+
+/** 按"形象在不在"同步 html 属性（CSS 靠它生效）。 */
+export function syncAvatarEntryGate(scope?: { document?: unknown }): void {
+  const doc = (scope?.document ?? (globalThis as { document?: unknown }).document) as
+    | {
+        documentElement?: { setAttribute?: (k: string, v: string) => void; removeAttribute?: (k: string) => void }
+        getElementById?: (id: string) => unknown
+        createElement?: (tag: string) => { id?: string; textContent?: string }
+        head?: { appendChild?: (node: unknown) => unknown }
+      }
+    | undefined
+  if (!doc?.documentElement) return
+  const present = entries.has('avatar')
+  try {
+    if (present) doc.documentElement.setAttribute?.(AVATAR_ATTR, '1')
+    else doc.documentElement.removeAttribute?.(AVATAR_ATTR)
+  } catch {
+    /* 属性设不上只影响"自动收起" */
+  }
+  // 样式表只插一次
+  try {
+    if (doc.getElementById?.(AVATAR_STYLE_ID)) return
+    const style = doc.createElement?.('style')
+    if (!style) return
+    style.id = AVATAR_STYLE_ID
+    style.textContent =
+      '/* 有悬浮形象时收起独立入口（宿主写的最后一道闸） */\n' +
+      `html[${AVATAR_ATTR}="1"] ${FLOATING_ENTRY_IDS.map((id) => `#${id}`).join(',\n' + `html[${AVATAR_ATTR}="1"] `)} {\n  display: none !important;\n}\n`
+    doc.head?.appendChild?.(style)
+  } catch {
+    /* 插不进去就算了，JS 那层还在 */
+  }
+}
+
+/**
+ * 开始跟着房间表变化维护上面那个属性：订阅 + 每秒兜底一次。
+ *
+ * 每秒一次不是因为慢，是因为**住客可能在任意时刻挂载/卸载**（形象是别的包），
+ * 订阅能覆盖"我们自己的注册表变化"，但形象若是被重挂后没走注册表，就只有轮询能兜住。
+ */
+export function startAvatarEntryGate(scope?: { document?: unknown }): () => void {
+  syncAvatarEntryGate(scope)
+  const off = onRoomsChange(() => syncAvatarEntryGate(scope))
+  try {
+    entryGateOff = off
+    entryGateTimer = setInterval(() => syncAvatarEntryGate(scope), 1000)
+  } catch {
+    /* 没有定时器就只靠订阅 */
+  }
+  return () => {
+    try {
+      off()
+    } catch {
+      /* 清理不许抛 */
+    }
+    try {
+      if (entryGateTimer !== undefined) clearInterval(entryGateTimer)
+      entryGateTimer = undefined
+    } catch {
+      /* 清理不许抛 */
+    }
+    entryGateOff = undefined
+  }
+}
+
 /** 仅供测试：清空注册表（模拟"插件卸载后重来"）。 */
 export function resetRooms(): void {
   entries.clear()

@@ -25,7 +25,7 @@ import { findCreateElement, mountPill } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
 import { mountDafeiyuSettings } from './dafeiyu-page.js'
-import { installRoomHost, listRooms } from './rooms.js'
+import { installRoomHost, listRooms, startAvatarEntryGate } from './rooms.js'
 // 识图那一半（鲸鱼按钮 + 当前会话注入）与小云雀快捷面板 2026-11-16 随独立包
 // `dsh-vision-dafeiyu` 走了：那颗 FAB、那个快捷面板连同它们的路由都由那个包自己挂。
 import { mountSubagentMonitor } from './subagent-panel.js'
@@ -77,6 +77,13 @@ export function apply(ctx: ClientContext): (() => void) | void {
     installRoomHost()
   } catch (error) {
     swallow('房间注册表挂载失败（已吞掉）', error)
+  }
+  // 有形象时收起独立入口：html 属性 + 全局 CSS（JS 设的 hidden 会被重建翻回去）
+  let stopEntryGate: (() => void) | undefined
+  try {
+    stopEntryGate = startAvatarEntryGate()
+  } catch (error) {
+    swallow('入口开关挂载失败（已吞掉）', error)
   }
 
   // ① 会话里那颗 pill（`conversation.composer.dock`，需要会话才渲染）。
@@ -276,6 +283,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
   })
 
   return () => {
+    try {
+      stopEntryGate?.()
+    } catch {
+      /* 卸载动作不许拖住卸载 */
+    }
     try {
       // 菜单动作桥：不摘掉的话，插件的 client 被卸载后事件还会打到一个死函数上。
       if (canListen) window.removeEventListener('dafeiyu:action', onAvatarMenuAction)
