@@ -25,6 +25,7 @@ import { buildVisionPanel } from './vision-panel.js'
 import { buildMemoryPanel } from './memory-panel.js'
 import { buildSubagentsPanel } from './subagents-settings.js'
 import { buildXyqPanel } from './xyq-panel.js'
+import { buildExtensionsPanel } from './extensions-panel.js'
 import { listRooms, onRoomsChange, type DafeiyuRoom } from './rooms.js'
 
 /** 三个分栏的 id。 */
@@ -78,6 +79,8 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks })
   // 小云雀（CLI 生图/生视频）：Key、预算、自由度。
   const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks })
+  // 扩展列表（2026-11-16）：「远程控制」分栏里、配对码那块**下面**。
+  const extensionsPanel = buildExtensionsPanel({ createElement, hooks: reactHooks })
 
   let cleanupRemote: (() => void) | undefined
   const attach = (node: unknown): void => {
@@ -190,7 +193,17 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     })
     let body: unknown = null
     if (activeTab === DAFEIYU_TAB_REMOTE) {
-      body = createElement('div', { ref: attach })
+      /*
+       * 远控那一整页（含配对码）由 `buildSettingsSection` 灌进第一个容器；扩展列表挂在它
+       * **下面**——配对码在上、扩展在下，顺序在这里就定死了，别在别处再挪。
+       * 宿主没给 hooks 时（`extensionsPanel` 为 undefined）就只渲染老那一页，页面上不多出空白块。
+       */
+      const remoteChildren: unknown[] = [createElement('div', { ref: attach })]
+      if (extensionsPanel) remoteChildren.push(createElement(extensionsPanel, {}))
+      body = createElement('div', {
+        style: { display: 'flex', flexDirection: 'column', gap: '12px' },
+        children: remoteChildren,
+      })
     } else if (activeTab === DAFEIYU_TAB_XYQ) {
       body = xyqPanel
         ? createElement(xyqPanel, {})

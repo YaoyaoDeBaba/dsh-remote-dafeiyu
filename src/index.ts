@@ -63,6 +63,9 @@ import { startHandoff, type HandoffHandle } from './handoff/start.js'
 import { startSprite, type SpriteHandle } from './sprite/start.js'
 // 小云雀（CLI 工具）：生图/生视频/余额，设置页一栏。
 import { startXyq, type XyqHandle } from './xyq/start.js'
+// 扩展列表（2026-11-16）：设置页「远程控制」里那半张表，装/启用/禁用/卸载**白名单**里的扩展。
+import { startExtensions, type ExtensionsHandle } from './extensions/start.js'
+import { resolveProfileDir } from './extensions/service.js'
 // 虚拟形象的「浏览器面」（三条只读路由 + 悬浮小窗）2026-11-16 搬去独立包
 // `dsh-avatar-dafeiyu`；本体只留素材契约（`platform/avatar-manifest.ts`）与手机协议那两条命令。
 // 记忆库（0.9.0）：人设的「长期记忆」段 + 设置页记忆面板 + 三个工具。
@@ -1593,6 +1596,27 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
+  /**
+   * 扩展列表（2026-11-16）：设置页「远程控制」里那半张表。
+   *
+   * 改的是 **profile 的 package.json**（`dependencies` + `dsh.profile.bundles`），所以它是
+   * 整个插件里唯一会写用户 profile 的地方——因此：白名单在 `extensions/registry.ts` 里钉死、
+   * 落盘走"备份 + 原子写 + 写后校验 + 失败回滚"、`pnpm install` 只由用户点按钮触发。
+   * 起不来就只是"少那张表"，远控/识图/记忆一行都不受影响。
+   */
+  let extensionsHandle: ExtensionsHandle | undefined
+  try {
+    extensionsHandle = startExtensions(ctx as never, {
+      profileDir: resolveProfileDir(process.env, resolveDshHome(process.env)),
+      log,
+    })
+  } catch (error) {
+    extensionsHandle = undefined
+    log('扩展列表起不来（远控/其它功能不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+
   let visionHandle: VisionHandle | undefined
   try {
     visionHandle = startVision(ctx as never, { dshHome, log })
@@ -1694,6 +1718,12 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         xyqHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      // 扩展列表只是两条路由（没有定时器/子进程），但它注册了路由，同样要注销。
+      try {
+        extensionsHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }
