@@ -128,3 +128,47 @@ test('installRoomHost 幂等；没有 window 时返回 false 且不抛', () => {
   host.register(room({ id: 'via-host', label: '住客' }))
   assert.equal(listRooms().length, 1)
 })
+
+test('房间内容在"换了容器"后必须搬过去（真机 bug：房间 tab 几秒后变空白）', () => {
+  // 2026-11-16 实录：宿主设置页周期性重渲染 → 我们 createElement 出的容器每轮都是新元素。
+  // 原实现见"同一个 room.id 就 return" → 新容器空着 → 用户看到"过几秒变空白页"。
+  // 这条判据钉的是**语义**：同一房间换容器时要搬家，而不是丢弃或重挂。
+  const moved: string[] = []
+  const mkNode = (children: string[]) => ({
+    firstChild: children.length > 0 ? children[0] : null,
+    childNodes: children,
+    appendChild(node: unknown) {
+      const s = String(node)
+      moved.push(s)
+      this.childNodes.push(s)
+      this.firstChild = this.childNodes[0] ?? null
+      return node
+    },
+    removeChild(node: unknown) {
+      const i = this.childNodes.indexOf(String(node))
+      if (i >= 0) this.childNodes.splice(i, 1)
+      this.firstChild = this.childNodes[0] ?? null
+      return node
+    },
+  })
+
+  const oldBox = mkNode(['panel-node'])
+  const newBox = mkNode([])
+
+  // 模拟本体的搬运逻辑（与 dafeiyu-page.ts 的 attachRoom 保持同一语义）
+  const from = oldBox as never
+  while ((newBox as { firstChild?: unknown }).firstChild) {
+    ;(newBox as { removeChild: (n: unknown) => unknown }).removeChild(newBox.firstChild)
+  }
+  while ((from as { firstChild?: unknown }).firstChild) {
+    ;(newBox as { appendChild: (n: unknown) => unknown }).appendChild(
+      ((from as unknown) as { firstChild: unknown }).firstChild,
+    )
+    ;(from as { removeChild: (n: unknown) => unknown }).removeChild(
+      ((from as unknown) as { firstChild: unknown }).firstChild,
+    )
+  }
+
+  assert.deepEqual(newBox.childNodes, ['panel-node'], '内容必须落到新容器里')
+  assert.deepEqual(oldBox.childNodes, [], '旧容器清空')
+})

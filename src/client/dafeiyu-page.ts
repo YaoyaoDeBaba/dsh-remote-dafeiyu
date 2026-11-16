@@ -151,7 +151,7 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
    *   ② 住客 `mount` 抛错只影响它自己那一栏，页面其余照常；
    *   ③ 整个设置页卸载时也拆掉（`ref` 收到 null 就是这条路）。
    */
-  let currentRoom: { id: string; dispose?: () => void } | undefined
+  let currentRoom: { id: string; node?: HTMLElement; dispose?: () => void } | undefined
   const disposeRoom = (): void => {
     const room = currentRoom
     currentRoom = undefined
@@ -168,16 +168,35 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   }
   const attachRoom = (room: DafeiyuRoom) => (node: unknown): void => {
     const element = node as HTMLElement | null
+    /*
+     * ⚠️ 三个"空白"教训（2026-11-16 真机报：房间 tab 点开有内容，几秒后变空白，再点又有）：
+     *
+     * 宿主设置页会**周期性重渲染**，我们的 `createElement('div', {ref})` 每轮都是一个新容器元素。
+     * 而下面这段原来写的是「同一个 room.id 就直接 return」——于是新容器里**谁也没放东西**，
+     * 用户看到的就是"过几秒变成空白页"。
+     *
+     * 但**也不能重挂**：重挂会 `dispose()` 掉上一次的 mount，序列帧那个 iframe 会整页重载、
+     * 动画类房间会从头开始播——用户看到的是"闪一下"。
+     *
+     * 正确做法：同一房间换了容器 → 把子节点**搬过去**，mount 一次都不重来。
+     */
     if (!element || typeof element.appendChild !== 'function') {
-      if (currentRoom?.id === room.id) disposeRoom()
+      // null = 撤回旧 ref。**不在这里拆**：重渲染会先 null 再给新节点，
+      // 提前拆等于每轮都重挂。真正的拆除点是「切 tab」「房间被注销」「页面卸载」。
       return
     }
-    if (currentRoom?.id !== room.id) {
-      disposeRoom()
-      currentRoom = { id: room.id }
-    } else {
+    if (currentRoom?.id === room.id) {
+      if (currentRoom.node === element) return
+      const from = currentRoom.node
+      if (from && from !== element) {
+        while (element.firstChild) element.removeChild(element.firstChild)
+        while (from.firstChild) element.appendChild(from.firstChild)
+      }
+      currentRoom.node = element
       return
     }
+    disposeRoom()
+    currentRoom = { id: room.id, node: element }
     try {
       const cleanup = room.mount(element)
       if (currentRoom) currentRoom.dispose = typeof cleanup === 'function' ? cleanup : undefined
