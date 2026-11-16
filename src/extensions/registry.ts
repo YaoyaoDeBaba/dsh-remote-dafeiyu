@@ -61,6 +61,22 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin',
     commit: '7744f957562fcc97fe6fa3279c862e82c4d9b06d',
   },
+  {
+    id: 'vision',
+    packageName: 'dsh-vision-dafeiyu',
+    label: '肥鱼识图 / 小云雀',
+    description: '识图（外挂视觉模型）与小云雀（生图/生视频 CLI）：两个设置分栏 + 悬浮快捷入口。',
+    gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-vision',
+    commit: 'ae45df22ec59d3e1fc2e9233807c41683e35335c',
+  },
+  {
+    id: 'dev-kit',
+    packageName: 'dsh-dev-kit-dafeiyu',
+    label: '序列帧工具',
+    description: '序列帧精灵图生成器：20 个 sprite_* 工具、工具页与配套 skill。',
+    gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-dev-kit',
+    commit: 'baf4e526ff4072bf52fc95111e50401ea726e966',
+  },
 ]
 
 /** 按 id 找白名单条目；找不到就是 undefined（调用方负责拒）。 */

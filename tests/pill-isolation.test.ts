@@ -307,7 +307,9 @@ test('缺 webServer：provide 照常、一个命令都没注册，路由一次�
   try {
     const state = await without.waitForCarrier()
     assert.equal(without.commandCount, 0, '/drc 整条已删，命令注册这条路不该再被碰')
-    assert.deepEqual(without.providedKeys, ['dafeiyuVision', 'dshRemoteControl', 'dafeiyuMemory'], 'provide 必须照常发生（识图 + 远控句柄 + 记忆）')
+    // 2026-11-16：`dafeiyuVision` 那个服务名随 `dsh-vision-dafeiyu` 迁出（原来由
+    // `startVision` provide），本包剩下的两个 provide 必须照常——它们与识图无关。
+    assert.deepEqual(without.providedKeys, ['dshRemoteControl', 'dafeiyuMemory'], 'provide 必须照常发生（远控句柄 + 记忆）')
     assert.equal(without.registerCalls.length, 0, '没有 webServer 就不该有人去挂路由')
     // 这条是"配不了对"的排查入口：probe 必须说清是没探到，而不是沉默。
     assert.equal((state.pill as Record<string, string>).webServer, 'none')
@@ -340,14 +342,17 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     const state = await late.waitForCarrier()
     assert.equal((state.pill as Record<string, string>).webServer, 'via inject')
     assert.equal((state.pill as Record<string, string>).routes, 'registered', '七条配对路由补挂上了')
-    assert.equal(late.registerCalls.length, 30, '三十条一起挂（子代理 5 + 转生/分身 3 + 小云雀 8 + 识图 3 + 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 2；形象那 3 条 2026-11-16 随 dsh-avatar-dafeiyu 拆包搬走）')
+    // 30 → 19（2026-11-16）：识图 3 条 + 小云雀 8 条随 `dsh-vision-dafeiyu` 迁出，
+    // 由那个包在它自己的 ctx 上挂。本仓剩下的域一条不少：子代理 5 + 转生/分身 3 +
+    // 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 2 = 19。
+    assert.equal(late.registerCalls.length, 19, '十九条一起挂（子代理 5 + 转生/分身 3 + 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 2；形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包搬走）')
     assert.equal(
       pillProblem(state),
       undefined,
       `routes 已 registered 却还报 warn:pill = 启动快照的假警报：${JSON.stringify(state.problems)}`,
     )
     late.dispose()
-    assert.equal(late.unregistered(), 30, '晚到挂上的路由（含子代理/转生分身/小云雀/识图/记忆/扩展列表），停机时同样要注销干净')
+    assert.equal(late.unregistered(), 19, '晚到挂上的路由（子代理/转生分身/记忆/扩展列表/配对），停机时同样要注销干净')
   } finally {
     late.dispose()
   }
@@ -427,7 +432,9 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     // 而表现是"重载一次之后那颗 pill 再也不出现"。这里在断言之后 dispose，两个 finally
     // 里的 dispose 是同一次（helper 内部有 once 守卫）。
     withWeb.dispose()
-    assert.equal(withWeb.unregistered(), 30, '八条配对路由 + 三条识图 + 五条子代理 + 三条转生/分身 + 八条小云雀 + 一条记忆 + 两条扩展列表都要注销（形象那三条已随 dsh-avatar-dafeiyu 拆包）')
+    // 30 → 19（2026-11-16）：识图 3 条 + 小云雀 8 条随 `dsh-vision-dafeiyu` 迁出；
+    // 本仓这 19 条一条都不能漏注销（漏了换宿主就撞"路由名已占用"，表现是 pill 再也不出现）。
+    assert.equal(withWeb.unregistered(), 19, '八条配对路由 + 五条子代理 + 三条转生/分身 + 一条记忆 + 两条扩展列表都要注销（形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包）')
   } finally {
     without.dispose()
     withWeb.dispose()
@@ -465,7 +472,10 @@ test('register() 抛错（路由名被占）：只废掉界面那一半，命令
       String((state.pill as Record<string, string>).routes ?? '').startsWith('register threw'),
       '路由注册抛错必须在 probe 里留痕，不然排查时会以为是"没有码"：' + JSON.stringify(state.pill),
     )
-    assert.equal(hostile.registerCalls.length, 7, '子代理 / 转生分身 / 小云雀 / 扩展列表 / 识图 / pill / 记忆 各自的第一条都抛了就停手（形象那个域已拆包）')
+    // 7 → 5（2026-11-16）：小云雀与识图两个订阅者随 `dsh-vision-dafeiyu` 迁出——
+    // 它们在本仓的 ctx 上不再挂任何路由，自然也不会"各自的第一条抛"。
+    // 剩下五个域各抛一次就停手：子代理 / 转生分身 / 扩展列表 / pill / 记忆。
+    assert.equal(hostile.registerCalls.length, 5, '子代理 / 转生分身 / 扩展列表 / pill / 记忆 各自的第一条都抛了就停手（形象、识图、小云雀三个域已拆包）')
     assert.ok(pillProblem(state), '挂不上 = 没有配对入口，这条 warn 必须在')
   } finally {
     hostile.dispose()
@@ -477,7 +487,8 @@ test('挂到第三条就抛：只有前两条挂上了，available 仍是 false�
   const partial = boot({ registerThrowsFrom: 2 })
   try {
     const state = await partial.waitForCarrier()
-    assert.equal(partial.registerCalls.length, 9, '子代理前 2 条挂上、第 3 条就抛，转生/分身、小云雀、扩展列表、识图/pill/记忆各第 1 条也抛：共 9 次（形象那个域已拆包）')
+    // 9 → 7（2026-11-16）：同上，小云雀与识图那两个订阅者不在本仓了。
+    assert.equal(partial.registerCalls.length, 7, '子代理前 2 条挂上、第 3 条就抛，转生/分身、扩展列表、pill、记忆各第 1 条也抛：共 7 次（形象、识图、小云雀三个域已拆包）')
     assert.equal((state.pill as Record<string, string>).routes, 'register threw: 这条路径宿主不给挂')
     assert.ok(pillProblem(state), '只要有一条没挂上，pill 就点不开，必须报')
     partial.dispose()

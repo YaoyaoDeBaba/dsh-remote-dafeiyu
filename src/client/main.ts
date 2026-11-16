@@ -26,10 +26,9 @@ import { resolveHostUrl } from './host-url.js'
 import { mountSettingsSection } from './settings.js'
 import { mountDafeiyuSettings } from './dafeiyu-page.js'
 import { installRoomHost } from './rooms.js'
-// 识图那一半（0.9.0）：聊天页鲸鱼按钮 + 当前会话注入。
-import { mountVisionFab } from './vision-panel.js'
+// 识图那一半（鲸鱼按钮 + 当前会话注入）与小云雀快捷面板 2026-11-16 随独立包
+// `dsh-vision-dafeiyu` 走了：那颗 FAB、那个快捷面板连同它们的路由都由那个包自己挂。
 import { mountSubagentMonitor } from './subagent-panel.js'
-import { mountXyqQuick } from './xyq-quick.js'
 import { mountHandoffPanel } from './handoff-panel.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
@@ -131,31 +130,17 @@ export function apply(ctx: ClientContext): (() => void) | void {
     warnPersona(`人设客户端未就绪（${personaLoadNote}：退回两张卡，或只剩远控一卡）`)
   }
 
-  // 识图那颗鲸鱼按钮（0.9.0）：先探当前会话注入通道，探不到也挂——只是退化成"复制结果"。
-  let visionCleanup: (() => void) | undefined
-  let openVision: (() => void) | undefined
-  let xyqQuick: ReturnType<typeof mountXyqQuick> | undefined
-  try {
-    visionCleanup = mountVisionFab({
-    injectText: resolveSessionInject(ctx),
-    // 形象小窗的菜单（现属独立包）通过事件回调这里；`expose` 让本体拿得到 open。
-    expose: (api) => {
-      openVision = api.open
-    },
-  })
-  } catch (error) {
-    swallow('识图按钮挂载抛错（已吞掉）', error)
-  }
+  /*
+   * 识图鲸鱼按钮与小云雀快捷面板 2026-11-16 搬去 `dsh-vision-dafeiyu`：
+   * 它们各自的挂载点、请求、卸载都在那个包里，本体这边**没有句柄可留**。
+   * 下面的事件桥仍然认 `vision` / `xyq` 两个 id（形象包的菜单还会派发它们），
+   * 但本体的动作已经撤了——不做任何事比抛错好（分支里是空转，见 `onAvatarMenuAction`）。
+   */
 
   // ②b 子代理监视器（2026-11-09）：当前对话有子代理时，右侧出现一颗小图标。
   let subagentsCleanup: (() => void) | undefined
   let openSubagents: (() => void) | undefined
   let handoffPanel: ReturnType<typeof mountHandoffPanel> | undefined
-  try {
-    xyqQuick = mountXyqQuick()
-  } catch (error) {
-    swallow('小云雀快捷面板挂载抛错（已吞掉）', error)
-  }
   try {
     subagentsCleanup = mountSubagentMonitor({
       getCurrentSession: resolveCurrentSession(ctx),
@@ -178,22 +163,30 @@ export function apply(ctx: ClientContext): (() => void) | void {
    * 菜单动作桥（2026-11-16，形象拆包之后）。
    *
    * 那颗右键菜单在**形象小窗上**，而小窗已搬去独立插件 `dsh-avatar-dafeiyu`；
-   * 但菜单里的动作（识图/派活助手/转生/分身/小云雀/序列帧页）全是**本体的能力**。
+   * 但菜单里剩下的动作（派活助手/转生/分身/序列帧页）还归本体。
    * 跨包不能 import，所以只共享**一个事件名**：形象包派发 `dafeiyu:action`，
    * 本体在这里分发。这样菜单只有一份（跟着形象走），能力也各归各。
    *
    * `detail.id` 取值：`vision` / `subagents` / `rebirth` / `branch` / `xyq` / `sprite`。
+   *
+   * ⚠️ 2026-11-16 之后 **`vision` 与 `xyq` 是空转**：那两个功能（识图鲸鱼按钮、
+   * 小云雀快捷面板）随 `dsh-vision-dafeiyu` 走了，挂着的是**那个包自己的**菜单处理器。
+   * 这里保留分支（而不是让它们落进 catch/抛错）是刻意的：形象包的菜单仍然会派发这两个 id，
+   * 老菜单碰上只有新本体的组合时，"什么都不发生"必须比"控制台一行 error"更好——
+   * 反过来说，也只有这样才不用逼形象包跟着改菜单。
    */
   const onAvatarMenuAction = (event: Event): void => {
     const id = (event as CustomEvent<{ id?: unknown }>).detail?.id
     if (typeof id !== 'string' || id === '') return
     try {
-      if (id === 'vision') openVision?.()
-      else if (id === 'subagents') openSubagents?.()
+      // `vision` / `xyq`：动作已随包走，本体这边**有意空转**（见上面那段）。
+      if (id === 'vision' || id === 'xyq') return
+      if (id === 'subagents') openSubagents?.()
       else if (id === 'rebirth') handoffPanel?.open('rebirth')
       else if (id === 'branch') handoffPanel?.open('branch')
-      else if (id === 'xyq') xyqQuick?.open()
       else if (id === 'sprite') {
+        // 序列帧工具页现在由 `dsh-dev-kit-dafeiyu` 托管（路由还是这条），跳转动作留在本体：
+        // 这样菜单的 id 不比别的东西更依赖"装了哪个包"。
         ;(globalThis as { open?: (url: string, target?: string) => unknown }).open?.(
           resolveHostUrl('/plugins/dafeiyu-sprite/'),
           '_blank',
@@ -293,16 +286,6 @@ export function apply(ctx: ClientContext): (() => void) | void {
       /* 卸载动作不许拖住卸载 */
     }
     try {
-      xyqQuick?.dispose()
-    } catch {
-      /* xyq quick dispose must not throw */
-    }
-    try {
-      visionCleanup?.()
-    } catch {
-      /* 卸载动作不许拖住卸载 */
-    }
-    try {
       handoffPanel?.destroy()
     } catch {
       /* 卸载动作不许拖住卸载 */
@@ -310,54 +293,15 @@ export function apply(ctx: ClientContext): (() => void) | void {
   }
 }
 
-/**
- * 当前会话注入通道（0.9.0）。与 `dsh-vision` 同款：`sessions.list.getSnapshot().current` +
- * `sessions.binding(id).session.prompt([{type:'text',text}], 'queue')`。
- *
- * 软探测：这一代宿主可能没把 `sessions` 当服务给（客户端 apply 跑在会话服务之前），
- * 探不到就返回 undefined，鲸鱼按钮退化成「显示识别结果 + 复制」。
+/*
+ * 曾经这里还有一个 `resolveSessionInject`（把识图结果塞进当前会话的通道，0.9.0）。
+ * 2026-11-16 它随识图那一半搬去 `dsh-vision-dafeiyu` 了：注入是那颗鲸鱼按钮的一部分，
+ * 留在这里就是一段永远不会被调用的死代码（而它会拖着一份 `sessions` 软探测进产物）。
  */
-function resolveSessionInject(ctx: ClientContext): ((text: string) => Promise<boolean>) | undefined {
-  let sessions: unknown
-  try {
-    sessions = (ctx as { sessions?: unknown }).sessions
-  } catch {
-    sessions = undefined
-  }
-  if (!sessions) {
-    try {
-      sessions = ctx.get?.('sessions', true)
-    } catch {
-      sessions = undefined
-    }
-  }
-  const value = sessions as
-    | {
-        list?: { getSnapshot?: () => { current?: unknown } }
-        binding?: (id: unknown) => { session?: { prompt?: (parts: unknown[], mode?: string) => unknown } } | undefined
-      }
-    | undefined
-  if (!value || typeof value.list?.getSnapshot !== 'function' || typeof value.binding !== 'function') {
-    return undefined
-  }
-  return async (text: string): Promise<boolean> => {
-    try {
-      const current = value.list?.getSnapshot?.()?.current
-      if (current === undefined || current === null) return false
-      const binding = value.binding?.(current)
-      const prompt = binding?.session?.prompt
-      if (typeof prompt !== 'function') return false
-      await prompt.call(binding?.session, [{ type: 'text', text }], 'queue')
-      return true
-    } catch {
-      return false
-    }
-  }
-}
 
 /**
- * 当前选中的会话 id（子代理监视器用）。与 `resolveSessionInject` 同一条软探测：
- * 服务晚到时返回 undefined，监视器就保持隐藏——不会因为拿不到会话把页面搞坏。
+ * 当前选中的会话 id（子代理监视器用）。软探测：服务晚到时返回 undefined，
+ * 监视器就保持隐藏——不会因为拿不到会话把页面搞坏。
  */
 function resolveCurrentSession(ctx: ClientContext): () => string | undefined {
   /**

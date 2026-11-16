@@ -25,8 +25,7 @@ import { SUBAGENT_GUIDANCE, subagentGuidance } from './guidance.js'
 import { createGuidancePusher, type GuidancePushResult } from './pusher.js'
 import { resetSubagentBusGate, setSubagentBusGate, subagentBus } from './bus.js'
 import { buildSubagentTools } from './tools.js'
-import { readXyqConfig, resolveXyqConfigFile } from '../xyq/config.js'
-import { xyqGuidance } from '../xyq/guidance.js'
+import { readXyqFreedom, resolveXyqConfigFile, xyqGuidance } from './xyq-guidance.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -81,7 +80,8 @@ export function startSubagents(
       return subagentGuidance(config.mode)
     },
     get xyq(): string {
-      return xyqGuidance(readXyqConfig(xyqConfigFile).freedom)
+      // 只读那份配置里的 `freedom` 一格（文件由 `dsh-vision-dafeiyu` 写）。
+      return xyqGuidance(readXyqFreedom(xyqConfigFile))
     },
   }
   const deps: SubagentRouteDeps = {

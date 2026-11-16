@@ -5,10 +5,11 @@
  * 或者 bundle 里某段初始化在 ESM/CJS 混载时炸掉。这里用**真的 dist bundle**、假的宿主服务
  * （webServer / systemPrompt / tools / provide / effect）跑一遍 `apply()`，钉住：
  *
- * 1. 识图 3 条路由 + 记忆 1 条路由都挂上；
+ * 1. 记忆 1 条路由挂上了（识图那 3 条 2026-11-16 随 `dsh-vision-dafeiyu` 走了，
+ *    所以这里同时反过来钉"本包**不再**注册它们"）；
  * 2. `dafeiyu:persona` / `dafeiyu:memory-hint` / `dafeiyu:memory` 三个段落都在，顺序对；
- * 3. `recognize_image` + 三个记忆工具都注册了；
- * 4. `dshRemoteControl` / `dafeiyuVision` / `dafeiyuMemory` 都 provide 了。
+ * 3. 三个记忆工具都注册了（`recognize_image` 也随包走了）；
+ * 4. `dshRemoteControl` / `dafeiyuMemory` 都 provide 了（`dafeiyuVision` 随包走）。
  *
  * 跑法：先 `node node_modules/typescript/bin/tsc -p tsconfig.json && node scripts/bundle-plugin.mjs`，
  * 再 `node --test "dist/tests/**\/*.test.js"`（CI 与本地同款）。
@@ -18,19 +19,12 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { pathToFileURL } from 'node:url'
-import { DEFAULT_VISION_CONFIG } from '../src/vision/config.js'
-import { createVisionService, writeVisionConfig } from '../src/vision/service.js'
 
 test('成品 bundle：路由 / 段落 / 工具 / provide 在宿主形状的 ctx 上全部挂齐', async () => {
   const home = mkdtempSync(path.join(tmpdir(), 'dafeiyu-bundle-smoke-'))
   const previousHome = process.env.DSH_HOME
   process.env.DSH_HOME = home
   try {
-    // 先把识图配置打开（默认是关的，关着就不注册工具/提示段——这是设计）
-    const vision = createVisionService(home)
-    assert.equal(writeVisionConfig(vision.configFile, { ...DEFAULT_VISION_CONFIG, enabled: true, apiKey: 'sk-smoke' }), true)
-
     const bundleFile = new URL('../bundle/index.js', import.meta.url)
     const mod = (await import(bundleFile.href)) as { apply?: (ctx: unknown, injected?: Record<string, unknown>) => void }
     assert.equal(typeof mod.apply, 'function', 'bundle 必须导出 apply')
@@ -87,13 +81,18 @@ test('成品 bundle：路由 / 段落 / 工具 / provide 在宿主形状的 ctx 
       enabled: true,
     })
 
-    for (const route of [
-      '/api/dsh-remote-dafeiyu/vision/config',
-      '/api/dsh-remote-dafeiyu/vision/recognize',
-      '/api/dsh-remote-dafeiyu/vision/models',
-      '/api/dsh-remote-dafeiyu/memory',
-    ]) {
-      assert.ok(routes.includes(route), `缺路由 ${route}（现有：${routes.join(', ')}）`)
+    // 记忆那条路由必须挂上。
+    assert.ok(routes.includes('/api/dsh-remote-dafeiyu/memory'), `缺路由 /api/dsh-remote-dafeiyu/memory（现有：${routes.join(', ')}）`)
+    /*
+     * 反向保险（2026-11-16 新增）：识图那三条、小云雀那七条**都不该**再出现在本包的成品里。
+     * 它们随 `dsh-vision-dafeiyu` 走了——那边装不上时当然什么都没有，但本包**注册了**它们
+     * 才是缺陷（两条同路径的 exact 路由会互相抢，先注册的那条拿到请求）。
+     */
+    for (const prefix of ['/api/dsh-remote-dafeiyu/vision', '/api/dsh-remote-dafeiyu/xyq']) {
+      assert.ok(
+        !routes.some((route) => route.startsWith(prefix)),
+        `${prefix}/* 已随 dsh-vision-dafeiyu 迁出，本包不该再注册（现有：${routes.join(', ')}）`,
+      )
     }
 
     const sectionNames = sections.map((item) => item.name).join(', ')
@@ -101,19 +100,31 @@ test('成品 bundle：路由 / 段落 / 工具 / provide 在宿主形状的 ctx 
     assert.ok(section('dafeiyu:persona'), '人设主段落要挂上')
     assert.ok(section('dafeiyu:memory-hint'), '记忆使用说明段要常驻')
     assert.ok(section('dafeiyu:memory'), '记忆段要挂上')
-    assert.ok(section('dafeiyu:vision'), `识图开着时提示段要挂上（现有段落：${sectionNames}）`)
+    // `dafeiyu:vision` 提示段随识图包走了：本包不该再挂它（原来这里钉"必须挂上"）。
+    assert.equal(section('dafeiyu:vision'), undefined, `识图提示段已随包迁出（现有段落：${sectionNames}）`)
     const hintOrder = section('dafeiyu:memory-hint')?.order ?? -1
     const memoryOrder = section('dafeiyu:memory')?.order ?? -1
     const clockOrder = section('dafeiyu:clock')?.order ?? -1
     assert.ok(hintOrder < memoryOrder && memoryOrder < clockOrder, `段落顺序不对：${hintOrder} / ${memoryOrder} / ${clockOrder}`)
     assert.equal(typeof section('dafeiyu:memory')?.text, 'function', '记忆段必须是动态函数（按会话解析人设）')
 
-    for (const name of ['recognize_image', 'record_memory', 'read_memory', 'forget_memory']) {
+    // 三个记忆工具必须在；`recognize_image` 随包走了（原来它在这个集合里）。
+    for (const name of ['record_memory', 'read_memory', 'forget_memory']) {
       assert.ok(tools.includes(name), `缺工具 ${name}（现有：${tools.join(', ')}）`)
     }
-    for (const name of ['dshRemoteControl', 'dafeiyuVision', 'dafeiyuMemory']) {
+    assert.ok(!tools.includes('recognize_image'), `recognize_image 已随 dsh-vision-dafeiyu 迁出（现有：${tools.join(', ')}）`)
+    // 小云雀那 4 个工具同理。
+    for (const name of ['generate_image', 'generate_video', 'xyq_balance', 'xyq_models']) {
+      assert.ok(!tools.includes(name), `${name} 已随 dsh-vision-dafeiyu 迁出（现有：${tools.join(', ')}）`)
+    }
+    for (const name of ['dshRemoteControl', 'dafeiyuMemory']) {
       assert.ok(provided.includes(name), `缺 provide ${name}（现有：${provided.join(', ')}）`)
     }
+    // `dafeiyuVision` 那个服务名也随包走了（原来由 `startVision` provide）。
+    assert.ok(
+      !provided.includes('dafeiyuVision'),
+      `dafeiyuVision 已随 dsh-vision-dafeiyu 迁出（现有：${provided.join(', ')}）`,
+    )
   } finally {
     if (previousHome === undefined) delete process.env.DSH_HOME
     else process.env.DSH_HOME = previousHome

@@ -41,19 +41,17 @@ const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
 /** 会话备份那张卡那条路由（2026-10-28 加）。同上：字面量，由产物那条判据对齐。 */
 const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 /**
- * 识图那两条路由（2026-11-16 加：设置页「肥鱼识图」栏的状态卡与「试一张」）。
- *
- * 同 `CONFIG_ROUTE` 的处理：**写字面量**（浏览器面不能 import 宿主侧路由表——那支
- * `src/vision/routes.ts` 连着 node:http），再由「识图路由常量没漂」那条判据把两边钉在一起。
- */
-const VISION_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/vision/config'
-const VISION_RECOGNIZE_ROUTE = '/api/dsh-remote-dafeiyu/vision/recognize'
-/**
  * 序列帧工具页（0.55）。
  *
  * 2026-11-16 起它**不再是**「浏览器这一半跳转的目标」：形象小窗（含那颗 🎞 菜单）搬去独立包
  * `dsh-avatar-dafeiyu`，本体浏览器半不再引用这条路径。留下这组判据是为了钉住**宿主侧**
  * 仍然注册着它（工具页、e2e 装置、agent 工具都还靠它）。
+ *
+ * ⚠️ 同日再改一次（三块搬走之后）：**工具页自己**也不再由本体托管——它随
+ * `dsh-dev-kit-dafeiyu` 走了。所以"宿主侧注册了它"这条判据没了（`src/sprite/routes.ts`
+ * 已经不存在），但**跳转动作仍在本体**（`main.ts` 的 `onAvatarMenuAction` 里那个
+ * `id === 'sprite'` 分支），那个字面量仍会打进 client.cjs ⇒ 下面 `/plugins` 白名单里
+ * 它必须留着，否则"产物里出现了一条宿主侧没有的 /plugins 路径"这条会误报。
  */
 const SPRITE_PAGE_ROUTE = '/plugins/dafeiyu-sprite/'
 import {
@@ -69,13 +67,10 @@ import {
 // 设置页「进阶」那一栏那条路由（2026-10-11 加）：常量在 `config-routes.ts`，注册点仍是
 // `registerPillRoutes`。产物里那个字面量必须与它逐字一致（见下面那条反证判据）。
 import { PLUGIN_CONFIG_ROUTE } from '../src/pill/config-routes.js'
-// 识图那两条路由（2026-11-16 加）：「肥鱼识图」栏的状态卡与「试一张」打的就是它们。
-// 这里**从宿主侧 import**（tests 走 tsconfig.json，有 node 类型），只为把浏览器半个字面量
-// 与它钉在一起——浏览器面自己不能 import 这张表（`src/vision/routes.ts` 连着 node:http）。
-import {
-  VISION_CONFIG_ROUTE as HOST_VISION_CONFIG_ROUTE,
-  VISION_RECOGNIZE_ROUTE as HOST_VISION_RECOGNIZE_ROUTE,
-} from '../src/vision/routes.js'
+// 识图/小云雀那几条路由（`/api/dsh-remote-dafeiyu/{vision,xyq}/*`）2026-11-16 起**不在本仓**：
+// 它们随独立包 `dsh-vision-dafeiyu` 走了，宿主侧那张路由表（`src/vision/routes.ts`）与
+// 浏览器半的字面量一起搬走。原来这里把两边的字面量钉在一起，现在改成"产物里不许再出现它们"
+// （见文件末尾那条反向判据）——搬走之后还留着才是缺陷。
 
 /**
  * 清单那一格：`dsh.client.inject` 是**包名**列表（排装载顺序），不是 cordis 服务名。
@@ -280,19 +275,9 @@ interface LoadOptions {
   /** `POST /config` 直接抛。 */
   configWriteThrows?: boolean
   /**
-   * `GET /vision/config` 的回答（2026-11-16 加：设置页「肥鱼识图」栏的状态卡读它）。
-   * 不给就用下面 `DEFAULT_VISION_CONFIG_ANSWER`（一台"配好了、能用"的机器）。
-   */
-  visionConfig?: Record<string, unknown>
-  /** `GET /vision/config` 回非 200（老版宿主没有这条路由时真机就是 404）。 */
-  visionConfigHttp?: number
-  /** `POST /vision/recognize` 的回答文本；回 `null` = 宿主那句中文失败原因（`errorText`）。 */
-  visionRecognizeText?: string | null
-  /** `POST /vision/recognize` 失败时宿主回的中文原因。 */
-  visionRecognizeError?: string
-  /**
-   * 已经领了房门的住客（形象包那种）：在 `apply()` 之后、渲染之前注册进
-   * `window.__dafeiyuRooms`。用来验"住客的房间排在**最后**"（tab 顺序判据）。
+   * 已经领了房门的住客（形象/识图/序列帧包那种）：在 `apply()` 之后、渲染之前注册进
+   * `window.__dafeiyuRooms`。用来验"住客的房间排在**最后**"（tab 顺序判据）与
+   * "本体的写死分栏只有三栏"。
    */
   rooms?: Array<{ id: string; label: string; order?: number }>
 }
@@ -308,37 +293,12 @@ const DEFAULT_CONFIG_ANSWER = {
   userConfigFile: '/home/u/.dsh/dsh-remote-control/user-config.json',
 }
 
-/**
- * `GET /vision/config` 的默认回答（形状照宿主侧的 `toView(config)`，见 `src/vision/config.ts:68-81`）。
- *
- * ⚠️ **故意不含** `lastCallAt` / `lastOk` / `lastError` 这几个字段：宿主现在根本没有
- * "最近一次调用"这一组数据（`service.recognize()` 不落调用记录）。判据正是靠这一点
- * 钉住"没有记录就不许画那一行"。
- */
-const DEFAULT_VISION_CONFIG_ANSWER = {
-  enabled: true,
-  apiBase: 'https://vision.example.com/v1',
-  model: 'deepseek-vl',
-  protocol: 'auto',
-  prompt: '详细描述画面内容，并把图里的文字逐字转录出来',
-  timeoutMs: 60_000,
-  requestTemplate: '',
-  responsePath: '',
-  apiKeySet: true,
-  apiKeyHint: 'sk-…abcd',
-}
-
 interface Harness {
   module: ClientModule
   /** fetch 收到的 URL。 */
   requests: string[]
   /** `POST /config` 的 body（解析过的）——"只提交改动过的那一项"那条判据读它。 */
   configWrites: Array<Record<string, unknown>>
-  /**
-   * `POST /vision/recognize` 的 body（解析过的，2026-11-16 加）。
-   * 「识图试一张」那条判据读它：`imageBase64` 与 `mime` 必须与选中的文件一致。
-   */
-  recognizeBodies: Array<Record<string, unknown>>
   /** 每条 fetch 收到的 `init.signal`——3 秒硬超时的判据（见 `signals()`）。 */
   signals: unknown[]
   /** 被记下来的 console.error。 */
@@ -582,7 +542,6 @@ const DEFAULT_STATUS = {
 function load(options: LoadOptions = {}): Harness {
   const requests: string[] = []
   const configWrites: Array<Record<string, unknown>> = []
-  const recognizeBodies: Array<Record<string, unknown>> = []
   /**
    * `GET /config` 的回答**可变**：写路由落地之后它要跟着变（真宿主就是这样回我们
    * "现在生效的是什么"）。固定一份的话，"只提交改动项"那条路会自相矛盾
@@ -643,26 +602,8 @@ function load(options: LoadOptions = {}): Harness {
     // 真浏览器有 `AbortSignal.timeout`，pill 拿它做每条请求的 3 秒硬超时。
     // 夹具不给它的话，那条路在 vm 里会静悄悄退回"没有 signal"，判据也就测了个空。
     AbortSignal,
-    /**
-     * `FileReader` 的桩（2026-11-16 加）：识图「试一张」要把本地图读成 base64
-     * （`fileToBase64` 走 `readAsDataURL`）。
-     *
-     * 不给的话 `new FileReader()` 在 vm 里是 ReferenceError ⇒ 那条路只能测到"读不出文件"，
-     * `POST .../vision/recognize` 一次都不会发生 —— 而"能打到那条路由"正是这次要钉的东西
-     * （与下面 `setTimeout` 那条桩同一个理由：不桩就只是把退路测了个空）。
-     *
-     * **同步**回调：沙箱里的 `setTimeout` 是"只记录不触发"的假实现，用真异步的话
-     * `onload` 永远等不到。
-     */
-    FileReader: class FakeFileReader {
-      result: string | null = null
-      onload: (() => void) | null = null
-      onerror: (() => void) | null = null
-      readAsDataURL(file: { type?: string }): void {
-        this.result = `data:${file?.type ?? 'image/png'};base64,AAEC`
-        this.onload?.()
-      }
-    },
+    // `FileReader` 的桩 2026-11-16 删了：识图「试一张」是它唯一的用户，而那一栏随
+    // `dsh-vision-dafeiyu` 走了。留着只会让"这一半到底还用不用 FileReader"变得含糊。
     setInterval: (callback: () => void) => {
       timers.push({ id: timers.length + 1, callback, cleared: false })
       return timers.length
@@ -778,30 +719,9 @@ function load(options: LoadOptions = {}): Harness {
         const readStatus = options.configHttp ?? 200
         return { ok: readStatus === 200, status: readStatus, json: async () => configAnswer }
       }
-      // 识图配置（2026-11-16）：设置页「肥鱼识图」栏的状态卡读它。
-      // ⚠️ 识图那半边走的是 `callJson()`（先 `response.text()` 再 JSON.parse），
-      // 所以这里必须给 `text()`——只给 `json()` 的话面板会静悄悄退到"读取失败"。
-      if (url.startsWith(VISION_CONFIG_ROUTE)) {
-        assert.equal(method, 'GET', '读识图配置只接受 GET')
-        const visionStatus = options.visionConfigHttp ?? 200
-        const answer = visionStatus === 200
-          ? { ok: true, config: { ...DEFAULT_VISION_CONFIG_ANSWER, ...(options.visionConfig ?? {}) } }
-          : { ok: false, error: '宿主没有这条路由' }
-        return { ok: visionStatus === 200, status: visionStatus, text: async () => JSON.stringify(answer) }
-      }
-      // 识图识别（「试一张」那条）。`visionRecognizeText: null` = 演宿主那句中文失败原因。
-      if (url.startsWith(VISION_RECOGNIZE_ROUTE)) {
-        assert.equal(method, 'POST', '识图只接受 POST')
-        recognizeBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
-        const failed = options.visionRecognizeText === null
-        const failedAnswer = { ok: false, error: options.visionRecognizeError ?? '识图未开启：请先在设置页填好接口地址与密钥' }
-        const okAnswer = { ok: true, text: options.visionRecognizeText ?? '图里是一只蓝白色的圆胖鲸鱼。' }
-        return {
-          ok: !failed,
-          status: failed ? 400 : 200,
-          text: async () => JSON.stringify(failed ? failedAnswer : okAnswer),
-        }
-      }
+      // 识图的那两条 fetch 分支（`/vision/config`、`/vision/recognize`）2026-11-16 删了：
+      // 那一栏搬去 `dsh-vision-dafeiyu`，本仓的浏览器半不再往那个前缀发任何请求。
+      // 判据侧的反向保险在文件末尾（"产物里不许出现那条前缀"）。
       assert.equal(method, 'GET', `${url} 不该收到 ${method}`)
       return { ok: true, status: 200, json: async () => ({}) }
     },
@@ -904,7 +824,6 @@ function load(options: LoadOptions = {}): Harness {
     module,
     requests,
     configWrites,
-    recognizeBodies,
     signals,
     errors,
     warnings,
@@ -1031,13 +950,19 @@ test('0.8.0 合页：设置页只有一格、id 是 dafeiyu，渲染出来含各
   // 转生/分身入口与「给 Agent 的调用入口」表，旧名字已经名不副实（设计说明见
   // `dafeiyu-page.ts` 里 `DAFEIYU_TAB_TEAM` 的注释）。内容没有丢，见下面那条按栏判据。
   assert.ok(text.includes('Agent 团队'), '分栏三：Agent 团队')
-  // 2026-11-16 新增：识图从「人设」里抽出来独立成栏（识图是模型配置，不是人设）。
-  assert.ok(text.includes('肥鱼识图'), '分栏四：肥鱼识图')
   // ⚠️ 「形象」自 2026-11-16 起**不在本体**：它搬去 `dsh-avatar-dafeiyu`，
   // 由那个包通过房间协议 `registerRoom({ id:'avatar', label:'形象' })` 领一间房。
   // 所以这里断言的是"**没有形象时**页面上不该出现它"——这正是房间协议要的效果。
   assert.ok(!text.includes('形象'), '没住客时不该有形象分栏（空 tab 是缺陷，不是留白）')
-  assert.ok(text.includes('小云雀'), '分栏五：小云雀（样板里没画它，但它是 0.9.x 就有的设置，没有丢）')
+  /*
+   * 「肥鱼识图」「小云雀」那两栏 2026-11-16 **整块迁出**（`dsh-vision-dafeiyu` 的两个房间，
+   * order 40/50），所以这里从"必须在"翻成"**不该在**"：
+   *   · 在 == 本仓还藏着别人的实现（那时两条同路径的 exact 路由会互相抢，谁先注册谁赢）；
+   *   · 反过来"没装那个包就没有那两栏"是房间协议的设计，不是回归。
+   * 三个住客到齐时它们照样出现——那条判据在上面的「分栏①」（按 order 排）。
+   */
+  assert.ok(!text.includes('肥鱼识图'), '肥鱼识图栏已随 dsh-vision-dafeiyu 迁出，本体不该再造一栏')
+  assert.ok(!text.includes('小云雀'), '小云雀栏已随 dsh-vision-dafeiyu 迁出，本体不该再造一栏')
   assert.equal(harness.errors.length, 0, '合页不是故障，不许有 error')
 })
 
@@ -1817,13 +1742,15 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
     'utf8',
   )
   assert.ok(hostRoutes.includes(PAIR_APPROVE_ROUTE), '宿主侧那条放行路由必须还在：那颗按钮直接打它')
-  // 序列帧工具页：浏览器这一半跳转的那条路径，宿主侧必须真的注册了（否则点菜单就是 404）。
-  assert.ok(
-    readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../src/sprite/routes.ts'), 'utf8').includes(
-      SPRITE_PAGE_ROUTE,
-    ),
-    '宿主侧没注册序列帧工具页路由：点「🎞 序列帧工具」会 404',
-  )
+  /*
+   * 序列帧工具页那条"宿主侧必须注册了它"的判据 2026-11-16 删了（原 `:1822` 读
+   * `src/sprite/routes.ts`）。理由：那个文件随 `dsh-dev-kit-dafeiyu` 走了，本仓读不到，
+   * 而"那条路由还挂着没有"属于**那个包的宿主面**——它的 e2e（工具页 + 20 个工具）会验。
+   *
+   * 本仓还留着的一半是**跳转动作**（`main.ts` 的 `id === 'sprite'` 分支照样 open 这个地址），
+   * 所以下面 `/plugins` 白名单里 `SPRITE_PAGE_ROUTE` 必须留着：产物里确实还有这个字面量。
+   * 换句话说，这条从"两边都钉"降级成"只钉产物这一侧"——不是放宽，是另一半已经不在本仓。
+   */
   // 出现一条宿主侧没有的 /plugins 路径就是两边分叉了。
   // ⚠️ `PAIR_PAGE_ROUTE`（`/pair`）**不在**这个集合里，这是对的：那一页由宿主自己渲染，
   // 浏览器这一半从不请求它。而 `PAIR_MINIPROGRAM_ROUTE` 必须在——设置页那个 `<img>` 的
@@ -1850,6 +1777,9 @@ test('反证：产物里的路由常量与宿主侧定义逐字一致（分叉�
       // 2026-11-16 更正：形象小窗（连同它那颗 🎞 菜单）搬去了独立包 `dsh-avatar-dafeiyu`，
       // 但**「打开序列帧工具页」这个动作留在了本体**——菜单只负责派发 `dafeiyu:action`，
       // 由本体的 `onAvatarMenuAction` 执行跳转。所以这条路径仍然在浏览器半里。
+      // ⚠️ 同日三块搬走之后它**仍是**本仓的字面量（路由现在由 `dsh-dev-kit-dafeiyu` 托管）：
+      // 这条判据钉的是"产物里出现的 /plugins 路径都在这个白名单里"，跳转还在本体，
+      // 所以白名单必须收它——删掉它这条就会红（而且红得有道理）。
       SPRITE_PAGE_ROUTE,
     ].sort(),
   )
@@ -3786,27 +3716,18 @@ test('反向判据：产物里那三态与占位真的在（不是恒绿的字�
   assert.ok(!broken.includes('addEventListener("error"'), '改完之后不该还能找到原写法')
 })
 
-test('大肥鱼合页：有「小云雀」分栏（CLI 生图/生视频的设置入口）', () => {
-  const harness = load({ react: FAKE_REACT as never, slots: true })
-  const section = harness
-    .slotRegisters()
-    .find((row) => row.definition?.name === 'settings.section' && row.definition?.id === 'dafeiyu')
-  assert.ok(section, '必须先注册「大肥鱼」这一格')
-  const root = section.component!() as { type?: unknown; props?: Record<string, unknown> }
-  const tree = (root.type as () => unknown)() as { props?: Record<string, unknown> }
-  function flatten(node: unknown, out: string[]): string[] {
-    if (node === null || node === undefined) return out
-    if (typeof node === 'string') { out.push(node); return out }
-    if (Array.isArray(node)) { for (const child of node) flatten(child, out); return out }
-    if (typeof node === 'object') {
-      const item = node as { props?: Record<string, unknown> }
-      if (item.props?.children !== undefined) flatten(item.props.children, out)
-    }
-    return out
-  }
-  const labels = flatten(tree, [])
-  assert.ok(labels.includes('小云雀'), `分栏必须有「小云雀」，实际：${labels.join(' / ')}`)
-})
+/*
+ * 「大肥鱼合页：有『小云雀』分栏」那条 2026-11-16 删除。
+ *
+ * 它钉的是 `TAB_LABELS` 里那个写死的「小云雀」标签。整块（CLI + 10 条路由 + 面板组件）
+ * 随 `dsh-vision-dafeiyu` 迁出，那个包用 `registerRoom({ id:'xyq', label:'小云雀', order:50 })`
+ * 领房——本仓不再有那个标签，所以判据的对象消失了。
+ *
+ * 这一栏"还在"由两条替代判据承担，而且比原来更强：
+ *   · 「分栏①」：住客 `xyq`（order50）注册进来时必须出现在正确位置（本仓注册表照常工作）；
+ *   · 产物反向判据：`/api/dsh-remote-dafeiyu/xyq` 不许再出现（旧实现没被偷偷留一半）。
+ * ⚠️ 不是放宽：原判据只看"页面上有没有这两个字"，替代品看的是**注册链路确实通**。
+ */
 
 test('大肥鱼合页：有「Agent 团队」分栏（派活助手设置的入口；2026-11-16 由「派活助手」改名）', () => {
   const harness = load({ react: FAKE_REACT as never, slots: true })
@@ -4031,112 +3952,72 @@ function findElement(
   return findElement(props.children, match)
 }
 
-test('分栏①：tab 顺序与数量照样板（远程控制 → 人设 → Agent 团队 → 肥鱼识图 → 小云雀），住客排最后', () => {
-  // 没住客：五栏，且不该有「形象」（空 tab 是缺陷）
+/**
+ * 分栏①（2026-11-16 第二次改）：**本体自带的分栏固定三栏**，其余全是住客的房间。
+ *
+ * ## 为什么断言从五栏缩到三栏（逐条理由）
+ *
+ * 上一版钉的是 `[远程控制, 人设, Agent 团队, 肥鱼识图, 小云雀]`，那两栏当时是本体写死的。
+ * 这一版那两栏的**整个实现**（宿主侧 3+7 条路由、`recognize_image` 工具、两个面板组件）
+ * 都搬去了独立包 `dsh-vision-dafeiyu`，本仓 `TAB_LABELS` 里已经没有它们。
+ * 继续钉五栏 == 要求本仓保留别人的实现，所以断言必须跟着真相走。
+ *
+ * ⚠️ 这不是"放宽"：功能没有消失，消失的是**本仓对它的所有权**。为了不把"搬走"变成
+ * "丢了"，同一张网里补了两条更强的：
+ *   ① 三个住客按 `order` 排在本体三栏**之后**（`vision`/`xyq`/`sprite` 的 order 由
+ *      那两个包定，这里用它们真实的值 40/50/60 演一遍）；
+ *   ② 产物里**不许**再出现 `/api/dsh-remote-dafeiyu/vision` 与 `/xyq` 前缀（文件末尾那条）。
+ */
+test('分栏①：本体自带三栏（远程控制 → 人设 → Agent 团队），住客按 order 排最后', () => {
+  // 没住客：只有本体三栏。空 tab 是缺陷（没装那个包就不该有那一栏）。
   const bare = load({ react: FAKE_REACT as never, slots: true })
   assert.deepEqual(
     dafeiyuTabLabels(bare),
-    ['远程控制', '人设', 'Agent 团队', '肥鱼识图', '小云雀'],
-    '分栏顺序是样板定的：远程控制 → 人设 → Agent 团队 → 肥鱼识图（小云雀在这四栏之后，样板没画它但不能丢）',
+    ['远程控制', '人设', 'Agent 团队'],
+    '本体自带的分栏只有这三栏：远程控制 → 人设 → Agent 团队（肥鱼识图/小云雀/序列帧/形象都由住客注册）',
   )
-  // 有住客（形象包那种）：房间排在**最后**，且栏名字由住客自己定
+  // 有住客：房间排在**本体三栏之后**，栏名字由住客自己定
   const withRoom = load({ react: FAKE_REACT as never, slots: true, rooms: [{ id: 'avatar', label: '形象', order: 10 }] })
   assert.deepEqual(
     dafeiyuTabLabels(withRoom),
-    ['远程控制', '人设', 'Agent 团队', '肥鱼识图', '小云雀', '形象'],
-    '住客的房间必须排在写死的分栏**之后**（本体不许被住客插到中间）',
+    ['远程控制', '人设', 'Agent 团队', '形象'],
+    '住客的房间必须排在本体写死的分栏**之后**（本体不许被住客插到中间）',
+  )
+  // 三个已迁出的包（识图+小云雀同一个包、序列帧另一个包）：order 生效，且都不插队
+  const full = load({
+    react: FAKE_REACT as never,
+    slots: true,
+    rooms: [
+      { id: 'sprite', label: '序列帧', order: 60 },
+      { id: 'vision', label: '肥鱼识图', order: 40 },
+      { id: 'xyq', label: '小云雀', order: 50 },
+    ],
+  })
+  assert.deepEqual(
+    dafeiyuTabLabels(full),
+    ['远程控制', '人设', 'Agent 团队', '肥鱼识图', '小云雀', '序列帧'],
+    '住客之间按 order 升序（vision40 → xyq50 → sprite60），且整组都在本体三栏之后',
   )
 })
 
-/**
- * 把「肥鱼识图」栏渲染出来（两遍：第一遍发出 `/vision/config`，第二遍把读回来的画到屏上）。
+/*
+ * ── 「肥鱼识图」栏那三条判据 2026-11-16 删除（连同 `renderVisionTab` 夹具）──
  *
- * ⚠️ 必须用 `makeStateReact` 而不是 `reactOnTab`：配置块自己有好几个数组态
- * （`models` 之类），常量钩子会让它拿到一个字符串然后 `slice().map` 当场炸。
+ * 删的是：① 栏里有「状态/模型配置/试一张/最近几次」四块；② 状态卡读 `/vision/config`
+ * 并显示"已就绪 / 模型名 / 协议"、宿主没给"最近一次"就不画那行；③ 试一张失败要显示宿主
+ * 那句中文原因。还有它们共用的 `renderVisionTab()`（那个夹具要假 `FileReader`、要 `/vision`
+ * 的两条 fetch 分支）。
+ *
+ * **为什么可以删（逐条）**：
+ *   · 这三条钉的**对象**（`src/client/vision-tab.ts` + `vision-panel.ts` + 宿主侧
+ *     `src/vision/routes.ts`）现在整块在 `dsh-vision-dafeiyu` 包里，本仓一行都不剩；
+ *   · 判据的"功能没丢"由**那个包自己的测试**承担——同一次拆包里它带着自己的 `/vision/*`
+ *     路由与房间一起验证过（本仓再钉就是钉别人的实现，红了只能靠改别人的代码修）；
+ *   · 本仓留下的反向保险是"产物里不许再出现 `/api/dsh-remote-dafeiyu/vision` 前缀"
+ *     （见文件末尾），搬走之后又长回来才算缺陷。
+ *
+ * ⚠️ 这不是"为了快绿而放宽"：没有一条断言被改成更弱的版本，是**对象整体迁出**。
  */
-async function renderVisionTab(
-  options: Partial<LoadOptions> = {},
-): Promise<{ harness: Harness; rendered: unknown; text: string; rerender: () => string }> {
-  const state = makeStateReact('vision')
-  const harness = load({ ...options, react: state.api as never, slots: true })
-  state.reset()
-  renderDeep(dafeiyuBody(harness))
-  await flush()
-  state.reset()
-  const rendered = renderDeep(dafeiyuBody(harness))
-  const rerender = (): string => {
-    state.reset()
-    return treeText(renderDeep(dafeiyuBody(harness)))
-  }
-  return { harness, rendered, text: treeText(rendered), rerender }
-}
-
-test('分栏②：肥鱼识图栏含「试一张」，选一张图真的 POST 到识图识别路由', async () => {
-  const { harness, rendered, text, rerender } = await renderVisionTab()
-  // 四块都在（状态 / 模型配置 / 试一张 / 最近几次）
-  for (const title of ['状态', '模型配置', '试一张', '最近几次']) {
-    assert.ok(text.includes(title), `肥鱼识图栏要有「${title}」这一块，实际：${text.slice(0, 300)}`)
-  }
-  assert.ok(text.includes('复制结果'), '试一张要有「复制结果」（识图结果只显示在这一栏，得能拿走）')
-
-  // 选一张图（夹具的 FileReader 会回 `data:image/png;base64,AAEC`）
-  const input = findElement(rendered, (element) => element.type === 'input' && element.props.type === 'file')
-  assert.ok(input, '试一张必须有选图的 file input（否则用户没地方选图片）')
-  const onChange = input.props.onChange as (event: unknown) => void
-  onChange({ target: { files: [{ name: 'shot.png', type: 'image/png', size: 2048 }] } })
-  await flush()
-
-  const posted = harness.requests.filter((url) => url.includes(VISION_RECOGNIZE_ROUTE))
-  assert.equal(posted.length, 1, `选完图要打一次 ${VISION_RECOGNIZE_ROUTE}，实际请求：${harness.requests.join(' | ')}`)
-  assert.equal(harness.recognizeBodies.length, 1, '识图请求要带 body')
-  const body = harness.recognizeBodies[0]!
-  assert.equal(body.imageBase64, 'AAEC', 'body 里必须是**裸 base64**（不带 data: 前缀，宿主那条路由就是这么收的）')
-  assert.equal(body.mime, 'image/png', 'mime 要跟着文件类型走（宿主按它拼上游请求）')
-
-  // 结果真的落到界面上（再渲染一遍读的是"识别完成"之后的状态）
-  const afterText = rerender()
-  assert.match(afterText, /蓝白色/, `识别文本要显示出来，实际：${afterText.slice(0, 400)}`)
-  assert.equal(harness.errors.length, 0, '这一栏不是故障，不许有 error')
-})
-
-test('分栏②：识图栏的状态卡读宿主配置（已就绪 / 模型名 / 协议），宿主没给"最近一次"就不画那一行', async () => {
-  const state = makeStateReact('vision')
-  const harness = load({ react: state.api as never, slots: true })
-  // 第一遍：挂上去（`useEffect` 当场把 `/vision/config` 发出去）
-  state.reset()
-  renderDeep(dafeiyuBody(harness))
-  await flush()
-  // 第二遍：读回来的配置落到屏幕上
-  state.reset()
-  const text = treeText(renderDeep(dafeiyuBody(harness)))
-  assert.match(text, /已就绪/, `配好了就该说「已就绪」，实际：${text.slice(0, 400)}`)
-  assert.match(text, /deepseek-vl/, '状态卡要显示模型名')
-  assert.match(text, /自动（按地址猜）/, '状态卡要显示协议（认不出的 id 原样印）')
-  // ⚠️ 宿主现在**没有**"最近一次调用"这组数据（`/vision/config` 的 `toView` 不带，
-  // `service.recognize()` 也不落调用记录）⇒ 这一行必须**整行不出现**。
-  // 判据写成"不许出现"是刻意的：凭空写一句"最近一次：成功"就是假数据。
-  assert.ok(!text.includes('最近一次'), `宿主没给调用记录时不许画「最近一次」，实际：${text.slice(0, 400)}`)
-})
-
-test('分栏②：试一张失败时把宿主那句中文原因显示出来（不吞成"失败"两个字）', async () => {
-  const state = makeStateReact('vision')
-  const harness = load({
-    react: state.api as never,
-    slots: true,
-    visionRecognizeText: null,
-    visionRecognizeError: '识图未开启：请先在设置页填好接口地址与密钥',
-  })
-  state.reset()
-  const first = renderDeep(dafeiyuBody(harness))
-  await flush()
-  const input = findElement(first, (element) => element.type === 'input' && element.props.type === 'file')
-  assert.ok(input, '试一张必须有选图的 file input')
-  ;(input.props.onChange as (event: unknown) => void)({ target: { files: [{ name: 'bad.png', type: 'image/png', size: 1024 }] } })
-  await flush()
-  state.reset()
-  const text = treeText(renderDeep(dafeiyuBody(harness)))
-  assert.match(text, /识图未开启/, `失败要把宿主的中文原因显示出来，实际：${text.slice(0, 400)}`)
-})
 
 test('分栏③：Agent 团队栏有派活助手设置、转生/分身入口，以及「给 Agent 的调用入口」表', async () => {
   const harness = load({ react: reactOnTab('team') as never, slots: true })
@@ -4211,7 +4092,14 @@ test('分栏③：转生/分身入口接到的是**已挂上的**那个悬浮面
   )
 })
 
-test('分栏④：人设栏是人设组件在上、长期记忆在下，且**不再挂识图配置块**', async () => {
+test('分栏④：人设栏是人设组件在上、长期记忆在下', async () => {
+  /*
+   * 这一条 2026-11-16 只砍掉了"识图配置块"那两半（原来 ② 钉它不在人设栏、③ 钉它在
+   * 「肥鱼识图」栏里）。理由：识图 UI 整块搬去 `dsh-vision-dafeiyu`，本仓连那个结构标记
+   * （`data-block="vision-config"`）都不再有，② 变成恒真、③ 无从渲染。
+   * **留下来的三件事一条没动**：顺序（人设卡在上、长期记忆在下）、块数（2 块）、
+   * 人设组件真的挂着（`t` 是它唯一入参）。这三条才是"人设栏没被拆坏"的判据。
+   */
   // 人设栏要真的渲一层才能认出长期记忆（那块自己读人设列表）：用会记状态的假 react，
   // 否则 `useState` 每格都回同一个分栏名，`personas.map` 当场炸。
   const state = makeStateReact('persona')
@@ -4232,21 +4120,32 @@ test('分栏④：人设栏是人设组件在上、长期记忆在下，且**不
   const memoryText = treeText(renderDeep(memoryBlock))
   assert.match(memoryText, /长期记忆/, '第二块必须是长期记忆面板（按设计它在人设组件**下面**）')
 
-  // ② 识图配置块（带 `data-block="vision-config"` 的结构标记）**不在**人设栏里
+  // ② 本仓的 client 产物里**不许**再有识图那两栏的任何结构标记/路由前缀
+  //    （原来这条是"人设栏里不许有它、识图栏里必须有它"；识图栏搬走之后，
+  //     正确的不变式缩成"本仓一个都不该有"——见文件末尾那条同源判据）
   const strayVision = findElement(children, (element) => element.props['data-block'] === 'vision-config')
-  assert.equal(strayVision, undefined, '识图配置块已经搬去「肥鱼识图」栏，人设栏里不许再有它')
-
-  // ③ 而在「肥鱼识图」栏里，那个标记必须在（否则上面那条"不在人设栏"就是恒绿的）
-  const vision = await renderVisionTab()
-  const inVision = findElement(vision.rendered, (element) => element.props['data-block'] === 'vision-config')
-  assert.ok(inVision, '「肥鱼识图」栏里必须能找到识图配置块（`data-block=vision-config`）')
+  assert.equal(strayVision, undefined, '识图配置块随 vision 包走了：人设栏里当然不许再有它')
 })
 
-test('识图路由常量没漂：浏览器半的字面量与宿主侧路由表逐字一致', () => {
-  // 浏览器面不能 import 宿主侧那张表（连着 node:http），所以这里把两边钉在一起。
-  // 漂了的表现：设置页「试一张」一直 404，而日志里只有一句"识别失败：宿主返回了非 JSON"。
-  assert.equal(VISION_CONFIG_ROUTE, HOST_VISION_CONFIG_ROUTE, '读配置那条路由两边不一致')
-  assert.equal(VISION_RECOGNIZE_ROUTE, HOST_VISION_RECOGNIZE_ROUTE, '识图那条路由两边不一致')
+/**
+ * 反向保险（2026-11-16 新增，取代原来那条"识图路由常量没漂"）。
+ *
+ * 原来这里钉的是"浏览器半的字面量与宿主侧路由表逐字一致"——两边都在本仓时才成立。
+ * 现在两边都搬去 `dsh-vision-dafeiyu` 了，本仓能给出的唯一有意义的不变式是：
+ *
+ *   **产物里不许再出现那两条前缀**（`/api/dsh-remote-dafeiyu/vision`、`/xyq`）。
+ *
+ * 它防的是"拆包拆了一半"：某个面板/常量被谁又 import 回来，产物里就会重新出现这两个前缀，
+ * 而那时本仓已经**没有**对应的宿主侧路由了 —— 表现正是最坑的一种：请求 404，界面静默。
+ * 反过来，只有本仓真的干净，产物里才会一个字符都没有。
+ */
+test('产物里不许再出现识图/小云雀的路由前缀（它们随 `dsh-vision-dafeiyu` 走了）', () => {
   const raw = readFileSync(CLIENT, 'utf8')
-  assert.ok(raw.includes(VISION_RECOGNIZE_ROUTE), `产物里必须真写着 ${VISION_RECOGNIZE_ROUTE}（否则「试一张」打的是别处）`)
+  for (const prefix of ['/api/dsh-remote-dafeiyu/vision', '/api/dsh-remote-dafeiyu/xyq']) {
+    assert.ok(
+      !raw.includes(prefix),
+      `client.cjs 里又出现了 ${prefix}：本仓已经没有那条宿主路由了，这个请求只会 404 且界面上看不出来`,
+    )
+  }
 })
+

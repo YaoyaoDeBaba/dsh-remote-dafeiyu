@@ -2388,8 +2388,8 @@ var init_mock_kernel = __esm({
         }
         if (this.options.autoReply !== false) {
           const messageId = `msg_${++this.sequence}`;
-          for (const chunk2 of [`\u6536\u5230\uFF1A`, text.slice(0, 40)]) {
-            this.emit({ kind: "delta", sessionId, messageId, text: chunk2, done: false });
+          for (const chunk of [`\u6536\u5230\uFF1A`, text.slice(0, 40)]) {
+            this.emit({ kind: "delta", sessionId, messageId, text: chunk, done: false });
           }
           this.emit({ kind: "delta", sessionId, messageId, text: "", done: true });
         }
@@ -3048,14 +3048,14 @@ var require_permessage_deflate = __commonJS({
       }
     };
     module.exports = PerMessageDeflate2;
-    function deflateOnData(chunk2) {
-      this[kBuffers].push(chunk2);
-      this[kTotalLength] += chunk2.length;
+    function deflateOnData(chunk) {
+      this[kBuffers].push(chunk);
+      this[kTotalLength] += chunk.length;
     }
-    function inflateOnData(chunk2) {
-      this[kTotalLength] += chunk2.length;
+    function inflateOnData(chunk) {
+      this[kTotalLength] += chunk.length;
       if (this[kPerMessageDeflate]._maxPayload < 1 || this[kTotalLength] <= this[kPerMessageDeflate]._maxPayload) {
-        this[kBuffers].push(chunk2);
+        this[kBuffers].push(chunk);
         return;
       }
       this[kError] = new RangeError("Max payload size exceeded");
@@ -3356,7 +3356,7 @@ var require_receiver = __commonJS({
        * @param {Function} cb Callback
        * @private
        */
-      _write(chunk2, encoding, cb) {
+      _write(chunk, encoding, cb) {
         if (this._opcode === 8 && this._state == GET_INFO) return cb();
         if (this._maxBufferedChunks > 0 && this._buffers.length >= this._maxBufferedChunks) {
           cb(
@@ -3370,8 +3370,8 @@ var require_receiver = __commonJS({
           );
           return;
         }
-        this._bufferedBytes += chunk2.length;
-        this._buffers.push(chunk2);
+        this._bufferedBytes += chunk.length;
+        this._buffers.push(chunk);
         this.startLoop(cb);
       }
       /**
@@ -4781,10 +4781,10 @@ var require_websocket = __commonJS({
     "use strict";
     var EventEmitter2 = __require("events");
     var https = __require("https");
-    var http2 = __require("http");
-    var net2 = __require("net");
+    var http = __require("http");
+    var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes6, createHash: createHash7 } = __require("crypto");
+    var { randomBytes: randomBytes5, createHash: createHash6 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -5335,8 +5335,8 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes6(16).toString("base64");
-      const request = isSecure ? https.request : http2.request;
+      const key = randomBytes5(16).toString("base64");
+      const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -5465,7 +5465,7 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash7("sha1").update(key + GUID).digest("base64");
+        const digest = createHash6("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -5539,12 +5539,12 @@ var require_websocket = __commonJS({
     }
     function netConnect(options) {
       options.path = options.socketPath;
-      return net2.connect(options);
+      return net.connect(options);
     }
     function tlsConnect(options) {
       options.path = void 0;
       if (!options.servername && options.servername !== "") {
-        options.servername = net2.isIP(options.host) ? "" : options.host;
+        options.servername = net.isIP(options.host) ? "" : options.host;
       }
       return tls.connect(options);
     }
@@ -5648,8 +5648,8 @@ var require_websocket = __commonJS({
       this.removeListener("end", socketOnEnd);
       websocket._readyState = WebSocket2.CLOSING;
       if (!this._readableState.endEmitted && !websocket._closeFrameReceived && !websocket._receiver._writableState.errorEmitted && this._readableState.length !== 0) {
-        const chunk2 = this.read(this._readableState.length);
-        websocket._receiver.write(chunk2);
+        const chunk = this.read(this._readableState.length);
+        websocket._receiver.write(chunk);
       }
       websocket._receiver.end();
       this[kWebSocket] = void 0;
@@ -5661,8 +5661,8 @@ var require_websocket = __commonJS({
         websocket._receiver.on("finish", receiverOnFinish);
       }
     }
-    function socketOnData(chunk2) {
-      if (!this[kWebSocket]._receiver.write(chunk2)) {
+    function socketOnData(chunk) {
+      if (!this[kWebSocket]._receiver.write(chunk)) {
         this.pause();
       }
     }
@@ -5765,14 +5765,14 @@ var require_stream = __commonJS({
       duplex._read = function() {
         if (ws.isPaused) ws.resume();
       };
-      duplex._write = function(chunk2, encoding, callback) {
+      duplex._write = function(chunk, encoding, callback) {
         if (ws.readyState === ws.CONNECTING) {
           ws.once("open", function open4() {
-            duplex._write(chunk2, encoding, callback);
+            duplex._write(chunk, encoding, callback);
           });
           return;
         }
-        ws.send(chunk2, callback);
+        ws.send(chunk, callback);
       };
       duplex.on("end", duplexOnEnd);
       duplex.on("error", duplexOnError);
@@ -5832,9 +5832,9 @@ var require_websocket_server = __commonJS({
   "node_modules/.pnpm/ws@8.22.0/node_modules/ws/lib/websocket-server.js"(exports, module) {
     "use strict";
     var EventEmitter2 = __require("events");
-    var http2 = __require("http");
+    var http = __require("http");
     var { Duplex } = __require("stream");
-    var { createHash: createHash7 } = __require("crypto");
+    var { createHash: createHash6 } = __require("crypto");
     var extension2 = require_extension();
     var PerMessageDeflate2 = require_permessage_deflate();
     var subprotocol2 = require_subprotocol();
@@ -5913,8 +5913,8 @@ var require_websocket_server = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http2.createServer((req, res) => {
-            const body = http2.STATUS_CODES[426];
+          this._server = http.createServer((req, res) => {
+            const body = http.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -6141,7 +6141,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash7("sha1").update(key + GUID).digest("base64");
+        const digest = createHash6("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -6203,7 +6203,7 @@ var require_websocket_server = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http2.STATUS_CODES[code];
+      message = message || http.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -6212,7 +6212,7 @@ var require_websocket_server = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http2.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path30 from "node:path";
+import path23 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path31) {
-  if (!path31)
+function getElementAtPath(obj, path24) {
+  if (!path24)
     return obj;
-  return path31.reduce((acc, key) => acc?.[key], obj);
+  return path24.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path31, issues) {
+function prefixIssues(path24, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path31);
+    iss.path.unshift(path24);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path31 = []) => {
+  const processError = (error63, path24 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path24, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else {
-        const fullpath = [...path31, ...issue2.path];
+        const fullpath = [...path24, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path31 = []) => {
+  const processError = (error63, path24 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path24, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
       } else {
-        const fullpath = [...path31, ...issue2.path];
+        const fullpath = [...path24, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path31 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path31) {
+  const path24 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path24) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -19815,45 +19815,45 @@ var PATTERN_IS_COMPLETE = /* @__PURE__ */ new Set([
   "xid"
 ]);
 function generateStringFormatCheck(doc, ctx, def, accessor, needsValue = true) {
-  const fmt2 = def.format;
-  if (fmt2 === "base64") {
+  const fmt = def.format;
+  if (fmt === "base64") {
     const validator = addConstant(ctx, isValidBase64);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt2 === "base64url") {
+  if (fmt === "base64url") {
     const validator = addConstant(ctx, isValidBase64URL);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt2 === "jwt") {
+  if (fmt === "jwt") {
     const validator = addConstant(ctx, isValidJWT);
     const alg = addConstant(ctx, def.alg ?? null);
     doc.write(`if (!${validator}(${accessor}, ${alg})) return INVALID;`);
     return accessor;
   }
-  if (fmt2 === "ipv6") {
+  if (fmt === "ipv6") {
     const validator = addConstant(ctx, isValidIPv6);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt2 === "cidrv6") {
+  if (fmt === "cidrv6") {
     const validator = addConstant(ctx, isValidCIDRv6);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt2 === "credit_card") {
+  if (fmt === "credit_card") {
     const validator = addConstant(ctx, isValidCreditCard);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (fmt2 === "iban") {
+  if (fmt === "iban") {
     const validator = addConstant(ctx, isValidIBAN);
     doc.write(`if (!${validator}(${accessor})) return INVALID;`);
     return accessor;
   }
   const formatDef = def;
-  if (fmt2 === "url" || fmt2 === "httpurl" || formatDef.normalize || formatDef.hostname !== void 0 || formatDef.protocol !== void 0) {
+  if (fmt === "url" || fmt === "httpurl" || formatDef.normalize || formatDef.hostname !== void 0 || formatDef.protocol !== void 0) {
     const parseConst = addConstant(ctx, validateURL);
     const defConst = addConstant(ctx, def);
     const trimVar = newVar(ctx);
@@ -19879,12 +19879,12 @@ function generateStringFormatCheck(doc, ctx, def, accessor, needsValue = true) {
   const customFn = def.fn;
   if (customFn) {
     if (isAsyncFunction(customFn))
-      throw new ZodCompileUnsupportedError(`async string format ${fmt2}`);
+      throw new ZodCompileUnsupportedError(`async string format ${fmt}`);
     const fnConst = addConstant(ctx, customFn);
     doc.write(`if (!${fnConst}(${accessor})) return INVALID;`);
     return accessor;
   }
-  if (PATTERN_IS_COMPLETE.has(fmt2) && def.pattern) {
+  if (PATTERN_IS_COMPLETE.has(fmt) && def.pattern) {
     const patternConst = addConstant(ctx, def.pattern);
     doc.write(`${patternConst}.lastIndex = 0;`);
     doc.write(`if (!${patternConst}.test(${accessor})) return INVALID;`);
@@ -22058,13 +22058,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json12, params, message) {
+function handleUnrepresentable(schema, ctx, json9, params, message) {
   const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result2 === "any")
     return false;
   if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json12, result2);
+  Object.assign(json9, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -22300,12 +22300,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json12) {
-  const allOf = json12.allOf;
+function foldIntersection(json9) {
+  const allOf = json9.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json12)
+    if (key in json9)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -22324,8 +22324,8 @@ function foldIntersection(json12) {
   }
   if (!folded)
     return;
-  delete json12.allOf;
-  assignProps(json12, folded);
+  delete json9.allOf;
+  assignProps(json9, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -22407,20 +22407,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json12 of [seen.schema, seen.def]) {
-          const allOf = json12?.allOf;
+        for (const json9 of [seen.schema, seen.def]) {
+          const allOf = json9?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json12);
+            existing.push(json9);
           else
-            carriers.set(allOf, [json12]);
+            carriers.set(allOf, [json9]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json12 of carriers.get(allOf) ?? [])
-          foldIntersection(json12);
+        for (const json9 of carriers.get(allOf) ?? [])
+          foldIntersection(json9);
       }
     }
   }
@@ -22655,29 +22655,29 @@ var exactPatterns = /* @__PURE__ */ new Map([
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
 var stringProcessor = (schema, ctx, _json, _params) => {
-  const json12 = _json;
-  json12.type = "string";
+  const json9 = _json;
+  json9.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json12.minLength = minimum;
+    json9.minLength = minimum;
   if (typeof maximum === "number")
-    json12.maxLength = maximum;
+    json9.maxLength = maximum;
   if (format) {
-    json12.format = formatMap[format] ?? format;
-    if (json12.format === "")
-      delete json12.format;
+    json9.format = formatMap[format] ?? format;
+    if (json9.format === "")
+      delete json9.format;
     if (format === "time" || laxFormat) {
-      delete json12.format;
+      delete json9.format;
     }
   }
   if (contentEncoding)
-    json12.contentEncoding = contentEncoding;
+    json9.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const patternList = [...patterns].map(exactPattern);
     if (patternList.length === 1)
-      json12.pattern = patternList[0].source;
+      json9.pattern = patternList[0].source;
     else if (patternList.length > 1) {
-      json12.allOf = [
+      json9.allOf = [
         ...patternList.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -22687,31 +22687,31 @@ var stringProcessor = (schema, ctx, _json, _params) => {
   }
 };
 var numberProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json9 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-  json12.type = isInt ? "integer" : "number";
+  json9.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json12.minimum = exclusiveMinimum;
-      json12.exclusiveMinimum = true;
+      json9.minimum = exclusiveMinimum;
+      json9.exclusiveMinimum = true;
     } else {
-      json12.exclusiveMinimum = exclusiveMinimum;
+      json9.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json12.minimum = minimum;
+    json9.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json12.maximum = exclusiveMaximum;
-      json12.exclusiveMaximum = true;
+      json9.maximum = exclusiveMaximum;
+      json9.exclusiveMaximum = true;
     } else {
-      json12.exclusiveMaximum = exclusiveMaximum;
+      json9.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json12.maximum = maximum;
+    json9.maximum = maximum;
   }
   if (multipleOf) {
     const divisors = /* @__PURE__ */ new Set();
@@ -22719,75 +22719,75 @@ var numberProcessor = (schema, ctx, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema, ctx, json12, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema, ctx, json9, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
-      json12.multipleOf = first;
+      json9.multipleOf = first;
     if (rest.length)
-      json12.allOf = [...json12.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+      json9.allOf = [...json9.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
   }
 };
-var booleanProcessor = (_schema, _ctx, json12, _params) => {
-  json12.type = "boolean";
+var booleanProcessor = (_schema, _ctx, json9, _params) => {
+  json9.type = "boolean";
 };
-var bigintProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx, json12, _params) => {
+var nullProcessor = (_schema, ctx, json9, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json12.type = "string";
-    json12.nullable = true;
-    json12.enum = [null];
+    json9.type = "string";
+    json9.nullable = true;
+    json9.enum = [null];
   } else {
-    json12.type = "null";
+    json9.type = "null";
   }
 };
-var undefinedProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Void cannot be represented in JSON Schema");
 };
-var neverProcessor = (_schema, _ctx, json12, _params) => {
-  json12.not = {};
+var neverProcessor = (_schema, _ctx, json9, _params) => {
+  json9.not = {};
 };
 var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Date cannot be represented in JSON Schema");
 };
-var enumProcessor = (schema, _ctx, json12, _params) => {
+var enumProcessor = (schema, _ctx, json9, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.length === 0) {
-    json12.not = {};
+    json9.not = {};
     return;
   }
   if (values.every((v) => typeof v === "number"))
-    json12.type = "number";
+    json9.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json12.type = "string";
-  json12.enum = values;
+    json9.type = "string";
+  json9.enum = values;
 };
-var literalProcessor = (schema, ctx, json12, params) => {
+var literalProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   if (def.values.length === 0) {
-    json12.not = {};
+    json9.not = {};
     return;
   }
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema, ctx, json12, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json9, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema, ctx, json12, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json9, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -22797,37 +22797,37 @@ var literalProcessor = (schema, ctx, json12, params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json12.type = val === null ? "null" : typeof val;
+    json9.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json12.enum = [val];
+      json9.enum = [val];
     } else {
-      json12.const = val;
+      json9.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json12.type = "number";
+      json9.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json12.type = "string";
+      json9.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json12.type = "boolean";
+      json9.type = "boolean";
     if (vals.every((v) => v === null))
-      json12.type = "null";
-    json12.enum = vals;
+      json9.type = "null";
+    json9.enum = vals;
   }
 };
-var nanProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "NaN cannot be represented in JSON Schema");
 };
-var templateLiteralProcessor = (schema, _ctx, json12, _params) => {
-  const _json = json12;
+var templateLiteralProcessor = (schema, _ctx, json9, _params) => {
+  const _json = json9;
   const pattern = schema._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json12, _params) => {
-  const _json = json12;
+var fileProcessor = (schema, _ctx, json9, _params) => {
+  const _json = json9;
   _json.type = "string";
   _json.format = "binary";
   _json.contentEncoding = "binary";
@@ -22845,34 +22845,34 @@ var fileProcessor = (schema, _ctx, json12, _params) => {
   else
     _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
 };
-var successProcessor = (_schema, _ctx, json12, _params) => {
-  json12.type = "boolean";
+var successProcessor = (_schema, _ctx, json9, _params) => {
+  json9.type = "boolean";
 };
-var customProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema, ctx, json12, params) => {
-  handleUnrepresentable(schema, ctx, json12, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema, ctx, json9, params) => {
+  handleUnrepresentable(schema, ctx, json9, params, "Set cannot be represented in JSON Schema");
 };
 var arrayProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json9 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json12.minItems = minimum;
+    json9.minItems = minimum;
   if (typeof maximum === "number")
-    json12.maxItems = maximum;
-  json12.type = "array";
-  json12.items = processSchema(def.element, ctx, {
+    json9.maxItems = maximum;
+  json9.type = "array";
+  json9.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -22888,17 +22888,17 @@ function inputOptin(schema) {
   return schema._zod.optin;
 }
 var objectProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json9 = _json;
   const def = schema._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json12, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json9, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
-  json12.type = "object";
-  json12.properties = {};
+  json9.type = "object";
+  json9.properties = {};
   for (const key in shape) {
-    assignProp(json12.properties, key, processSchema(shape[key], ctx, {
+    assignProp(json9.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -22911,21 +22911,21 @@ var objectProcessor = (schema, ctx, _json, params) => {
     }
   }
   if (requiredKeys.length > 0) {
-    json12.required = requiredKeys;
+    json9.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
-    json12.additionalProperties = false;
+    json9.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json12.additionalProperties = false;
+      json9.additionalProperties = false;
   } else if (def.catchall) {
-    json12.additionalProperties = processSchema(def.catchall, ctx, {
+    json9.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema, ctx, json12, params) => {
+var unionProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -22933,12 +22933,12 @@ var unionProcessor = (schema, ctx, json12, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json12.oneOf = options;
+    json9.oneOf = options;
   } else {
-    json12.anyOf = options;
+    json9.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json12, params) => {
+var intersectionProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   const a = processSchema(def.left, ctx, {
     ...params,
@@ -22953,13 +22953,13 @@ var intersectionProcessor = (schema, ctx, json12, params) => {
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json12.allOf = allOf;
+  json9.allOf = allOf;
   ctx.intersections.push(allOf);
 };
 var tupleProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json9 = _json;
   const def = schema._zod.def;
-  json12.type = "array";
+  json9.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
   const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -22981,70 +22981,70 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   const maxItems = def.items.length;
   const isClosed = !def.rest;
   if (ctx.target === "draft-2020-12") {
-    json12.prefixItems = prefixItems;
+    json9.prefixItems = prefixItems;
     if (isClosed) {
-      json12.items = false;
+      json9.items = false;
     } else if (rest) {
-      json12.items = rest;
+      json9.items = rest;
     }
     if (minItems > 0)
-      json12.minItems = minItems;
+      json9.minItems = minItems;
     if (isClosed)
-      json12.maxItems = maxItems;
+      json9.maxItems = maxItems;
   } else if (ctx.target === "openapi-3.0") {
-    json12.items = {
+    json9.items = {
       anyOf: prefixItems
     };
     if (rest) {
-      json12.items.anyOf.push(rest);
+      json9.items.anyOf.push(rest);
     }
     if (minItems > 0)
-      json12.minItems = minItems;
+      json9.minItems = minItems;
     if (isClosed)
-      json12.maxItems = maxItems;
+      json9.maxItems = maxItems;
   } else {
-    json12.items = prefixItems;
+    json9.items = prefixItems;
     if (isClosed) {
-      json12.additionalItems = false;
+      json9.additionalItems = false;
     } else if (rest) {
-      json12.additionalItems = rest;
+      json9.additionalItems = rest;
     }
     if (minItems > 0)
-      json12.minItems = minItems;
+      json9.minItems = minItems;
     if (isClosed)
-      json12.maxItems = maxItems;
+      json9.maxItems = maxItems;
   }
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json12.minItems = minimum;
+    json9.minItems = minimum;
   if (typeof maximum === "number")
-    json12.maxItems = maximum;
+    json9.maxItems = maximum;
 };
-function stringifyKeyNames(bySchema, json12, visited) {
-  if (json12.$ref) {
-    if (visited.has(json12))
-      return json12;
-    visited.add(json12);
-    const def = bySchema.get(json12)?.def;
+function stringifyKeyNames(bySchema, json9, visited) {
+  if (json9.$ref) {
+    if (visited.has(json9))
+      return json9;
+    visited.add(json9);
+    const def = bySchema.get(json9)?.def;
     if (!def)
-      return json12;
+      return json9;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json12 : inlined;
+    return inlined === def ? json9 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json12[keyword];
+    const branches = json9[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json12 = { ...json12, [keyword]: mapped };
+      json9 = { ...json9, [keyword]: mapped };
   }
-  const types = Array.isArray(json12.type) ? json12.type : [json12.type];
+  const types = Array.isArray(json9.type) ? json9.type : [json9.type];
   const numericType = !types.includes("string") && types.some((t) => t === "number" || t === "integer");
-  const values = json12.enum ?? (json12.const !== void 0 ? [json12.const] : void 0);
+  const values = json9.enum ?? (json9.const !== void 0 ? [json9.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json12;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json12;
+    return json9;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json9;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23084,9 +23084,9 @@ function rewriteKeyNames(ctx) {
   }
 }
 var recordProcessor = (schema, ctx, _json, params) => {
-  const json12 = _json;
+  const json9 = _json;
   const def = schema._zod.def;
-  json12.type = "object";
+  json9.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -23094,13 +23094,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json12.patternProperties = {};
+    json9.patternProperties = {};
     for (const pattern of patterns) {
-      assignProp(json12.patternProperties, exactPattern(pattern).source, valueSchema);
+      assignProp(json9.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json12.propertyNames = processSchema(def.keyType, ctx, {
+      json9.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
@@ -23112,7 +23112,7 @@ var recordProcessor = (schema, ctx, _json, params) => {
       }
       pending2.push(schema);
     }
-    json12.additionalProperties = processSchema(def.valueType, ctx, {
+    json9.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -23122,19 +23122,19 @@ var recordProcessor = (schema, ctx, _json, params) => {
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json12.required = validKeyValues.map(String);
+      json9.required = validKeyValues.map(String);
     }
   }
 };
-var nullableProcessor = (schema, ctx, json12, params) => {
+var nullableProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   const inner = processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json12.nullable = true;
+    json9.nullable = true;
   } else {
-    json12.anyOf = [inner, { type: "null" }];
+    json9.anyOf = [inner, { type: "null" }];
   }
 };
 var nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -23144,7 +23144,7 @@ var nonoptionalProcessor = (schema, ctx, _json, params) => {
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
-function serializeDefaultValue(value, schema, ctx, json12, params) {
+function serializeDefaultValue(value, schema, ctx, json9, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23154,30 +23154,30 @@ function serializeDefaultValue(value, schema, ctx, json12, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema, ctx, json12, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json9, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema, ctx, json12, params) => {
+var defaultProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json12, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json9, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json12.default = value;
+    json9.default = value;
 };
-var prefaultProcessor = (schema, ctx, json12, params) => {
+var prefaultProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json12, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json9, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json12._prefault = value;
+    json9._prefault = value;
 };
-var catchProcessor = (schema, ctx, json12, params) => {
+var catchProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -23186,10 +23186,10 @@ var catchProcessor = (schema, ctx, json12, params) => {
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema, ctx, json12, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema, ctx, json9, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
-  json12.default = catchValue;
+  json9.default = catchValue;
 };
 var pipeProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23199,12 +23199,12 @@ var pipeProcessor = (schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json12, params) => {
+var readonlyProcessor = (schema, ctx, json9, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json12.readOnly = true;
+  json9.readOnly = true;
 };
 var promiseProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23846,7 +23846,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => stringProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json9, params) => stringProcessor(inst, ctx, json9, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -24205,7 +24205,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => numberProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json9, params) => numberProcessor(inst, ctx, json9, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -24295,7 +24295,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => booleanProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => booleanProcessor(inst, ctx, json9, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -24305,7 +24305,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => bigintProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json9, params) => bigintProcessor(inst, ctx, json9, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -24363,7 +24363,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => symbolProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => symbolProcessor(inst, ctx, json9, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -24371,7 +24371,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => undefinedProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => undefinedProcessor(inst, ctx, json9, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -24379,7 +24379,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nullProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => nullProcessor(inst, ctx, json9, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -24387,7 +24387,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => anyProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => anyProcessor(inst, ctx, json9, params);
 });
 function any() {
   return _any(ZodAny);
@@ -24395,7 +24395,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => unknownProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => unknownProcessor(inst, ctx, json9, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -24403,7 +24403,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => neverProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => neverProcessor(inst, ctx, json9, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -24411,7 +24411,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => voidProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => voidProcessor(inst, ctx, json9, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -24421,7 +24421,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json12, params) => dateProcessor(inst, ctx, json12, params);
+    inst._zod.processJSONSchema = (ctx, json9, params) => dateProcessor(inst, ctx, json9, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -24443,7 +24443,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => arrayProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => arrayProcessor(inst, ctx, json9, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -24473,7 +24473,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => objectProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => objectProcessor(inst, ctx, json9, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -24546,7 +24546,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => unionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => unionProcessor(inst, ctx, json9, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -24559,7 +24559,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => unionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => unionProcessor(inst, ctx, json9, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -24585,7 +24585,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => intersectionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => intersectionProcessor(inst, ctx, json9, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -24598,7 +24598,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => tupleProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => tupleProcessor(inst, ctx, json9, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -24631,7 +24631,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => recordProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => recordProcessor(inst, ctx, json9, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -24673,7 +24673,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => mapProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => mapProcessor(inst, ctx, json9, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -24693,7 +24693,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => setProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => setProcessor(inst, ctx, json9, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -24709,7 +24709,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => enumProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => enumProcessor(inst, ctx, json9, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -24762,7 +24762,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => literalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => literalProcessor(inst, ctx, json9, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -24783,7 +24783,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => fileProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => fileProcessor(inst, ctx, json9, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -24795,7 +24795,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => transformProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => transformProcessor(inst, ctx, json9, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -24834,7 +24834,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => optionalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => optionalProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -24846,7 +24846,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => optionalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => optionalProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -24858,7 +24858,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nullableProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => nullableProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -24873,7 +24873,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => defaultProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => defaultProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -24889,7 +24889,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => prefaultProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => prefaultProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -24904,7 +24904,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nonoptionalProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => nonoptionalProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -24917,7 +24917,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => successProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => successProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -24929,7 +24929,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => catchProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => catchProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -24943,7 +24943,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => nanProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => nanProcessor(inst, ctx, json9, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -24951,7 +24951,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => pipeProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => pipeProcessor(inst, ctx, json9, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -24993,7 +24993,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => readonlyProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => readonlyProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -25005,7 +25005,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => templateLiteralProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => templateLiteralProcessor(inst, ctx, json9, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -25017,7 +25017,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => lazyProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => lazyProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -25029,7 +25029,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => promiseProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => promiseProcessor(inst, ctx, json9, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -25041,7 +25041,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => functionProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => functionProcessor(inst, ctx, json9, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -25053,7 +25053,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json12, params) => customProcessor(inst, ctx, json12, params);
+  inst._zod.processJSONSchema = (ctx, json9, params) => customProcessor(inst, ctx, json9, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path31 = ref.slice(1).split("/").filter(Boolean);
-  if (path31.length === 0) {
+  const path24 = ref.slice(1).split("/").filter(Boolean);
+  if (path24.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path31[0] === defsKey) {
-    const key = path31[1] === void 0 ? void 0 : decodeJSONPointerSegment(path31[1]);
+  if (path24[0] === defsKey) {
+    const key = path24[1] === void 0 ? void 0 : decodeJSONPointerSegment(path24[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -25678,8 +25678,8 @@ function convertBaseSchema(schema, ctx) {
         const looseRecords = [];
         for (const pattern of patternKeys) {
           const patternValue = convertSchema(patternProps[pattern], ctx);
-          const keySchema2 = z.string().regex(new RegExp(pattern));
-          looseRecords.push(z.looseRecord(keySchema2, patternValue));
+          const keySchema = z.string().regex(new RegExp(pattern));
+          looseRecords.push(z.looseRecord(keySchema, patternValue));
         }
         const schemasToIntersect = [];
         if (Object.keys(shape).length > 0) {
@@ -25736,12 +25736,12 @@ function convertBaseSchema(schema, ctx) {
       const minProperties = typeof schema.minProperties === "number" ? schema.minProperties : void 0;
       const maxProperties = typeof schema.maxProperties === "number" ? schema.maxProperties : void 0;
       if (hasKeyGuard || minProperties !== void 0 || maxProperties !== void 0) {
-        let keySchema2;
+        let keySchema;
         if (hasKeyGuard) {
           const keyJSONSchema = typeof schema.propertyNames === "object" && schema.propertyNames.type === void 0 ? { type: "string", ...schema.propertyNames } : schema.propertyNames;
-          keySchema2 = convertSchema(keyJSONSchema, ctx);
+          keySchema = convertSchema(keyJSONSchema, ctx);
         }
-        zodSchema = checkObjectGuards(zodSchema, { keySchema: keySchema2, minProperties, maxProperties });
+        zodSchema = checkObjectGuards(zodSchema, { keySchema, minProperties, maxProperties });
       }
       break;
     }
@@ -27846,7 +27846,7 @@ var DeltaWindow = class {
     if (chunks.length === 0) {
       this.emitFrame(entry, "", true);
     } else {
-      chunks.forEach((chunk2, index) => this.emitFrame(entry, chunk2, index === chunks.length - 1 ? entry.done : false));
+      chunks.forEach((chunk, index) => this.emitFrame(entry, chunk, index === chunks.length - 1 ? entry.done : false));
     }
     if (entry.done) this.partCursor.delete(sessionId);
     else this.partCursor.set(sessionId, { messageId: entry.messageId, next: entry.part });
@@ -30342,9 +30342,9 @@ function createPairFlow(deps) {
     log("client unpaired", { reissued: Boolean(code) });
   }
   function noteRateLimited(retryAfterMs) {
-    const wait2 = retryAfterMs ?? PAIR_RATE_LIMIT_BACKOFF_MS;
-    pairRateLimitedUntil = Math.max(pairRateLimitedUntil, clock.now() + wait2);
-    log("relay rate limited us", { waitMs: wait2 });
+    const wait = retryAfterMs ?? PAIR_RATE_LIMIT_BACKOFF_MS;
+    pairRateLimitedUntil = Math.max(pairRateLimitedUntil, clock.now() + wait);
+    log("relay rate limited us", { waitMs: wait });
   }
   function resetRateLimitAndRetryOwed() {
     pairRateLimitedUntil = 0;
@@ -34372,13 +34372,13 @@ async function readJsonBody(request) {
       done = true;
       resolve(value);
     };
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
+    request.on("data", (chunk) => {
+      size += chunk.length;
       if (size > MAX_CONFIG_BODY_BYTES) {
         finish(void 0);
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => {
       try {
@@ -34470,13 +34470,13 @@ function readJson(request) {
       done = true;
       resolve(value);
     };
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
+    request.on("data", (chunk) => {
+      size += chunk.length;
       if (size > MAX_BODY_BYTES) {
         finish(void 0);
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => {
       try {
@@ -34808,18 +34808,18 @@ function clientReportHandler() {
     }
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
-      if (size <= 4096) chunks.push(chunk2);
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size <= 4096) chunks.push(chunk);
     });
     request.on("end", () => {
       try {
-        const path31 = __require("node:path");
-        const fs10 = __require("node:fs");
-        const dir = path31.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs10.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs10.writeFileSync(
-          path31.join(dir, "client-report.json"),
+        const path24 = __require("node:path");
+        const fs8 = __require("node:fs");
+        const dir = path24.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs8.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs8.writeFileSync(
+          path24.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -35762,14 +35762,14 @@ function readJsonBody2(request, limit = 512 * 1024) {
       settled = true;
       resolve(value);
     };
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
+    request.on("data", (chunk) => {
+      size += chunk.length;
       if (size > limit) {
         finish(void 0);
         request.destroy?.();
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => {
       if (chunks.length === 0) return finish({});
@@ -36131,734 +36131,6 @@ function mountPersona(ctx, injected, extra) {
   return { mounted: true, config: config2 };
 }
 
-// src/vision/config.ts
-var DEFAULT_VISION_PROMPT = "\u4F60\u662F\u4E00\u540D\u4E13\u4E1A\u7684\u56FE\u50CF\u8BC6\u522B\u52A9\u624B\u3002\u8BF7\u4ED4\u7EC6\u89C2\u5BDF\u7528\u6237\u63D0\u4F9B\u7684\u56FE\u7247\uFF0C\u7528\u4E2D\u6587\u7ED9\u51FA\u8BE6\u7EC6\u3001\u7ED3\u6784\u5316\u7684\u63CF\u8FF0\uFF1A\u2460 \u6574\u4F53\u662F\u4EC0\u4E48\uFF08\u622A\u56FE/\u7167\u7247/\u56FE\u8868/UI \u754C\u9762\u7B49\uFF09\uFF1B\u2461 \u5173\u952E\u5185\u5BB9\u4E0E\u5E03\u5C40\uFF1B\u2462 \u56FE\u4E2D\u6240\u6709\u53EF\u89C1\u6587\u5B57\u9010\u5B57\u8F6C\u5F55\uFF08\u4EE3\u7801\u3001\u62A5\u9519\u3001\u6309\u94AE\u6587\u6848\u90FD\u4E0D\u8981\u6F0F\uFF09\uFF1B\u2463 \u5982\u679C\u8FD9\u662F\u5C4F\u5E55\u622A\u56FE\uFF0C\u91CD\u70B9\u63CF\u8FF0\u754C\u9762\u4E0A\u7684\u62A5\u9519\u3001\u5F39\u7A97\u3001\u6309\u94AE\u72B6\u6001\u3002";
-var DEFAULT_VISION_CONFIG = {
-  enabled: false,
-  apiBase: "https://api.openai.com/v1",
-  apiKey: "",
-  model: "gpt-4o-mini",
-  protocol: "auto",
-  prompt: DEFAULT_VISION_PROMPT,
-  timeoutMs: 6e4,
-  requestTemplate: "",
-  responsePath: ""
-};
-function redactKey(key) {
-  const value = String(key ?? "");
-  if (value === "") return "";
-  if (value.length <= 8) return "********";
-  return `${value.slice(0, 3)}\u2026${value.slice(-4)}`;
-}
-function toView(config2) {
-  return {
-    enabled: config2.enabled,
-    apiBase: config2.apiBase,
-    model: config2.model,
-    protocol: config2.protocol,
-    prompt: config2.prompt,
-    timeoutMs: config2.timeoutMs,
-    requestTemplate: config2.requestTemplate,
-    responsePath: config2.responsePath,
-    apiKeySet: config2.apiKey !== "",
-    apiKeyHint: redactKey(config2.apiKey)
-  };
-}
-var PROTOCOLS = ["auto", "openai-chat", "openai-responses", "anthropic", "gemini", "custom"];
-function cleanString(value, fallback, max) {
-  if (typeof value !== "string") return fallback;
-  const trimmed = value.trim();
-  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
-}
-function normalizeVisionConfig(input2, base = DEFAULT_VISION_CONFIG) {
-  const raw = input2 && typeof input2 === "object" ? input2 : {};
-  const protocol = typeof raw.protocol === "string" && PROTOCOLS.includes(raw.protocol) ? raw.protocol : base.protocol;
-  const timeout = typeof raw.timeoutMs === "number" && Number.isFinite(raw.timeoutMs) ? Math.min(Math.max(Math.round(raw.timeoutMs), 5e3), 3e5) : base.timeoutMs;
-  return {
-    enabled: typeof raw.enabled === "boolean" ? raw.enabled : base.enabled,
-    apiBase: cleanString(raw.apiBase, base.apiBase, 500) || base.apiBase,
-    apiKey: typeof raw.apiKey === "string" ? raw.apiKey.trim().slice(0, 500) : base.apiKey,
-    model: cleanString(raw.model, base.model, 200) || base.model,
-    protocol,
-    prompt: cleanString(raw.prompt, base.prompt, 4e3) || base.prompt,
-    timeoutMs: timeout,
-    requestTemplate: cleanString(raw.requestTemplate, base.requestTemplate, 8e3),
-    responsePath: cleanString(raw.responsePath, base.responsePath, 200)
-  };
-}
-function detectProtocol(apiBase) {
-  const lower = String(apiBase ?? "").toLowerCase();
-  if (lower.includes("anthropic")) return "anthropic";
-  if (lower.includes("generativelanguage") || lower.includes("googleapis") || lower.includes("gemini")) return "gemini";
-  if (lower.includes("/responses")) return "openai-responses";
-  return "openai-chat";
-}
-function resolveProtocol(config2) {
-  return config2.protocol === "auto" ? detectProtocol(config2.apiBase) : config2.protocol;
-}
-
-// src/vision/protocols.ts
-var VisionError = class extends Error {
-  status;
-  constructor(message, status = 0) {
-    super(message);
-    this.name = "VisionError";
-    this.status = status;
-  }
-};
-function trimBase(base) {
-  return String(base ?? "").replace(/\/+$/, "");
-}
-function promptOf(config2, image) {
-  const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
-  return custom2 !== "" ? custom2 : config2.prompt;
-}
-function deepGet(value, path31) {
-  let cursor = value;
-  for (const key of path31) {
-    if (cursor === null || typeof cursor !== "object") return void 0;
-    cursor = cursor[key];
-  }
-  return cursor;
-}
-function splitPath(path31) {
-  return String(path31 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
-}
-function textFrom(value) {
-  if (typeof value === "string") return value.trim();
-  if (Array.isArray(value)) {
-    const parts = [];
-    for (const item of value) {
-      if (typeof item === "string") {
-        parts.push(item);
-      } else if (item && typeof item === "object") {
-        const text = item.text;
-        if (typeof text === "string") parts.push(text);
-      }
-    }
-    return parts.join("\n").trim();
-  }
-  return "";
-}
-function openAiChatBody(config2, image) {
-  return JSON.stringify({
-    model: config2.model,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: promptOf(config2, image) },
-          { type: "image_url", image_url: { url: `data:${image.mime};base64,${image.base64}` } }
-        ]
-      }
-    ],
-    max_tokens: 2048
-  });
-}
-function buildRequest(config2, image) {
-  const base = trimBase(config2.apiBase);
-  const protocol = resolveProtocol(config2);
-  const json12 = { "content-type": "application/json" };
-  if (config2.apiKey) json12.Authorization = `Bearer ${config2.apiKey}`;
-  if (protocol === "openai-chat") {
-    return {
-      url: `${base}/chat/completions`,
-      method: "POST",
-      headers: json12,
-      body: openAiChatBody(config2, image),
-      extract: (body2) => {
-        const content = deepGet(body2, ["choices", "0", "message", "content"]);
-        const text = textFrom(content);
-        if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u5185\u5BB9\uFF08\u68C0\u67E5\u6A21\u578B\u540D/\u534F\u8BAE\u662F\u5426\u5339\u914D\uFF09");
-        return text;
-      }
-    };
-  }
-  if (protocol === "openai-responses") {
-    return {
-      url: `${base}/responses`,
-      method: "POST",
-      headers: json12,
-      body: JSON.stringify({
-        model: config2.model,
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: promptOf(config2, image) },
-              { type: "input_image", image_url: `data:${image.mime};base64,${image.base64}` }
-            ]
-          }
-        ]
-      }),
-      extract: (body2) => {
-        const output2 = deepGet(body2, ["output"]);
-        const text = Array.isArray(output2) ? output2.map((item) => item && typeof item === "object" ? textFrom(item.content) : "").filter((line) => line !== "").join("\n").trim() : "";
-        if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u5185\u5BB9\uFF08\u68C0\u67E5\u6A21\u578B\u540D/\u534F\u8BAE\u662F\u5426\u5339\u914D\uFF09");
-        return text;
-      }
-    };
-  }
-  if (protocol === "anthropic") {
-    const url2 = base.endsWith("/v1") ? `${base}/messages` : `${base}/v1/messages`;
-    return {
-      url: url2,
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "anthropic-version": "2023-06-01",
-        ...config2.apiKey ? { "x-api-key": config2.apiKey } : {}
-      },
-      body: JSON.stringify({
-        model: config2.model,
-        max_tokens: 2048,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: promptOf(config2, image) },
-              { type: "image", source: { type: "base64", media_type: image.mime, data: image.base64 } }
-            ]
-          }
-        ]
-      }),
-      extract: (body2) => {
-        const text = textFrom(deepGet(body2, ["content"]));
-        if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u5185\u5BB9\uFF08\u68C0\u67E5\u6A21\u578B\u540D/\u534F\u8BAE\u662F\u5426\u5339\u914D\uFF09");
-        return text;
-      }
-    };
-  }
-  if (protocol === "gemini") {
-    const root = base.endsWith("/v1beta") || base.endsWith("/v1") ? base : `${base}/v1beta`;
-    return {
-      url: `${root}/models/${encodeURIComponent(config2.model)}:generateContent`,
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...config2.apiKey ? { "x-goog-api-key": config2.apiKey } : {}
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: promptOf(config2, image) },
-              { inline_data: { mime_type: image.mime, data: image.base64 } }
-            ]
-          }
-        ]
-      }),
-      extract: (body2) => {
-        const text = textFrom(deepGet(body2, ["candidates", "0", "content", "parts"]));
-        if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u5185\u5BB9\uFF08\u68C0\u67E5\u6A21\u578B\u540D/\u534F\u8BAE\u662F\u5426\u5339\u914D\uFF09");
-        return text;
-      }
-    };
-  }
-  const template = config2.requestTemplate.trim();
-  if (template === "") throw new VisionError("\u81EA\u5B9A\u4E49\u534F\u8BAE\u9700\u8981\u5728\u8BBE\u7F6E\u9875\u586B\u5199\u8BF7\u6C42\u6A21\u677F\uFF08requestTemplate\uFF09");
-  const dataUrl = `data:${image.mime};base64,${image.base64}`;
-  const body = template.replaceAll("{{model}}", JSON.stringify(config2.model)).replaceAll("{{prompt}}", JSON.stringify(promptOf(config2, image))).replaceAll("{{image}}", JSON.stringify(image.base64)).replaceAll("{{dataUrl}}", JSON.stringify(dataUrl)).replaceAll("{{mime}}", JSON.stringify(image.mime));
-  const responsePath = config2.responsePath.trim();
-  if (responsePath === "") throw new VisionError("\u81EA\u5B9A\u4E49\u534F\u8BAE\u9700\u8981\u5728\u8BBE\u7F6E\u9875\u586B\u5199\u54CD\u5E94\u8DEF\u5F84\uFF08responsePath\uFF09");
-  return {
-    url: base,
-    method: "POST",
-    headers: json12,
-    body,
-    extract: (raw) => {
-      const text = textFrom(deepGet(raw, splitPath(responsePath)));
-      if (text === "") throw new VisionError(`\u54CD\u5E94\u91CC\u6309 ${responsePath} \u53D6\u4E0D\u5230\u6587\u672C\uFF08\u68C0\u67E5\u54CD\u5E94\u8DEF\u5F84\uFF09`);
-      return text;
-    }
-  };
-}
-
-// src/vision/routes.ts
-var VISION_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/vision/config";
-var VISION_RECOGNIZE_ROUTE = "/api/dsh-remote-dafeiyu/vision/recognize";
-var VISION_MODELS_ROUTE = "/api/dsh-remote-dafeiyu/vision/models";
-var MAX_BODY_BYTES2 = 25 * 1024 * 1024;
-function json5(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function rejected(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
-  return void 0;
-}
-function readBody(request) {
-  return new Promise((resolve) => {
-    const chunks = [];
-    let size = 0;
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      resolve(value);
-    };
-    request.on("data", (chunk2) => {
-      size += chunk2.byteLength;
-      if (size > MAX_BODY_BYTES2) {
-        finish({ ok: false, status: 413, error: "\u8BF7\u6C42\u592A\u5927\uFF08\u56FE\u7247\u4E0A\u9650\u7EA6 20MB\uFF09" });
-        request.destroy();
-        return;
-      }
-      chunks.push(chunk2);
-    });
-    request.on("end", () => finish({ ok: true, text: Buffer.concat(chunks).toString("utf8") }));
-    request.on("error", (error62) => finish({ ok: false, status: 400, error: `\u8BFB\u53D6\u8BF7\u6C42\u5931\u8D25\uFF1A${String(error62?.message ?? error62)}` }));
-  });
-}
-function visionConfigHandler(deps) {
-  return async (request, response) => {
-    const denied = rejected(request);
-    if (denied) {
-      json5(response, 403, { ok: false, error: denied });
-      return;
-    }
-    if (request.method === "GET" || request.method === "HEAD") {
-      json5(response, 200, { ok: true, config: deps.service.view(), storageFile: deps.service.configFile });
-      return;
-    }
-    if (request.method !== "POST") {
-      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET\uFF08\u8BFB\uFF09/ POST\uFF08\u5199\uFF09" });
-      return;
-    }
-    const body = await readBody(request);
-    if (!body.ok) {
-      json5(response, body.status, { ok: false, error: body.error });
-      return;
-    }
-    let parsed;
-    try {
-      parsed = body.text === "" ? {} : JSON.parse(body.text);
-    } catch {
-      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
-      return;
-    }
-    const payload = parsed && typeof parsed === "object" ? parsed : {};
-    const result2 = deps.service.save(payload.config !== void 0 ? payload.config : parsed);
-    if (!result2.ok) {
-      json5(response, 500, { ok: false, error: result2.error ?? "\u4FDD\u5B58\u5931\u8D25" });
-      return;
-    }
-    deps.log("\u8BC6\u56FE\u914D\u7F6E\u5DF2\u4FDD\u5B58", { enabled: result2.config?.enabled, model: result2.config?.model });
-    json5(response, 200, { ok: true, config: result2.config });
-  };
-}
-function visionRecognizeHandler(deps) {
-  return async (request, response) => {
-    const denied = rejected(request);
-    if (denied) {
-      json5(response, 403, { ok: false, error: denied });
-      return;
-    }
-    if (request.method !== "POST") {
-      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
-      return;
-    }
-    const body = await readBody(request);
-    if (!body.ok) {
-      json5(response, body.status, { ok: false, error: body.error });
-      return;
-    }
-    let parsed;
-    try {
-      parsed = body.text === "" ? {} : JSON.parse(body.text);
-    } catch {
-      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
-      return;
-    }
-    const imageBase64 = typeof parsed.imageBase64 === "string" ? parsed.imageBase64 : "";
-    if (imageBase64 === "") {
-      json5(response, 400, { ok: false, error: "\u7F3A\u5C11 imageBase64" });
-      return;
-    }
-    try {
-      const text = await deps.service.recognize({
-        base64: imageBase64,
-        mime: typeof parsed.mime === "string" && parsed.mime.trim() !== "" ? parsed.mime.trim() : "image/png",
-        prompt: typeof parsed.prompt === "string" ? parsed.prompt : void 0
-      });
-      deps.log("\u8BC6\u56FE\u5B8C\u6210", { chars: text.length });
-      json5(response, 200, { ok: true, text });
-    } catch (error62) {
-      const status = error62 instanceof VisionError && error62.status >= 400 ? 502 : 400;
-      const message = String(error62?.message ?? error62);
-      deps.log("\u8BC6\u56FE\u5931\u8D25", { message: message.slice(0, 200) });
-      json5(response, status, { ok: false, error: message });
-    }
-  };
-}
-function visionModelsHandler(deps) {
-  return async (request, response) => {
-    const denied = rejected(request);
-    if (denied) {
-      json5(response, 403, { ok: false, error: denied });
-      return;
-    }
-    if (request.method !== "POST" && request.method !== "GET") {
-      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
-      return;
-    }
-    try {
-      const models = await deps.service.listModels();
-      json5(response, 200, { ok: true, models });
-    } catch (error62) {
-      const status = error62 instanceof VisionError && error62.status >= 400 ? 502 : 400;
-      json5(response, status, { ok: false, error: String(error62?.message ?? error62) });
-    }
-  };
-}
-function registerVisionRoutes(webServer, deps) {
-  const definitions = [
-    { kind: "exact", path: VISION_CONFIG_ROUTE, handler: visionConfigHandler(deps) },
-    { kind: "exact", path: VISION_RECOGNIZE_ROUTE, handler: visionRecognizeHandler(deps) },
-    { kind: "exact", path: VISION_MODELS_ROUTE, handler: visionModelsHandler(deps) }
-  ];
-  const off = [];
-  const wrapped = definitions.map((definition) => ({
-    ...definition,
-    handler: (request, response) => {
-      applyCors(request, response);
-      if (preflight(request, response)) return;
-      if (request?.method === "OPTIONS") {
-        response.writeHead(204);
-        response.end();
-        return;
-      }
-      return definition.handler(request, response);
-    }
-  }));
-  try {
-    for (const definition of wrapped) off.push(webServer.register(definition));
-  } catch (error62) {
-    for (const unregister of off.splice(0)) {
-      try {
-        unregister();
-      } catch {
-      }
-    }
-    throw error62;
-  }
-  return () => {
-    for (const unregister of off) {
-      try {
-        unregister();
-      } catch {
-      }
-    }
-  };
-}
-
-// src/vision/service.ts
-import fs5 from "node:fs";
-import path13 from "node:path";
-var MAX_IMAGE_BYTES2 = 20 * 1024 * 1024;
-function visionDir(dshHome) {
-  return path13.join(dshHome, "storages", "dsh-remote-dafeiyu");
-}
-function visionConfigFile(dshHome) {
-  return path13.join(visionDir(dshHome), "vision.json");
-}
-function readVisionConfig(file2) {
-  try {
-    const raw = fs5.readFileSync(file2, "utf8");
-    return normalizeVisionConfig(JSON.parse(raw));
-  } catch {
-    return { ...DEFAULT_VISION_CONFIG };
-  }
-}
-function writeVisionConfig(file2, config2) {
-  try {
-    fs5.mkdirSync(path13.dirname(file2), { recursive: true });
-    const tmp = `${file2}.${process.pid}.tmp`;
-    fs5.writeFileSync(tmp, `${JSON.stringify(config2, null, 2)}
-`, "utf8");
-    fs5.renameSync(tmp, file2);
-    return true;
-  } catch {
-    return false;
-  }
-}
-function errorSnippet(body) {
-  const text = String(body ?? "").replace(/\s+/g, " ").trim();
-  return text.length > 240 ? `${text.slice(0, 240)}\u2026` : text;
-}
-async function recognize(config2, image) {
-  if (!config2.enabled) {
-    throw new VisionError("\u8BC6\u56FE\u672A\u5F00\u542F\uFF1A\u8BBE\u7F6E \u2192 \u5927\u80A5\u9C7C \u2192 \u4EBA\u8BBE \u2192 \u8BC6\u56FE\uFF0C\u6253\u5F00\u603B\u5F00\u5173", 0);
-  }
-  if (config2.apiKey.trim() === "") {
-    throw new VisionError("\u8BC6\u56FE\u8FD8\u6CA1\u914D\u7F6E API Key\uFF1A\u8BBE\u7F6E \u2192 \u5927\u80A5\u9C7C \u2192 \u4EBA\u8BBE \u2192 \u8BC6\u56FE\u91CC\u586B\u5916\u6302\u89C6\u89C9\u6A21\u578B\u7684 key", 0);
-  }
-  if (image.base64 === "") throw new VisionError("\u56FE\u7247\u5185\u5BB9\u4E3A\u7A7A", 0);
-  if (image.base64.length * 0.75 > MAX_IMAGE_BYTES2) throw new VisionError("\u56FE\u7247\u592A\u5927\uFF08\u4E0A\u9650 20MB\uFF09\uFF0C\u5148\u538B\u7F29\u518D\u53D1", 0);
-  const prepared = buildRequest(config2, image);
-  let response;
-  try {
-    response = await fetch(prepared.url, {
-      method: prepared.method,
-      headers: prepared.headers,
-      body: prepared.body,
-      signal: typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(config2.timeoutMs) : void 0
-    });
-  } catch (error62) {
-    const reason = String(error62?.message ?? error62);
-    throw new VisionError(`\u8FDE\u4E0D\u4E0A\u8BC6\u56FE\u6A21\u578B\uFF08${prepared.url}\uFF09\uFF1A${reason}`, 0);
-  }
-  const raw = await response.text();
-  if (!response.ok) {
-    throw new VisionError(`\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE HTTP ${response.status}\uFF1A${errorSnippet(raw) || "\uFF08\u7A7A\u54CD\u5E94\uFF09"}`, response.status);
-  }
-  let json12;
-  try {
-    json12 = raw === "" ? {} : JSON.parse(raw);
-  } catch {
-    throw new VisionError(`\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u7684\u4E0D\u662F JSON\uFF1A${errorSnippet(raw)}`, response.status);
-  }
-  const text = prepared.extract(json12);
-  if (text === "") throw new VisionError("\u8BC6\u56FE\u6A21\u578B\u8FD4\u56DE\u4E86\u7A7A\u63CF\u8FF0\uFF08\u6362\u4E00\u5F20\u56FE\u6216\u68C0\u67E5\u63D0\u793A\u8BCD\uFF09", response.status);
-  return text;
-}
-async function listModels(config2) {
-  const base = String(config2.apiBase ?? "").replace(/\/+$/, "");
-  const url2 = `${base}/models`;
-  let response;
-  try {
-    response = await fetch(url2, {
-      method: "GET",
-      headers: config2.apiKey ? { Authorization: `Bearer ${config2.apiKey}` } : {},
-      signal: typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(15e3) : void 0
-    });
-  } catch (error62) {
-    throw new VisionError(`\u62C9\u6A21\u578B\u5217\u8868\u5931\u8D25\uFF08${url2}\uFF09\uFF1A${String(error62?.message ?? error62)}`, 0);
-  }
-  const raw = await response.text();
-  if (!response.ok) throw new VisionError(`\u62C9\u6A21\u578B\u5217\u8868\u5931\u8D25 HTTP ${response.status}\uFF1A${errorSnippet(raw)}`, response.status);
-  try {
-    const json12 = JSON.parse(raw);
-    const models = Array.isArray(json12.data) ? json12.data.map((item) => typeof item?.id === "string" ? item.id : "").filter((id) => id !== "") : [];
-    if (models.length === 0) throw new VisionError("\u6A21\u578B\u5217\u8868\u662F\u7A7A\u7684\uFF08\u8FD9\u4E2A\u63A5\u53E3\u53EF\u80FD\u4E0D\u652F\u6301 /models\uFF09", 0);
-    return models;
-  } catch (error62) {
-    if (error62 instanceof VisionError) throw error62;
-    throw new VisionError(`\u6A21\u578B\u5217\u8868\u89E3\u6790\u5931\u8D25\uFF1A${errorSnippet(raw)}`, response.status);
-  }
-}
-function createVisionService(dshHome) {
-  const dir = visionDir(dshHome);
-  const configFile2 = visionConfigFile(dshHome);
-  let config2 = readVisionConfig(configFile2);
-  return {
-    dir,
-    configFile: configFile2,
-    current: () => config2,
-    view: () => toView(config2),
-    save(input2) {
-      const next = normalizeVisionConfig(input2, config2);
-      if (!writeVisionConfig(configFile2, next)) {
-        return { ok: false, error: "\u914D\u7F6E\u5199\u4E0D\u8FDB\u53BB\uFF08\u68C0\u67E5\u78C1\u76D8/\u6743\u9650\uFF09" };
-      }
-      config2 = next;
-      return { ok: true, config: toView(config2) };
-    },
-    enabled: () => config2.enabled,
-    recognize: (image) => recognize(config2, image),
-    listModels: () => listModels(config2),
-    describe: () => ({
-      enabled: config2.enabled,
-      protocol: resolveProtocol(config2),
-      configured: config2.apiKey !== "",
-      apiKeyHint: redactKey(config2.apiKey),
-      model: config2.model
-    })
-  };
-}
-
-// src/vision/start.ts
-var VISION_SERVICE_NAME = "dafeiyuVision";
-var GUIDANCE = [
-  "## \u8BC6\u56FE\u80FD\u529B\uFF08\u8BC6\u56FE\u5DF2\u5F00\u542F\uFF09",
-  "\u4F60\u53EF\u4EE5\u8C03\u7528 `recognize_image` \u5DE5\u5177\uFF1A\u7ED9\u4E00\u5F20\u672C\u5730\u56FE\u7247\u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF0C\u5B83\u4F1A\u628A\u56FE\u7247\u4EA4\u7ED9\u5916\u6302\u89C6\u89C9\u6A21\u578B\uFF0C\u8FD4\u56DE\u6587\u672C\u63CF\u8FF0\uFF08\u542B\u9010\u5B57\u8F6C\u5F55\uFF09\u3002\u7528\u6237\u8BF4\u300C\u770B\u770B\u8FD9\u5F20\u56FE / \u8FD9\u4E2A\u622A\u56FE\u300D\u5E76\u7ED9\u51FA\u8DEF\u5F84\u65F6\u7528\u5B83\u3002",
-  "\u7528\u6237\u5982\u679C\u628A\u56FE\u7247\u76F4\u63A5\u8D34\u8FDB\u804A\u5929\uFF0C\u4F60\u4F1A\u6536\u5230\u4E00\u6761\u4EE5\u300C\u3010\u56FE\u7247\u8BC6\u522B\u3011\u300D\u5F00\u5934\u7684\u6587\u672C\u2014\u2014\u90A3\u662F\u522B\u4EBA\u66FF\u4F60\u770B\u8FC7\u7684\u7ED3\u679C\uFF0C\u76F4\u63A5\u57FA\u4E8E\u5B83\u56DE\u7B54\uFF0C**\u4E0D\u8981\u58F0\u79F0\u4F60\u770B\u5230\u4E86\u539F\u56FE**\u3002"
-].join("\n");
-function startVision(ctx, deps) {
-  const service = createVisionService(deps.dshHome);
-  const probe = {};
-  let web;
-  let unregister;
-  let started = false;
-  let stopped = false;
-  const tryStart = () => {
-    if (started || stopped || !web) return;
-    started = true;
-    try {
-      unregister = registerVisionRoutes(web, { service, log: deps.log });
-      probe.routes = "registered";
-    } catch (error62) {
-      probe.routes = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-      started = false;
-      deps.log("\u8BC6\u56FE\u8DEF\u7531\u6CE8\u518C\u5931\u8D25\uFF08\u8FDC\u63A7/\u4EBA\u8BBE\u4E0D\u53D7\u5F71\u54CD\uFF09", { message: String(error62?.message ?? error62).slice(0, 200) });
-      return;
-    }
-    deps.log("\u8BC6\u56FE\u8DEF\u7531\u5DF2\u6302\u4E0A");
-  };
-  const acceptWeb = (value, via) => {
-    if (!value || typeof value !== "object") return false;
-    if (typeof value.register !== "function") {
-      probe.webServer = "object without register()";
-      return false;
-    }
-    web = value;
-    probe.webServer = via;
-    tryStart();
-    return true;
-  };
-  const pickFrom = (source) => {
-    if (!source || typeof source !== "object") return void 0;
-    const asContext = source;
-    if (typeof asContext.get === "function") {
-      try {
-        const got = asContext.get("webServer", true);
-        if (got) return got;
-      } catch {
-      }
-    }
-    try {
-      return source["webServer"];
-    } catch {
-      return void 0;
-    }
-  };
-  try {
-    const found = ctx.get?.("webServer", true);
-    if (found) acceptWeb(found, "via get");
-    else probe.webServer = "none";
-  } catch (error62) {
-    probe.webServer = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-  }
-  try {
-    ctx.inject?.(["webServer"], ((...args) => {
-      try {
-        for (const candidate of [args[0], ...args, ctx]) {
-          if (acceptWeb(pickFrom(candidate), "via inject")) return;
-        }
-        probe.webServer = `${probe.webServer ?? "none"} (inject fired, empty)`;
-      } catch (error62) {
-        probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
-      }
-    }));
-  } catch (error62) {
-    probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
-  }
-  try {
-    ctx.provide?.(VISION_SERVICE_NAME, {
-      get enabled() {
-        return service.enabled();
-      },
-      recognize: (image) => service.recognize(image),
-      describe: () => service.describe()
-    });
-    probe.provide = "ok";
-  } catch (error62) {
-    probe.provide = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-  }
-  if (service.enabled()) {
-    try {
-      const systemPrompt = ctx.get?.("systemPrompt", true);
-      if (systemPrompt && typeof systemPrompt.section === "function") {
-        systemPrompt.section({ name: "dafeiyu:vision", order: 10100, text: GUIDANCE });
-        probe.section = "registered";
-      } else {
-        probe.section = "no-systemPrompt";
-      }
-    } catch (error62) {
-      probe.section = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-    }
-    try {
-      const tools = ctx.get?.("tools", true);
-      if (tools && typeof tools.register === "function") {
-        tools.register(recognizeImageTool(service));
-        probe.tool = "registered";
-      } else {
-        probe.tool = "no-tools";
-      }
-    } catch (error62) {
-      probe.tool = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-    }
-  } else {
-    probe.section = "disabled";
-    probe.tool = "disabled";
-  }
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    const off = unregister;
-    unregister = void 0;
-    try {
-      off?.();
-    } catch {
-    }
-    if (started) deps.log("\u8BC6\u56FE\u8DEF\u7531\u5DF2\u505C");
-  };
-  return {
-    stop,
-    probe,
-    service,
-    get available() {
-      return !stopped && started && probe.routes === "registered";
-    }
-  };
-}
-var MIME_BY_EXT = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-  bmp: "image/bmp"
-};
-function mimeOf(file2) {
-  const ext = String(file2).split(".").pop()?.toLowerCase() ?? "";
-  return MIME_BY_EXT[ext] ?? "image/png";
-}
-function recognizeImageTool(service) {
-  return {
-    name: "recognize_image",
-    description: "\u628A\u4E00\u5F20\u672C\u5730\u56FE\u7247\u4EA4\u7ED9\u5916\u6302\u89C6\u89C9\u6A21\u578B\uFF0C\u8FD4\u56DE\u56FE\u7247\u5185\u5BB9\u7684\u8BE6\u7EC6\u6587\u672C\u63CF\u8FF0\uFF08\u542B\u6587\u5B57\u8F6C\u5F55\uFF09\u3002\u7528\u4E8E\u770B\u622A\u56FE\u3001\u7167\u7247\u3001\u56FE\u8868\u3001UI\u3001\u62A5\u9519\u622A\u56FE\u7B49\u3002",
-    parameters: {
-      type: "object",
-      properties: {
-        image_path: { type: "string", description: "\u56FE\u7247\u6587\u4EF6\u7684\u7EDD\u5BF9\u8DEF\u5F84" },
-        prompt: { type: "string", description: "\u53EF\u9009\uFF1A\u672C\u6B21\u8BC6\u56FE\u7684\u5177\u4F53\u6307\u4EE4\uFF0C\u8986\u76D6\u9ED8\u8BA4\u8BC6\u56FE\u63D0\u793A\u8BCD" }
-      },
-      required: ["image_path"]
-    },
-    output: {
-      schema: { type: "string" },
-      render: (_args, value) => [{ type: "text", text: String(value) }]
-    },
-    timeoutMs: 12e4,
-    async execute(args) {
-      const file2 = typeof args.image_path === "string" ? args.image_path : "";
-      if (file2 === "") throw new Error("\u9700\u8981\u56FE\u7247\u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF08image_path\uFF09");
-      const { readFile: readFile2 } = await import("node:fs/promises");
-      const data = await readFile2(file2);
-      if (data.byteLength === 0) throw new Error(`\u56FE\u7247\u6587\u4EF6\u662F\u7A7A\u7684\uFF1A${file2}`);
-      if (data.byteLength > 20 * 1024 * 1024) throw new Error(`\u56FE\u7247\u592A\u5927\uFF08>20MB\uFF09\uFF1A${file2}`);
-      return service.recognize({
-        base64: data.toString("base64"),
-        mime: mimeOf(file2),
-        prompt: typeof args.prompt === "string" ? args.prompt : void 0
-      });
-    }
-  };
-}
-
 // src/subagents/guidance.ts
 var NAMING = [
   "### \u6D3E\u6D3B\u89C4\u8303\uFF08\u5FC5\u987B\u9075\u5B88\uFF09",
@@ -36916,12 +36188,12 @@ var SUBAGENTS_ARCHIVE_ROUTE = "/api/dsh-remote-dafeiyu/subagents/archive";
 var SUBAGENTS_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/subagents/config";
 var GUIDANCE_PUSH_ROUTE = "/api/dsh-remote-dafeiyu/guidance/push";
 var SUBAGENTS_STREAM_ROUTE = "/api/dsh-remote-dafeiyu/subagents/stream";
-function json6(response, status, body) {
+function json5(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected2(request) {
+function rejected(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -36930,45 +36202,45 @@ function subagentsHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
     if (sessionId === "") {
-      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json5(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     const descendants = url2.searchParams.get("descendants") === "1";
     const includeArchived = url2.searchParams.get("includeArchived") === "1";
     try {
       const items = await deps.list(sessionId, { descendants, includeArchived });
-      json6(response, 200, { ok: true, items, config: deps.config.read() });
+      json5(response, 200, { ok: true, items, config: deps.config.read() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u5B50\u4EE3\u7406\u5217\u8868\u8BFB\u53D6\u5931\u8D25", { message });
-      json6(response, 500, { ok: false, error: message });
+      json5(response, 500, { ok: false, error: message });
     }
   };
 }
-function readBody2(request) {
+function readBody(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk2) => {
-      size += chunk2.byteLength;
+    request.on("data", (chunk) => {
+      size += chunk.byteLength;
       if (size > 8 * 1024) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
@@ -36978,37 +36250,37 @@ function subagentsArchiveHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json5(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     if (!deps.archive) {
-      json6(response, 501, { ok: false, error: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5F52\u6863" });
+      json5(response, 501, { ok: false, error: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5F52\u6863" });
       return;
     }
     let body;
     try {
-      body = JSON.parse(await readBody2(request));
+      body = JSON.parse(await readBody(request));
     } catch {
-      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === "string" && id.trim() !== "").map((id) => id.trim()) : typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? [body.sessionId.trim()] : [];
     if (ids.length === 0) {
-      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
+      json5(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
       return;
     }
     if (ids.length > 50) {
-      json6(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
+      json5(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
       return;
     }
     const archived = body.archived !== false;
@@ -37027,7 +36299,7 @@ function subagentsArchiveHandler(deps) {
       for (const row of failedRows.slice(0, 10)) {
         deps.log("\u5B50\u4EE3\u7406\u5F52\u6863\u5931\u8D25", { sessionId: row.sessionId, message: row.message ?? "\u5185\u6838\u6CA1\u7ED9\u539F\u56E0", archived });
       }
-      json6(response, failed === 0 ? 200 : 207, {
+      json5(response, failed === 0 ? 200 : 207, {
         ok: failed === 0,
         ...failed === 0 ? {} : {
           message: `${failed}/${results.length} \u4E2A${archived ? "\u5F52\u6863" : "\u53D6\u6D88\u5F52\u6863"}\u5931\u8D25\uFF1A${failedRows[0]?.message ?? "\u5185\u6838\u6CA1\u7ED9\u539F\u56E0"}`
@@ -37035,7 +36307,7 @@ function subagentsArchiveHandler(deps) {
         results
       });
     } catch (error62) {
-      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json5(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37043,28 +36315,28 @@ function subagentsConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json6(response, 200, { ok: true, config: deps.config.read(), guidanceText: deps.guidanceText ? deps.guidanceText() : SUBAGENT_GUIDANCE });
+      json5(response, 200, { ok: true, config: deps.config.read(), guidanceText: deps.guidanceText ? deps.guidanceText() : SUBAGENT_GUIDANCE });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json5(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     try {
-      const body = JSON.parse(await readBody2(request));
-      json6(response, 200, { ok: true, config: deps.config.write(body) });
+      const body = JSON.parse(await readBody(request));
+      json5(response, 200, { ok: true, config: deps.config.write(body) });
     } catch (error62) {
-      json6(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json5(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37072,43 +36344,43 @@ function guidancePushHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json5(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     if (deps.pushGuidance === void 0) {
-      json6(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
+      json5(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
       return;
     }
     try {
-      const body = JSON.parse(await readBody2(request));
+      const body = JSON.parse(await readBody(request));
       const which = body.which === "xyq" ? "xyq" : body.which === "both" ? "both" : "subagent";
       const sessionId = typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? body.sessionId.trim() : void 0;
       const mode = body.mode === "hands-on" || body.mode === "foreman" ? body.mode : void 0;
-      json6(response, 200, { ok: true, which, mode: mode ?? null, result: await deps.pushGuidance(which, sessionId, mode) });
+      json5(response, 200, { ok: true, which, mode: mode ?? null, result: await deps.pushGuidance(which, sessionId, mode) });
     } catch (error62) {
-      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json5(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function subagentsStreamHandler() {
   return (request, response) => {
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     response.writeHead(200, {
@@ -37134,12 +36406,12 @@ function subagentsStreamHandler() {
 var streamClients = /* @__PURE__ */ new Set();
 
 // src/subagents/config.ts
-import fs7 from "node:fs";
-import path15 from "node:path";
-
-// src/memory/service.ts
 import fs6 from "node:fs";
 import path14 from "node:path";
+
+// src/memory/service.ts
+import fs5 from "node:fs";
+import path13 from "node:path";
 var DEFAULT_MEMORY_BUDGET = 800;
 var MAX_ENTRIES2 = 100;
 var MAX_ENTRY_CHARS = 500;
@@ -37147,14 +36419,14 @@ function resolveDshHome(env = process.env) {
   const explicit = (env.DSH_HOME ?? "").trim();
   if (explicit !== "") return explicit;
   const home = (env.USERPROFILE ?? env.HOME ?? "").trim();
-  return home === "" ? "" : path14.join(home, ".dsh");
+  return home === "" ? "" : path13.join(home, ".dsh");
 }
 function memoryDir(dshHome) {
-  return path14.join(dshHome, "storages", "dsh-remote-dafeiyu", "memory");
+  return path13.join(dshHome, "storages", "dsh-remote-dafeiyu", "memory");
 }
 function memoryFile(dir, personaId) {
   const safe = String(personaId ?? "").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "default";
-  return path14.join(dir, `${safe}.json`);
+  return path13.join(dir, `${safe}.json`);
 }
 function makeId() {
   return `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -37165,7 +36437,7 @@ function normalizeImportance(value) {
 }
 function readFileOf(file2) {
   try {
-    const parsed = JSON.parse(fs6.readFileSync(file2, "utf8"));
+    const parsed = JSON.parse(fs5.readFileSync(file2, "utf8"));
     const entries = Array.isArray(parsed.entries) ? parsed.entries.filter((entry) => Boolean(entry) && typeof entry.text === "string").map((entry) => ({
       id: typeof entry.id === "string" ? entry.id : makeId(),
       text: String(entry.text).slice(0, MAX_ENTRY_CHARS),
@@ -37180,11 +36452,11 @@ function readFileOf(file2) {
 }
 function writeFileOf(file2, entries) {
   try {
-    fs6.mkdirSync(path14.dirname(file2), { recursive: true });
+    fs5.mkdirSync(path13.dirname(file2), { recursive: true });
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs6.writeFileSync(tmp, `${JSON.stringify({ version: 1, entries }, null, 2)}
+    fs5.writeFileSync(tmp, `${JSON.stringify({ version: 1, entries }, null, 2)}
 `, "utf8");
-    fs6.renameSync(tmp, file2);
+    fs5.renameSync(tmp, file2);
     return true;
   } catch {
     return false;
@@ -37271,9 +36543,9 @@ function createMemoryService(dshHome, budget = DEFAULT_MEMORY_BUDGET) {
     counts() {
       const result2 = {};
       try {
-        for (const name2 of fs6.readdirSync(dir)) {
+        for (const name2 of fs5.readdirSync(dir)) {
           if (!name2.endsWith(".json")) continue;
-          result2[name2.slice(0, -5)] = readFileOf(path14.join(dir, name2)).entries.length;
+          result2[name2.slice(0, -5)] = readFileOf(path13.join(dir, name2)).entries.length;
         }
       } catch {
       }
@@ -37287,7 +36559,7 @@ var DEFAULT_CONFIG2 = { version: 1, enabled: true, guidance: true, idleWarnMs: 2
 var MIN_IDLE = 5 * 60 * 1e3;
 var MAX_IDLE = 7 * 24 * 60 * 60 * 1e3;
 function resolveSubagentsConfigFile(dshHome = resolveDshHome(process.env)) {
-  return path15.join(dshHome, "storages", "dsh-remote-dafeiyu", "subagents.json");
+  return path14.join(dshHome, "storages", "dsh-remote-dafeiyu", "subagents.json");
 }
 function normalizeSubagentsConfig(raw) {
   const value = raw && typeof raw === "object" ? raw : {};
@@ -37302,7 +36574,7 @@ function normalizeSubagentsConfig(raw) {
 }
 function readSubagentsConfig(file2) {
   try {
-    const text = fs7.readFileSync(file2, "utf8");
+    const text = fs6.readFileSync(file2, "utf8");
     return normalizeSubagentsConfig(JSON.parse(text));
   } catch {
     return { ...DEFAULT_CONFIG2 };
@@ -37311,11 +36583,11 @@ function readSubagentsConfig(file2) {
 function writeSubagentsConfig(file2, patch) {
   const next = normalizeSubagentsConfig({ ...readSubagentsConfig(file2), ...patch });
   try {
-    fs7.mkdirSync(path15.dirname(file2), { recursive: true });
+    fs6.mkdirSync(path14.dirname(file2), { recursive: true });
     const tmp = `${file2}.${process.pid}.tmp`;
-    fs7.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
+    fs6.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
 `, "utf8");
-    fs7.renameSync(tmp, file2);
+    fs6.renameSync(tmp, file2);
   } catch {
   }
   return next;
@@ -37474,80 +36746,20 @@ function buildSubagentTools(deps) {
   ];
 }
 
-// src/xyq/config.ts
-import fs8 from "node:fs";
-import path16 from "node:path";
-var DEFAULTS4 = {
-  version: 1,
-  enabled: true,
-  accessKey: "",
-  defaultVideoModel: "Seedance_2.0_mini_lite",
-  defaultVideoDurationSec: 4,
-  defaultImageModel: "",
-  budget: { images: 10, videos: 2, maxVideoSeconds: 10 },
-  freedom: "explicit"
-};
+// src/subagents/xyq-guidance.ts
+import fs7 from "node:fs";
+import path15 from "node:path";
 function resolveXyqConfigFile(dshHome = resolveDshHome(process.env)) {
-  return path16.join(dshHome, "storages", "dsh-remote-dafeiyu", "xyq.json");
+  return path15.join(dshHome, "storages", "dsh-remote-dafeiyu", "xyq.json");
 }
-function clampInt(value, min, max, fallback) {
-  const num = typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
-  return Math.min(max, Math.max(min, num));
-}
-function normalizeXyqConfig(raw) {
-  const value = raw && typeof raw === "object" ? raw : {};
-  const budget = value.budget && typeof value.budget === "object" ? value.budget : {};
-  const freedom = value.freedom === "budgeted" || value.freedom === "open" ? value.freedom : "explicit";
-  const duration3 = clampInt(value.defaultVideoDurationSec, 4, 30, DEFAULTS4.defaultVideoDurationSec);
-  return {
-    version: 1,
-    enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULTS4.enabled,
-    accessKey: typeof value.accessKey === "string" ? value.accessKey.trim() : "",
-    defaultVideoModel: typeof value.defaultVideoModel === "string" && value.defaultVideoModel.trim() !== "" ? value.defaultVideoModel.trim() : DEFAULTS4.defaultVideoModel,
-    defaultVideoDurationSec: duration3,
-    defaultImageModel: typeof value.defaultImageModel === "string" ? value.defaultImageModel.trim() : "",
-    budget: {
-      images: clampInt(budget.images, 0, 200, DEFAULTS4.budget.images),
-      videos: clampInt(budget.videos, 0, 50, DEFAULTS4.budget.videos),
-      maxVideoSeconds: clampInt(budget.maxVideoSeconds, 4, 30, DEFAULTS4.budget.maxVideoSeconds)
-    },
-    freedom
-  };
-}
-function readXyqConfig(file2) {
+function readXyqFreedom(file2) {
   try {
-    return normalizeXyqConfig(JSON.parse(fs8.readFileSync(file2, "utf8")));
+    const raw = JSON.parse(fs7.readFileSync(file2, "utf8"));
+    return raw?.freedom === "budgeted" || raw?.freedom === "open" ? raw.freedom : "explicit";
   } catch {
-    return { ...DEFAULTS4, budget: { ...DEFAULTS4.budget } };
+    return "explicit";
   }
 }
-function writeXyqConfig(file2, patch) {
-  const next = normalizeXyqConfig({ ...readXyqConfig(file2), ...patch });
-  try {
-    fs8.mkdirSync(path16.dirname(file2), { recursive: true });
-    const tmp = `${file2}.${process.pid}.tmp`;
-    fs8.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
-`, "utf8");
-    fs8.renameSync(tmp, file2);
-  } catch {
-  }
-  return next;
-}
-function viewXyqConfig(config2) {
-  const key = config2.accessKey;
-  return {
-    enabled: config2.enabled,
-    accessKeySet: key !== "",
-    accessKeyHint: key === "" ? "" : `\u2026${key.slice(-4)}`,
-    defaultVideoModel: config2.defaultVideoModel,
-    defaultVideoDurationSec: config2.defaultVideoDurationSec,
-    defaultImageModel: config2.defaultImageModel,
-    budget: config2.budget,
-    freedom: config2.freedom
-  };
-}
-
-// src/xyq/guidance.ts
 function xyqGuidance(freedom) {
   const lines = [
     "## \u5C0F\u4E91\u96C0\uFF08\u56FE\u7247 / \u89C6\u9891\u751F\u6210\uFF09",
@@ -37587,7 +36799,7 @@ function startSubagents(ctx, input2) {
       return subagentGuidance(config2.mode);
     },
     get xyq() {
-      return xyqGuidance(readXyqConfig(xyqConfigFile).freedom);
+      return xyqGuidance(readXyqFreedom(xyqConfigFile));
     }
   };
   const deps = {
@@ -37792,28 +37004,28 @@ function startSubagents(ctx, input2) {
 var HANDOFF_SELF_ROUTE = "/api/dsh-remote-dafeiyu/handoff/self";
 var HANDOFF_START_ROUTE = "/api/dsh-remote-dafeiyu/handoff/start";
 var HANDOFF_STATUS_ROUTE = "/api/dsh-remote-dafeiyu/handoff/status";
-function json7(response, status, body) {
+function json6(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected3(request) {
+function rejected2(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
 }
-function readBody3(request) {
+function readBody2(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk2) => {
-      size += chunk2.byteLength;
+    request.on("data", (chunk) => {
+      size += chunk.byteLength;
       if (size > 16 * 1024) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
@@ -37823,26 +37035,26 @@ function handoffSelfHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
     if (sessionId === "") {
-      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     try {
       const cwd = await deps.sessionCwd(sessionId);
-      json7(response, 200, deps.selfCheck(sessionId, cwd));
+      json6(response, 200, deps.selfCheck(sessionId, cwd));
     } catch (error62) {
-      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37850,30 +37062,30 @@ function handoffStartHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     let body;
     try {
-      body = JSON.parse(await readBody3(request));
+      body = JSON.parse(await readBody2(request));
     } catch {
-      json7(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const kind = body.kind === "branch" ? "branch" : "rebirth";
     const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
     if (sessionId === "") {
-      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     try {
@@ -37883,10 +37095,10 @@ function handoffStartHandler(deps) {
         typeof body.note === "string" ? body.note : void 0,
         typeof body.boundary === "string" ? body.boundary : void 0
       );
-      json7(response, answer.ok ? 200 : 400, answer);
+      json6(response, answer.ok ? 200 : 400, answer);
     } catch (error62) {
       deps.log("\u8F6C\u751F/\u5206\u8EAB\u542F\u52A8\u5931\u8D25", { message: String(error62?.message ?? error62).slice(0, 200) });
-      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37894,33 +37106,115 @@ function handoffStatusHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const jobId = (url2.searchParams.get("jobId") ?? "").trim();
     if (jobId === "") {
-      json7(response, 200, { ok: true, jobs: deps.list() });
+      json6(response, 200, { ok: true, jobs: deps.list() });
       return;
     }
     const job = deps.status(jobId);
     if (!job) {
-      json7(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u4F5C\u4E1A\uFF08\u53EF\u80FD\u91CD\u542F\u8FC7\uFF09" });
+      json6(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u4F5C\u4E1A\uFF08\u53EF\u80FD\u91CD\u542F\u8FC7\uFF09" });
       return;
     }
-    json7(response, 200, { ok: true, job });
+    json6(response, 200, { ok: true, job });
   };
+}
+
+// src/handoff/tools.ts
+var OUT2 = {
+  type: "object",
+  properties: {
+    ok: { type: "boolean" },
+    jobId: { type: "string" },
+    status: { type: "string" },
+    message: { type: "string" },
+    handoffFile: { type: "string" }
+  },
+  required: ["ok"],
+  additionalProperties: false
+};
+function resolveSessionId(exec) {
+  const candidate = exec ?? {};
+  const shapes = [
+    candidate.sessionId,
+    candidate.session?.id,
+    candidate.agent?.sessionId,
+    candidate.agent?.session?.id
+  ];
+  for (const value of shapes) {
+    if (typeof value === "string" && value.trim() !== "") return value.trim();
+  }
+  return void 0;
+}
+function explainMissingSession() {
+  return JSON.stringify({
+    ok: false,
+    error: "\u62FF\u4E0D\u5230\u5F53\u524D\u4F1A\u8BDD id\u3002\u8BF7\u663E\u5F0F\u4F20 `sessionId`\uFF1A\u5B83\u5C31\u662F\u4F60\u6B63\u5728\u5BF9\u8BDD\u7684\u90A3\u4E2A\u4F1A\u8BDD\uFF08\u684C\u9762\u7AEF\u5728\u4F1A\u8BDD\u5217\u8868\u91CC\u80FD\u770B\u5230\uFF1B\u4E5F\u53EF\u4EE5\u7528 `list_agents` \u91CC\u7684\u4F1A\u8BDD UUID \u5BF9\u7167\uFF09\u3002"
+  });
+}
+function buildHandoffTools(deps) {
+  const make = (kind) => ({
+    name: kind === "rebirth" ? "handoff_rebirth" : "handoff_branch",
+    description: kind === "rebirth" ? "\u628A**\u5F53\u524D\u4F1A\u8BDD**\u4E00\u952E\u8F6C\u751F\uFF1A\u8BA9\u672C\u4F1A\u8BDD\u5199\u4E00\u4EFD\u4EA4\u63A5\u6587\u6863\uFF0C\u7136\u540E\u5728**\u65B0\u4F1A\u8BDD**\u91CC\u63A5\u7740\u5E72\u3002\u9002\u5408\u4E0A\u4E0B\u6587\u8981\u6EE1\u4E86\u3001\u6216\u8981\u628A\u4E00\u4EF6\u4E8B\u4EA4\u51FA\u53BB\u3002\n\u8FD4\u56DE `jobId`\uFF1B\u4F5C\u4E1A\u8DD1\u5B8C\uFF08\u65B0\u4F1A\u8BDD\u5DF2\u53D1\u51FA\u7B2C\u4E00\u53E5\uFF09\u524D\u72B6\u6001\u662F `running`\uFF0C\u53EF\u7528 `handoff_status` \u67E5\u3002" : "\u628A**\u5F53\u524D\u4F1A\u8BDD**\u4E00\u952E\u5206\u8EAB\uFF1A\u590D\u5236\u4E0A\u4E0B\u6587\u6210**\u65B0\u4F1A\u8BDD**\uFF0C\u4E24\u8FB9\u5E76\u884C\u5E72\u6D3B\u3001\u4E92\u4E0D\u5F71\u54CD\u3002\n\u5178\u578B\u7528\u6CD5\uFF1A\u628A\u67D0\u4E2A\u6A21\u5757\u7684\u540E\u7EED\u7EF4\u62A4\u4EA4\u7ED9\u5206\u8EAB\u53BB\u8FED\u4EE3\uFF0C\u4E3B\u4F1A\u8BDD\u7EE7\u7EED\u5E72\u522B\u7684\u3002\u8FD4\u56DE `jobId`\u3002",
+    parameters: {
+      type: "object",
+      properties: {
+        sessionId: {
+          type: "string",
+          description: "\u4ECE\u54EA\u4E2A\u4F1A\u8BDD\u51FA\u53D1\u3002**\u901A\u5E38\u4E0D\u7528\u4F20**\uFF08\u5DE5\u5177\u80FD\u4ECE\u6267\u884C\u4E0A\u4E0B\u6587\u8BFB\u5230\uFF09\uFF1B\u8BFB\u4E0D\u5230\u65F6\u5FC5\u987B\u663E\u5F0F\u7ED9\u3002"
+        },
+        note: {
+          type: "string",
+          description: "\u4EA4\u63A5\u91CD\u70B9\uFF08\u9009\u586B\uFF09\uFF1A\u6BD4\u5982\u300C\u91CD\u70B9\u628A X \u505A\u5B8C\uFF0CY \u5DF2\u7ECF\u653E\u5F03\u522B\u518D\u8BD5\u300D\u3002\u5199\u8FDB\u4EA4\u63A5\u6587\u6863\u3002"
+        },
+        boundary: {
+          type: "string",
+          description: "\u5206\u754C\uFF08\u9009\u586B\uFF09\uFF1A\u4EA4\u63A5\u6587\u6863\u91CC\u90A3\u884C\u300C\u5230\u6B64\u4E3A\u6B62\u300D\u7684\u8BF4\u660E\uFF0C\u4E00\u822C\u7559\u7A7A\u3002"
+        }
+      },
+      required: []
+    },
+    output: OUT2,
+    timeoutMs: 3e4,
+    async execute(args, exec) {
+      const input2 = args ?? {};
+      const given = typeof input2.sessionId === "string" ? input2.sessionId.trim() : "";
+      const sessionId = given !== "" ? given : resolveSessionId(exec);
+      if (sessionId === void 0) return explainMissingSession();
+      const note = typeof input2.note === "string" ? input2.note.slice(0, 2e3) : void 0;
+      const boundary = typeof input2.boundary === "string" ? input2.boundary.slice(0, 500) : void 0;
+      try {
+        const result2 = await deps.service.start(kind, sessionId, note, boundary);
+        deps.log(`agent \u53D1\u8D77${kind === "rebirth" ? "\u8F6C\u751F" : "\u5206\u8EAB"}`, {
+          sessionId,
+          ok: String(result2.ok),
+          jobId: result2.jobId ?? ""
+        });
+        return JSON.stringify(result2);
+      } catch (error62) {
+        return JSON.stringify({
+          ok: false,
+          error: `${kind === "rebirth" ? "\u8F6C\u751F" : "\u5206\u8EAB"}\u6CA1\u8D77\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 200)}`
+        });
+      }
+    }
+  });
+  return [make("rebirth"), make("branch")];
 }
 
 // src/handoff/service.ts
 import { existsSync, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync, statSync as statSync2 } from "node:fs";
-import path17 from "node:path";
+import path16 from "node:path";
 
 // src/handoff/prompt.ts
 var HANDOFF_MARKER = "DAFEIYU_HANDOFF_OK";
@@ -38007,12 +37301,12 @@ function sessionLogBytes(sessionsRoot, sessionId) {
   }
   for (const slug of slugs) {
     for (const candidate of [sessionId, bare, `session-${bare}`]) {
-      const dir = path17.join(sessionsRoot, slug, candidate);
+      const dir = path16.join(sessionsRoot, slug, candidate);
       if (!existsSync(dir)) continue;
       try {
         for (const file2 of readdirSync(dir)) {
           if (!file2.includes(".jsonl.")) continue;
-          total += statSync2(path17.join(dir, file2)).size;
+          total += statSync2(path16.join(dir, file2)).size;
         }
       } catch {
       }
@@ -38026,7 +37320,7 @@ function memoryEntryCount(memoryDir2) {
     for (const file2 of readdirSync(memoryDir2)) {
       if (!file2.endsWith(".json")) continue;
       try {
-        const parsed = JSON.parse(readFileSync4(path17.join(memoryDir2, file2), "utf8"));
+        const parsed = JSON.parse(readFileSync4(path16.join(memoryDir2, file2), "utf8"));
         if (Array.isArray(parsed.entries)) total += parsed.entries.length;
       } catch {
       }
@@ -38148,7 +37442,7 @@ function createHandoffService(deps) {
       } catch {
       }
       const at = new Date(now());
-      const filePath = path17.join(deps.handoffDir, handoffFileName(kind, id, at).replace(/\.md$/, `-${at.getMilliseconds()}.md`));
+      const filePath = path16.join(deps.handoffDir, handoffFileName(kind, id, at).replace(/\.md$/, `-${at.getMilliseconds()}.md`));
       const plan = {
         kind,
         filePath,
@@ -38179,8 +37473,8 @@ function createHandoffService(deps) {
       return [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt);
     },
     selfCheck(sessionId, cwd) {
-      const logBytes = sessionLogBytes(path17.join(deps.dshHome, "sessions"), sessionId);
-      const memoryDir2 = path17.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "memory");
+      const logBytes = sessionLogBytes(path16.join(deps.dshHome, "sessions"), sessionId);
+      const memoryDir2 = path16.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "memory");
       let ready = false;
       try {
         mkdirSync5(deps.handoffDir, { recursive: true });
@@ -38267,6 +37561,21 @@ function startHandoff(ctx, input2) {
       });
     }
   };
+  try {
+    const tools = ctx.get?.("tools", true);
+    if (tools && typeof tools.register === "function") {
+      const definitions = buildHandoffTools({
+        service: { start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary) },
+        log: input2.log
+      });
+      for (const definition of definitions) tools.register(definition);
+      probe.tool = "registered";
+    } else {
+      probe.tool = "no-tools";
+    }
+  } catch (error62) {
+    probe.tool = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+  }
   const acceptWeb = (value, via) => {
     if (!value || typeof value !== "object") return false;
     if (typeof value.register !== "function") {
@@ -38332,6270 +37641,40 @@ function startHandoff(ctx, input2) {
   };
 }
 
-// src/sprite/start.ts
-import path22 from "node:path";
-import { existsSync as existsSync5, readFileSync as readFileSync8 } from "node:fs";
+// src/skills/install.ts
+import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync6, readFileSync as readFileSync5, readdirSync as readdirSync2, rmSync, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import path17 from "node:path";
 import { fileURLToPath } from "node:url";
-
-// src/sprite/routes.ts
-import { readFileSync as readFileSync5 } from "node:fs";
-var SPRITE_PAGE_ROUTE = "/plugins/dafeiyu-sprite/";
-function spritePageHandler(deps) {
-  let cached2;
-  const load = () => {
-    if (cached2) return cached2;
-    const html = readFileSync5(deps.toolHtmlPath);
-    cached2 = { html, etag: `"${html.byteLength}"` };
-    return cached2;
-  };
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    if (!hostIsLoopback(request.headers.host)) {
-      response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end("host-not-loopback");
-      return;
-    }
-    if (!originIsLoopbackOrAbsent(request.headers.origin)) {
-      response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end("origin-not-trusted");
-      return;
-    }
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      response.writeHead(405, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end("\u53EA\u652F\u6301 GET");
-      return;
-    }
-    let page;
-    try {
-      page = load();
-    } catch (error62) {
-      deps.log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u8BFB\u4E0D\u51FA\u6765", { message: String(error62?.message ?? error62).slice(0, 160) });
-      response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end(`\u5DE5\u5177\u9875\u8BFB\u4E0D\u51FA\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 200)}`);
-      return;
-    }
-    response.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8",
-      "Content-Length": page.html.byteLength,
-      "Cache-Control": "no-store",
-      ETag: page.etag
-    });
-    if (request.method === "HEAD") response.end();
-    else response.end(page.html);
-  };
-}
-
-// src/sprite/service.ts
-import { createServer } from "node:http";
-import { createHash as createHash5, randomBytes as randomBytes5 } from "node:crypto";
-import {
-  createReadStream,
-  existsSync as existsSync3,
-  mkdirSync as mkdirSync6,
-  readdirSync as readdirSync2,
-  readFileSync as readFileSync6,
-  renameSync as renameSync2,
-  statSync as statSync3,
-  writeFileSync as writeFileSync3
-} from "node:fs";
-import path20 from "node:path";
-
-// src/sprite/png.ts
-import { inflateSync } from "node:zlib";
-var SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-var MAX_RAW_BYTES = 256 * 1024 * 1024;
-function paeth(a, b, c) {
-  const p = a + b - c;
-  const pa = Math.abs(p - a);
-  const pb = Math.abs(p - b);
-  const pc = Math.abs(p - c);
-  if (pa <= pb && pa <= pc) return a;
-  if (pb <= pc) return b;
-  return c;
-}
-function decodePng(png) {
-  if (png.length < 8 || !png.subarray(0, 8).equals(SIGNATURE)) {
-    throw new Error("\u4E0D\u662F PNG \u6587\u4EF6\uFF1A\u6587\u4EF6\u5934\u7B7E\u540D\u4E0D\u5BF9");
-  }
-  let width = 0;
-  let height = 0;
-  let colorType = 0;
-  let sawHeader = false;
-  let sawEnd = false;
-  const idat = [];
-  let offset = 8;
-  while (offset + 12 <= png.length) {
-    const length = png.readUInt32BE(offset);
-    const type = png.toString("latin1", offset + 4, offset + 8);
-    const dataStart = offset + 8;
-    const dataEnd = dataStart + length;
-    if (dataEnd + 4 > png.length) {
-      throw new Error(`PNG \u6570\u636E\u5757 ${type} \u8D8A\u754C\uFF1A\u58F0\u660E ${length} \u5B57\u8282\uFF0C\u6587\u4EF6\u91CC\u4E0D\u591F\uFF08\u6587\u4EF6\u88AB\u622A\u65AD\uFF1F\uFF09`);
-    }
-    const data = png.subarray(dataStart, dataEnd);
-    if (type === "IHDR") {
-      if (length !== 13) throw new Error(`PNG \u7684 IHDR \u957F\u5EA6\u5E94\u4E3A 13\uFF0C\u5B9E\u9645 ${length}`);
-      width = data.readUInt32BE(0);
-      height = data.readUInt32BE(4);
-      const bitDepth = data[8];
-      colorType = data[9];
-      const compression = data[10];
-      const filterMethod = data[11];
-      const interlace = data[12];
-      if (width === 0 || height === 0) throw new Error("PNG \u5BBD\u6216\u9AD8\u4E3A 0\uFF0C\u4E0D\u662F\u6709\u6548\u56FE\u7247");
-      if (compression !== 0) throw new Error(`\u4E0D\u652F\u6301 PNG \u538B\u7F29\u65B9\u5F0F ${compression}\uFF08\u53EA\u652F\u6301 0=deflate\uFF09`);
-      if (filterMethod !== 0) throw new Error(`\u4E0D\u652F\u6301 PNG \u8FC7\u6EE4\u65B9\u5F0F ${filterMethod}\uFF08\u53EA\u652F\u6301 0\uFF09`);
-      if (bitDepth !== 8) throw new Error(`\u4E0D\u652F\u6301 ${bitDepth}-bit \u7684 PNG\uFF08\u53EA\u652F\u6301 8-bit\uFF0C\u5148\u7528\u56FE\u50CF\u5DE5\u5177\u8F6C\u6210 8-bit\uFF09`);
-      if (colorType !== 6 && colorType !== 2) {
-        throw new Error(
-          `\u4E0D\u652F\u6301\u989C\u8272\u7C7B\u578B ${colorType} \u7684 PNG\uFF08\u53EA\u652F\u6301 6=RGBA / 2=RGB\uFF1B\u8C03\u8272\u677F\u56FE\u8BF7\u5148\u8F6C\u6210 RGBA\uFF09`
-        );
-      }
-      if (interlace !== 0) {
-        throw new Error(`\u4E0D\u652F\u6301\u9694\u884C\uFF08Adam7\uFF09PNG\uFF08\u9694\u884C=${interlace}\uFF09\uFF0C\u8BF7\u5148\u8F6C\u6210\u975E\u9694\u884C\u518D\u5206\u6790`);
-      }
-      sawHeader = true;
-    } else if (type === "IDAT") {
-      idat.push(data);
-    } else if (type === "IEND") {
-      sawEnd = true;
-      break;
-    }
-    offset = dataEnd + 4;
-  }
-  if (!sawHeader) throw new Error("PNG \u7F3A\u5C11 IHDR \u6570\u636E\u5757\uFF1A\u4E0D\u662F\u5B8C\u6574\u7684 PNG");
-  if (!sawEnd) throw new Error("PNG \u7F3A\u5C11 IEND \u6570\u636E\u5757\uFF1A\u6587\u4EF6\u4E0D\u5B8C\u6574");
-  if (idat.length === 0) throw new Error("PNG \u7F3A\u5C11 IDAT \u6570\u636E\u5757\uFF1A\u6CA1\u6709\u50CF\u7D20\u6570\u636E");
-  const channels = colorType === 6 ? 4 : 3;
-  const stride = width * channels;
-  const expected = height * (stride + 1);
-  if (!Number.isSafeInteger(expected) || expected > MAX_RAW_BYTES) {
-    throw new Error(`PNG \u89E3\u538B\u540E\u6570\u636E\u8FC7\u5927\uFF08\u671F\u671B ${expected} \u5B57\u8282\uFF09\uFF0C\u8D85\u8FC7\u4E0A\u9650 ${MAX_RAW_BYTES} \u5B57\u8282`);
-  }
-  let raw;
+var SKILL_VERSION_FILE = ".dafeiyu-skill-version";
+function packageRoot() {
   try {
-    raw = inflateSync(Buffer.concat(idat));
-  } catch (error62) {
-    throw new Error(`PNG \u50CF\u7D20\u6570\u636E\u89E3\u538B\u5931\u8D25\uFF1A${String(error62?.message ?? error62)}`);
-  }
-  if (raw.length !== expected) {
-    throw new Error(`PNG \u50CF\u7D20\u6570\u636E\u957F\u5EA6\u4E0D\u5BF9\uFF1A\u671F\u671B ${expected} \u5B57\u8282\uFF0C\u5B9E\u9645 ${raw.length} \u5B57\u8282\uFF08\u4F4D\u6DF1\u6216\u9694\u884C\u58F0\u660E\u4E0E\u5B9E\u9645\u4E0D\u7B26\uFF1F\uFF09`);
-  }
-  const rgba = new Uint8Array(width * height * 4);
-  let prev = new Uint8Array(stride);
-  for (let y = 0; y < height; y++) {
-    const lineStart = y * (stride + 1);
-    const filter = raw[lineStart];
-    if (filter > 4) throw new Error(`\u4E0D\u652F\u6301 PNG \u884C\u8FC7\u6EE4\u7C7B\u578B ${filter}\uFF08\u7B2C ${y} \u884C\uFF1B\u5408\u6CD5\u503C 0~4\uFF09`);
-    const line = raw.subarray(lineStart + 1, lineStart + 1 + stride);
-    const cur = new Uint8Array(stride);
-    for (let i = 0; i < stride; i++) {
-      const x = line[i];
-      const a = i >= channels ? cur[i - channels] : 0;
-      const b = prev[i];
-      const c = i >= channels ? prev[i - channels] : 0;
-      let value;
-      switch (filter) {
-        case 0:
-          value = x;
-          break;
-        case 1:
-          value = x + a;
-          break;
-        case 2:
-          value = x + b;
-          break;
-        case 3:
-          value = x + (a + b >> 1);
-          break;
-        default:
-          value = x + paeth(a, b, c);
-          break;
+    let candidate = path17.dirname(fileURLToPath(import.meta.url));
+    for (let depth = 0; depth < 5; depth += 1) {
+      if (existsSync2(path17.join(candidate, "package.json")) && existsSync2(path17.join(candidate, "assets", "skills"))) {
+        return candidate;
       }
-      cur[i] = value & 255;
+      const parent = path17.dirname(candidate);
+      if (parent === candidate) break;
+      candidate = parent;
     }
-    const outBase = y * width * 4;
-    if (channels === 4) {
-      rgba.set(cur, outBase);
-    } else {
-      for (let x = 0; x < width; x++) {
-        const src = x * 3;
-        const dst = outBase + x * 4;
-        rgba[dst] = cur[src];
-        rgba[dst + 1] = cur[src + 1];
-        rgba[dst + 2] = cur[src + 2];
-        rgba[dst + 3] = 255;
-      }
-    }
-    prev = cur;
-  }
-  return { width, height, rgba };
-}
-
-// src/sprite/analyze.ts
-var DEFAULT_ALPHA_CUT = 32;
-var GREEN_MARGIN = 12;
-var EDGE_RING = 2;
-var MIN_BAND = 4;
-var BAND_RATIO = 0.06;
-function bandWidth(width, height) {
-  return Math.max(MIN_BAND, Math.round(Math.min(width, height) * BAND_RATIO));
-}
-var BORDER_BAND_RATIO = 0.02;
-var BORDER_BAND_MIN = 4;
-var BORDER_WARN_RATIO = 0.05;
-function borderBandWidth(width, height) {
-  const a = Number(width);
-  const b = Number(height);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
-    throw new Error(`borderBandWidth \u9700\u8981\u6B63\u7684\u5BBD\u9AD8\uFF0C\u6536\u5230 ${String(width)}\xD7${String(height)}`);
-  }
-  return Math.max(BORDER_BAND_MIN, Math.round(Math.min(a, b) * BORDER_BAND_RATIO));
-}
-function borderOpaqueRatio(png, options) {
-  const alphaCut = options?.alphaCut ?? DEFAULT_ALPHA_CUT;
-  if (!Number.isInteger(alphaCut) || alphaCut < 0 || alphaCut > 255) {
-    throw new Error(`alphaCut \u5FC5\u987B\u662F 0~255 \u7684\u6574\u6570\uFF0C\u5B9E\u9645\u6536\u5230 ${String(alphaCut)}`);
-  }
-  const { width, height, rgba } = decodePng(png);
-  const band = options?.bandPx ?? borderBandWidth(width, height);
-  if (!Number.isInteger(band) || band <= 0) {
-    throw new Error(`bandPx \u5FC5\u987B\u662F\u6B63\u6574\u6570\uFF0C\u5B9E\u9645\u6536\u5230 ${String(options?.bandPx)}`);
-  }
-  let pixels = 0;
-  let opaque = 0;
-  for (let y = 0; y < height; y++) {
-    const inBandRow = y < band || y >= height - band;
-    for (let x = 0; x < width; x++) {
-      if (!(inBandRow || x < band || x >= width - band)) continue;
-      pixels++;
-      if (rgba[(y * width + x) * 4 + 3] > alphaCut) opaque++;
-    }
-  }
-  return { width, height, bandPx: band, pixels, opaque, ratio: pixels === 0 ? 0 : opaque / pixels };
-}
-function borderOpaqueWarning(result2, frame, limit = BORDER_WARN_RATIO) {
-  if (!(result2.ratio > limit)) return null;
-  const percent = Math.round(result2.ratio * 1e3) / 10;
-  const where = typeof frame === "number" ? `\u7B2C ${frame} \u5E27\uFF0C` : "";
-  return "\u753B\u9762\u8FB9\u7F18\u6709\u4E3B\u4F53/\u9053\u5177\u538B\u8FB9\uFF08\u53EF\u80FD\u662F\u624B\u6216\u7279\u6548\uFF09\uFF1A" + where + "\u8FB9\u6846\u5E26\u4E0D\u900F\u660E\u6BD4\u4F8B " + percent + "% > " + Math.round(limit * 100) + "%\uFF08\u5E26\u5BBD " + result2.bandPx + "px\uFF09\u3002\u8FD9\u79CD\u5E27\u7684 bbox \u4F1A\u88AB\u6491\u5230\u753B\u6846\uFF0CcontentHeight/\u7F29\u653E\u4F1A\u8DDF\u7740\u9519\uFF0C\u5148\u770B\u6838\u5BF9\u56FE";
-}
-function analyzeSpritePng(png, options) {
-  const alphaCut = options?.alphaCut ?? DEFAULT_ALPHA_CUT;
-  if (!Number.isInteger(alphaCut) || alphaCut < 0 || alphaCut > 255) {
-    throw new Error(`alphaCut \u5FC5\u987B\u662F 0~255 \u7684\u6574\u6570\uFF0C\u5B9E\u9645\u6536\u5230 ${String(alphaCut)}`);
-  }
-  const { width, height, rgba } = decodePng(png);
-  const total = width * height;
-  const band = bandWidth(width, height);
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-  let bandPixels = 0;
-  let bandOpaque = 0;
-  let bin0 = 0;
-  let bin1 = 0;
-  let bin2 = 0;
-  let bin3 = 0;
-  for (let y = 0; y < height; y++) {
-    const inBandRow = y < band || y >= height - band;
-    for (let x = 0; x < width; x++) {
-      const alpha = rgba[(y * width + x) * 4 + 3];
-      if (alpha <= 32) bin0++;
-      else if (alpha <= 128) bin1++;
-      else if (alpha <= 192) bin2++;
-      else bin3++;
-      if (inBandRow || x < band || x >= width - band) {
-        bandPixels++;
-        if (alpha > alphaCut) bandOpaque++;
-      }
-      if (alpha > alphaCut) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-  const bbox = maxX >= 0 ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } : null;
-  let insideOpaque = 0;
-  if (bbox !== null) {
-    for (let y = bbox.y; y < bbox.y + bbox.h; y++) {
-      for (let x = bbox.x; x < bbox.x + bbox.w; x++) {
-        if (rgba[(y * width + x) * 4 + 3] > alphaCut) insideOpaque++;
-      }
-    }
-  }
-  const bgResidual = bandPixels === 0 ? 0 : bandOpaque / bandPixels;
-  const subjectCoverage = bbox === null ? 0 : insideOpaque / (bbox.w * bbox.h);
-  let edgeGreen = 0;
-  if (bbox !== null) {
-    const x0 = Math.max(0, bbox.x - EDGE_RING);
-    const x1 = Math.min(width - 1, bbox.x + bbox.w - 1 + EDGE_RING);
-    const y0 = Math.max(0, bbox.y - EDGE_RING);
-    const y1 = Math.min(height - 1, bbox.y + bbox.h - 1 + EDGE_RING);
-    let ring = 0;
-    let green = 0;
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const inBox = x >= bbox.x && x < bbox.x + bbox.w && y >= bbox.y && y < bbox.y + bbox.h;
-        if (inBox) continue;
-        ring++;
-        const i = (y * width + x) * 4;
-        const r = rgba[i];
-        const g = rgba[i + 1];
-        const b = rgba[i + 2];
-        if (g > r + GREEN_MARGIN && g > b + GREEN_MARGIN) green++;
-      }
-    }
-    edgeGreen = ring === 0 ? 0 : green / ring;
-  }
-  return {
-    width,
-    height,
-    bbox,
-    bgResidual,
-    subjectCoverage,
-    edgeGreen,
-    alphaHistogram: [bin0 / total, bin1 / total, bin2 / total, bin3 / total]
-  };
-}
-
-// src/sprite/guard.ts
-function assertKeyedPresent(keyedCount) {
-  if (keyedCount > 0) return;
-  if (keyedCount < 0) {
-    throw new Error(
-      "\u8BFB\u4E0D\u5230\u62A0\u56FE\u7F13\u5B58\u72B6\u6001\uFF08\u9875\u9762\u7684 keyState \u6CA1\u63A5\u901A\uFF09\u3002\u4E3A\u4E86\u4E0D\u7ED9\u4F60\u4E00\u5F20\u7EFF\u5E95\u56FE\uFF0C\u8FD9\u91CC\u76F4\u63A5\u505C\uFF1A\u8BF7\u91CD\u65B0 sprite_key_apply \u540E\u518D export\u3002"
-    );
-  }
-  throw new Error(
-    "\u62A0\u56FE\u7F13\u5B58\u662F\u7A7A\u7684\uFF08\u53EF\u80FD\u521A\u8DD1\u8FC7 sprite_key_preview / \u6539\u8FC7\u53C2\u6570\uFF09\u3002\u8BF7\u5148\u518D\u8DD1\u4E00\u6B21 sprite_key_apply\uFF0C\u7136\u540E\u7ACB\u523B export\u3002"
-  );
-}
-function assertNotOpaque(stats, threshold = 0.99) {
-  if (stats.alphaHistogram[3] <= threshold) return;
-  throw new Error(
-    "\u5BFC\u51FA\u7684\u56FE\u51E0\u4E4E\u5168\u4E0D\u900F\u660E\uFF08alpha \u5168 255\uFF09\uFF0C\u5927\u6982\u7387\u662F\u628A\u539F\u5E27\u62FC\u8FDB\u53BB\u4E86\uFF08\u7EFF\u5E95\uFF09\u3002\u5E38\u89C1\u539F\u56E0\uFF1A\u62A0\u56FE\u7F13\u5B58\u88AB\u6E05\u7A7A / \u952E\u8272\u4E0D\u5BF9\u3002\u8BF7\u91CD\u8DD1 sprite_key_apply \u540E\u518D\u5BFC\u51FA\u3002"
-  );
-}
-function pickWorst(candidates) {
-  let worst;
-  let bestScore = -1;
-  for (const candidate of candidates) {
-    const { stats } = candidate;
-    const score = stats.bgResidual + stats.edgeGreen + (1 - stats.subjectCoverage);
-    if (score > bestScore) {
-      bestScore = score;
-      worst = {
-        frame: candidate.frame,
-        bgResidual: stats.bgResidual,
-        edgeGreen: stats.edgeGreen,
-        subjectCoverage: stats.subjectCoverage
-      };
-    }
-  }
-  return worst;
-}
-var MEASURED_REL_TOLERANCE = 5e-3;
-var MEASURED_ABS_TOLERANCE_PX = 2;
-function measuredMismatchWarning(achievedPx, measuredPx, tolerance = MEASURED_REL_TOLERANCE, absolutePx = MEASURED_ABS_TOLERANCE_PX) {
-  if (typeof achievedPx !== "number" || !Number.isFinite(achievedPx)) return null;
-  if (typeof measuredPx !== "number" || !Number.isFinite(measuredPx) || measuredPx <= 0) return null;
-  const delta = Math.abs(measuredPx - achievedPx);
-  if (!(delta > Math.max(absolutePx, measuredPx * tolerance))) return null;
-  const percent = Math.round(delta / measuredPx * 1e3) / 10;
-  const direction = measuredPx > achievedPx ? "\u5927" : "\u5C0F";
-  return `\u53C2\u6570\u56DE\u663E\u4E0E\u6210\u54C1\u5B9E\u6D4B\u4E0D\u4E00\u81F4\uFF1A\u53C2\u6570 ${Math.round(achievedPx)}px / \u5B9E\u6D4B ${Math.round(measuredPx)}px\uFF08\u504F ${percent}%\uFF0C\u5DEE ${Math.round(delta)}px\uFF09\u3002achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\uFF0C\u6210\u54C1\u91CC alpha \u7684\u5185\u5BB9\u9AD8\u662F ${Math.round(measuredPx)}px\uFF08\u6BD4\u53C2\u6570${direction}\uFF09\u2014\u2014\u6309\u6210\u54C1\u8EAB\u9AD8\u5BF9\u9F50\u8BF7\u7528 measured.charHeightPx \u91CD\u7B97\uFF0C\u522B\u4FE1 achievedPx\u3002`;
-}
-var CORRECTION_REL_TOLERANCE = 0.01;
-var CORRECTION_ABS_TOLERANCE_PX = 2;
-function correctionFactorOf(target, measured, relTolerance = CORRECTION_REL_TOLERANCE, absolutePx = CORRECTION_ABS_TOLERANCE_PX) {
-  if (typeof target !== "number" || !Number.isFinite(target) || target <= 0) return null;
-  if (typeof measured !== "number" || !Number.isFinite(measured) || measured <= 0) return null;
-  const delta = Math.abs(measured - target);
-  if (!(delta > Math.max(absolutePx, target * relTolerance))) return null;
-  return target / measured;
-}
-function correctionResidualWarning(target, after, relTolerance = CORRECTION_REL_TOLERANCE, absolutePx = CORRECTION_ABS_TOLERANCE_PX) {
-  if (!Number.isFinite(target) || target <= 0 || !Number.isFinite(after) || after <= 0) return null;
-  const delta = Math.abs(after - target);
-  if (!(delta > Math.max(absolutePx, target * relTolerance))) return null;
-  const percent = Math.round(delta / target * 1e3) / 10;
-  return `\u6821\u6B63\u4E00\u6B21\u540E\u4ECD\u5DEE ${percent}%\uFF1A\u76EE\u6807 ${Math.round(target)}px / \u5B9E\u6D4B ${Math.round(after)}px\uFF08\u5DEE ${Math.round(delta)}px\uFF0C\u5BB9\u5DEE 1%/2px\uFF09\u3002**\u4E0D\u518D\u91CD\u5BFC**\uFF08\u95ED\u73AF\u53EA\u8DD1\u4E00\u6B21\uFF0C\u907F\u514D\u632F\u8361\uFF09\u2014\u2014\u8FD8\u53EF\u80FD\u7684\u539F\u56E0\uFF1A\u7F29\u653E\u649E\u4E0A 300% \u4E0A\u9650\u3001span \u4E0E\u7D20\u6750\u7684\u8BED\u4E49\u70B9\u5BF9\u4E0D\u4E0A\u3001\u6216\u8FD9\u4E00\u6279\u5404\u5E27\u8EAB\u9AD8\u672C\u8EAB\u5C31\u4E0D\u4E00\u81F4\u3002`;
-}
-function anchorNotWrittenWarning(anchor2) {
-  return `\u951A\u70B9\u6CA1\u5199\u8FDB meta\uFF08anchorWritten:false\uFF09\uFF1A\u8FD9\u6B21\u7528\u7684\u662F\u9875\u9762\u5F53\u524D\u951A\u70B9 (anchorX=${anchor2.anchorX}, anchorY=${anchor2.anchorY})\uFF0C\u4E0D\u4F20 anchorX/anchorY \u65F6\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF08\u89D2\u8272\u53EF\u80FD\u6A2A\u5411\u504F 20~40px\uFF09\u2014\u2014\u4F20 anchorX/anchorY\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF09\u6216\u5148 sprite_set_anchor\u3002`;
-}
-function defaultFileNames(args) {
-  const safeName = (args.name || "sheet").replace(/[\\/:*?"<>|]/g, "_");
-  const base = args.fileName ?? `${safeName}_${args.cols}x${args.rows}`;
-  const file2 = base.toLowerCase().endsWith(`.${args.format}`) ? base : `${base}.${args.format}`;
-  const meta3 = args.metaName ?? `${file2.replace(new RegExp(`\\.${args.format}$`, "i"), "")}.meta.json`;
-  return { file: file2, meta: meta3 };
-}
-function gridFor(frames) {
-  const total = Math.max(1, Math.floor(frames));
-  const cols = Math.max(1, Math.ceil(Math.sqrt(total)));
-  const rows = Math.max(1, Math.ceil(total / cols));
-  return { cols, rows };
-}
-function checkGridCapacity(frames, cols, rows) {
-  const capacity = Math.max(1, Math.floor(cols)) * Math.max(1, Math.floor(rows));
-  if (frames > capacity) {
-    throw new Error(
-      `\u7F51\u683C\u585E\u4E0D\u4E0B\uFF1A${frames} \u5E27\u8981\u653E\u8FDB ${cols}\xD7${rows}=${capacity} \u683C\u3002\u4F1A\u9759\u9ED8\u4E22\u6389 ${frames - capacity} \u5E27\u2014\u2014\u8BF7\u628A cols/rows \u8C03\u5927\uFF0C\u6216\u4E0D\u4F20\u8BA9\u5DE5\u5177\u6309\u5E27\u6570\u81EA\u52A8\u63A8\u3002`
-    );
-  }
-  const warnings = [];
-  if (capacity >= frames * 2) {
-    warnings.push(`\u7F51\u683C\u504F\u5927\uFF1A${cols}\xD7${rows}=${capacity} \u683C\u53EA\u653E ${frames} \u5E27\uFF0C\u672B\u5C3E\u4F1A\u7559\u5927\u7247\u7A7A\u683C`);
-  }
-  return { warnings };
-}
-
-// src/sprite/contact.ts
-var CONTENT_ALPHA_CUT = 32;
-var FULL_SCAN_LIMIT = 48;
-var SAMPLE_LIMIT = 12;
-var CLIP_EDGE_MIN_PX = 2;
-var CLIP_EDGE_RATIO = 0.02;
-function clipEdgeThreshold(edgeLength) {
-  const len = Math.max(0, Math.round(Number(edgeLength) || 0));
-  return Math.max(CLIP_EDGE_MIN_PX, Math.ceil(len * CLIP_EDGE_RATIO));
-}
-function medianOf(values) {
-  if (values.length === 0) throw new Error("medianOf \u9700\u8981\u81F3\u5C11\u4E00\u4E2A\u6570\uFF08\u7A7A\u96C6\u5408\u6CA1\u6709\u4E2D\u4F4D\u6570\uFF09");
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  return sorted.length % 2 === 1 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-}
-function sampleCellIndices(total, limit = FULL_SCAN_LIMIT, take = SAMPLE_LIMIT) {
-  const count = Math.max(0, Math.floor(total));
-  if (count === 0) return [];
-  if (count <= limit) return Array.from({ length: count }, (_one, index) => index);
-  const picks = Math.max(2, Math.min(count, Math.floor(take)));
-  const step = (count - 1) / (picks - 1);
-  const out = [];
-  for (let i = 0; i < picks; i++) {
-    const index = Math.round(i * step);
-    if (out[out.length - 1] !== index) out.push(index);
-  }
-  return out;
-}
-function cellContentOf(image, cell, index, col, row, alphaThreshold = CONTENT_ALPHA_CUT) {
-  const x0 = Math.max(0, Math.round(cell.x));
-  const y0 = Math.max(0, Math.round(cell.y));
-  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(cell.w)));
-  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(cell.h)));
-  let minX = x1;
-  let minY = y1;
-  let maxX = -1;
-  let maxY = -1;
-  const verticalThreshold = clipEdgeThreshold(y1 - y0);
-  const horizontalThreshold = clipEdgeThreshold(x1 - x0);
-  const clipThreshold = {
-    left: verticalThreshold,
-    right: verticalThreshold,
-    top: horizontalThreshold,
-    bottom: horizontalThreshold
-  };
-  const edgePx = { left: 0, top: 0, right: 0, bottom: 0 };
-  const countLeft = x0 > 0;
-  const countTop = y0 > 0;
-  const countRight = x1 < image.width;
-  const countBottom = y1 < image.height;
-  for (let y = y0; y < y1; y++) {
-    const rowBase = y * image.width;
-    for (let x = x0; x < x1; x++) {
-      if (image.rgba[(rowBase + x) * 4 + 3] <= alphaThreshold) continue;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-      if (countLeft && x === x0) edgePx.left++;
-      if (countRight && x === x1 - 1) edgePx.right++;
-      if (countTop && y === y0) edgePx.top++;
-      if (countBottom && y === y1 - 1) edgePx.bottom++;
-    }
-  }
-  const clippedEdges = ["left", "top", "right", "bottom"].filter(
-    (edge) => edgePx[edge] > clipThreshold[edge]
-  );
-  const clipped = clippedEdges.length > 0;
-  if (maxX < 0 || maxY < 0) {
-    return {
-      index,
-      col,
-      row,
-      bbox: null,
-      charHeightPx: 0,
-      headTopY: null,
-      soleY: null,
-      empty: true,
-      clipped: false,
-      edgePx: { left: 0, top: 0, right: 0, bottom: 0 },
-      clippedEdges: [],
-      clipThreshold
-    };
-  }
-  const bbox = { x: minX - x0, y: minY - y0, w: maxX - minX + 1, h: maxY - minY + 1 };
-  return {
-    index,
-    col,
-    row,
-    bbox,
-    charHeightPx: maxY - minY + 1,
-    headTopY: bbox.y,
-    soleY: bbox.y + bbox.h - 1,
-    empty: false,
-    clipped,
-    edgePx,
-    clippedEdges,
-    clipThreshold
-  };
-}
-function measureSheet(image, options) {
-  const cols = Math.max(1, Math.floor(options.cols));
-  const rows = Math.max(1, Math.floor(options.rows));
-  const cellWidth = Math.max(1, Math.round(options.cellWidth));
-  const cellHeight = Math.max(1, Math.round(options.cellHeight));
-  const alphaThreshold = options.alphaThreshold ?? CONTENT_ALPHA_CUT;
-  const totalCells = cols * rows;
-  const indices = sampleCellIndices(totalCells, options.fullScanLimit ?? FULL_SCAN_LIMIT, options.sampleLimit ?? SAMPLE_LIMIT);
-  const perCell = [];
-  for (const index of indices) {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    perCell.push(
-      cellContentOf(
-        image,
-        { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight },
-        index,
-        col,
-        row,
-        alphaThreshold
-      )
-    );
-  }
-  const filled = perCell.filter((cell) => !cell.empty);
-  const warnings = [];
-  const sampled = indices.length < totalCells;
-  if (sampled) {
-    warnings.push(
-      `\u6210\u54C1\u5171 ${totalCells} \u683C\uFF08>${FULL_SCAN_LIMIT}\uFF09\uFF0C\u53EA\u7B49\u95F4\u9694\u62BD\u4E86 ${indices.length} \u683C\u5B9E\u6D4B\uFF1B\u8981\u5168\u91CF\u770B\u5C31\u7528 sprite_measure \u9010\u5E27\u91CF\u3002`
-    );
-  }
-  if (filled.length === 0) {
-    warnings.push(
-      `\u6210\u54C1\u56FE\u62BD\u6837\u683C\u5B50\u91CC\u91CF\u4E0D\u5230\u4EFB\u4F55\u5185\u5BB9\uFF08alpha>${alphaThreshold} \u7684\u50CF\u7D20\u4E00\u4E2A\u90FD\u6CA1\u6709\uFF09\u2014\u2014\u4E0D\u662F"\u8EAB\u9AD8 0px"\uFF0C\u662F\u8FD9\u5F20\u56FE\u53EF\u80FD\u5168\u900F/\u62FC\u9519\u4E86\uFF0C\u5148\u770B\u6838\u5BF9\u56FE\u3002`
-    );
-  } else if (filled.length < perCell.length) {
-    warnings.push(`\u62BD\u6837 ${perCell.length} \u683C\u91CC\u6709 ${perCell.length - filled.length} \u683C\u662F\u7A7A\u7684\uFF08\u7F51\u683C\u6BD4\u5E27\u6570\u5927\u65F6\u672B\u5C3E\u6B63\u5E38\u7559\u7A7A\uFF09`);
-  }
-  const clipped = perCell.filter((cell) => cell.clipped);
-  if (clipped.length > 0) {
-    let worst;
-    for (const cell of clipped) {
-      for (const edge of cell.clippedEdges) {
-        const px = cell.edgePx[edge];
-        const threshold = cell.clipThreshold[edge];
-        const ratio = px / Math.max(1, threshold);
-        if (!worst || ratio > worst.ratio) worst = { cell, edge, px, threshold, ratio };
-      }
-    }
-    warnings.push(
-      `\u6709 ${clipped.length}/${perCell.length} \u683C\u7684\u5185\u5BB9**\u8D34\u8FB9\u50CF\u7D20\u6570**\u8D85\u8FC7\u9608\u503C\uFF08\u5224\u5B9A\u53E3\u5F84\uFF1A\u67D0\u6761\u8FB9\u4E0A\u7684\u8D34\u8FB9\u50CF\u7D20\u6570 > max(${CLIP_EDGE_MIN_PX}, ceil(\u8FB9\u957F\xD7${Math.round(CLIP_EDGE_RATIO * 100)}%))\uFF0C\u4E0D\u662F"\u8D34\u5230\u8FB9\u5C31\u7B97"\uFF09\uFF1B\u6700\u4E25\u91CD\u7684\u662F\u7B2C ${worst?.cell.index ?? clipped[0].index} \u683C\uFF08${worst?.edge ?? clipped[0].clippedEdges[0]} \u8FB9 ${worst?.px ?? 0}px / \u9608\u503C ${worst?.threshold ?? 0}px\uFF1B\u9010\u683C\u539F\u59CB\u8BA1\u6570\u5728 perCell[].edgePx \u91CC\uFF09\u2014\u2014\u6210\u7247\u88AB\u6A2A\u5207\u624D\u662F\u771F\u88AB\u88C1\uFF08\u8FD9\u4E00\u683C\u8EAB\u9AD8\u4F1A\u504F\u5C0F\uFF09\uFF1B\u7EC6\u5C16/\u6297\u952F\u9F7F\u8D34\u5230 pad \u8FB9\u754C\u5C5E\u4E8E\u6B63\u5E38\u3002`
-    );
-  }
-  if (filled.length === 0) {
-    return {
-      charHeightPx: 0,
-      bboxHeight: 0,
-      semanticHeight: null,
-      basis: "bbox",
-      headTopY: null,
-      soleY: null,
-      cellWidth,
-      cellHeight,
-      totalCells,
-      perCell,
-      sampled,
-      min: { charHeightPx: 0 },
-      max: { charHeightPx: 0 },
-      source: "sheet-rgba",
-      warnings
-    };
-  }
-  const heights = filled.map((cell) => cell.charHeightPx);
-  const median2 = medianOf(heights);
-  let representative = filled[0];
-  for (const cell of filled) {
-    const gap = Math.abs(cell.charHeightPx - median2);
-    const best = Math.abs(representative.charHeightPx - median2);
-    if (gap < best || gap === best && cell.charHeightPx > representative.charHeightPx) representative = cell;
-  }
-  return {
-    charHeightPx: median2,
-    // 这里只量了 alpha 包围盒：先如实标成 bbox（`semanticHeight` 未知）。
-    // 谁要是给了 span 或者猜出了语义身高，由 `semantic.ts` 的 resolveMeasuredBasis 覆盖这两项。
-    bboxHeight: median2,
-    semanticHeight: null,
-    basis: "bbox",
-    headTopY: representative.headTopY,
-    soleY: representative.soleY,
-    cellWidth,
-    cellHeight,
-    totalCells,
-    perCell,
-    sampled,
-    min: { charHeightPx: Math.min(...heights) },
-    max: { charHeightPx: Math.max(...heights) },
-    source: "sheet-rgba",
-    warnings
-  };
-}
-function deviates(cell, median2, pct = 0.05) {
-  if (cell.empty || median2 <= 0) return false;
-  return Math.abs(cell.charHeightPx - median2) / median2 > pct;
-}
-function parseColorHex(hex3, label = "color") {
-  const text = String(hex3 ?? "").trim().replace(/^#/, "");
-  if (!/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(text)) {
-    throw new Error(`${label} \u4E0D\u662F\u5408\u6CD5\u7684 #RRGGBB\uFF08\u6216 #RRGGBBAA\uFF09\uFF1A${String(hex3)}`);
-  }
-  return {
-    r: Number.parseInt(text.slice(0, 2), 16),
-    g: Number.parseInt(text.slice(2, 4), 16),
-    b: Number.parseInt(text.slice(4, 6), 16),
-    a: text.length === 8 ? Number.parseInt(text.slice(6, 8), 16) : 255
-  };
-}
-function createImage(width, height, fill) {
-  const w = Math.max(1, Math.round(width));
-  const h = Math.max(1, Math.round(height));
-  const rgba = new Uint8Array(w * h * 4);
-  if (fill) {
-    for (let i = 0; i < w * h; i++) {
-      rgba[i * 4] = fill.r;
-      rgba[i * 4 + 1] = fill.g;
-      rgba[i * 4 + 2] = fill.b;
-      rgba[i * 4 + 3] = fill.a;
-    }
-  }
-  return { width: w, height: h, rgba };
-}
-function plotOver(image, x, y, color) {
-  const px = Math.round(x);
-  const py = Math.round(y);
-  if (px < 0 || py < 0 || px >= image.width || py >= image.height) return;
-  const sa = color.a / 255;
-  if (sa <= 0) return;
-  const i = (py * image.width + px) * 4;
-  const da = image.rgba[i + 3] / 255;
-  const outA = sa + da * (1 - sa);
-  if (outA <= 0) {
-    image.rgba[i] = 0;
-    image.rgba[i + 1] = 0;
-    image.rgba[i + 2] = 0;
-    image.rgba[i + 3] = 0;
-    return;
-  }
-  const mix = (s, d) => Math.round((s * sa + d * da * (1 - sa)) / outA);
-  image.rgba[i] = mix(color.r, image.rgba[i]);
-  image.rgba[i + 1] = mix(color.g, image.rgba[i + 1]);
-  image.rgba[i + 2] = mix(color.b, image.rgba[i + 2]);
-  image.rgba[i + 3] = Math.round(outA * 255);
-}
-var HALO = { r: 0, g: 0, b: 0, a: 120 };
-function drawHLine(image, x0, x1, y, color, halo = true) {
-  const from = Math.min(x0, x1);
-  const to = Math.max(x0, x1);
-  if (halo) {
-    for (let x = from; x <= to; x++) {
-      plotOver(image, x, y - 1, HALO);
-      plotOver(image, x, y + 1, HALO);
-    }
-  }
-  for (let x = from; x <= to; x++) plotOver(image, x, y, color);
-}
-function drawVLine(image, x, y0, y1, color, halo = true) {
-  const from = Math.min(y0, y1);
-  const to = Math.max(y0, y1);
-  if (halo) {
-    for (let y = from; y <= to; y++) {
-      plotOver(image, x - 1, y, HALO);
-      plotOver(image, x + 1, y, HALO);
-    }
-  }
-  for (let y = from; y <= to; y++) plotOver(image, x, y, color);
-}
-function drawCross(image, x, y, color, arm = 4) {
-  drawHLine(image, x - arm, x + arm, y, color);
-  drawVLine(image, x, y - arm, y + arm, color);
-}
-function blit(dst, src, dx, dy, region) {
-  const rect = region ?? { x: 0, y: 0, w: src.width, h: src.height };
-  const sx0 = Math.max(0, Math.round(rect.x));
-  const sy0 = Math.max(0, Math.round(rect.y));
-  const sx1 = Math.min(src.width, sx0 + Math.max(0, Math.round(rect.w)));
-  const sy1 = Math.min(src.height, sy0 + Math.max(0, Math.round(rect.h)));
-  for (let y = sy0; y < sy1; y++) {
-    for (let x = sx0; x < sx1; x++) {
-      const i = (y * src.width + x) * 4;
-      const a = src.rgba[i + 3];
-      if (a === 0) continue;
-      plotOver(dst, x - sx0 + dx, y - sy0 + dy, { r: src.rgba[i], g: src.rgba[i + 1], b: src.rgba[i + 2], a });
-    }
-  }
-}
-function cloneImage(image) {
-  return { width: image.width, height: image.height, rgba: new Uint8Array(image.rgba) };
-}
-function drawCellOverlay(sheet, measurement, options) {
-  const image = cloneImage(sheet);
-  const headColor = parseColorHex("#ff00ff", "headColor");
-  const soleColor = parseColorHex("#00e5ff", "soleColor");
-  const anchorColor = parseColorHex("#ffffff", "anchorColor");
-  const warnColor = parseColorHex("#ffd400", "warnColor");
-  const pct = options.deviationPct ?? 0.05;
-  const flagged = [];
-  for (const cell of measurement.perCell) {
-    const cellX = cell.col * measurement.cellWidth;
-    const cellY = cell.row * measurement.cellHeight;
-    const odd = deviates(cell, measurement.charHeightPx, pct);
-    if (odd) flagged.push(cell.index);
-    const head = odd ? warnColor : headColor;
-    const sole = odd ? warnColor : soleColor;
-    if (cell.headTopY !== null) {
-      drawHLine(image, cellX, cellX + measurement.cellWidth - 1, cellY + cell.headTopY, head, true);
-    }
-    if (cell.soleY !== null) {
-      drawHLine(image, cellX, cellX + measurement.cellWidth - 1, cellY + cell.soleY, sole, true);
-    }
-    const ax = cellX + Math.max(0, Math.min(measurement.cellWidth - 1, Math.round(options.anchorX * measurement.cellWidth)));
-    const ay = cellY + Math.max(0, Math.min(measurement.cellHeight - 1, Math.round((1 - options.anchorY) * measurement.cellHeight)));
-    drawCross(image, ax, ay, odd ? warnColor : anchorColor, Math.max(3, Math.round(measurement.cellWidth / 32)));
-  }
-  return { image, flagged };
-}
-var BASELINE_DARK_BG = "#202030";
-var BASELINE_LIGHT_BG = "#f2f2f5";
-var BASELINE_LUMA_SPLIT = 128;
-function contentLumaOf(image, cell, alphaThreshold = CONTENT_ALPHA_CUT) {
-  const x0 = Math.max(0, Math.round(cell.x));
-  const y0 = Math.max(0, Math.round(cell.y));
-  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(cell.w)));
-  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(cell.h)));
-  let sum = 0;
-  let count = 0;
-  for (let y = y0; y < y1; y++) {
-    const rowBase = y * image.width;
-    for (let x = x0; x < x1; x++) {
-      const at = (rowBase + x) * 4;
-      if (image.rgba[at + 3] <= alphaThreshold) continue;
-      sum += (299 * image.rgba[at] + 587 * image.rgba[at + 1] + 114 * image.rgba[at + 2]) / 1e3;
-      count++;
-    }
-  }
-  return count === 0 ? null : sum / count;
-}
-function adaptiveBaselineBackground(meanLuma) {
-  if (meanLuma === null || !Number.isFinite(meanLuma)) {
-    return {
-      hex: BASELINE_DARK_BG,
-      meanLuma: null,
-      adaptive: true,
-      reason: `\u91CF\u4E0D\u5230\u5185\u5BB9\u4EAE\u5EA6\uFF0C\u7528\u9ED8\u8BA4\u6DF1\u5E95 ${BASELINE_DARK_BG}`
-    };
-  }
-  const luma = Math.round(meanLuma);
-  if (meanLuma >= BASELINE_LUMA_SPLIT) {
-    return {
-      hex: BASELINE_DARK_BG,
-      meanLuma: luma,
-      adaptive: true,
-      reason: `\u4E3B\u4F53\u5E73\u5747\u4EAE\u5EA6 ${luma}\uFF08\u504F\u4EAE\uFF09\u2192 \u6DF1\u5E95 ${BASELINE_DARK_BG}\uFF0C\u6D45\u8272\u89D2\u8272\u4E0D\u4F1A\u7CCA\u5728\u5E95\u8272\u91CC`
-    };
-  }
-  return {
-    hex: BASELINE_LIGHT_BG,
-    meanLuma: luma,
-    adaptive: true,
-    reason: `\u4E3B\u4F53\u5E73\u5747\u4EAE\u5EA6 ${luma}\uFF08\u504F\u6697\uFF09\u2192 \u6D45\u5E95 ${BASELINE_LIGHT_BG}\uFF0C\u6DF1\u8272\u8F6E\u5ED3\u624D\u770B\u5F97\u51FA\u6765`
-  };
-}
-function anchorConventionWarnings(entries) {
-  const warnings = [];
-  const byConvention = /* @__PURE__ */ new Map();
-  for (const entry of entries) {
-    const convention = String(entry.convention ?? "y-from-bottom").trim() || "y-from-bottom";
-    byConvention.set(convention, [...byConvention.get(convention) ?? [], entry.name]);
-  }
-  if (byConvention.size > 1) {
-    const detail = [...byConvention.entries()].map(([convention, names]) => `${convention}: ${names.join("\u3001")}`).join("\uFF1B");
-    warnings.push(
-      `\u4E00\u7EC4\u91CC\u951A\u70B9\u53E3\u5F84\u6DF7\u7528\uFF08${detail}\uFF09\uFF1A\u53E3\u5F84\u7591\u4F3C\u4E0D\u4E00\u81F4\uFF0C\u753B\u51FA\u6765\u7684\u5730\u5E73\u7EBF\u53EF\u80FD\u6574\u4F53\u504F\u79FB\u2014\u2014\u5148\u7EDF\u4E00\u6210 y-from-bottom \u518D\u8DD1\u51C6\u7EF3\u56FE\uFF08meta \u91CC\u5199 anchorConvention \u4E5F\u6551\u4E0D\u4E86\u6DF7\u7528\u7684\u503C\uFF09`
-    );
-  }
-  for (const entry of entries) {
-    const topDown = entry.anchorYTopDown;
-    if (typeof topDown !== "number" || !Number.isFinite(topDown)) continue;
-    const impliedTopDown = 1 - entry.anchorY;
-    if (Math.abs(impliedTopDown - topDown) > 1e-3) {
-      warnings.push(
-        `${entry.name} \u7684 anchorY=${roundOf(entry.anchorY)}\uFF08y-from-bottom\uFF09\u53CD\u63A8 y-from-top=${roundOf(impliedTopDown)}\uFF0C\u4F46 meta \u91CC\u7684 anchorYTopDown=${roundOf(topDown)}\uFF1A\u53E3\u5F84\u7591\u4F3C\u4E0D\u4E00\u81F4\uFF0C\u753B\u51FA\u6765\u7684\u5730\u5E73\u7EBF\u53EF\u80FD\u6574\u4F53\u504F\u79FB\uFF08\u672C\u6B21\u6309 y-from-bottom \u5904\u7406\uFF0C\u5148\u6838\u5BF9 meta \u8FD9\u4E00\u5BF9\u5B57\u6BB5\uFF09`
-      );
-    }
-  }
-  return warnings;
-}
-function roundOf(value) {
-  return Math.round(value * 1e3) / 1e3;
-}
-function composeBaseline(inputs, options = {}) {
-  if (inputs.length === 0) throw new Error("\u51C6\u7EF3\u56FE\u9700\u8981\u81F3\u5C11\u4E00\u5F20\u56FE\u96C6");
-  const gap = Math.max(0, Math.round(options.gap ?? 8));
-  const padding = Math.max(0, Math.round(options.padding ?? 4));
-  const alphaThreshold = options.alphaThreshold ?? CONTENT_ALPHA_CUT;
-  const anchors = inputs.map((input2) => {
-    if (!(input2.anchorX >= 0 && input2.anchorX <= 1)) throw new Error(`${input2.name} \u7684 anchorX \u4E0D\u5728 0~1\uFF1A${input2.anchorX}`);
-    if (!(input2.anchorY >= 0 && input2.anchorY <= 1)) throw new Error(`${input2.name} \u7684 anchorY \u4E0D\u5728 0~1\uFF1A${input2.anchorY}`);
-    const cellWidth = Math.max(1, Math.round(input2.cellWidth));
-    const cellHeight = Math.max(1, Math.round(input2.cellHeight));
-    const anchorYPx = Math.max(0, Math.min(cellHeight - 1, Math.round((1 - input2.anchorY) * cellHeight)));
-    const anchorXPx = Math.max(0, Math.min(cellWidth - 1, Math.round(input2.anchorX * cellWidth)));
-    const cols = Math.max(1, Math.floor(input2.cols));
-    const cellIndex = Math.max(0, Math.floor(input2.cellIndex));
-    const rect = { x: cellIndex % cols * cellWidth, y: Math.floor(cellIndex / cols) * cellHeight, w: cellWidth, h: cellHeight };
-    return { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx, cols, cellIndex, rect };
-  });
-  const warnings = [];
-  const lumaSamples = anchors.map((one) => contentLumaOf(one.input.image, one.rect, alphaThreshold)).filter((one) => one !== null);
-  const meanLuma = lumaSamples.length === 0 ? null : lumaSamples.reduce((sum, one) => sum + one, 0) / lumaSamples.length;
-  const background = typeof options.background === "string" ? { hex: options.background, meanLuma: meanLuma === null ? null : Math.round(meanLuma), adaptive: false } : adaptiveBaselineBackground(meanLuma);
-  if (background.adaptive) warnings.push(`\u5E95\u8272\u81EA\u9002\u5E94\uFF1A${background.reason}\uFF08\u8981\u56FA\u5B9A\u7684\u5E95\u8272\u5C31\u663E\u5F0F\u4F20 background\uFF09`);
-  const fill = parseColorHex(background.hex, "background");
-  const topSpace = Math.max(...anchors.map((one) => one.anchorYPx));
-  const bottomSpace = Math.max(...anchors.map((one) => one.cellHeight - one.anchorYPx));
-  const width = 2 * padding + anchors.reduce((sum, one) => sum + one.cellWidth, 0) + gap * (anchors.length - 1);
-  const height = 2 * padding + topSpace + bottomSpace;
-  const image = createImage(width, height, fill);
-  const baselineY = padding + topSpace;
-  const items = [];
-  let cursorX = padding;
-  for (const one of anchors) {
-    const { input: input2, cellWidth, cellHeight, anchorYPx, anchorXPx, cellIndex, rect } = one;
-    const drawX = cursorX;
-    const drawY = baselineY - anchorYPx;
-    blit(image, input2.image, drawX, drawY, rect);
-    const content = cellContentOf(
-      input2.image,
-      rect,
-      cellIndex,
-      Math.floor(rect.x / cellWidth),
-      Math.floor(rect.y / cellHeight),
-      alphaThreshold
-    );
-    if (content.empty) {
-      warnings.push(`${input2.name} \u7684\u7B2C ${cellIndex} \u683C\u662F\u7A7A\u7684\uFF08\u91CF\u4E0D\u5230\u5185\u5BB9\uFF09\uFF0C\u8FD9\u4E00\u6761\u4E0D\u53C2\u4E0E\u5934\u9876\u7EBF`);
-    }
-    items.push({
-      name: input2.name,
-      cellIndex,
-      charHeightPx: content.charHeightPx,
-      anchorX: input2.anchorX,
-      anchorY: input2.anchorY,
-      anchorXPx,
-      anchorYPx,
-      headTopY: content.headTopY,
-      soleY: content.soleY,
-      drawX,
-      drawY,
-      empty: content.empty
-    });
-    cursorX += cellWidth + gap;
-  }
-  const baselineColor = parseColorHex("#00e5ff", "baselineColor");
-  const headColor = parseColorHex("#ff00ff", "headColor");
-  const axisColor = parseColorHex("#33ff99", "axisColor");
-  const filled = items.filter((item) => !item.empty);
-  const headTops = filled.map((item) => item.drawY + (item.headTopY ?? 0));
-  const headTopY = headTops.length > 0 ? medianOf(headTops) : null;
-  for (const item of items) {
-    drawVLine(image, item.drawX + item.anchorXPx, 0, height - 1, axisColor, true);
-  }
-  drawHLine(image, 0, width - 1, baselineY, baselineColor, true);
-  if (headTopY !== null) drawHLine(image, 0, width - 1, headTopY, headColor, true);
-  if (filled.length > 0) {
-    for (const item of filled) {
-      drawCross(image, item.drawX + item.anchorXPx, item.drawY + (item.headTopY ?? 0), headColor, 3);
-    }
-  }
-  const heights = filled.map((item) => item.charHeightPx);
-  if (heights.length > 1) {
-    const median2 = medianOf(heights);
-    const spread = (Math.max(...heights) - Math.min(...heights)) / Math.max(1, median2);
-    if (spread > 0.01) {
-      warnings.push(
-        `\u7EC4\u5185\u8EAB\u9AD8\u5DEE ${(spread * 100).toFixed(1)}%\uFF08\u6700\u5927 ${Math.max(...heights)}px / \u6700\u5C0F ${Math.min(...heights)}px\uFF09\uFF0C\u8D85\u8FC7 1% \u5C31\u8BE5\u67E5\u662F\u54EA\u4E00\u6761\u7684\u7F29\u653E/\u88C1\u526A\u51FA\u4E86\u95EE\u9898\u3002`
-      );
-    }
-    const topSpread = Math.max(...headTops) - Math.min(...headTops);
-    const tolerance = Math.max(2, Math.round(median2 * 0.01));
-    if (topSpread > tolerance) {
-      warnings.push(
-        `\u5404\u683C\u5934\u9876\u884C\u6781\u5DEE ${topSpread}px\uFF08\u5BB9\u5DEE ${tolerance}px\uFF09\uFF1A\u8EAB\u9AD8\u867D\u7136\u4E00\u6837\uFF0C\u4F46\u951A\u70B9/\u951A\u70B9\u53E3\u5F84\u4E0D\u4E00\u81F4\uFF0C\u56FE\u4E0A\u80FD\u770B\u5230\u5934\u9876\u9519\u4F4D\u2014\u2014\u5148\u6838\u5BF9 meta \u7684 anchorX/anchorY \u662F\u5426\u540C\u4E00\u5957\u3002`
-      );
-    }
-  }
-  return { image, width, height, baselineY, headTopY, background, items, warnings };
-}
-
-// src/sprite/encode.ts
-import { deflateSync } from "node:zlib";
-var SIGNATURE2 = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-var MAX_RGBA_BYTES = 512 * 1024 * 1024;
-var CRC_TABLE = (() => {
-  const table = new Int32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = (c & 1) !== 0 ? 3988292384 ^ c >>> 1 : c >>> 1;
-    table[n] = c;
-  }
-  return table;
-})();
-function crc32(bytes) {
-  let crc = 4294967295;
-  for (let i = 0; i < bytes.length; i++) {
-    crc = CRC_TABLE[(crc ^ bytes[i]) & 255] ^ crc >>> 8;
-  }
-  return (crc ^ 4294967295) >>> 0;
-}
-function chunk(type, data) {
-  const length = Buffer.alloc(4);
-  length.writeUInt32BE(data.length, 0);
-  const typeBytes = Buffer.from(type, "latin1");
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(Buffer.concat([typeBytes, data])), 0);
-  return Buffer.concat([length, typeBytes, data, crc]);
-}
-function assertImage(image) {
-  if (!image || typeof image !== "object") throw new Error("encodePng \u9700\u8981\u4E00\u4E2A {width,height,rgba} \u5BF9\u8C61");
-  const width = Number(image.width);
-  const height = Number(image.height);
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
-    throw new Error(`encodePng \u7684\u5BBD\u9AD8\u5FC5\u987B\u662F\u6B63\u6574\u6570\uFF0C\u6536\u5230 ${String(image.width)}\xD7${String(image.height)}`);
-  }
-  const rgba = image.rgba;
-  if (!(rgba instanceof Uint8Array)) throw new Error("encodePng \u7684 rgba \u5FC5\u987B\u662F Uint8Array");
-  const expected = width * height * 4;
-  if (!Number.isSafeInteger(expected) || expected > MAX_RGBA_BYTES) {
-    throw new Error(`encodePng \u7684\u50CF\u7D20\u91CF\u8FC7\u5927\uFF08${width}\xD7${height}\xD74=${expected} \u5B57\u8282\uFF09\uFF0C\u4E0A\u9650 ${MAX_RGBA_BYTES}`);
-  }
-  if (rgba.length !== expected) {
-    throw new Error(`encodePng \u7684 rgba \u957F\u5EA6\u4E0D\u5BF9\uFF1A${width}\xD7${height}\xD74 \u5E94\u4E3A ${expected}\uFF0C\u5B9E\u9645 ${rgba.length}`);
-  }
-  return { width, height, rgba };
-}
-function encodePng(image) {
-  const { width, height, rgba } = assertImage(image);
-  const stride = width * 4;
-  const raw = Buffer.alloc((stride + 1) * height);
-  for (let y = 0; y < height; y++) {
-    const lineStart = y * (stride + 1);
-    raw[lineStart] = 0;
-    for (let i = 0; i < stride; i++) raw[lineStart + 1 + i] = rgba[y * stride + i];
-  }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8;
-  ihdr[9] = 6;
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
-  return Buffer.concat([
-    SIGNATURE2,
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw)),
-    chunk("IEND", Buffer.alloc(0))
-  ]);
-}
-
-// src/sprite/browser.ts
-import { spawn as spawn3 } from "node:child_process";
-import http from "node:http";
-import net from "node:net";
-import os4 from "node:os";
-import path19 from "node:path";
-import { existsSync as existsSync2, mkdtempSync, rmSync } from "node:fs";
-
-// src/sprite/orphans.ts
-import { spawn as spawn2 } from "node:child_process";
-import { writeFileSync as writeFileSync2 } from "node:fs";
-import os3 from "node:os";
-import path18 from "node:path";
-function processAlive(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
   } catch {
-    return false;
   }
+  return process.cwd();
 }
-function killProcessTree(pid, log) {
-  if (!Number.isInteger(pid) || pid <= 0) return;
-  if (process.platform === "win32") {
-    try {
-      spawn2("taskkill", ["/PID", String(pid), "/T", "/F"], {
-        stdio: "ignore",
-        windowsHide: true,
-        // 同 browser.ts 的理由：子进程别继承宿主的工作目录（会把安装目录钉住，导致 DSH 自更新失败）
-        cwd: os3.tmpdir()
-      }).on("error", () => void 0);
-      return;
-    } catch {
-    }
-  }
+function packageVersion() {
   try {
-    process.kill(pid, "SIGKILL");
+    const raw = readFileSync5(path17.join(packageRoot(), "package.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    return typeof parsed.version === "string" ? parsed.version : "unknown";
   } catch {
-    log?.("\u6740\u8FDB\u7A0B\u5931\u8D25\uFF08\u53EF\u80FD\u5DF2\u7ECF\u9000\u51FA\uFF09", { pid });
+    return "unknown";
   }
 }
-function startParentWatchdog(options) {
-  const { browserPid, parentPid, profileDir } = options;
-  if (process.platform !== "win32") return;
-  if (!Number.isInteger(browserPid) || browserPid <= 0 || !Number.isInteger(parentPid) || parentPid <= 0) return;
-  try {
-    const scriptPath = path18.join(profileDir, "watchdog.ps1");
-    const script = [
-      '$ErrorActionPreference = "SilentlyContinue"',
-      `$parentPid = ${parentPid}`,
-      `$browserPid = ${browserPid}`,
-      "while ($true) {",
-      "  Start-Sleep -Seconds 10",
-      "  $parent = Get-Process -Id $parentPid -ErrorAction SilentlyContinue",
-      "  $browser = Get-Process -Id $browserPid -ErrorAction SilentlyContinue",
-      // 浏览器自己退了（正常关闭）就收工，别常驻
-      "  if (-not $browser) { break }",
-      // 父进程没了 → 孤儿：整棵树杀掉
-      "  if (-not $parent) {",
-      "    & taskkill.exe /PID $browserPid /T /F 2>$null | Out-Null",
-      "    break",
-      "  }",
-      "}",
-      ""
-    ].join("\r\n");
-    writeFileSync2(scriptPath, script, "utf8");
-    const watcher = spawn2(
-      "powershell.exe",
-      ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
-      {
-        stdio: "ignore",
-        windowsHide: true,
-        // ⚠️ **不能**用 `detached: true`：实测在 Windows 上让 powershell.exe 以 detached 方式起，
-        // 它会「立刻以退出码 0 结束、一行都不执行」（无控制台初始化失败）。
-        // 不 detached 也照样能活过父进程被强杀——Windows 不会自动杀子进程，那正是我们要的。
-        detached: false,
-        // 同 browser.ts：子进程别把安装目录当 cwd（会让 DSH 自更新改名失败）
-        cwd: os3.tmpdir()
-      }
-    );
-    watcher.unref();
-  } catch (error62) {
-    options.log?.("\u770B\u95E8\u72D7\u6CA1\u8D77\u6765\uFF08\u4E0D\u5F71\u54CD\u4F7F\u7528\uFF09", { message: String(error62?.message ?? error62).slice(0, 120) });
-  }
-}
-async function listOurSpriteBrowsers() {
-  if (process.platform !== "win32") return [];
-  try {
-    const out = await new Promise((resolve) => {
-      const ps = spawn2(
-        "powershell",
-        [
-          "-NoProfile",
-          "-NonInteractive",
-          "-Command",
-          `Get-CimInstance Win32_Process -Filter "Name='msedge.exe'" -ErrorAction SilentlyContinue | ForEach-Object { if ($_.CommandLine -match "--headless" -and $_.CommandLine -match "--user-data-dir=.*drc-sprite-") { "$($_.ProcessId)|$($_.ParentProcessId)" } }`
-        ],
-        { stdio: ["ignore", "pipe", "ignore"], windowsHide: true, cwd: os3.tmpdir() }
-      );
-      let text = "";
-      ps.stdout?.on("data", (chunk2) => {
-        text += chunk2.toString("utf8");
-      });
-      ps.on("error", () => resolve(""));
-      ps.on("close", () => resolve(text));
-    });
-    const rows = [];
-    for (const line of out.split(/\r?\n/)) {
-      const m = /^(\d+)\|(\d+)$/.exec(line.trim());
-      if (!m) continue;
-      rows.push({ pid: Number(m[1]), ppid: Number(m[2]) });
-    }
-    return rows;
-  } catch {
-    return [];
-  }
-}
-async function sweepOrphanBrowsers(log) {
-  const rows = await listOurSpriteBrowsers();
-  if (rows.length === 0) return 0;
-  let killed = 0;
-  const seen = /* @__PURE__ */ new Set();
-  for (const row of rows) {
-    if (seen.has(row.pid)) continue;
-    seen.add(row.pid);
-    if (processAlive(row.ppid)) continue;
-    killProcessTree(row.pid, log);
-    killed += 1;
-  }
-  if (killed > 0) log?.("\u6E05\u6389\u6B8B\u7559\u7684\u65E0\u5934\u6D4F\u89C8\u5668", { count: killed });
-  return killed;
-}
-
-// src/sprite/browser.ts
-function findBrowser(explicit) {
-  if (explicit) return existsSync2(explicit) ? explicit : void 0;
-  const env = (process.env.DAFEIYU_SPRITE_BROWSER ?? "").trim();
-  if (env !== "") return existsSync2(env) ? env : void 0;
-  const candidates = [
-    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
-  ];
-  return candidates.find((candidate) => existsSync2(candidate));
-}
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      server.close(() => port > 0 ? resolve(port) : reject(new Error("\u62FF\u4E0D\u5230\u7A7A\u95F2\u7AEF\u53E3")));
-    });
-  });
-}
-function getJson(url2, timeoutMs = 2e3) {
-  return new Promise((resolve, reject) => {
-    const request = http.get(url2, { timeout: timeoutMs }, (response) => {
-      const chunks = [];
-      response.on("data", (chunk2) => chunks.push(chunk2));
-      response.on("end", () => {
-        try {
-          resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-        } catch (error62) {
-          reject(error62);
-        }
-      });
-    });
-    request.on("timeout", () => request.destroy(new Error("CDP \u63A2\u6D4B\u8D85\u65F6")));
-    request.on("error", reject);
-  });
-}
-var wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-async function launchBrowser(options) {
-  const log = options.log ?? (() => void 0);
-  const executable = findBrowser(options.executable);
-  if (!executable) {
-    throw new Error("\u627E\u4E0D\u5230 Edge/Chrome\uFF1A\u53EF\u4EE5\u7528\u73AF\u5883\u53D8\u91CF DAFEIYU_SPRITE_BROWSER \u6307\u5B9A\u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84");
-  }
-  const port = await freePort();
-  const profileDir = mkdtempSync(path19.join(os4.tmpdir(), "drc-sprite-"));
-  const args = [
-    "--headless=new",
-    "--disable-gpu",
-    "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-extensions",
-    "--disable-background-networking",
-    "--disable-sync",
-    "--mute-audio",
-    "--hide-scrollbars",
-    `--remote-debugging-port=${port}`,
-    `--user-data-dir=${profileDir}`,
-    "about:blank"
-  ];
-  const child = spawn3(executable, args, { stdio: "ignore", windowsHide: true, cwd: profileDir });
-  if (typeof child.pid === "number") {
-    startParentWatchdog({ browserPid: child.pid, parentPid: process.pid, profileDir, log });
-  }
-  let closed = false;
-  const cleanup = async () => {
-    if (closed) return;
-    closed = true;
-    if (typeof child.pid === "number") killProcessTree(child.pid, log);
-    await wait(120);
-    try {
-      rmSync(profileDir, { recursive: true, force: true });
-    } catch {
-    }
-  };
-  const readyTimeout = options.readyTimeoutMs ?? 2e4;
-  const deadline = Date.now() + readyTimeout;
-  let target;
-  while (Date.now() < deadline) {
-    try {
-      const list = await getJson(`http://127.0.0.1:${port}/json/list`);
-      target = list.find((row) => row.type === "page" && typeof row.webSocketDebuggerUrl === "string");
-      if (target) break;
-    } catch {
-    }
-    await wait(200);
-  }
-  if (!target?.webSocketDebuggerUrl) {
-    await cleanup();
-    throw new Error(`\u6D4F\u89C8\u5668\u8D77\u6765\u4E86\u4F46\u6CA1\u6709\u53EF\u7528\u7684\u9875\u9762\uFF08\u7AEF\u53E3 ${port}\uFF0C\u7B49\u4E86 ${Math.round(readyTimeout / 1e3)} \u79D2\uFF09`);
-  }
-  const socket = new import_websocket.default(target.webSocketDebuggerUrl, { perMessageDeflate: false });
-  let nextId = 1;
-  const pending2 = /* @__PURE__ */ new Map();
-  const send = (method, params) => {
-    const id = nextId++;
-    socket.send(JSON.stringify({ id, method, ...params === void 0 ? {} : { params } }));
-    return id;
-  };
-  const call = (method, params, timeoutMs = 15e3) => {
-    const id = send(method, params);
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        pending2.delete(id);
-        reject(new Error(`CDP ${method} \u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
-      }, timeoutMs);
-      pending2.set(id, { resolve, reject, timer });
-    });
-  };
-  socket.on("message", (raw) => {
-    let message;
-    try {
-      message = JSON.parse(raw.toString("utf8"));
-    } catch {
-      return;
-    }
-    if (typeof message.id !== "number") return;
-    const waiter = pending2.get(message.id);
-    if (!waiter) return;
-    pending2.delete(message.id);
-    clearTimeout(waiter.timer);
-    if (message.error) waiter.reject(new Error(message.error.message ?? "CDP \u9519\u8BEF"));
-    else waiter.resolve(message.result);
-  });
-  socket.on("close", () => {
-    for (const [id, waiter] of pending2) {
-      pending2.delete(id);
-      clearTimeout(waiter.timer);
-      waiter.reject(new Error("CDP \u8FDE\u63A5\u65AD\u4E86\uFF08\u6D4F\u89C8\u5668\u88AB\u5173\u6389\uFF1F\uFF09"));
-    }
-  });
-  await new Promise((resolve, reject) => {
-    socket.once("open", () => resolve());
-    socket.once("error", (error62) => reject(error62));
-    setTimeout(() => reject(new Error("\u8FDE\u4E0D\u4E0A CDP WebSocket")), 1e4);
-  });
-  try {
-    await call("Page.enable");
-    await call("Runtime.enable");
-    await call("Page.navigate", { url: options.toolUrl }, 2e4);
-  } catch (error62) {
-    try {
-      socket.close();
-    } catch {
-    }
-    await cleanup();
-    throw error62;
-  }
-  const evaluate = async (expression, timeoutMs = 3e4) => {
-    const result2 = await call(
-      "Runtime.evaluate",
-      { expression, awaitPromise: true, returnByValue: true, userGesture: false },
-      timeoutMs
-    );
-    if (result2.exceptionDetails) {
-      const detail = result2.exceptionDetails.exception?.description ?? result2.exceptionDetails.text ?? "\u9875\u9762\u6267\u884C\u51FA\u9519";
-      throw new Error(detail.slice(0, 400));
-    }
-    return result2.result?.value;
-  };
-  const pageDeadline = Date.now() + readyTimeout;
-  const readyExpression = options.readyExpression ?? "document.readyState === 'complete' && !!(window.__spriteAgent && window.__spriteAgent.ready)";
-  let bridged = false;
-  while (Date.now() < pageDeadline) {
-    try {
-      bridged = await evaluate(readyExpression, 5e3);
-      if (bridged) break;
-    } catch {
-    }
-    await wait(300);
-  }
-  if (!bridged) {
-    const state = await evaluate('String(document.readyState) + " @" + location.href', 5e3).catch(() => "\u8BFB\u53D6\u5931\u8D25");
-    log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u6CA1\u5C31\u7EEA", { url: options.toolUrl, state });
-    try {
-      socket.close();
-    } catch {
-    }
-    await cleanup();
-    throw new Error(`\u5DE5\u5177\u9875\u6CA1\u5C31\u7EEA\uFF08${state}\uFF09\u3002\u68C0\u67E5\u9759\u6001\u8DEF\u7531 /plugins/dafeiyu-sprite/ \u4E0E\u8865\u4E01\u662F\u5426\u6253\u597D`);
-  }
-  return {
-    pageUrl: options.toolUrl,
-    evaluate,
-    async close() {
-      try {
-        socket.close();
-      } catch {
-      }
-      await cleanup();
-    }
-  };
-}
-
-// src/sprite/match.ts
-function intRect(rect, label) {
-  const x = Math.round(Number(rect.x));
-  const y = Math.round(Number(rect.y));
-  const w = Math.round(Number(rect.w));
-  const h = Math.round(Number(rect.h));
-  if (![x, y, w, h].every((value) => Number.isFinite(value))) {
-    throw new Error(`${label} \u5FC5\u987B\u662F\u56DB\u4E2A\u6709\u9650\u6570\u5B57\uFF08x,y,w,h\uFF09`);
-  }
-  if (w <= 0 || h <= 0) throw new Error(`${label} \u7684\u5BBD\u9AD8\u5FC5\u987B\u4E3A\u6B63\uFF08\u6536\u5230 ${w}x${h}\uFF09`);
-  return { x, y, w, h };
-}
-function clampRect(rect, width, height) {
-  const x0 = Math.max(0, Math.min(width, Math.round(rect.x)));
-  const y0 = Math.max(0, Math.min(height, Math.round(rect.y)));
-  const x1 = Math.max(0, Math.min(width, Math.round(rect.x + rect.w)));
-  const y1 = Math.max(0, Math.min(height, Math.round(rect.y + rect.h)));
-  if (x1 - x0 <= 0 || y1 - y0 <= 0) return void 0;
-  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-}
-function clampNumber(value, lo, hi) {
-  return Math.max(lo, Math.min(hi, value));
-}
-function round4(value) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * 1e4) / 1e4;
-}
-function cropRgba(image, rect) {
-  const box = intRect(rect, "rect");
-  if (box.x < 0 || box.y < 0 || box.x + box.w > image.width || box.y + box.h > image.height) {
-    throw new Error(
-      `\u77E9\u5F62 ${box.x},${box.y} ${box.w}x${box.h} \u8D85\u51FA\u4E86\u5E27 ${image.width}x${image.height}\uFF08\u50CF\u7D20\u5750\u6807\uFF0C\u5DE6\u4E0A\u539F\u70B9\uFF09`
-    );
-  }
-  const out = new Uint8Array(box.w * box.h * 4);
-  const stride = image.width * 4;
-  for (let y = 0; y < box.h; y++) {
-    const from = (box.y + y) * stride + box.x * 4;
-    out.set(image.rgba.subarray(from, from + box.w * 4), y * box.w * 4);
-  }
-  return { width: box.w, height: box.h, rgba: out };
-}
-var grayCache = /* @__PURE__ */ new WeakMap();
-function toGray(image) {
-  const hit = grayCache.get(image);
-  if (hit) return hit;
-  const { width, height, rgba } = image;
-  const data = new Float32Array(width * height);
-  for (let i = 0, p = 0; i < data.length; i++, p += 4) {
-    const alpha = rgba[p + 3] / 255;
-    data[i] = (0.299 * rgba[p] + 0.587 * rgba[p + 1] + 0.114 * rgba[p + 2]) * alpha;
-  }
-  const gray = { width, height, data };
-  grayCache.set(image, gray);
-  return gray;
-}
-function cropGray(image, rect) {
-  const box = intRect(rect, "rect");
-  if (box.x < 0 || box.y < 0 || box.x + box.w > image.width || box.y + box.h > image.height) {
-    throw new Error(
-      `\u77E9\u5F62 ${box.x},${box.y} ${box.w}x${box.h} \u8D85\u51FA\u4E86\u56FE ${image.width}x${image.height}\uFF08\u50CF\u7D20\u5750\u6807\uFF0C\u5DE6\u4E0A\u539F\u70B9\uFF09`
-    );
-  }
-  const data = new Float32Array(box.w * box.h);
-  for (let y = 0; y < box.h; y++) {
-    const from = (box.y + y) * image.width + box.x;
-    data.set(image.data.subarray(from, from + box.w), y * box.w);
-  }
-  return { width: box.w, height: box.h, data };
-}
-function maskPoints(mask) {
-  let count = 0;
-  for (let i = 0; i < mask.data.length; i++) if (mask.data[i] === 1) count++;
-  const xs = new Int32Array(count);
-  const ys = new Int32Array(count);
-  let at = 0;
-  for (let y = 0; y < mask.height; y++) {
-    const row = y * mask.width;
-    for (let x = 0; x < mask.width; x++) {
-      if (mask.data[row + x] === 1) {
-        xs[at] = x;
-        ys[at] = y;
-        at++;
-      }
-    }
-  }
-  return { xs, ys, count, area: count };
-}
-function resampleGray(image, scale) {
-  if (!Number.isFinite(scale) || scale <= 0) throw new Error(`\u91CD\u91C7\u6837\u6BD4\u4F8B\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${scale}\uFF09`);
-  if (Math.abs(scale - 1) < 1e-9) return image;
-  const w = Math.max(1, Math.round(image.width * scale));
-  const h = Math.max(1, Math.round(image.height * scale));
-  const data = new Float32Array(w * h);
-  const sx = image.width / w;
-  const sy = image.height / h;
-  for (let y = 0; y < h; y++) {
-    const fy = clampNumber((y + 0.5) * sy - 0.5, 0, image.height - 1);
-    const y0 = Math.floor(fy);
-    const wy = fy - y0;
-    const y1 = Math.min(image.height - 1, y0 + 1);
-    for (let x = 0; x < w; x++) {
-      const fx = clampNumber((x + 0.5) * sx - 0.5, 0, image.width - 1);
-      const x0 = Math.floor(fx);
-      const wx = fx - x0;
-      const x1 = Math.min(image.width - 1, x0 + 1);
-      const v00 = image.data[y0 * image.width + x0];
-      const v01 = image.data[y0 * image.width + x1];
-      const v10 = image.data[y1 * image.width + x0];
-      const v11 = image.data[y1 * image.width + x1];
-      data[y * w + x] = (v00 * (1 - wx) + v01 * wx) * (1 - wy) + (v10 * (1 - wx) + v11 * wx) * wy;
-    }
-  }
-  return { width: w, height: h, data };
-}
-var downsampleCache = /* @__PURE__ */ new WeakMap();
-function downsampleGray(image, factor) {
-  const f = Math.max(1, Math.round(factor));
-  if (f === 1) return image;
-  let bucket = downsampleCache.get(image);
-  if (!bucket) {
-    bucket = /* @__PURE__ */ new Map();
-    downsampleCache.set(image, bucket);
-  }
-  const hit = bucket.get(f);
-  if (hit) return hit;
-  const w = Math.max(1, Math.floor(image.width / f));
-  const h = Math.max(1, Math.floor(image.height / f));
-  const data = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) {
-    const yStart = y * f;
-    const yEnd = Math.min(image.height, yStart + f);
-    for (let x = 0; x < w; x++) {
-      const xStart = x * f;
-      const xEnd = Math.min(image.width, xStart + f);
-      let sum = 0;
-      let n = 0;
-      for (let yy = yStart; yy < yEnd; yy++) {
-        const row = yy * image.width;
-        for (let xx = xStart; xx < xEnd; xx++) {
-          sum += image.data[row + xx];
-          n++;
-        }
-      }
-      data[y * w + x] = n > 0 ? sum / n : 0;
-    }
-  }
-  const out = { width: w, height: h, data };
-  bucket.set(f, out);
-  return out;
-}
-var integralCache = /* @__PURE__ */ new WeakMap();
-function integralOf(image) {
-  const hit = integralCache.get(image);
-  if (hit) return hit;
-  const stride = image.width + 1;
-  const sum = new Float64Array(stride * (image.height + 1));
-  const sumSq = new Float64Array(stride * (image.height + 1));
-  for (let y = 0; y < image.height; y++) {
-    let rowSum = 0;
-    let rowSumSq = 0;
-    const src = y * image.width;
-    const out = (y + 1) * stride;
-    const prev = y * stride;
-    for (let x = 0; x < image.width; x++) {
-      const value = image.data[src + x];
-      rowSum += value;
-      rowSumSq += value * value;
-      sum[out + x + 1] = sum[prev + x + 1] + rowSum;
-      sumSq[out + x + 1] = sumSq[prev + x + 1] + rowSumSq;
-    }
-  }
-  const built = { stride, sum, sumSq };
-  integralCache.set(image, built);
-  return built;
-}
-function rectSum(plane, stride, x, y, w, h) {
-  return plane[(y + h) * stride + x + w] - plane[y * stride + x + w] - plane[(y + h) * stride + x] + plane[y * stride + x];
-}
-function templateStatsOf(template) {
-  const n = template.width * template.height;
-  if (n < 1) return void 0;
-  let sumT = 0;
-  let sumT2 = 0;
-  for (let i = 0; i < n; i++) {
-    const value = template.data[i];
-    sumT += value;
-    sumT2 += value * value;
-  }
-  const varT = sumT2 - sumT * sumT / n;
-  if (!(varT > 1e-9)) return void 0;
-  return { sumT, sumT2, n, varT };
-}
-function nccAtOffset(image, template, stats, x, y) {
-  const tw = template.width;
-  const th = template.height;
-  if (x < 0 || y < 0 || x + tw > image.width || y + th > image.height) return void 0;
-  const integral = integralOf(image);
-  const stride = integral.stride;
-  const sumG = rectSum(integral.sum, stride, x, y, tw, th);
-  const sumG2 = rectSum(integral.sumSq, stride, x, y, tw, th);
-  const varG = sumG2 - sumG * sumG / stats.n;
-  if (!(varG > 1e-9)) return void 0;
-  let cross = 0;
-  for (let ty = 0; ty < th; ty++) {
-    const gRow = (y + ty) * image.width + x;
-    const tRow = ty * tw;
-    for (let tx = 0; tx < tw; tx++) cross += template.data[tRow + tx] * image.data[gRow + tx];
-  }
-  return (cross - stats.sumT * sumG / stats.n) / Math.sqrt(stats.varT * varG);
-}
-function nccScoreAt(image, template, x, y) {
-  const stats = templateStatsOf(template);
-  if (!stats) return void 0;
-  return nccAtOffset(image, template, stats, x, y);
-}
-function nccSearch(image, template, options = {}) {
-  const tw = template.width;
-  const th = template.height;
-  if (tw < 1 || th < 1) return void 0;
-  if (tw > image.width || th > image.height) return void 0;
-  const step = Math.max(1, Math.round(options.step ?? 1));
-  const wanted = options.rect ?? { x: 0, y: 0, w: image.width, h: image.height };
-  const box = clampRect(wanted, image.width, image.height);
-  if (!box) return void 0;
-  const maxX = box.x + box.w - tw;
-  const maxY = box.y + box.h - th;
-  if (maxX < box.x || maxY < box.y) return void 0;
-  const stats = templateStatsOf(template);
-  if (!stats) return { x: box.x, y: box.y, score: 0 };
-  let best;
-  for (let y = box.y; y <= maxY; y += step) {
-    for (let x = box.x; x <= maxX; x += step) {
-      const score = nccAtOffset(image, template, stats, x, y);
-      if (score === void 0) continue;
-      if (!best || score > best.score) best = { x, y, score };
-    }
-  }
-  return best;
-}
-function nccSearchTopK(image, template, options = {}) {
-  const tw = template.width;
-  const th = template.height;
-  const k = Math.max(1, Math.round(options.k ?? 3));
-  const minSep = Math.max(1, Math.round(options.minSep ?? Math.max(tw, th) / 2));
-  if (tw < 1 || th < 1 || tw > image.width || th > image.height) return [];
-  const step = Math.max(1, Math.round(options.step ?? 1));
-  const box = clampRect(options.rect ?? { x: 0, y: 0, w: image.width, h: image.height }, image.width, image.height);
-  if (!box) return [];
-  const maxX = box.x + box.w - tw;
-  const maxY = box.y + box.h - th;
-  if (maxX < box.x || maxY < box.y) return [];
-  const stats = templateStatsOf(template);
-  if (!stats) return [];
-  const hits = [];
-  for (let y = box.y; y <= maxY; y += step) {
-    for (let x = box.x; x <= maxX; x += step) {
-      const score = nccAtOffset(image, template, stats, x, y);
-      if (score === void 0) continue;
-      hits.push({ x, y, score });
-    }
-  }
-  hits.sort((a, b) => b.score - a.score);
-  const picked = [];
-  for (const hit of hits) {
-    if (picked.length >= k) break;
-    if (picked.some((one) => Math.abs(one.x - hit.x) < minSep && Math.abs(one.y - hit.y) < minSep)) continue;
-    picked.push(hit);
-  }
-  return picked;
-}
-function nccCandidates(image, template, options = {}) {
-  const step = Math.max(1, Math.round(options.step ?? 1));
-  const k = Math.max(1, Math.round(options.k ?? 3));
-  const rect = options.rect ? { rect: options.rect } : {};
-  if (step <= 1) {
-    const hit = nccSearch(image, template, rect);
-    return hit ? [hit] : [];
-  }
-  const tops = nccSearchTopK(image, template, {
-    ...rect,
-    step,
-    k,
-    minSep: Math.max(2 * step, Math.max(template.width, template.height) / 2)
-  });
-  const radius = 2 * step;
-  const out = [];
-  for (const top of tops) {
-    const hit = nccSearch(image, template, {
-      rect: {
-        x: top.x - radius,
-        y: top.y - radius,
-        w: template.width + 2 * radius,
-        h: template.height + 2 * radius
-      },
-      step: 1
-    });
-    if (hit) out.push(hit);
-  }
-  out.sort((a, b) => b.score - a.score);
-  return out;
-}
-function matchTemplate(source, template, options = {}) {
-  return matchGray(toGray(source), toGray(template), options);
-}
-function matchGray(source, template, options = {}) {
-  const tw = template.width;
-  const th = template.height;
-  if (tw < 1 || th < 1) return { found: false, x: 0, y: 0, score: 0, space: "frame", reason: "\u6A21\u677F\u662F\u7A7A\u7684\uFF08\u5BBD\u6216\u9AD8 \u2264 0\uFF09" };
-  const searchRect = options.searchRect ?? { x: 0, y: 0, w: source.width, h: source.height };
-  const box = clampRect(searchRect, source.width, source.height);
-  if (!box) {
-    return { found: false, x: 0, y: 0, score: 0, space: "frame", reason: "\u641C\u7D22\u533A\u57DF\u4E0E\u5E27\u6CA1\u6709\u4EA4\u96C6" };
-  }
-  if (box.w < tw || box.h < th) {
-    return {
-      found: false,
-      x: 0,
-      y: 0,
-      score: 0,
-      space: "frame",
-      reason: `\u641C\u7D22\u533A\u57DF ${box.w}x${box.h} \u6BD4\u6A21\u677F ${tw}x${th} \u8FD8\u5C0F\uFF08\u653E\u4E0D\u4E0B\u4EFB\u4F55\u4E00\u4E2A\u504F\u79FB\uFF09`
-    };
-  }
-  if (!templateStatsOf(template)) {
-    return {
-      found: false,
-      x: 0,
-      y: 0,
-      score: 0,
-      space: "frame",
-      reason: "\u6A21\u677F\u662F\u7EAF\u8272/\u51E0\u4E4E\u65E0\u53D8\u5316\uFF08\u65B9\u5DEE 0\uFF09\uFF0CNCC \u65E0\u5B9A\u4E49\uFF1A\u6362\u4E00\u5757\u6709\u7EB9\u7406\u7684\u533A\u57DF\uFF08\u7EBD\u6263\u3001\u5FBD\u7AE0\u3001\u773C\u775B\uFF09"
-    };
-  }
-  const factors = pyramidFactors(tw, th);
-  const budget = options.maxOpsPerLevel ?? 12e7;
-  let candidates = [];
-  let first = true;
-  for (const factor of factors) {
-    const image = downsampleGray(source, factor);
-    const tpl = downsampleGray(template, factor);
-    if (tpl.width < 1 || tpl.height < 1) continue;
-    if (tpl.width > image.width || tpl.height > image.height) continue;
-    const next = [];
-    if (first) {
-      const scaled = clampRect(
-        { x: box.x / factor, y: box.y / factor, w: box.w / factor, h: box.h / factor },
-        image.width,
-        image.height
-      );
-      if (!scaled) continue;
-      const offsets = Math.max(1, scaled.w - tpl.width + 1) * Math.max(1, scaled.h - tpl.height + 1);
-      const ops = offsets * tpl.width * tpl.height;
-      const step = ops > budget ? Math.min(8, Math.ceil(Math.sqrt(ops / budget))) : 1;
-      const hits = nccCandidates(image, tpl, { rect: scaled, step, k: 3 });
-      for (const hit of hits) next.push({ factor, x: hit.x, y: hit.y, score: hit.score, step });
-      first = false;
-    } else {
-      for (const prev of candidates) {
-        const centerX = Math.round(prev.x * prev.factor / factor);
-        const centerY = Math.round(prev.y * prev.factor / factor);
-        const radius = Math.max(2, Math.ceil(prev.step * prev.factor / factor) + 1);
-        const window = {
-          x: centerX - radius,
-          y: centerY - radius,
-          w: tpl.width + 2 * radius,
-          h: tpl.height + 2 * radius
-        };
-        const hit = nccSearch(image, tpl, { rect: window, step: 1 });
-        if (hit) next.push({ factor, x: hit.x, y: hit.y, score: hit.score, step: 1 });
-      }
-    }
-    if (next.length === 0) {
-      return {
-        found: false,
-        x: 0,
-        y: 0,
-        score: 0,
-        space: "frame",
-        reason: `\u91D1\u5B57\u5854 1/${factor} \u5C42\u6CA1\u80FD\u7B97\u51FA\u5019\u9009\uFF08\u6A21\u677F\u5728\u8BE5\u5C42 ${tpl.width}x${tpl.height}\uFF0C\u53EF\u80FD\u592A\u5C0F\uFF09`
-      };
-    }
-    next.sort((a, b) => b.score - a.score);
-    candidates = next.slice(0, 3);
-  }
-  const best = candidates[0];
-  if (!best) {
-    return { found: false, x: 0, y: 0, score: 0, space: "frame", reason: "\u6CA1\u6709\u53EF\u7528\u7684\u91D1\u5B57\u5854\u5C42\uFF08\u5E27\u592A\u5C0F\uFF09" };
-  }
-  const minScore = clampNumber(options.minScore ?? 0.85, -1, 1);
-  const score = best.score;
-  if (score >= minScore) {
-    return { found: true, x: best.x, y: best.y, score: round4(score), space: "frame" };
-  }
-  return {
-    found: false,
-    x: best.x,
-    y: best.y,
-    score: round4(score),
-    space: "frame",
-    reason: `\u6700\u9AD8\u5206 ${round4(score)} \u4F4E\u4E8E\u9608\u503C ${minScore}\uFF08\u4F4D\u7F6E\u4ECD\u56DE\u4F20\uFF0C\u53EF\u636E\u6B64\u5224\u65AD"\u5DEE\u591A\u5C11"\uFF09`
-  };
-}
-function pyramidFactors(templateWidth, templateHeight) {
-  const minDim = Math.min(templateWidth, templateHeight);
-  if (minDim >= 32) return [4, 2, 1];
-  if (minDim >= 16) return [2, 1];
-  return [1];
-}
-function scaleGrid(range = {}, defaults = { min: 0.85, max: 1.15, step: 0.01 }, cap = 31) {
-  const lo0 = clampNumber(Number(range.min ?? defaults.min), 0.1, 4);
-  const hi0 = clampNumber(Number(range.max ?? defaults.max), 0.1, 4);
-  const step0 = clampNumber(Number(range.step ?? defaults.step), 1e-3, 1);
-  const lo = Math.min(lo0, hi0);
-  const hi = Math.max(lo0, hi0);
-  const natural = Math.floor((hi - lo) / step0 + 1e-9) + 1;
-  const count = Math.max(1, Math.min(cap, natural));
-  const step = count === 1 ? 0 : (hi - lo) / (count - 1);
-  const out = [];
-  for (let i = 0; i < count; i++) out.push(round4(lo + i * step));
-  if (out.length === 0) out.push(round4(lo));
-  return out;
-}
-function choosePeak(curve) {
-  if (curve.length === 0) return void 0;
-  let top = -Infinity;
-  for (const one of curve) if (one.score > top) top = one.score;
-  let first = -1;
-  let last = -1;
-  for (let i = 0; i < curve.length; i++) {
-    if (curve[i].score >= top - 1e-9) {
-      if (first < 0) first = i;
-      last = i;
-    }
-  }
-  const middle = curve[Math.floor((first + last) / 2)];
-  return middle?.scale;
-}
-function parabolaOffset(before, mid, after) {
-  const denominator = before - 2 * mid + after;
-  if (!(Math.abs(denominator) > 1e-9)) return 0;
-  return clampNumber(0.5 * (before - after) / denominator, -0.5, 0.5);
-}
-function refineScaleParabola(curve) {
-  if (curve.length < 3) return void 0;
-  let peak = 0;
-  for (let i = 1; i < curve.length; i++) if (curve[i].score > curve[peak].score) peak = i;
-  if (peak === 0 || peak === curve.length - 1) return void 0;
-  const prev = curve[peak - 1];
-  const mid = curve[peak];
-  const next = curve[peak + 1];
-  const step = mid.scale - prev.scale;
-  if (!(Math.abs(step) > 1e-9)) return void 0;
-  const delta = parabolaOffset(prev.score, mid.score, next.score);
-  return mid.scale + delta * step;
-}
-function coarseFactorOf(frameWidth, frameHeight, minTemplateDim) {
-  const small = Math.min(frameWidth, frameHeight);
-  if (minTemplateDim >= 40 && small >= 128) return 4;
-  if (minTemplateDim >= 12 && small >= 48) return 2;
-  return 1;
-}
-function fitFeatureFrame(reference, frame, options) {
-  const specs = options.templates;
-  if (!Array.isArray(specs) || specs.length === 0) throw new Error("\u81F3\u5C11\u8981\u7ED9 1 \u4E2A\u7279\u5F81\u6A21\u677F\uFF08templates\uFF09");
-  if (specs.length > 8) throw new Error(`\u7279\u5F81\u6A21\u677F\u6700\u591A 8 \u4E2A\uFF08\u6536\u5230 ${specs.length} \u4E2A\uFF09\uFF0C2 \u4E2A\u6700\u7A33`);
-  const refGray = toGray(reference);
-  const frameGray = toGray(frame);
-  const templates = specs.map((spec, index) => {
-    const rect = intRect(spec.rect, `templates[${index}].rect`);
-    const gray = cropGray(refGray, rect);
-    return {
-      gray,
-      origin: { x: rect.x, y: rect.y },
-      weight: Math.max(1e-4, Number(spec.weight ?? 1))
-    };
-  });
-  const minDim = Math.min(...templates.map((one) => Math.min(one.gray.width, one.gray.height)));
-  const grid = scaleGrid(options.scale);
-  const span = grid[grid.length - 1] - grid[0];
-  const userStep = grid.length > 1 ? grid[1] - grid[0] : 0.01;
-  const coarseStep = Math.max(0.02, span / 9, userStep);
-  const evaluate = (scales, factor, radius, seeds) => {
-    const image = downsampleGray(frameGray, factor);
-    const results = [];
-    for (const scale of scales) {
-      let weighted = 0;
-      let weightSum = 0;
-      const positions = [];
-      const scores = [];
-      let usable = true;
-      for (let i = 0; i < templates.length; i++) {
-        const one = templates[i];
-        const tpl = resampleGray(one.gray, scale / factor);
-        if (tpl.width < 2 || tpl.height < 2 || tpl.width > image.width || tpl.height > image.height) {
-          usable = false;
-          break;
-        }
-        if (!templateStatsOf(tpl)) {
-          usable = false;
-          break;
-        }
-        let rect;
-        if (seeds) {
-          const seed = seeds[i];
-          const centerX = Math.round(seed.x / factor);
-          const centerY = Math.round(seed.y / factor);
-          rect = {
-            x: centerX - radius,
-            y: centerY - radius,
-            w: tpl.width + 2 * radius,
-            h: tpl.height + 2 * radius
-          };
-        } else {
-          rect = { x: 0, y: 0, w: image.width, h: image.height };
-        }
-        const offsets = Math.max(1, Math.min(rect.w, image.width) - tpl.width + 1) * Math.max(1, Math.min(rect.h, image.height) - tpl.height + 1);
-        const ops = offsets * tpl.width * tpl.height;
-        if (!seeds && ops > 12e7) {
-          throw new Error(
-            `\u7279\u5F81\u6A21\u677F\u592A\u5927\uFF08\u7F29\u653E\u540E ${tpl.width}x${tpl.height}\uFF09\uFF1A\u7C97\u641C\u8981\u7B97 ${Math.round(ops / 1e6)}M \u6B21\u4E58\u52A0\uFF0C\u8BF7\u628A\u6A21\u677F\u88C1\u5230 16~64px \u89C1\u65B9\uFF08\u9009\u7EBD\u6263/\u773C\u775B\u8FD9\u7C7B\u5C0F\u800C\u7A33\u7684\u7279\u5F81\uFF0C\u522B\u6846\u6574\u9897\u5934\uFF09`
-          );
-        }
-        const hit = nccSearch(image, tpl, { rect, step: 1 });
-        if (!hit || hit.score < -0.99) {
-          usable = false;
-          break;
-        }
-        weighted += hit.score * one.weight;
-        weightSum += one.weight;
-        positions.push({ x: hit.x * factor, y: hit.y * factor });
-        scores.push(hit.score);
-      }
-      if (!usable || weightSum <= 0) continue;
-      results.push({ scale, score: weighted / weightSum, positions, scores, curve: [] });
-    }
-    if (results.length === 0) return void 0;
-    const curve = results.map((one) => ({ scale: one.scale, score: one.score }));
-    const chosen = choosePeak(curve);
-    const winner = results.find((one) => one.scale === chosen) ?? results[0];
-    winner.curve = curve;
-    return winner;
-  };
-  const factor0 = coarseFactorOf(frame.width, frame.height, minDim);
-  const midFactor = factor0 > 2 ? 2 : factor0;
-  const skip = Math.max(1, Math.round(coarseStep / Math.max(userStep, 1e-6)));
-  const coarseScales = grid.filter((_value, index) => index % skip === 0);
-  let current;
-  if (options.seed) {
-    const seed = options.seed;
-    const wanted = grid.filter((value) => Math.abs(value - seed.scale) <= coarseStep + 1e-9);
-    const seeds = templates.map((_one, index) => seed.positions[index] ?? { x: 0, y: 0 });
-    current = evaluate(wanted.length > 0 ? wanted : [seed.scale], midFactor, 10, seeds);
-    if (current && current.score < 0.6) current = void 0;
-  }
-  if (!current) {
-    current = evaluate(coarseScales.length > 0 ? coarseScales : grid, factor0, 0, void 0);
-  }
-  if (!current) {
-    throw new Error(
-      `\u5C3A\u5EA6 ${grid[0]}~${grid[grid.length - 1]} \u5168\u90FD\u4E0D\u884C\uFF1A\u6A21\u677F\u7F29\u653E\u540E\u653E\u4E0D\u8FDB ${frame.width}x${frame.height} \u7684\u5E27`
-    );
-  }
-  const fineScales = grid.filter((value) => Math.abs(value - current.scale) <= coarseStep + 1e-9);
-  const refined = evaluate(fineScales.length > 0 ? fineScales : [current.scale], midFactor, 10, current.positions);
-  if (refined) current = refined;
-  const lastScales = grid.filter(
-    (value) => Math.abs(value - current.scale) <= Math.max(3 * Math.max(userStep, 5e-3), coarseStep) + 1e-9
-  );
-  const finalStage = evaluate(lastScales.length > 0 ? lastScales : [current.scale], 1, 2, current.positions);
-  let atFullRes = finalStage !== void 0;
-  if (finalStage) current = finalStage;
-  const peak = refineScaleParabola(current.curve);
-  if (peak !== void 0 && Math.abs(peak - current.scale) > 1e-6) {
-    const polished = evaluate([round4(peak)], 1, 2, current.positions);
-    if (polished && polished.score >= current.score - 0.02) {
-      current = polished;
-      atFullRes = true;
-    }
-  }
-  const refinedPositions = current.positions.map((position, index) => {
-    if (!atFullRes) return position;
-    const tpl = resampleGray(templates[index].gray, current.scale);
-    const base = { x: Math.round(position.x), y: Math.round(position.y) };
-    const center = nccScoreAt(frameGray, tpl, base.x, base.y);
-    if (center === void 0) return position;
-    const axis = (dx2, dy2) => nccScoreAt(frameGray, tpl, base.x + dx2, base.y + dy2) ?? center;
-    return {
-      x: base.x + parabolaOffset(axis(-1, 0), center, axis(1, 0)),
-      y: base.y + parabolaOffset(axis(0, -1), center, axis(0, 1))
-    };
-  });
-  const translations = refinedPositions.map((position, index) => {
-    const origin = templates[index].origin;
-    return { x: position.x - origin.x * current.scale, y: position.y - origin.y * current.scale };
-  });
-  let sumWeight = 0;
-  let dx = 0;
-  let dy = 0;
-  for (let i = 0; i < translations.length; i++) {
-    const weight = templates[i].weight;
-    dx += translations[i].x * weight;
-    dy += translations[i].y * weight;
-    sumWeight += weight;
-  }
-  if (sumWeight > 0) {
-    dx /= sumWeight;
-    dy /= sumWeight;
-  }
-  let residual = 0;
-  for (let i = 1; i < translations.length; i++) {
-    residual = Math.max(
-      residual,
-      Math.hypot(translations[i].x - translations[0].x, translations[i].y - translations[0].y)
-    );
-  }
-  return {
-    scale: round4(current.scale),
-    dx: round4(dx),
-    dy: round4(dy),
-    score: round4(current.score),
-    residualPx: round4(residual),
-    perTemplate: current.positions.map((position, index) => ({
-      score: round4(current.scores[index] ?? 0),
-      x: Math.round(position.x),
-      y: Math.round(position.y)
-    }))
-  };
-}
-var maskCache = /* @__PURE__ */ new WeakMap();
-function maskFromAlpha(image, options = {}) {
-  const threshold = clampNumber(Number(options.threshold ?? 32), 0, 255);
-  const mode = options.mode ?? "body-core";
-  const key = `${mode}:${threshold}`;
-  let bucket = maskCache.get(image);
-  if (!bucket) {
-    bucket = /* @__PURE__ */ new Map();
-    maskCache.set(image, bucket);
-  }
-  const hit = bucket.get(key);
-  if (hit) return hit;
-  const data = new Uint8Array(image.width * image.height);
-  for (let i = 0, p = 3; i < data.length; i++, p += 4) {
-    data[i] = image.rgba[p] > threshold ? 1 : 0;
-  }
-  let mask = { width: image.width, height: image.height, data };
-  if (mode === "body-core") mask = erodeMask(largestComponent(mask), 1);
-  bucket.set(key, mask);
-  return mask;
-}
-function largestComponent(mask) {
-  const { width, height, data } = mask;
-  const out = new Uint8Array(width * height);
-  const visited = new Uint8Array(width * height);
-  const stack = new Int32Array(width * height);
-  let bestCount = 0;
-  let bestSeed = -1;
-  for (let start = 0; start < data.length; start++) {
-    if (data[start] !== 1 || visited[start] === 1) continue;
-    let top2 = 0;
-    let count = 0;
-    stack[top2++] = start;
-    visited[start] = 1;
-    while (top2 > 0) {
-      const index = stack[--top2];
-      count++;
-      const x = index % width;
-      const y = (index - x) / width;
-      if (x > 0) {
-        const left = index - 1;
-        if (data[left] === 1 && visited[left] === 0) {
-          visited[left] = 1;
-          stack[top2++] = left;
-        }
-      }
-      if (x + 1 < width) {
-        const right = index + 1;
-        if (data[right] === 1 && visited[right] === 0) {
-          visited[right] = 1;
-          stack[top2++] = right;
-        }
-      }
-      if (y > 0) {
-        const up = index - width;
-        if (data[up] === 1 && visited[up] === 0) {
-          visited[up] = 1;
-          stack[top2++] = up;
-        }
-      }
-      if (y + 1 < height) {
-        const down = index + width;
-        if (data[down] === 1 && visited[down] === 0) {
-          visited[down] = 1;
-          stack[top2++] = down;
-        }
-      }
-    }
-    if (count > bestCount) {
-      bestCount = count;
-      bestSeed = start;
-    }
-  }
-  if (bestSeed < 0) return { width, height, data: out };
-  let top = 0;
-  stack[top++] = bestSeed;
-  out[bestSeed] = 1;
-  while (top > 0) {
-    const index = stack[--top];
-    const x = index % width;
-    const y = (index - x) / width;
-    if (x > 0 && data[index - 1] === 1 && out[index - 1] === 0) {
-      out[index - 1] = 1;
-      stack[top++] = index - 1;
-    }
-    if (x + 1 < width && data[index + 1] === 1 && out[index + 1] === 0) {
-      out[index + 1] = 1;
-      stack[top++] = index + 1;
-    }
-    if (y > 0 && data[index - width] === 1 && out[index - width] === 0) {
-      out[index - width] = 1;
-      stack[top++] = index - width;
-    }
-    if (y + 1 < height && data[index + width] === 1 && out[index + width] === 0) {
-      out[index + width] = 1;
-      stack[top++] = index + width;
-    }
-  }
-  return { width, height, data: out };
-}
-function erodeMask(mask, iterations = 1) {
-  let current = mask;
-  for (let round = 0; round < Math.max(0, Math.round(iterations)); round++) {
-    const { width, height, data } = current;
-    const out = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const index = y * width + x;
-        if (data[index] !== 1) continue;
-        if (x === 0 || y === 0 || x + 1 === width || y + 1 === height) continue;
-        if (data[index - 1] === 1 && data[index + 1] === 1 && data[index - width] === 1 && data[index + width] === 1) {
-          out[index] = 1;
-        }
-      }
-    }
-    current = { width, height, data: out };
-  }
-  return current;
-}
-function resampleMask(mask, scale) {
-  if (!Number.isFinite(scale) || scale <= 0) throw new Error(`\u91CD\u91C7\u6837\u6BD4\u4F8B\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${scale}\uFF09`);
-  if (Math.abs(scale - 1) < 1e-9) return mask;
-  const w = Math.max(1, Math.round(mask.width * scale));
-  const h = Math.max(1, Math.round(mask.height * scale));
-  const data = new Uint8Array(w * h);
-  const sx = mask.width / w;
-  const sy = mask.height / h;
-  if (scale > 1) {
-    for (let y = 0; y < h; y++) {
-      const yy = clampNumber(Math.round((y + 0.5) * sy - 0.5), 0, mask.height - 1);
-      for (let x = 0; x < w; x++) {
-        const xx = clampNumber(Math.round((x + 0.5) * sx - 0.5), 0, mask.width - 1);
-        data[y * w + x] = mask.data[yy * mask.width + xx];
-      }
-    }
-    return { width: w, height: h, data };
-  }
-  for (let y = 0; y < h; y++) {
-    const y0 = Math.floor(y * sy);
-    const y1 = Math.max(y0 + 1, Math.min(mask.height, Math.floor((y + 1) * sy)));
-    for (let x = 0; x < w; x++) {
-      const x0 = Math.floor(x * sx);
-      const x1 = Math.max(x0 + 1, Math.min(mask.width, Math.floor((x + 1) * sx)));
-      let on = 0;
-      let total = 0;
-      for (let yy = y0; yy < y1; yy++) {
-        const row = yy * mask.width;
-        for (let xx = x0; xx < x1; xx++) {
-          total++;
-          if (mask.data[row + xx] === 1) on++;
-        }
-      }
-      data[y * w + x] = total > 0 && on * 2 >= total ? 1 : 0;
-    }
-  }
-  return { width: w, height: h, data };
-}
-function downsampleMask(mask, factor) {
-  const f = Math.max(1, Math.round(factor));
-  return f === 1 ? mask : resampleMask(mask, 1 / f);
-}
-function maskStats(points) {
-  let sx = 0;
-  let sy = 0;
-  for (let i = 0; i < points.count; i++) {
-    sx += points.xs[i];
-    sy += points.ys[i];
-  }
-  const area = points.count;
-  return { cx: area > 0 ? sx / area : 0, cy: area > 0 ? sy / area : 0, area };
-}
-function sparsifyPoints(points, stride) {
-  const step = Math.max(1, Math.round(stride));
-  if (step === 1 || points.count === 0) return points;
-  const count = Math.floor(points.count / step);
-  if (count === 0) return points;
-  const xs = new Int32Array(count);
-  const ys = new Int32Array(count);
-  for (let i = 0; i < count; i++) {
-    xs[i] = points.xs[i * step];
-    ys[i] = points.ys[i * step];
-  }
-  return { xs, ys, count, area: points.area };
-}
-function pointsCapped(points, target) {
-  if (points.count <= target) return points;
-  return sparsifyPoints(points, Math.ceil(points.count / target));
-}
-function iouAt(target, points, offsetX, offsetY, targetArea) {
-  let inter = 0;
-  for (let i = 0; i < points.count; i++) {
-    const x = points.xs[i] + offsetX;
-    const y = points.ys[i] + offsetY;
-    if (x < 0 || y < 0 || x >= target.width || y >= target.height) continue;
-    if (target.data[y * target.width + x] === 1) inter++;
-  }
-  const scale = points.count > 0 ? points.area / points.count : 1;
-  const intersect = inter * scale;
-  const union2 = points.area + targetArea - intersect;
-  return union2 > 0 ? intersect / union2 : 0;
-}
-function bestOffsetAround(target, points, targetArea, center, radius) {
-  let best = {
-    iou: iouAt(target, points, center.x, center.y, targetArea),
-    offset: center
-  };
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
-      if (dx === 0 && dy === 0) continue;
-      const iou = iouAt(target, points, center.x + dx, center.y + dy, targetArea);
-      if (iou > best.iou) best = { iou, offset: { x: center.x + dx, y: center.y + dy } };
-    }
-  }
-  return best;
-}
-function fitSilhouetteFrame(reference, frame, options = {}) {
-  const mode = options.mask === "raw" ? "raw" : "body-core";
-  const threshold = options.alphaThreshold;
-  const refMask = maskFromAlpha(reference, { ...threshold === void 0 ? {} : { threshold }, mode });
-  const frameMask = maskFromAlpha(frame, { ...threshold === void 0 ? {} : { threshold }, mode });
-  const refPointsFull = maskPoints(refMask);
-  const framePointsFull = maskPoints(frameMask);
-  if (refPointsFull.area === 0) {
-    return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u53C2\u8003\u5E27\u7684\u526A\u5F71\u662F\u7A7A\u7684\uFF08alpha \u9608\u503C\u4EE5\u4E0A\u7684\u50CF\u7D20\u4E3A 0\uFF09" };
-  }
-  if (framePointsFull.area === 0) {
-    return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u76EE\u6807\u5E27\u7684\u526A\u5F71\u662F\u7A7A\u7684\uFF08\u6CA1\u62A0\u56FE\uFF1F\uFF09" };
-  }
-  const grid = scaleGrid(options.scale, { min: 0.85, max: 1.15, step: 0.05 }, 9);
-  const factor = Math.min(4, Math.max(1, Math.floor(Math.min(frame.width, frame.height) / 64)));
-  const refSmall = downsampleMask(refMask, factor);
-  const frameSmall = downsampleMask(frameMask, factor);
-  const frameSmallPoints = maskPoints(frameSmall);
-  const frameSmallStats = maskStats(frameSmallPoints);
-  let best;
-  for (const scale of grid) {
-    const scaled = resampleMask(refSmall, scale);
-    const full = maskPoints(scaled);
-    if (full.area === 0) continue;
-    const points = pointsCapped(full, 4e3);
-    const stats = maskStats(full);
-    const center = {
-      x: Math.round(frameSmallStats.cx - stats.cx),
-      y: Math.round(frameSmallStats.cy - stats.cy)
-    };
-    const hit = bestOffsetAround(frameSmall, points, frameSmallPoints.area, center, 8);
-    if (!best || hit.iou > best.iou) best = { iou: hit.iou, scale, offset: hit.offset };
-  }
-  if (!best) {
-    return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u5C3A\u5EA6\u7F51\u683C\u91CC\u6CA1\u6709\u4E00\u6863\u80FD\u7B97\u51FA\u526A\u5F71\uFF08\u53C2\u8003\u5E27\u7684\u63A9\u819C\u662F\u7A7A\u7684\uFF1F\uFF09" };
-  }
-  if (best.iou < 0.5) {
-    const coarse = downsampleMask(refMask, 8);
-    const target = downsampleMask(frameMask, 8);
-    const targetPoints = maskPoints(target);
-    const scaled = resampleMask(coarse, best.scale);
-    const points = pointsCapped(maskPoints(scaled), 4e3);
-    if (points.area > 0 && scaled.width <= target.width && scaled.height <= target.height) {
-      let sweep2;
-      for (let y = 0; y + scaled.height <= target.height; y += 2) {
-        for (let x = 0; x + scaled.width <= target.width; x += 2) {
-          const iou = iouAt(target, points, x, y, targetPoints.area);
-          if (!sweep2 || iou > sweep2.iou) sweep2 = { iou, offset: { x: x * 2, y: y * 2 } };
-        }
-      }
-      if (sweep2) best = { iou: sweep2.iou, scale: best.scale, offset: sweep2.offset };
-    }
-  }
-  const gridStep = grid.length > 1 ? grid[1] - grid[0] : 0.05;
-  const probe = (scale, center, radius) => {
-    if (!(scale > 0.1) || scale > 4) return void 0;
-    const scaled = resampleMask(refMask, scale);
-    const full = maskPoints(scaled);
-    if (full.area === 0) return void 0;
-    const hit = bestOffsetAround(frameMask, pointsCapped(full, 3e4), framePointsFull.area, center, radius);
-    return { iou: hit.iou, offset: hit.offset, full };
-  };
-  const centerFull = { x: best.offset.x * factor, y: best.offset.y * factor };
-  const sweep = [];
-  for (let k = -2; k <= 2; k++) {
-    const found = probe(round4(best.scale + k * gridStep / 2), centerFull, 3);
-    if (found) sweep.push({ scale: round4(best.scale + k * gridStep / 2), ...found });
-  }
-  if (sweep.length === 0) {
-    const fallback = probe(best.scale, centerFull, 4);
-    if (!fallback) {
-      return { iou: 0, scale: 1, dx: 0, dy: 0, reason: "\u539F\u5206\u8FA8\u7387\u4E0A\u7B97\u4E0D\u51FA\u526A\u5F71\uFF08\u53C2\u8003\u5E27\u7684\u63A9\u819C\u662F\u7A7A\u7684\uFF1F\uFF09" };
-    }
-    sweep.push({ scale: best.scale, ...fallback });
-  }
-  sweep.sort((a, b) => b.iou - a.iou);
-  let winner = sweep[0];
-  const peak = refineScaleParabola(sweep.map((one) => ({ scale: one.scale, score: one.iou })));
-  if (peak !== void 0 && Math.abs(peak - winner.scale) > 1e-6) {
-    const polished = probe(round4(peak), winner.offset, 2);
-    if (polished && polished.iou >= winner.iou - 5e-3) {
-      winner = { scale: round4(peak), ...polished };
-    }
-  }
-  const exact = iouAt(frameMask, winner.full, winner.offset.x, winner.offset.y, framePointsFull.area);
-  return {
-    iou: round4(exact),
-    scale: round4(winner.scale),
-    dx: winner.offset.x,
-    dy: winner.offset.y
-  };
-}
-function featureConfidence(score, residualPx) {
-  if (score >= 0.9 && residualPx < 2) return { confidence: "high" };
-  if (score >= 0.9) {
-    return {
-      confidence: "medium",
-      reason: `\u4E24\u4E2A\u6A21\u677F\u5404\u81EA\u53CD\u63A8\u7684\u5E73\u79FB\u5DEE ${round4(residualPx)}px \u2265 2px\uFF1A\u7279\u5F81\u53EF\u80FD\u88AB\u906E\u6321/\u5F62\u53D8\uFF0C\u951A\u70B9\u8981\u62FF\u8BED\u4E49\u70B9\u590D\u6838`
-    };
-  }
-  if (score >= 0.8) {
-    return {
-      confidence: "medium",
-      reason: `\u5206\u503C ${round4(score)} \u843D\u5728 0.80~0.90\uFF1A\u4E0E\u8BED\u4E49\u70B9\u4EA4\u53C9\u9A8C\u8BC1\uFF0C\u5DEE >3px \u4EE5\u8BED\u4E49\u70B9\u4E3A\u51C6`
-    };
-  }
-  return { confidence: "low", reason: `\u5206\u503C ${round4(score)} < 0.80\uFF1A\u7279\u5F81\u6CA1\u5BF9\u4E0A\uFF0C\u522B\u7528\u8FD9\u4E2A\u7ED3\u679C` };
-}
-function silhouetteConfidence(iou) {
-  if (iou >= 0.9) return { confidence: "high", anchorSource: "silhouette" };
-  if (iou >= 0.75) {
-    return {
-      confidence: "medium",
-      anchorSource: "semantic-required",
-      reason: `IoU ${round4(iou)} \u5728 0.75~0.90\uFF1A\u53EA\u91C7\u7528 scale\uFF0C\u951A\u70B9\u5FC5\u987B\u8D70\u8BED\u4E49\u70B9\uFF08transferredAnchor \u4EC5\u4F9B\u53C2\u8003\uFF09`
-    };
-  }
-  return {
-    confidence: "low",
-    anchorSource: null,
-    reason: `IoU ${round4(iou)} < 0.75\uFF1A\u8FD9\u6BB5\u52A8\u753B\u91CC\u6CA1\u6709\u59FF\u52BF\u63A5\u8FD1\u7684\u5E27\uFF0C\u526A\u5F71\u53EA\u4F5C\u53C2\u8003\uFF0C\u951A\u70B9\u5168\u7A0B\u8D70\u8BED\u4E49\u70B9`
-  };
-}
-function transferAnchor(input2) {
-  const refX = clampNumber(input2.anchorX, 0, 1) * input2.refWidth;
-  const refY = (1 - clampNumber(input2.anchorY, 0, 1)) * input2.refHeight;
-  const targetX = refX * input2.scale + input2.dx;
-  const targetY = refY * input2.scale + input2.dy;
-  const anchorX = input2.width > 0 ? targetX / input2.width : 0;
-  const anchorY = input2.height > 0 ? 1 - targetY / input2.height : 0;
-  return {
-    anchorX: round4(anchorX),
-    anchorY: round4(anchorY),
-    anchorYTopDown: round4(1 - anchorY)
-  };
-}
-
-// src/sprite/loop.ts
-var LOOP_DOWNSAMPLE_FACTOR = 4;
-var LOOP_MASK_MODES = ["body-core", "none"];
-var LOOP_ALPHA_THRESHOLD = 32;
-var lumaCache = /* @__PURE__ */ new WeakMap();
-function lumaOf(image) {
-  const hit = lumaCache.get(image);
-  if (hit) return hit;
-  const { width, height, rgba } = image;
-  const data = new Uint8Array(width * height);
-  for (let i = 0, p = 0; i < data.length; i++, p += 4) {
-    const alpha = rgba[p + 3];
-    if (alpha === 0) {
-      data[i] = 0;
-      continue;
-    }
-    const luma = Math.round((299 * rgba[p] + 587 * rgba[p + 1] + 114 * rgba[p + 2]) / 1e3);
-    data[i] = alpha === 255 ? luma : Math.round(luma * alpha / 255);
-  }
-  lumaCache.set(image, data);
-  return data;
-}
-function fullMask(width, height) {
-  const w = Math.max(1, Math.floor(width));
-  const h = Math.max(1, Math.floor(height));
-  return { width: w, height: h, data: new Uint8Array(w * h).fill(1) };
-}
-function bodyCoreMask(image, alphaThreshold = LOOP_ALPHA_THRESHOLD) {
-  return maskFromAlpha(image, { threshold: alphaThreshold, mode: "body-core" });
-}
-function frameDiff(a, b, mask, width, height) {
-  const w = Math.floor(Number(width ?? a.width));
-  const h = Math.floor(Number(height ?? a.height));
-  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
-    throw new Error(`\u6BD4\u8F83\u533A\u57DF\u5FC5\u987B\u662F\u6B63\u6570\u5C3A\u5BF8\uFF08\u6536\u5230 ${String(width)}x${String(height)}\uFF09`);
-  }
-  if (a.width < w || a.height < h) throw new Error(`\u5E27 a \u662F ${a.width}x${a.height}\uFF0C\u88C5\u4E0D\u4E0B ${w}x${h} \u7684\u6BD4\u8F83\u533A\u57DF`);
-  if (b.width < w || b.height < h) throw new Error(`\u5E27 b \u662F ${b.width}x${b.height}\uFF0C\u88C5\u4E0D\u4E0B ${w}x${h} \u7684\u6BD4\u8F83\u533A\u57DF`);
-  if (mask.width < w || mask.height < h) {
-    throw new Error(`\u63A9\u819C\u662F ${mask.width}x${mask.height}\uFF0C\u6BD4\u6BD4\u8F83\u533A\u57DF ${w}x${h} \u5C0F\uFF08\u63A9\u819C\u8981\u8DDF\u5E27\u540C\u5C3A\u5BF8\uFF09`);
-  }
-  const la = lumaOf(a);
-  const lb = lumaOf(b);
-  if (la.length < a.width * a.height || lb.length < b.width * b.height) {
-    throw new Error("\u4EAE\u5EA6\u56FE\u5C3A\u5BF8\u4E0E\u50CF\u7D20\u56FE\u5BF9\u4E0D\u4E0A");
-  }
-  const rowSum = new Int32Array(h);
-  let covered = 0;
-  for (let y = 0; y < h; y++) {
-    const maskRow = y * mask.width;
-    const rowA = y * a.width;
-    const rowB = y * b.width;
-    let sum = 0;
-    for (let x = 0; x < w; x++) {
-      if (mask.data[maskRow + x] !== 1) continue;
-      sum += Math.abs(la[rowA + x] - lb[rowB + x]);
-      covered++;
-    }
-    rowSum[y] = sum;
-  }
-  if (covered === 0) {
-    throw new Error('\u63A9\u819C\u91CC\u4E00\u4E2A\u524D\u666F\u50CF\u7D20\u90FD\u6CA1\u6709\uFF1A\u5148\u7528 bodyCoreMask \u9020\u4E00\u5F20\uFF0C\u6216\u6362 mask:"none"\uFF08\u6574\u5E45\uFF09');
-  }
-  let total = 0;
-  for (let y = 0; y < h; y++) total += rowSum[y];
-  return round4(total / covered);
-}
-function downsample(img, factor = LOOP_DOWNSAMPLE_FACTOR) {
-  const f = Math.max(1, Math.round(Number(factor)));
-  const src = img.rgba;
-  if (f === 1) {
-    return { width: img.width, height: img.height, rgba: src.slice(), mask: maskFromAlpha(img, { mode: "raw" }) };
-  }
-  const w = Math.max(1, Math.floor(img.width / f));
-  const h = Math.max(1, Math.floor(img.height / f));
-  const rgba = new Uint8Array(w * h * 4);
-  const maskData = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) {
-    const yStart = y * f;
-    const yEnd = Math.min(img.height, yStart + f);
-    for (let x = 0; x < w; x++) {
-      const xStart = x * f;
-      const xEnd = Math.min(img.width, xStart + f);
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let a = 0;
-      let n = 0;
-      for (let yy = yStart; yy < yEnd; yy++) {
-        let p = (yy * img.width + xStart) * 4;
-        for (let xx = xStart; xx < xEnd; xx++, p += 4) {
-          r += src[p];
-          g += src[p + 1];
-          b += src[p + 2];
-          a += src[p + 3];
-          n++;
-        }
-      }
-      const at = y * w + x;
-      const q = at * 4;
-      if (n === 0) continue;
-      rgba[q] = Math.round(r / n);
-      rgba[q + 1] = Math.round(g / n);
-      rgba[q + 2] = Math.round(b / n);
-      rgba[q + 3] = Math.round(a / n);
-      maskData[at] = a / n > LOOP_ALPHA_THRESHOLD ? 1 : 0;
-    }
-  }
-  return { width: w, height: h, rgba, mask: { width: w, height: h, data: maskData } };
-}
-var maskCache2 = /* @__PURE__ */ new WeakMap();
-function downsampleMask2(mask, factor = LOOP_DOWNSAMPLE_FACTOR) {
-  const f = Math.max(1, Math.round(Number(factor)));
-  if (f === 1) return mask;
-  let bucket = maskCache2.get(mask);
-  if (!bucket) {
-    bucket = /* @__PURE__ */ new Map();
-    maskCache2.set(mask, bucket);
-  }
-  const hit = bucket.get(f);
-  if (hit) return hit;
-  const w = Math.max(1, Math.floor(mask.width / f));
-  const h = Math.max(1, Math.floor(mask.height / f));
-  const data = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) {
-    const yStart = y * f;
-    const yEnd = Math.min(mask.height, yStart + f);
-    for (let x = 0; x < w; x++) {
-      const xStart = x * f;
-      const xEnd = Math.min(mask.width, xStart + f);
-      let on = 0;
-      let n = 0;
-      for (let yy = yStart; yy < yEnd; yy++) {
-        const row = yy * mask.width;
-        for (let xx = xStart; xx < xEnd; xx++) {
-          if (mask.data[row + xx] === 1) on++;
-          n++;
-        }
-      }
-      data[y * w + x] = n > 0 && on * 2 >= n ? 1 : 0;
-    }
-  }
-  const out = { width: w, height: h, data };
-  bucket.set(f, out);
-  return out;
-}
-function autocorrelation(frames, mask, opts = {}) {
-  const n = frames.length;
-  if (n < 4) throw new Error(`\u81EA\u76F8\u5173\u81F3\u5C11\u8981 4 \u5E27\uFF08\u6536\u5230 ${n} \u5E27\uFF09\uFF1A\u5E27\u592A\u5C11\u91CF\u4E0D\u51FA\u5468\u671F`);
-  const lo = Math.max(1, Math.floor(Number(opts.lo ?? 1)));
-  const hi = Math.min(n - 1, Math.floor(Number(opts.hi ?? Math.max(2, Math.floor(n / 2)))));
-  if (!Number.isFinite(lo) || !Number.isFinite(hi)) throw new Error(`\u626B\u63CF\u533A\u95F4\u4E0D\u662F\u6570\u5B57\uFF1Alo=${String(opts.lo)} hi=${String(opts.hi)}`);
-  if (lo > hi) throw new Error(`\u626B\u63CF\u533A\u95F4\u662F\u7A7A\u7684\uFF1Alo=${lo} > hi=${hi}\uFF08\u5E27\u6570 ${n}\uFF09`);
-  const out = [];
-  for (let L = lo; L <= hi; L++) {
-    let sum = 0;
-    let pairs = 0;
-    for (let i = 0; i + L < n; i++) {
-      sum += frameDiff(frames[i], frames[i + L], mask);
-      pairs++;
-    }
-    out.push({ L, score: pairs > 0 ? round4(sum / pairs) : Number.POSITIVE_INFINITY });
-  }
-  return out;
-}
-function pickPeriod(curve, opts = {}) {
-  if (!Array.isArray(curve) || curve.length === 0) {
-    throw new Error("\u66F2\u7EBF\u662F\u7A7A\u7684\uFF1A\u6CA1\u6709\u5019\u9009\u5468\u671F\u5C31\u6CA1\u6CD5\u6311\uFF08\u5148\u8DD1 autocorrelation\uFF09");
-  }
-  for (const point of curve) {
-    if (!Number.isFinite(point?.L) || !Number.isFinite(point?.score)) {
-      throw new Error(`\u81EA\u76F8\u5173\u8868\u91CC\u6709\u975E\u6570\u5B57\u9879\uFF1A${JSON.stringify(point)}`);
-    }
-  }
-  const points = [...curve].sort((a, b) => a.L - b.L);
-  const dominanceRatio = Number(opts.dominanceRatio ?? 0.85);
-  const sharpnessThreshold = Number(opts.sharpnessThreshold ?? 0.1);
-  const refineRadius = Math.max(1, Math.round(Number(opts.refineRadius ?? 1)));
-  const tieTolerance = Math.max(0, Number(opts.tieTolerance ?? 0.02));
-  let best = points[0];
-  for (const point of points) if (point.score < best.score) best = point;
-  let chosen = best;
-  for (const point of points) {
-    if (point.L >= chosen.L) continue;
-    if (best.L % point.L !== 0) continue;
-    if (point.score <= best.score * (1 + tieTolerance)) chosen = point;
-  }
-  const neighbors = points.filter(
-    (point) => point.L !== chosen.L && Math.abs(point.L - chosen.L) <= refineRadius
-  );
-  if (neighbors.length === 0) {
-    return {
-      L: chosen.L,
-      score: round4(chosen.score),
-      sharpness: 0,
-      confidence: "low",
-      reason: `\u66F2\u7EBF\u53EA\u6709 L=${chosen.L} \u4E00\u4E2A\u5019\u9009\uFF0C\u6CA1\u6CD5\u5224\u65AD\u5468\u671F\u6E05\u6670\u5EA6\uFF08\u626B\u63CF\u533A\u95F4\u592A\u7A84\uFF09`
-    };
-  }
-  const neighborMin = Math.min(...neighbors.map((point) => point.score));
-  const sharpness = neighborMin > 0 ? (neighborMin - chosen.score) / neighborMin : 0;
-  const dominance = neighborMin > 0 ? chosen.score / neighborMin : chosen.score > 0 ? 1 : 0;
-  const dominantOk = dominance < dominanceRatio;
-  const sharpOk = sharpness > sharpnessThreshold;
-  const confidence = dominantOk && sharpOk ? "high" : dominantOk || sharpOk ? "medium" : "low";
-  if (confidence !== "low") {
-    return { L: chosen.L, score: round4(chosen.score), sharpness: round4(sharpness), confidence };
-  }
-  return {
-    L: chosen.L,
-    score: round4(chosen.score),
-    sharpness: round4(sharpness),
-    confidence,
-    reason: `\u66F2\u7EBF\u5E73\u7F13\uFF1A\u6700\u4F18 L=${chosen.L} \u5206\u6570 ${round4(chosen.score)}\uFF0C\u90BB\u5C45\u6700\u4F4E ${round4(neighborMin)}\uFF0C\u53EA\u5DEE ${(sharpness * 100).toFixed(1)}%\uFF08\u8981 <${dominanceRatio}\xD7 \u90BB\u5C45\u4E14\u9510\u5EA6 >${(sharpnessThreshold * 100).toFixed(0)}% \u624D\u7B97\u6E05\u6670\uFF09\u2192 \u52A8\u4F5C\u672C\u8EAB\u4E0D\u4E25\u683C\u5468\u671F\uFF0C\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406`
-  };
-}
-function suggestFps(periodFrames, preFps, targetMultiples = [24, 48]) {
-  const L = Number(periodFrames);
-  const fpsPre = Number(preFps);
-  if (!Number.isFinite(L) || L <= 0) throw new Error(`\u5468\u671F\u5E27\u6570\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${String(periodFrames)}\uFF09`);
-  if (!Number.isFinite(fpsPre) || fpsPre <= 0) throw new Error(`\u9884\u91C7\u6837\u5E27\u7387\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u6536\u5230 ${String(preFps)}\uFF09`);
-  const wanted = (Array.isArray(targetMultiples) ? targetMultiples : []).map((value) => Math.floor(Number(value))).filter((value) => Number.isFinite(value) && value >= 2);
-  if (wanted.length === 0) throw new Error("targetMultiples \u91CC\u6CA1\u6709\u53EF\u7528\u7684\u76EE\u6807\u5E27\u6570\uFF08\u81F3\u5C11\u7ED9\u4E00\u4E2A \u22652 \u7684\u6574\u6570\uFF0C\u4F8B\u5982 [24,48]\uFF09");
-  const periodSec = L / fpsPre;
-  let bestT = wanted[0];
-  let bestGap = Math.abs(bestT / periodSec - fpsPre);
-  for (const T of wanted) {
-    const gap = Math.abs(T / periodSec - fpsPre);
-    if (gap < bestGap - 1e-9 || Math.abs(gap - bestGap) <= 1e-9 && T < bestT) {
-      bestT = T;
-      bestGap = gap;
-    }
-  }
-  return { targetFrames: bestT, fps: round4(bestT / periodSec), periodSec: round4(periodSec) };
-}
-function closureOf(firstLastDiff, adjacentDiff, tolerance = 0.5) {
-  const firstLast = Number(firstLastDiff);
-  const adjacent = Number(adjacentDiff);
-  if (!Number.isFinite(firstLast) || !Number.isFinite(adjacent)) {
-    throw new Error(`\u95ED\u5408\u5EA6\u9700\u8981\u4E24\u4E2A\u6709\u9650\u6570\uFF08\u6536\u5230 ${String(firstLastDiff)} / ${String(adjacentDiff)}\uFF09`);
-  }
-  const ok = adjacent > 0 ? Math.abs(firstLast - adjacent) / adjacent < tolerance : firstLast <= 0;
-  return { firstLastDiff: round4(firstLast), adjacentDiff: round4(adjacent), ok };
-}
-function maskArea(mask) {
-  let area = 0;
-  for (let i = 0; i < mask.data.length; i++) if (mask.data[i] === 1) area++;
-  return area;
-}
-function multipleSuspectWarning(periodFrames, fullScore, divisor, divisorScore, lowerBound, fps) {
-  const candidate = Math.round(periodFrames / divisor);
-  if (!Number.isFinite(candidate) || candidate < 4) return null;
-  if (candidate >= lowerBound) return null;
-  if (!(fullScore >= 0)) return null;
-  if (!(divisorScore < fullScore * 1.2)) return null;
-  const sec = (candidate / (fps > 0 ? fps : 12)).toFixed(2);
-  return `\u5468\u671F\u53EF\u80FD\u662F ${divisor} \u500D\uFF1AL=${candidate}\uFF08\u7EA6 ${sec}s\uFF09\u7684\u5206\u6570 ${divisorScore.toFixed(2)} \u4E0E L=${periodFrames}\uFF08${fullScore.toFixed(2)}\uFF09\u63A5\u8FD1\uFF0C\u4F46\u5B83\u88AB\u626B\u63CF\u4E0B\u754C\uFF08L\u2265${lowerBound}\uFF09\u6321\u4F4F\u4E86\u6CA1\u53C2\u9009\u3002\u5982\u679C\u8FD9\u6BB5\u52A8\u4F5C\u7528 ${sec}s \u5C31\u80FD\u95ED\u4E00\u6B21\uFF0C\u628A loop.minPeriodSec \u8C03\u5230 \u2264${sec} \u91CD\u626B\u3002`;
-}
-function scanRangeFor(frames, preFps, minPeriodSec) {
-  const n = Math.max(4, Math.floor(frames));
-  const fps = Number(preFps) > 0 ? Number(preFps) : 12;
-  const wantedLo = Math.max(2, Math.round(Number(minPeriodSec ?? 2) * fps));
-  const half = Math.max(2, Math.floor(n / 2));
-  const maxLo = Math.max(2, n - 2);
-  const lo = Math.min(wantedLo, maxLo);
-  let hi = Math.min(Math.max(half, lo), n - 1);
-  const warnings = [];
-  if (wantedLo > maxLo) {
-    warnings.push(
-      `minPeriodSec=${minPeriodSec}s \xD7 ${fps}fps = L\u2265${wantedLo} \u5DF2\u8D85\u51FA\u672C\u6BB5\u53EF\u6D4B\u8303\u56F4\uFF08\u5171 ${n} \u5E27\uFF09\uFF0C\u4E0B\u754C\u88AB\u538B\u5230 L=${lo}`
-    );
-  }
-  if (hi - lo < 2 && n - 1 > hi) {
-    const widened = Math.min(n - 1, lo + Math.max(2, Math.round(lo * 0.5)));
-    warnings.push(
-      `\u626B\u63CF\u533A\u95F4 [${lo},${hi}] \u53EA\u6709 ${hi - lo + 1} \u4E2A\u5019\u9009\uFF0C\u81EA\u76F8\u5173\u5224\u4E0D\u51FA\u9510\u5EA6\uFF1B\u5DF2\u628A\u4E0A\u754C\u653E\u5BBD\u5230 ${widened}\uFF08\u8981\u66F4\u51C6\u5C31\u8C03\u5C0F minPeriodSec\uFF09`
-    );
-    hi = widened;
-  }
-  return { lo, hi, warnings };
-}
-var ONE_SHOT_ACTION = "treat-as-one-shot";
-var ONE_SHOT_ACTION_TEXT = "\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406\uFF08\u522B\u505A\u5FAA\u73AF\u95ED\u5408\uFF09";
-function lowConfidenceWarning(reason) {
-  const detail = String(reason ?? "").trim() || "\u81EA\u76F8\u5173\u66F2\u7EBF\u5E73\u7F13\uFF0C\u5468\u671F\u5224\u4E0D\u6E05";
-  if (detail.includes("\u4E00\u6B21\u6027\u52A8\u4F5C")) return `${detail}\uFF08confidence:"low"\uFF09`;
-  return `${ONE_SHOT_ACTION_TEXT}\uFF1A${detail}`;
-}
-function finalizeLoopScan(input2) {
-  const warnings = [...input2.warnings];
-  const low = input2.confidence === "low";
-  if (low) warnings.unshift(lowConfidenceWarning(input2.reason));
-  const scoreCurve = [...input2.curve].sort((a, b) => a.score - b.score).slice(0, 5).map((point) => ({ frames: point.L, score: point.score }));
-  return {
-    ok: true,
-    periodFrames: input2.periodFrames,
-    periodSec: round4(input2.periodFrames / input2.fps),
-    suggestedFps: input2.suggested.fps,
-    targetFrames: input2.suggested.targetFrames,
-    scoreCurve,
-    closureScore: input2.closureScore,
-    confidence: input2.confidence,
-    ...input2.reason ? { reason: input2.reason } : {},
-    ...low ? { suggestedAction: ONE_SHOT_ACTION } : {},
-    warnings,
-    scanned: input2.scanned,
-    elapsedMs: input2.elapsedMs
-  };
-}
-
-// src/sprite/types.ts
-var KEY_PARAM_KEYS = [
-  "mode",
-  "colorHex",
-  "intensity",
-  "feather",
-  "cleanup",
-  "softness",
-  "despill",
-  "greenToAlpha",
-  "aggressive",
-  "autoPlate",
-  "advIntensity",
-  "advFeather"
-];
-var SCAN_CHANNELS = ["r", "g", "b", "alpha", "luma", "blue-minus-red", "saturation", "whiteness"];
-var SCAN_OPS = [">", ">=", "<", "<="];
-var SCAN_AGGREGATES = ["min", "max", "median", "mode"];
-var PIXEL_SOURCES = ["keyed", "raw"];
-
-// src/sprite/scan.ts
-var MARGIN_SCALE = 63.75;
-var MAX_SCAN_COLUMNS = 200;
-var MIN_RUN_FLOOR = 8;
-var WHITENESS_MAX_SATURATION = 25;
-var WHITENESS_MIN_LUMA = 210;
-function frameDimsOf(grid) {
-  const width = grid ? toNum(grid.width) : Number.NaN;
-  const height = grid ? toNum(grid.height) : Number.NaN;
-  if (Number.isNaN(width) || Number.isNaN(height) || width <= 0 || height <= 0) return null;
-  return { width, height };
-}
-var clamp01 = (value) => value < 0 ? 0 : value > 1 ? 1 : value;
-var round3 = (value) => Math.round(value * 1e3) / 1e3;
-function toNum(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : Number.NaN;
-  }
-  return Number.NaN;
-}
-function channelValue(rgba, channel) {
-  const r = Number(rgba[0]);
-  const g = Number(rgba[1]);
-  const b = Number(rgba[2]);
-  const a = Number(rgba[3]);
-  switch (channel) {
-    case "r":
-      return r;
-    case "g":
-      return g;
-    case "b":
-      return b;
-    case "alpha":
-      return a;
-    case "luma":
-      return 0.299 * r + 0.587 * g + 0.114 * b;
-    case "blue-minus-red":
-      return b - r;
-    case "saturation":
-      return Math.max(r, g, b) - Math.min(r, g, b);
-    /* 白 = 低饱和 + 高亮度：够白返回 luma（亮度仍可当阈值用），不够白返回 0
-       （0 永远过不了 `op:">", value:0`，也就不会被 `>` 阈值误判成白）。 */
-    case "whiteness": {
-      const saturation = Math.max(r, g, b) - Math.min(r, g, b);
-      const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-      return saturation < WHITENESS_MAX_SATURATION && luma > WHITENESS_MIN_LUMA ? luma : 0;
-    }
-    default:
-      return Number.NaN;
-  }
-}
-function compareOp(value, op, target) {
-  if (!Number.isFinite(value) || !Number.isFinite(target)) return false;
-  switch (op) {
-    case ">":
-      return value > target;
-    case ">=":
-      return value >= target;
-    case "<":
-      return value < target;
-    case "<=":
-      return value <= target;
-    default:
-      return false;
-  }
-}
-function normalizeProbe(raw) {
-  if (!raw || typeof raw !== "object") {
-    return { probe: null, reason: "probe \u7F3A\u5931\uFF1A\u8981 {channel, op, value}\uFF08\u53EF\u9009 minRun\uFF09" };
-  }
-  const spec = raw;
-  const channel = typeof spec.channel === "string" ? spec.channel.trim() : "";
-  if (!SCAN_CHANNELS.includes(channel)) {
-    return { probe: null, reason: "channel \u4E0D\u652F\u6301\uFF1A" + (channel || "(\u7A7A)") + "\uFF08\u53EF\u7528 " + SCAN_CHANNELS.join(" / ") + "\uFF09" };
-  }
-  const op = typeof spec.op === "string" ? spec.op.trim() : "";
-  if (!SCAN_OPS.includes(op)) {
-    return { probe: null, reason: "op \u4E0D\u652F\u6301\uFF1A" + (op || "(\u7A7A)") + "\uFF08\u53EF\u7528 " + SCAN_OPS.join(" ") + "\uFF09" };
-  }
-  const value = toNum(spec.value);
-  if (Number.isNaN(value)) {
-    return { probe: null, reason: "value \u5FC5\u987B\u662F\u6570\u5B57\uFF08\u6536\u5230 " + String(spec.value) + "\uFF09" };
-  }
-  const minRun = Number.isNaN(toNum(spec.minRun)) ? 1 : Math.max(1, Math.round(toNum(spec.minRun)));
-  return { probe: { channel, op, value, minRun } };
-}
-function resolveYRange(grid, req) {
-  const dims = frameDimsOf(grid);
-  if (!dims) return { range: null, reason: "\u5E27\u5C3A\u5BF8\u65E0\u6548\uFF08width/height \u5FC5\u987B\u4E3A\u6B63\uFF09" };
-  const height = dims.height;
-  const fromRaw = toNum(req ? req.fromY : void 0);
-  const toRaw = toNum(req ? req.toY : void 0);
-  const fromY = Number.isNaN(fromRaw) ? 0 : Math.round(fromRaw);
-  const toY = Number.isNaN(toRaw) ? height - 1 : Math.round(toRaw);
-  if (toY < fromY) {
-    return { range: null, reason: "toY(" + toY + ") \u5C0F\u4E8E fromY(" + fromY + ")\uFF0C\u626B\u63CF\u533A\u95F4\u4E3A\u7A7A" };
-  }
-  if (fromY > height - 1 || toY < 0) {
-    return { range: null, reason: "\u626B\u63CF\u533A\u95F4 y=[" + fromY + "," + toY + "] \u6574\u6BB5\u843D\u5728\u5E27\u5916\uFF08\u5E27\u9AD8 " + height + "\uFF09" };
-  }
-  const y0 = Math.max(0, fromY);
-  const y1 = Math.min(height - 1, toY);
-  return { range: { fromY: y0, toY: y1, clipped: y0 !== fromY || y1 !== toY } };
-}
-var condText = (probe) => probe.channel + " " + probe.op + " " + String(probe.value);
-var COLUMNS_SYNTAX_HINT = '\u5408\u6CD5\u5199\u6CD5\u53EA\u6709\u4E24\u79CD\uFF1A\u50CF\u7D20\u6570\u7EC4 [200,260,320,380]\uFF1B\u6216\u6BD4\u4F8B\u5B57\u7B26\u4E32 "0.30..0.70 step 0.05"\uFF08a / b / step \u4E09\u4E2A\u6570\u90FD\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF0C\u4E0D\u662F\u50CF\u7D20\uFF1Bstep \u5FC5\u987B\u5199\uFF0C\u4E0D\u80FD\u7701\uFF09';
-function recommendMinRun(frameHeight) {
-  const height = toNum(frameHeight);
-  if (!Number.isFinite(height) || height <= 0) return MIN_RUN_FLOOR;
-  const raw = Math.round(height * 0.2);
-  return Math.max(MIN_RUN_FLOOR, Math.ceil(raw / 5) * 5);
-}
-function normalizeAggregate(raw, fallback = "median") {
-  if (raw === void 0 || raw === null || raw === "") return fallback;
-  const text = typeof raw === "string" ? raw.trim() : "";
-  return SCAN_AGGREGATES.includes(text) ? text : null;
-}
-function aggregateValues(values, aggregate) {
-  if (!values.length) return Number.NaN;
-  const sorted = [...values].sort((a, b) => a - b);
-  switch (aggregate) {
-    case "min":
-      return sorted[0];
-    case "max":
-      return sorted[sorted.length - 1];
-    case "median": {
-      const n = sorted.length;
-      if (n % 2 === 1) return sorted[(n - 1) / 2];
-      return Math.round((sorted[n / 2 - 1] + sorted[n / 2]) / 2);
-    }
-    case "mode": {
-      const counts = /* @__PURE__ */ new Map();
-      for (const value of sorted) counts.set(value, (counts.get(value) || 0) + 1);
-      let best = sorted[0];
-      let bestCount = 0;
-      for (const value of sorted) {
-        const count = counts.get(value) || 0;
-        if (count > bestCount) {
-          best = value;
-          bestCount = count;
-        }
-      }
-      return best;
-    }
-    default:
-      return Number.NaN;
-  }
-}
-function parseColumnsSpec(raw, frameWidth) {
-  const width = toNum(frameWidth);
-  if (Number.isNaN(width) || width <= 0) return { columns: null, reason: "\u5E27\u5BBD\u65E0\u6548\uFF08width \u5FC5\u987B\u4E3A\u6B63\uFF09" };
-  if (Array.isArray(raw)) {
-    if (raw.length === 0) return { columns: null, reason: "columns \u662F\u7A7A\u6570\u7EC4\uFF08\u81F3\u5C11\u8981\u4E00\u5217\uFF09" };
-    const out = [];
-    for (let i = 0; i < raw.length; i++) {
-      const value = Math.round(toNum(raw[i]));
-      if (Number.isNaN(value)) {
-        return { columns: null, reason: "columns[" + i + "] \u4E0D\u662F\u6570\u5B57\uFF08\u6536\u5230 " + String(raw[i]) + "\uFF09" };
-      }
-      if (value < 0 || value > width - 1) {
-        return {
-          columns: null,
-          reason: "columns[" + i + "]=" + value + " \u8D85\u51FA\u53EF\u7528\u5217 [0," + (width - 1) + "]\uFF08\u8FD9\u91CC\u662F**\u50CF\u7D20**\uFF1B\u8981\u6309\u6BD4\u4F8B\u5199\u8BF7\u7528\u5B57\u7B26\u4E32\u5F62\u5F0F\uFF09"
-        };
-      }
-      out.push(value);
-    }
-    const uniq = [...new Set(out)].sort((a, b) => a - b);
-    if (uniq.length > MAX_SCAN_COLUMNS) {
-      return { columns: null, reason: "columns \u53BB\u91CD\u540E\u8FD8\u6709 " + uniq.length + " \u5217\uFF0C\u8D85\u8FC7\u4E0A\u9650 " + MAX_SCAN_COLUMNS };
-    }
-    return { columns: uniq };
-  }
-  if (typeof raw === "string") {
-    const text = raw.trim();
-    if (text === "") return { columns: null, reason: "columns \u662F\u7A7A\u5B57\u7B26\u4E32\u3002" + COLUMNS_SYNTAX_HINT };
-    const match = /^([0-9]*\.?[0-9]+)\.\.([0-9]*\.?[0-9]+)(?:\s*step\s*([0-9]*\.?[0-9]+))?$/.exec(text);
-    if (!match) return { columns: null, reason: "columns \u89E3\u6790\u4E0D\u4E86\uFF1A" + text + "\u3002" + COLUMNS_SYNTAX_HINT };
-    if (match[3] === void 0) {
-      return { columns: null, reason: "columns \u5B57\u7B26\u4E32\u7F3A step\uFF08\u4E0D\u77E5\u9053\u9694\u591A\u5C11\u5217\uFF09\uFF1B" + COLUMNS_SYNTAX_HINT };
-    }
-    const a = Number(match[1]);
-    const b = Number(match[2]);
-    const step = Number(match[3]);
-    if (![a, b, step].every((value) => Number.isFinite(value))) {
-      return { columns: null, reason: "columns \u91CC\u7684\u6570\u5B57\u89E3\u6790\u5931\u8D25\u3002" + COLUMNS_SYNTAX_HINT };
-    }
-    if (a < 0 || b < 0 || a > 1 || b > 1) {
-      return {
-        columns: null,
-        reason: "a=" + a + " / b=" + b + " \u8D85\u51FA 0~1\uFF1A\u5B57\u7B26\u4E32\u91CC\u7684\u4E09\u4E2A\u6570\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF0C\u4E0D\u662F\u50CF\u7D20\uFF08\u50CF\u7D20\u8BF7\u7528\u6570\u7EC4\u5F62\u5F0F\uFF09"
-      };
-    }
-    if (a > b) {
-      return { columns: null, reason: "a=" + a + " \u5927\u4E8E b=" + b + '\uFF0C\u533A\u95F4\u4E3A\u7A7A\uFF08\u5199\u6210 "\u5C0F..\u5927 step s"\uFF09' };
-    }
-    if (!(step > 0)) return { columns: null, reason: "step=" + step + " \u5FC5\u987B\u5927\u4E8E 0\uFF08\u6309\u6BD4\u4F8B\u89E3\u91CA\uFF0C\u901A\u5E38 0.02~0.1\uFF09" };
-    if (step > 1) return { columns: null, reason: "step=" + step + " \u5927\u4E8E 1\uFF1Astep \u4E5F\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF0C\u5FC5\u987B <= 1" };
-    const startPx = Math.min(width - 1, Math.max(0, Math.round(a * width)));
-    const endPx = Math.min(width - 1, Math.max(0, Math.round(b * width)));
-    const stepPx = Math.max(1, Math.round(step * width));
-    const span = endPx - startPx;
-    if (span < 0) return { columns: null, reason: "\u6362\u7B97\u6210\u50CF\u7D20\u540E\u533A\u95F4\u4E3A\u7A7A\uFF08a/b \u56DB\u820D\u4E94\u5165\u5230\u540C\u4E00\u5217\uFF1F\u8BF7\u628A a..b \u62C9\u5F00\uFF09" };
-    const estimate = Math.floor(span / stepPx) + 1;
-    if (estimate > MAX_SCAN_COLUMNS) {
-      const minStepPx = Math.ceil(span / (MAX_SCAN_COLUMNS - 1));
-      const minStep = Math.ceil(minStepPx / width * 1e3) / 1e3;
-      return {
-        columns: null,
-        reason: "\u6309 step=" + step + " \u4F1A\u626B " + estimate + " \u5217\uFF0C\u8D85\u8FC7\u4E0A\u9650 " + MAX_SCAN_COLUMNS + "\uFF08\u5E27\u5BBD " + width + "\uFF0C\u6BCF\u6B65 " + stepPx + "px\uFF09\uFF1B\u628A step \u8C03\u5230 >= " + minStep + " \u518D\u6765"
-      };
-    }
-    const out = [];
-    for (let x = startPx; x <= endPx; x += stepPx) out.push(x);
-    return { columns: out };
-  }
-  return { columns: null, reason: 'columns \u53EA\u652F\u6301\u300C\u50CF\u7D20\u6570\u7EC4\u300D\u6216\u300C"a..b step s" \u6BD4\u4F8B\u5B57\u7B26\u4E32\u300D\uFF08\u6536\u5230 ' + String(raw) + "\uFF09\u3002" + COLUMNS_SYNTAX_HINT };
-}
-var notFound = (reason) => ({
-  found: false,
-  px: null,
-  py: null,
-  confidence: 0,
-  reason: reason || "\u672A\u547D\u4E2D"
-});
-function confidenceOf(runLength, minRun, firstValue, threshold) {
-  const lengthScore = clamp01(runLength / Math.max(1, 3 * minRun));
-  const marginScore = clamp01(Math.abs(firstValue - threshold) / MARGIN_SCALE);
-  return round3(clamp01(0.6 * lengthScore + 0.4 * marginScore));
-}
-function columnRunOf(grid, x, fromY, toY, probe) {
-  const matches = (y2) => compareOp(channelValue(grid.rgbaAt(x, y2), probe.channel), probe.op, probe.value);
-  let y = fromY;
-  while (y <= toY) {
-    if (!matches(y)) {
-      y++;
-      continue;
-    }
-    const start = y;
-    while (y <= toY && matches(y)) y++;
-    const run = y - start;
-    if (run >= probe.minRun) {
-      return { start, run, firstValue: channelValue(grid.rgbaAt(x, start), probe.channel) };
-    }
-  }
-  return null;
-}
-function scanColumns(grid, req) {
-  const raw = req || {};
-  if (raw.columns !== void 0 && raw.columns !== null && raw.x !== void 0 && raw.x !== null) {
-    return notFound(
-      "columns \u4E0E x \u4E92\u65A5\uFF1A\u4E8C\u9009\u4E00\u3002\u7ED9 x = \u5355\u5217\u8001\u7528\u6CD5\uFF08\u884C\u4E3A\u4E0D\u53D8\uFF09\uFF0C\u7ED9 columns = \u591A\u5217\u6295\u7968\uFF1B\u4E0D\u4F1A\u66FF\u4F60\u6311\u4E00\u4E2A\uFF08\u731C\u9519\u4E86\u5C31\u662F\u51E0\u5341 px \u7684\u7CFB\u7EDF\u6027\u504F\u79FB\uFF09"
-    );
-  }
-  const probeOut = normalizeProbe(raw.probe);
-  const probe = probeOut.probe;
-  if (!probe) return notFound(probeOut.reason);
-  const dims = frameDimsOf(grid);
-  if (!dims) return notFound("\u5E27\u5C3A\u5BF8\u65E0\u6548\uFF08width/height \u5FC5\u987B\u4E3A\u6B63\uFF09");
-  const aggregate = normalizeAggregate(raw.aggregate);
-  if (!aggregate) {
-    return notFound("aggregate \u4E0D\u652F\u6301\uFF1A" + String(raw.aggregate) + "\uFF08\u53EF\u7528 " + SCAN_AGGREGATES.join(" / ") + "\uFF09");
-  }
-  const columnsOut = parseColumnsSpec(raw.columns, dims.width);
-  const columns = columnsOut.columns;
-  if (!columns) return notFound(columnsOut.reason);
-  const yOut = resolveYRange(grid, raw);
-  const yRange = yOut.range;
-  if (!yRange) return notFound(yOut.reason);
-  const { fromY, toY, clipped } = yRange;
-  const rawProbe = raw.probe && typeof raw.probe === "object" ? raw.probe : null;
-  const warnings = [];
-  if (!rawProbe || Number.isNaN(toNum(rawProbe.minRun))) {
-    warnings.push(
-      "minRun \u6CA1\u7ED9\uFF0C\u6309\u5E27\u9AD8 20% \u63A8\u8350 " + recommendMinRun(dims.height) + '\uFF08\u5F53\u524D\u6309 1 \u7B97\uFF1A\u4EFB\u4F55\u7EC6\u957F\u9644\u5C5E\u7269\u90FD\u4F1A\u62A2\u7B54\uFF0C\u591A\u5217\u6295\u7968\u4E5F\u6551\u4E0D\u56DE"\u5217\u5217\u90FD\u9519"\uFF09'
-    );
-  }
-  const perColumn = [];
-  const pys = [];
-  const repOf = /* @__PURE__ */ new Map();
-  for (const x of columns) {
-    const hit = columnRunOf(grid, x, fromY, toY, probe);
-    if (!hit) {
-      perColumn.push({
-        x,
-        found: false,
-        py: null,
-        run: null,
-        reason: "\u8FD9\u4E00\u5217\u6CA1\u6709\u8FDE\u7EED >= " + probe.minRun + " \u884C\u7684\u300C" + condText(probe) + "\u300D"
-      });
-      continue;
-    }
-    perColumn.push({
-      x,
-      found: true,
-      py: hit.start,
-      run: hit.run,
-      confidence: confidenceOf(hit.run, probe.minRun, hit.firstValue, probe.value)
-    });
-    pys.push(hit.start);
-    if (!repOf.has(hit.start)) repOf.set(hit.start, x);
-  }
-  const total = columns.length;
-  const hits = pys.length;
-  const confidence = total === 0 ? 0 : round3(hits / total);
-  const base = {
-    found: false,
-    px: null,
-    py: null,
-    confidence,
-    aggregate,
-    columns,
-    perColumn,
-    space: "frame",
-    channel: probe.channel,
-    op: probe.op,
-    threshold: probe.value,
-    fromY,
-    toY
-  };
-  if (warnings.length) base.warnings = warnings;
-  if (clipped) base.clipped = true;
-  if (hits === 0) {
-    base.reason = "\u591A\u5217\u5168\u90E8\u626B\u4E0D\u5230\uFF080/" + total + " \u5217\u547D\u4E2D\uFF09\uFF1A\u6761\u4EF6\u6216 y \u533A\u95F4\u5927\u6982\u7387\u4E0D\u5BF9\uFF0C\u5148\u770B perColumn \u7684 reason";
-    return base;
-  }
-  if (hits / total < 0.5) {
-    base.reason = "\u591A\u6570\u5217\u626B\u4E0D\u5230\uFF08" + hits + "/" + total + " \u5217\u547D\u4E2D\uFF0C\u547D\u4E2D\u7387 " + Math.round(hits / total * 100) + "% < 50%\uFF09\uFF1A\u5148\u786E\u8BA4 probe \u6761\u4EF6\u5BF9\u8FD9\u6279\u5217\u662F\u5426\u6210\u7ACB\uFF0C\u518D\u8C08\u805A\u5408";
-    return base;
-  }
-  const py = aggregateValues(pys, aggregate);
-  const repX = repOf.get(py) ?? columns[0];
-  return { ...base, found: true, px: repX, py, value: py, column: repX };
-}
-function findBodyTop(grid, req) {
-  const raw = req || {};
-  const topMinRun = toNum(raw.minRun);
-  let probeOut = raw.probe;
-  if (!Number.isNaN(topMinRun)) {
-    const baseProbe = raw.probe && typeof raw.probe === "object" ? { ...raw.probe } : {};
-    probeOut = { ...baseProbe, minRun: Math.max(1, Math.round(topMinRun)) };
-  }
-  const result2 = scanColumns(grid, {
-    ...raw,
-    probe: probeOut,
-    aggregate: raw.aggregate === void 0 ? "min" : raw.aggregate
-  });
-  return result2;
-}
-function resolveBand(frameWidth, band) {
-  const width = toNum(frameWidth);
-  if (Number.isNaN(width) || width <= 0) return { reason: "\u5E27\u5BBD\u65E0\u6548\uFF08width \u5FC5\u987B\u4E3A\u6B63\uFF09" };
-  const spec = band && typeof band === "object" ? band : {};
-  const centerFrac = Number.isNaN(toNum(spec.centerFrac)) ? 0.5 : toNum(spec.centerFrac);
-  const widthFrac = Number.isNaN(toNum(spec.widthFrac)) ? 0.4 : toNum(spec.widthFrac);
-  if (!(centerFrac >= 0 && centerFrac <= 1)) return { reason: "band.centerFrac=" + centerFrac + " \u5FC5\u987B\u843D\u5728 0~1\uFF08\u5E27\u5BBD\u6BD4\u4F8B\uFF09" };
-  if (!(widthFrac > 0 && widthFrac <= 1)) return { reason: "band.widthFrac=" + widthFrac + " \u5FC5\u987B\u843D\u5728 (0,1]\uFF08\u5E27\u5BBD\u6BD4\u4F8B\uFF09" };
-  const half = widthFrac / 2;
-  const leftFrac = centerFrac - half;
-  const x0 = Math.max(0, Math.round(leftFrac * width));
-  const x1 = Math.min(width - 1, Math.round((centerFrac + half) * width) - 1);
-  if (x1 < x0) return { reason: "band \u6362\u7B97\u540E\u662F\u7A7A\u533A\u95F4\uFF08x0=" + x0 + " > x1=" + x1 + "\uFF09\uFF1AwidthFrac \u592A\u5C0F\u6216 centerFrac \u8D34\u8FB9" };
-  return { x0, x1, centerFrac, widthFrac };
-}
-function rowRunOf(grid, y, x0, x1, probe) {
-  let best = 0;
-  let bestStart = x0;
-  let x = x0;
-  while (x <= x1) {
-    const value = channelValue(grid.rgbaAt(x, y), probe.channel);
-    if (!compareOp(value, probe.op, probe.value)) {
-      x++;
-      continue;
-    }
-    const start = x;
-    while (x <= x1 && compareOp(channelValue(grid.rgbaAt(x, y), probe.channel), probe.op, probe.value)) x++;
-    const run = x - start;
-    if (run > best) {
-      best = run;
-      bestStart = start;
-    }
-  }
-  if (best === 0) return { run: 0, startX: x0, endX: x0, midValue: Number.NaN };
-  const endX = bestStart + best - 1;
-  const midX = bestStart + Math.floor((best - 1) / 2);
-  return { run: best, startX: bestStart, endX, midValue: channelValue(grid.rgbaAt(midX, y), probe.channel) };
-}
-function findBodyBottom(grid, req) {
-  const raw = req || {};
-  const probeOut = normalizeProbe(raw.probe);
-  const probe = probeOut.probe;
-  if (!probe) return notFound(probeOut.reason);
-  const dims = frameDimsOf(grid);
-  if (!dims) return notFound("\u5E27\u5C3A\u5BF8\u65E0\u6548\uFF08width/height \u5FC5\u987B\u4E3A\u6B63\uFF09");
-  const bandOut = resolveBand(dims.width, raw.band);
-  if ("reason" in bandOut) return notFound(bandOut.reason);
-  const { x0, x1 } = bandOut;
-  const yOut = resolveYRange(grid, raw);
-  const yRange = yOut.range;
-  if (!yRange) return notFound(yOut.reason);
-  const { fromY, toY, clipped } = yRange;
-  const minRunPx = Number.isNaN(toNum(raw.minRunPx)) ? 1 : Math.max(1, Math.round(toNum(raw.minRunPx)));
-  const warnings = [];
-  if (Number.isNaN(toNum(raw.minRunPx))) {
-    warnings.push("minRunPx \u6CA1\u7ED9\uFF0C\u6309 1 \u7B97\uFF1A\u6574\u6761\u5224\u636E\u5F62\u540C\u6CA1\u6709\uFF0C\u6563\u843D\u7684\u9634\u5F71\u4E5F\u80FD\u6EE1\u8DB3\uFF0C\u5B9E\u9645\u7528\u5FC5\u987B\u7ED9");
-  }
-  for (let y = toY; y >= fromY; y--) {
-    const row = rowRunOf(grid, y, x0, x1, probe);
-    if (row.run < minRunPx) continue;
-    const lengthScore = clamp01(row.run / Math.max(1, 2 * minRunPx));
-    const marginScore = clamp01(Math.abs(row.midValue - probe.value) / MARGIN_SCALE);
-    const result2 = {
-      found: true,
-      px: row.startX + Math.floor((row.run - 1) / 2),
-      py: y,
-      value: y,
-      confidence: round3(clamp01(0.6 * lengthScore + 0.4 * marginScore)),
-      run: row.run,
-      runLength: row.run,
-      bandX: [x0, x1],
-      minRunPx,
-      channel: probe.channel,
-      op: probe.op,
-      threshold: probe.value,
-      fromY,
-      toY,
-      space: "frame"
-    };
-    if (warnings.length) result2.warnings = warnings;
-    if (clipped) result2.clipped = true;
-    return result2;
-  }
-  const miss = notFound(
-    "\u5728 y=[" + fromY + "," + toY + "] \u7684\u4E2D\u592E\u5E26 x=[" + x0 + "," + x1 + "] \u91CC\uFF0C\u6CA1\u6709\u4E00\u884C\u5B58\u5728\u8FDE\u7EED >= " + minRunPx + " \u4E2A\u300C" + condText(probe) + "\u300D\u7684\u50CF\u7D20"
-  );
-  miss.bandX = [x0, x1];
-  miss.minRunPx = minRunPx;
-  miss.space = "frame";
-  if (warnings.length) miss.warnings = warnings;
-  if (clipped) miss.clipped = true;
-  return miss;
-}
-
-// src/sprite/semantic.ts
-var GUESS_TOP_PROBE = { channel: "whiteness", op: ">", value: 0 };
-var GUESS_BOTTOM_PROBE = { channel: "luma", op: "<", value: 110 };
-function guessTopMinRun(cellHeight) {
-  const h = Math.max(0, Math.round(Number(cellHeight) || 0));
-  return Math.max(2, Math.round(h * 0.05));
-}
-function guessBottomMinRunPx(cellWidth) {
-  const w = Math.max(0, Math.round(Number(cellWidth) || 0));
-  return Math.max(3, Math.round(w * 0.06));
-}
-function gridOf(image) {
-  return {
-    width: image.width,
-    height: image.height,
-    rgbaAt: (x, y) => {
-      const i = (y * image.width + x) * 4;
-      return [image.rgba[i], image.rgba[i + 1], image.rgba[i + 2], image.rgba[i + 3]];
-    }
-  };
-}
-function maskBBox(mask) {
-  let x0 = mask.width;
-  let y0 = mask.height;
-  let x1 = -1;
-  let y1 = -1;
-  for (let y = 0; y < mask.height; y++) {
-    const row = y * mask.width;
-    for (let x = 0; x < mask.width; x++) {
-      if (mask.data[row + x] !== 1) continue;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
-    }
-  }
-  return x1 < 0 || y1 < 0 ? null : { x0, y0, x1, y1 };
-}
-function pickColumns(x0, x1) {
-  const width = x1 - x0 + 1;
-  if (width <= 1) return [x0];
-  const out = [];
-  for (let i = 0; i < 5; i++) {
-    const x = Math.round(x0 + (width - 1) * (0.3 + 0.4 * (i / 4)));
-    if (!out.includes(x)) out.push(x);
-  }
-  return out.length > 0 ? out : [x0];
-}
-function guessSemanticHeight(image, options = {}) {
-  const fail3 = (reason, top2, bottom2) => ({
-    ok: false,
-    topY: null,
-    bottomY: null,
-    height: null,
-    ...top2 ? { top: top2 } : {},
-    ...bottom2 ? { bottom: bottom2 } : {},
-    reason
-  });
-  const width = Math.round(Number(image?.width ?? 0));
-  const height = Math.round(Number(image?.height ?? 0));
-  if (!(width > 0 && height > 0)) return fail3(`\u8FD9\u4E00\u683C\u662F\u7A7A\u56FE\uFF08${String(width)}x${String(height)}\uFF09\uFF0C\u6CA1\u6CD5\u731C\u8EAB\u9AD8`);
-  const box = maskBBox(bodyCoreMask(image));
-  if (!box) return fail3("\u8FD9\u4E00\u683C\u91CC\u6CA1\u6709\u4E3B\u4F53\uFF08body-core \u63A9\u819C\u662F\u7A7A\u7684\uFF09\uFF0C\u6CA1\u6CD5\u731C\u8EAB\u9AD8");
-  const grid = gridOf(image);
-  const top = findBodyTop(grid, {
-    columns: pickColumns(box.x0, box.x1),
-    fromY: box.y0,
-    toY: box.y1,
-    probe: { ...options.topProbe ?? GUESS_TOP_PROBE, minRun: options.topMinRun ?? guessTopMinRun(height) },
-    aggregate: "min"
-  });
-  if (top.found !== true || typeof top.py !== "number") {
-    return fail3("\u4E0A\u7AEF\u6CA1\u731C\u51FA\u6765\uFF08whiteness \u5224\u636E\u5728\u8FD9\u683C\u7684\u4E3B\u4F53\u5217\u4E0A\u4E00\u6761\u8FDE\u7EED\u6BB5\u90FD\u6CA1\u547D\u4E2D\uFF09", top);
-  }
-  const bandCenter = width > 0 ? (box.x0 + box.x1) / 2 / width : 0.5;
-  const bottom = findBodyBottom(grid, {
-    fromY: top.py,
-    toY: box.y1,
-    probe: { ...options.bottomProbe ?? GUESS_BOTTOM_PROBE },
-    band: { centerFrac: bandCenter, widthFrac: 0.4 },
-    minRunPx: options.bottomMinRunPx ?? guessBottomMinRunPx(width)
-  });
-  if (bottom.found !== true || typeof bottom.py !== "number") {
-    return fail3("\u4E0B\u7AEF\u6CA1\u731C\u51FA\u6765\uFF08luma<110 \u5728\u4E2D\u592E\u7AD6\u5E26\u91CC\u6CA1\u626B\u5230\u591F\u957F\u7684\u8FDE\u7EED\u6BB5\uFF09", top, bottom);
-  }
-  if (bottom.py <= top.py) {
-    return fail3(`\u4E0B\u7AEF\uFF08\u7B2C ${bottom.py} \u884C\uFF09\u4E0D\u5728\u4E0A\u7AEF\uFF08\u7B2C ${top.py} \u884C\uFF09\u4E0B\u9762\uFF0C\u8FD9\u6B21\u731C\u6D4B\u4E0D\u53EF\u7528`, top, bottom);
-  }
-  return { ok: true, topY: top.py, bottomY: bottom.py, height: bottom.py - top.py + 1, top, bottom };
-}
-var BBOX_BASIS_WARNING = "measured \u7684\u53E3\u5F84\u662F bbox\uFF08alpha \u5305\u56F4\u76D2\uFF09\uFF1A\u5446\u6BDB/\u5C3E\u5DF4/\u6302\u4EF6\u90FD\u4F1A\u88AB\u7B97\u8FDB\u8EAB\u9AD8\uFF0C\u540C\u4E00\u7EC4\u7D20\u6750\u4E0E\u8BED\u4E49\u8EAB\u9AD8\u80FD\u5DEE 4~6%\u2014\u2014\u8981\u6309\u8BED\u4E49\u5BF9\u9F50\u8BF7\u663E\u5F0F\u7ED9 span\uFF08\u8EAB\u9AD8\u4E0A\u7AEF\u2192\u8EAB\u9AD8\u4E0B\u7AEF\uFF0C\u5E27\u50CF\u7D20\uFF09";
-var GUESSED_BASIS_WARNING = "\u8BED\u4E49\u8EAB\u9AD8\u662F\u731C\u7684\uFF08whiteness \u4E0A\u7AEF / luma<110 \u4E0B\u7AEF\uFF0C\u9ED8\u8BA4\u5224\u636E\uFF09\uFF0C\u7D20\u6750\u4E0D\u5339\u914D\u8BF7\u663E\u5F0F\u7ED9 span";
-function resolveMeasuredBasis(input2) {
-  const bboxHeight = Number.isFinite(input2.bboxHeight) ? Math.max(0, Math.round(input2.bboxHeight)) : 0;
-  const guessed = typeof input2.guessedHeight === "number" && Number.isFinite(input2.guessedHeight) && input2.guessedHeight > 0 ? Math.round(input2.guessedHeight) : null;
-  const span = input2.span;
-  const spanSemantic = input2.spanBasis !== "bbox";
-  const ratio = typeof input2.ratio === "number" && Number.isFinite(input2.ratio) && input2.ratio > 0 ? input2.ratio : null;
-  if (span && spanSemantic) {
-    const spanLen = Math.abs(Math.round(span.toY) - Math.round(span.fromY)) + 1;
-    if (ratio !== null && spanLen > 0) {
-      const semanticHeight = Math.round(spanLen * ratio);
-      return { bboxHeight, semanticHeight, basis: "semantic", charHeightPx: semanticHeight, warnings: [] };
-    }
-    return {
-      bboxHeight,
-      semanticHeight: guessed,
-      basis: "bbox",
-      charHeightPx: bboxHeight,
-      warnings: [`\u62FF\u5230\u4E86 span \u4F46\u7B97\u4E0D\u51FA\u7F29\u653E\u6BD4\uFF08scaleTo \u6CA1\u56DE sourcePx/achievedPx\uFF09\uFF0C\u8FD9\u6B21\u6309 bbox \u53E3\u5F84\uFF1A${BBOX_BASIS_WARNING}`]
-    };
-  }
-  if (span && !spanSemantic) {
-    return {
-      bboxHeight,
-      semanticHeight: guessed,
-      basis: "bbox",
-      charHeightPx: bboxHeight,
-      warnings: [BBOX_BASIS_WARNING]
-    };
-  }
-  if (guessed !== null) {
-    return {
-      bboxHeight,
-      semanticHeight: guessed,
-      basis: "guessed",
-      charHeightPx: guessed,
-      warnings: [GUESSED_BASIS_WARNING]
-    };
-  }
-  return {
-    bboxHeight,
-    semanticHeight: null,
-    basis: "bbox",
-    charHeightPx: bboxHeight,
-    warnings: [BBOX_BASIS_WARNING, ...input2.guessReason ? [`\u8BED\u4E49\u8EAB\u9AD8\u6CA1\u731C\u51FA\u6765\uFF1A${input2.guessReason}`] : []]
-  };
-}
-
-// src/sprite/select.ts
-var SELECT_SEMANTIC_LIMIT = 12;
-function cropCell(image, rect) {
-  const x0 = Math.max(0, Math.round(rect.x));
-  const y0 = Math.max(0, Math.round(rect.y));
-  const x1 = Math.min(image.width, x0 + Math.max(0, Math.round(rect.w)));
-  const y1 = Math.min(image.height, y0 + Math.max(0, Math.round(rect.h)));
-  const width = Math.max(1, x1 - x0);
-  const height = Math.max(1, y1 - y0);
-  const rgba = new Uint8Array(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    const srcRow = (y0 + y) * image.width;
-    for (let x = 0; x < width; x++) {
-      const from = (srcRow + x0 + x) * 4;
-      const to = (y * width + x) * 4;
-      rgba[to] = image.rgba[from];
-      rgba[to + 1] = image.rgba[from + 1];
-      rgba[to + 2] = image.rgba[from + 2];
-      rgba[to + 3] = image.rgba[from + 3];
-    }
-  }
-  return { width, height, rgba };
-}
-function selectBaselineCell(image, grid, mode, alphaThreshold = CONTENT_ALPHA_CUT) {
-  const cols = Math.max(1, Math.floor(grid.cols));
-  const rows = Math.max(1, Math.floor(grid.rows));
-  const cellWidth = Math.max(1, Math.round(grid.cellWidth));
-  const cellHeight = Math.max(1, Math.round(grid.cellHeight));
-  const totalCells = cols * rows;
-  if (typeof mode === "number") {
-    const cellIndex = Math.max(0, Math.floor(mode));
-    if (cellIndex >= totalCells) {
-      throw new Error(`cellIndex=${cellIndex} \u8D85\u51FA\u7F51\u683C\uFF08${cols}\xD7${rows}\uFF0C\u6700\u5927\u5E8F\u53F7 ${totalCells - 1}\uFF09`);
-    }
-    return { cellIndex, basis: "fixed", heightPx: 0, cellsScanned: 0, semanticCells: 0 };
-  }
-  const cells = Array.from({ length: totalCells }, (_one, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    const rect = { x: col * cellWidth, y: row * cellHeight, w: cellWidth, h: cellHeight };
-    const content = cellContentOf(image, rect, index, col, row, alphaThreshold);
-    return { index, rect, heightPx: content.charHeightPx, empty: content.empty };
-  });
-  const filled = cells.filter((cell) => !cell.empty);
-  if (filled.length === 0) {
-    return {
-      cellIndex: 0,
-      basis: "bbox",
-      heightPx: 0,
-      cellsScanned: totalCells,
-      semanticCells: 0,
-      note: `\u5168\u91CF\u91CF\u4E86 ${totalCells} \u683C\uFF0C\u4E00\u683C\u5185\u5BB9\u90FD\u6CA1\u6709\uFF08\u62FC\u9519/\u5168\u900F\uFF1F\uFF09\uFF0C\u9000\u56DE\u7B2C 0 \u683C`
-    };
-  }
-  const heights = filled.map((cell) => cell.heightPx);
-  const medianHeight = medianOf(heights);
-  if (mode === "median") {
-    let chosen = filled[0];
-    for (const cell of filled) {
-      const gap = Math.abs(cell.heightPx - medianHeight);
-      const best2 = Math.abs(chosen.heightPx - medianHeight);
-      if (gap < best2 || gap === best2 && cell.heightPx > chosen.heightPx || gap === best2 && cell.heightPx === chosen.heightPx && cell.index < chosen.index) {
-        chosen = cell;
-      }
-    }
-    return {
-      cellIndex: chosen.index,
-      basis: "bbox",
-      heightPx: chosen.heightPx,
-      cellsScanned: totalCells,
-      semanticCells: 0,
-      note: `cellIndex=median\uFF1A\u91CF\u4E86 ${filled.length}/${totalCells} \u683C\uFF0Cbbox \u9AD8\u4E2D\u4F4D\u6570 ${medianHeight}px \u2192 \u7B2C ${chosen.index} \u683C\uFF08${chosen.heightPx}px\uFF09`
-    };
-  }
-  const shortlist = [...filled].sort((a, b) => b.heightPx - a.heightPx || a.index - b.index).slice(0, SELECT_SEMANTIC_LIMIT);
-  const ranked = shortlist.map((cell) => {
-    const guess = guessSemanticHeight(cropCell(image, cell.rect));
-    const semantic = guess.ok && typeof guess.height === "number" && guess.height > 0 ? guess.height : null;
-    return {
-      index: cell.index,
-      bboxHeightPx: cell.heightPx,
-      semanticHeightPx: semantic,
-      usePx: semantic ?? cell.heightPx
-    };
-  });
-  let best = ranked[0];
-  for (const entry of ranked) {
-    const better = entry.usePx > best.usePx || entry.usePx === best.usePx && entry.bboxHeightPx > best.bboxHeightPx || entry.usePx === best.usePx && entry.bboxHeightPx === best.bboxHeightPx && entry.index < best.index;
-    if (better) best = entry;
-  }
-  const semanticCells = ranked.filter((entry) => entry.semanticHeightPx !== null).length;
-  const basis = best.semanticHeightPx === null ? "bbox" : "semantic";
-  const note = `cellIndex=tallest\uFF1A\u91CF\u4E86 ${filled.length}/${totalCells} \u683C\uFF0C\u5728 bbox \u6700\u9AD8\u7684 ${ranked.length} \u683C\u91CC\u731C\u8BED\u4E49\u8EAB\u9AD8\uFF08\u731C\u51FA ${semanticCells} \u683C\uFF09\u2192 \u7B2C ${best.index} \u683C\uFF08${basis === "semantic" ? `\u8BED\u4E49\u9AD8 ${best.semanticHeightPx}px` : `bbox \u9AD8 ${best.bboxHeightPx}px\uFF08\u8BED\u4E49\u8EAB\u9AD8\u6CA1\u731C\u51FA\u6765\uFF09`}\uFF09`;
-  return { cellIndex: best.index, basis, heightPx: best.usePx, cellsScanned: totalCells, semanticCells, note };
-}
-
-// src/sprite/tuning.ts
-function resolveAutotuneGoal(goal) {
-  return {
-    maxBgResidual: Number.isFinite(goal?.maxBgResidual) ? Number(goal?.maxBgResidual) : 5e-3,
-    minSubjectCoverage: Number.isFinite(goal?.minSubjectCoverage) ? Number(goal?.minSubjectCoverage) : 0.6,
-    maxEdgeGreen: Number.isFinite(goal?.maxEdgeGreen) ? Number(goal?.maxEdgeGreen) : 0.02
-  };
-}
-function autotunePenalty(step, goal) {
-  const bg = step.bgResidual / Math.max(goal.maxBgResidual, 1e-6);
-  const edge = step.edgeGreen / Math.max(goal.maxEdgeGreen, 1e-6);
-  const coverage = (goal.minSubjectCoverage - step.subjectCoverage) / Math.max(goal.minSubjectCoverage, 1e-6);
-  return bg + edge + coverage;
-}
-function stepReachedGoal(step, goal) {
-  return step.bgResidual <= goal.maxBgResidual && step.subjectCoverage >= goal.minSubjectCoverage && step.edgeGreen <= goal.maxEdgeGreen;
-}
-function autotuneMissedReasons(step, goal) {
-  const out = [];
-  if (!(step.bgResidual <= goal.maxBgResidual)) {
-    out.push(`bgResidual ${fmt(step.bgResidual)} > \u76EE\u6807 ${fmt(goal.maxBgResidual)}`);
-  }
-  if (!(step.subjectCoverage >= goal.minSubjectCoverage)) {
-    out.push(`subjectCoverage ${fmt(step.subjectCoverage)} < \u76EE\u6807 ${fmt(goal.minSubjectCoverage)}`);
-  }
-  if (!(step.edgeGreen <= goal.maxEdgeGreen)) {
-    out.push(`edgeGreen ${fmt(step.edgeGreen)} > \u76EE\u6807 ${fmt(goal.maxEdgeGreen)}`);
-  }
-  return out;
-}
-function fmt(value) {
-  if (!Number.isFinite(value)) return String(value);
-  return Math.abs(value) >= 1 ? value.toFixed(3) : value.toFixed(4);
-}
-function pickAutotuneBest(trace, goal) {
-  let best;
-  let bestPenalty = Number.POSITIVE_INFINITY;
-  for (const step of trace) {
-    const penalty = autotunePenalty(step, goal);
-    if (penalty < bestPenalty) {
-      best = step;
-      bestPenalty = penalty;
-    }
-  }
-  return best;
-}
-function resolveAutotune(input2) {
-  const startStep = input2.trace[0];
-  if (input2.reachedStep) {
-    return {
-      appliedParams: { ...input2.reachedStep.params },
-      bestParams: { ...input2.reachedStep.params },
-      bestStep: input2.reachedStep,
-      reachedGoal: true,
-      warnings: [],
-      ...startStep ? { startStep } : {}
-    };
-  }
-  const best = pickAutotuneBest(input2.trace, input2.goal);
-  const appliedParams = { ...input2.startParams };
-  const warnings = [];
-  if (!best) {
-    warnings.push(
-      "autotune \u672A\u8FBE\u6807\uFF0C\u800C\u4E14\u4E00\u8F6E\u6307\u6807\u90FD\u6CA1\u62FF\u5230\uFF08preview \u6CA1\u56DE stats\uFF09\uFF1A\u5DF2\u6309\u4F60\u7ED9\u7684\u53C2\u6570\u8FD4\u56DE\uFF0C\u6CA1\u6709\u751F\u6210\u4EFB\u4F55\u641C\u7D22\u7ED3\u8BBA\u2014\u2014\u5148\u7528 sprite_key_preview \u786E\u8BA4\u9875\u9762\u80FD\u51FA stats \u518D\u91CD\u8DD1"
-    );
-    return { appliedParams, bestParams: appliedParams, reachedGoal: false, warnings };
-  }
-  const missed = startStep ? autotuneMissedReasons(startStep, input2.goal) : [];
-  const missedText = missed.length > 0 ? missed.join("\uFF1B") : "\u76EE\u6807\u6CA1\u8FBE\u6210";
-  if (!startStep || best.round === startStep.round) {
-    warnings.push(
-      `autotune \u672A\u8FBE\u6807\uFF08${missedText}\uFF09\uFF1A**\u5DF2\u4FDD\u7559\u4F60\u7ED9\u7684\u53C2\u6570**\uFF0C\u800C\u4E14\u641C\u7D22\u6CA1\u627E\u5230\u66F4\u597D\u7684\u7EC4\u5408\uFF08bestParams \u4E0E\u4F60\u7ED9\u7684\u5B8C\u5168\u76F8\u540C\uFF09\u2014\u2014\u76F4\u63A5\u7528 appliedParams\uFF0C\u522B\u53BB trace \u91CC\u6311\u66F4\u5DEE\u7684\u8F6E\u6B21`
-    );
-    return {
-      appliedParams,
-      bestParams: { ...best.params },
-      bestStep: best,
-      reachedGoal: false,
-      warnings,
-      ...startStep ? { startStep } : {}
-    };
-  }
-  warnings.push(
-    `autotune \u672A\u8FBE\u6807\uFF08${missedText}\uFF09\uFF1A**\u5DF2\u4FDD\u7559\u4F60\u7ED9\u7684\u53C2\u6570**\uFF08\u6CA1\u88AB\u641C\u7D22\u4E2D\u7684\u52A3\u89E3\u8986\u76D6\uFF09\uFF1B\u641C\u7D22\u5230\u7684\u6700\u4F18\u89E3\u662F\u7B2C ${best.round} \u8F6E ${describeStep(best, input2.goal)}\u3002\u4E0E\u4F60\u7684\u53C2\u6570\u76F8\u6BD4\uFF1A${compareSteps(startStep, best)}\u2014\u2014\u8981\u4E0D\u8981\u7528\u5B83\u81EA\u5DF1\u51B3\u5B9A\uFF08appliedParams \u662F\u4F60\u73B0\u5728\u8FD9\u5957\uFF0CbestParams \u662F\u641C\u7D22\u8BA4\u4E3A\u66F4\u597D\u7684\u90A3\u5957\uFF09`
-  );
-  return {
-    appliedParams,
-    bestParams: { ...best.params },
-    bestStep: best,
-    reachedGoal: false,
-    warnings,
-    ...startStep ? { startStep } : {}
-  };
-}
-function describeStep(step, goal) {
-  return `\uFF08bgResidual ${fmt(step.bgResidual)}/${fmt(goal.maxBgResidual)}\u3001subjectCoverage ${fmt(step.subjectCoverage)}/${fmt(goal.minSubjectCoverage)}\u3001edgeGreen ${fmt(step.edgeGreen)}/${fmt(goal.maxEdgeGreen)}\uFF09`;
-}
-function compareSteps(from, to) {
-  const verdict = (a, b) => b < a - 1e-9 ? "\u66F4\u597D" : b > a + 1e-9 ? "\u66F4\u5DEE" : "\u6301\u5E73";
-  return `bgResidual ${fmt(from.bgResidual)} \u2192 ${fmt(to.bgResidual)}\uFF08${verdict(from.bgResidual, to.bgResidual)}\uFF09\u3001edgeGreen ${fmt(from.edgeGreen)} \u2192 ${fmt(to.edgeGreen)}\uFF08${verdict(from.edgeGreen, to.edgeGreen)}\uFF09`;
-}
-
-// src/sprite/verify.ts
-var DEFAULT_HEIGHT_PCT = 0.01;
-var DEFAULT_ANCHOR_PX = 2;
-function median(values) {
-  if (values.length === 0) return Number.NaN;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-function verifyConsistency(metas, options = {}) {
-  const heightPct = options.heightPct ?? DEFAULT_HEIGHT_PCT;
-  const anchorPx = options.anchorPx ?? DEFAULT_ANCHOR_PX;
-  const tolerance = { heightPct, anchorPx };
-  if (!Array.isArray(metas) || metas.length === 0) {
-    return { ok: false, count: 0, tolerance, items: [], warnings: [], reason: "\u6CA1\u6709\u53EF\u6821\u9A8C\u7684 meta\uFF08\u4F20\u8FDB\u6765\u7684\u5217\u8868\u662F\u7A7A\u7684\uFF09" };
-  }
-  const items = metas.map((meta3, index) => {
-    const name2 = (meta3.name ?? `#${index + 1}`).toString();
-    const problems = [];
-    if (typeof meta3.charHeightPx !== "number" || !(meta3.charHeightPx > 0)) problems.push("\u7F3A charHeightPx");
-    if (typeof meta3.anchorX !== "number") problems.push("\u7F3A anchorX");
-    if (typeof meta3.anchorY !== "number") problems.push("\u7F3A anchorY");
-    if (meta3.anchorWritten === false) problems.push("anchorWritten=false\uFF08\u951A\u70B9\u6CA1\u843D\u76D8\uFF0C\u53EF\u80FD\u662F\u65E7\u7248\u5BFC\u51FA\uFF09");
-    if (typeof meta3.cellWidth !== "number" || meta3.cellWidth <= 0) problems.push("\u7F3A cellWidth\uFF08\u951A\u70B9\u65E0\u6CD5\u6298\u7B97\u6210\u50CF\u7D20\uFF09");
-    if (typeof meta3.fps !== "number" || meta3.fps <= 0) problems.push("\u7F3A fps");
-    const item = { name: name2, problems };
-    if (typeof meta3.charHeightPx === "number") item.charHeightPx = meta3.charHeightPx;
-    if (typeof meta3.anchorX === "number" && typeof meta3.cellWidth === "number") {
-      item.anchorXPx = Number((meta3.anchorX * meta3.cellWidth).toFixed(3));
-    }
-    return item;
-  });
-  const heights = items.map((item) => item.charHeightPx).filter((v) => typeof v === "number");
-  const referenceCharHeight = options.referenceCharHeight ?? median(heights);
-  const anchorXs = items.map((item) => item.anchorXPx).filter((v) => typeof v === "number");
-  const referenceAnchorX = anchorXs.length > 0 ? median(anchorXs) : void 0;
-  const warnings = [];
-  if (!Number.isFinite(referenceCharHeight)) {
-    warnings.push("\u6CA1\u6709\u4E00\u6761\u5E26 charHeightPx\uFF0C\u65E0\u6CD5\u6BD4\u8F83\u8EAB\u9AD8");
-  }
-  for (const item of items) {
-    if (item.charHeightPx !== void 0 && Number.isFinite(referenceCharHeight)) {
-      const deltaPct = (item.charHeightPx - referenceCharHeight) / referenceCharHeight;
-      item.deltaPct = Number(deltaPct.toFixed(5));
-      if (Math.abs(deltaPct) > heightPct + 1e-9) {
-        const sign = deltaPct > 0 ? "\u504F\u5927" : "\u504F\u5C0F";
-        warnings.push(
-          `${item.name}\uFF1A\u8EAB\u9AD8 ${item.charHeightPx}px\uFF0C\u6BD4\u57FA\u51C6 ${referenceCharHeight}px ${sign} ${(Math.abs(deltaPct) * 100).toFixed(2)}%\uFF08\u5BB9\u5DEE ${(heightPct * 100).toFixed(1)}%\uFF09`
-        );
-      }
-    }
-    if (item.anchorXPx !== void 0 && referenceAnchorX !== void 0) {
-      const delta = Number((item.anchorXPx - referenceAnchorX).toFixed(3));
-      item.deltaAnchorXPx = delta;
-      if (Math.abs(delta) > anchorPx + 1e-9) {
-        warnings.push(`${item.name}\uFF1A\u951A\u70B9 X \u6298 ${item.anchorXPx}px\uFF0C\u504F\u79BB\u4E2D\u4F4D\u6570 ${delta > 0 ? "+" : ""}${delta}px\uFF08\u5BB9\u5DEE ${anchorPx}px\uFF09`);
-      }
-    }
-    if (item.problems.length > 0) warnings.push(`${item.name}\uFF1A${item.problems.join("\uFF1B")}`);
-  }
-  const conventions = new Set(metas.map((meta3) => meta3.anchorConvention).filter((v) => typeof v === "string"));
-  if (conventions.size > 1) {
-    warnings.push(`\u951A\u70B9\u53E3\u5F84\u4E0D\u4E00\u81F4\uFF1A${[...conventions].join(" / ")}\uFF08\u6DF7\u7528\u4F1A\u8BA9\u5207\u52A8\u753B\u65F6\u89D2\u8272\u8DF3\u4F4D\uFF09`);
-  }
-  if (metas.some((meta3) => meta3.anchorConvention === void 0)) {
-    warnings.push("\u6709 meta \u7F3A anchorConvention\uFF08\u65E0\u6CD5\u5224\u65AD\u53E3\u5F84\uFF09");
-  }
-  return {
-    ok: warnings.length === 0,
-    count: items.length,
-    reference: Number.isFinite(referenceCharHeight) ? { charHeightPx: referenceCharHeight, ...referenceAnchorX !== void 0 ? { anchorXPx: referenceAnchorX } : {} } : void 0,
-    tolerance,
-    items,
-    warnings
-  };
-}
-
-// src/sprite/service.ts
-var WATERMARK_AUTO_CONFIDENCE = 0.8;
-function dataUrlToBuffer(dataUrl) {
-  const text = typeof dataUrl === "string" ? dataUrl : "";
-  const comma = text.indexOf(",");
-  if (!text.startsWith("data:") || comma < 0) return void 0;
-  if (!text.slice(0, comma).includes("base64")) return void 0;
-  try {
-    return Buffer.from(text.slice(comma + 1), "base64");
-  } catch {
-    return void 0;
-  }
-}
-var PAGE_ROUTE = "/";
-var VIDEO_ROUTE = "/__video/";
-var MAX_VIDEO_BYTES = 200 * 1024 * 1024;
-function startToolServer(toolHtmlPath, videos) {
-  return new Promise((resolve, reject) => {
-    const html = readFileSync6(toolHtmlPath);
-    const server = createServer((request, response) => {
-      const url2 = request.url ?? "/";
-      if (url2.startsWith(VIDEO_ROUTE)) {
-        const token = url2.slice(VIDEO_ROUTE.length).split("?")[0] ?? "";
-        const file2 = videos.get(token);
-        if (!file2 || !existsSync3(file2)) {
-          response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-          response.end("video not found");
-          return;
-        }
-        const stat3 = statSync3(file2);
-        response.writeHead(200, {
-          "Content-Type": "application/octet-stream",
-          "Content-Length": stat3.size,
-          "Cache-Control": "no-store"
-        });
-        if (request.method === "HEAD") {
-          response.end();
-          return;
-        }
-        createReadStream(file2).pipe(response);
-        return;
-      }
-      if (!url2.startsWith(PAGE_ROUTE)) {
-        response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-        response.end("not found");
-        return;
-      }
-      response.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8",
-        "Content-Length": html.byteLength,
-        "Cache-Control": "no-store"
-      });
-      response.end(html);
-    });
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      if (!port) {
-        reject(new Error("\u5DE5\u5177\u9875\u670D\u52A1\u6CA1\u62FF\u5230\u7AEF\u53E3"));
-        return;
-      }
-      resolve({ origin: `http://127.0.0.1:${port}`, server });
-    });
-  });
-}
-async function resolveExportAnchor(call, args) {
-  const written = typeof args.anchorX === "number" || typeof args.anchorY === "number";
-  if (written) {
-    await call("setAnchor", {
-      ...typeof args.anchorX === "number" ? { x: args.anchorX } : {},
-      ...typeof args.anchorY === "number" ? { y: args.anchorY } : {}
-    });
-  }
-  const anchor2 = await call("getAnchor");
-  if (typeof anchor2?.anchorX !== "number" || typeof anchor2?.anchorY !== "number") {
-    throw new Error("\u9875\u9762 getAnchor \u6CA1\u6709\u8FD4\u56DE anchorX/anchorY\uFF08\u6865\u63A5\u7248\u672C\u8FC7\u65E7\uFF1F\uFF09\uFF0C\u8FD9\u6B21\u4E0D\u5199 meta \u91CC\u7684\u951A\u70B9");
-  }
-  return {
-    anchor: {
-      ...anchor2,
-      anchorX: anchor2.anchorX,
-      anchorY: anchor2.anchorY,
-      convention: anchor2.convention === "y-from-top" ? "y-from-top" : "y-from-bottom"
-    },
-    written
-  };
-}
-function buildExportMeta(input2) {
-  return {
-    ...input2.built.meta ?? {},
-    // P0-2：页面那边 meta.name 取的是「输出参数」输入框（headless 永远是 sprite_sheet），
-    // 跟实际文件名对不上；这里用调用方真正传的 name 覆盖掉。
-    name: input2.name,
-    format: input2.format,
-    width: input2.built.width ?? null,
-    height: input2.built.height ?? null,
-    sheetWidth: input2.built.width ?? null,
-    sheetHeight: input2.built.height ?? null,
-    // P0-1：以前这里写死 null，下游只能自己拿 width/cols 去除，四舍五入差 1px 就对不齐裁剪。
-    // 现在直接给整数，并保证 cellWidth*cols === width（除不尽时按整除值给，差的那点进 warnings）。
-    cellWidth: input2.cellWidth,
-    cellHeight: input2.cellHeight,
-    anchorX: input2.anchor.anchorX,
-    anchorY: input2.anchor.anchorY,
-    anchorConvention: input2.anchor.convention,
-    // P2-6：两个方向都给，消费端（形象 manifest / 桌面挂件用 0=顶）不用再人工换算。
-    anchorYTopDown: Number((1 - input2.anchor.anchorY).toFixed(6)),
-    // P0-1：明确告诉调用方"这次到底写没写锚点"——没传锚点参数时是 false（meta 里是页面当前值）。
-    anchorWritten: input2.anchorWritten,
-    // P2-7：帧率跟着 prepare 的 fps 走，缺省 12（工具默认）。形象侧想按它播就直接读。
-    fps: input2.fps,
-    scale: input2.scaled.scale,
-    charHeightPx: input2.scaled.achievedPx,
-    appliedParams: input2.appliedParams,
-    generatedAt: input2.generatedAt ?? (/* @__PURE__ */ new Date()).toISOString(),
-    engine: "dsh-remote-dafeiyu/sprite"
-  };
-}
-function firstNonEmptyCell(decoded, measured) {
-  const cell = measured.perCell.find((one) => one.empty !== true);
-  if (!cell) return void 0;
-  try {
-    return cropRgba(decoded, {
-      x: cell.col * measured.cellWidth,
-      y: cell.row * measured.cellHeight,
-      w: measured.cellWidth,
-      h: measured.cellHeight
-    });
-  } catch {
-    return void 0;
-  }
-}
-function measuredBasisOf(raw, decoded, pass) {
-  const bboxHeight = raw.bboxHeight ?? raw.charHeightPx;
-  const spanBasis = pass.spanBasis === "bbox" ? "bbox" : "semantic";
-  const needGuess = !(pass.span && spanBasis === "semantic");
-  let guess;
-  if (needGuess) {
-    const cell = firstNonEmptyCell(decoded, raw);
-    if (cell) {
-      try {
-        guess = guessSemanticHeight({ width: cell.width, height: cell.height, rgba: cell.rgba });
-      } catch {
-        guess = void 0;
-      }
-    }
-  }
-  const ratio = Number.isFinite(pass.scaled.sourcePx) && pass.scaled.sourcePx > 0 && Number.isFinite(pass.scaled.achievedPx) ? pass.scaled.achievedPx / pass.scaled.sourcePx : void 0;
-  return resolveMeasuredBasis({
-    bboxHeight,
-    ...pass.span ? { span: pass.span } : {},
-    spanBasis,
-    ...ratio !== void 0 ? { ratio } : {},
-    guessedHeight: guess?.ok === true ? guess.height : null,
-    ...guess && guess.ok !== true && guess.reason ? { guessReason: guess.reason } : {}
-  });
-}
-async function runExportPass(args) {
-  const warnings = [];
-  const scaled = await args.call("scaleTo", {
-    ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
-    ...typeof args.targetHeight === "number" ? { targetCellHeight: args.targetHeight } : {},
-    ...args.span ? { span: args.span } : {}
-  });
-  const anchorOut = await resolveExportAnchor(args.call, args);
-  if (!anchorOut.written) warnings.push(anchorNotWrittenWarning(anchorOut.anchor));
-  const built = await args.call("buildSheetDataURL", {
-    cols: args.cols,
-    rows: args.rows,
-    format: args.format,
-    ...typeof args.quality === "number" ? { quality: args.quality } : {}
-  });
-  const buffer = dataUrlToBuffer(built.dataURL);
-  if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u7CBE\u7075\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
-  if (args.format === "png") assertNotOpaque(analyzeSpritePng(buffer));
-  const sheetWidthOut = built.width ?? 0;
-  const sheetHeightOut = built.height ?? 0;
-  const cellWidth = sheetWidthOut > 0 ? Math.round(sheetWidthOut / args.cols) : null;
-  const cellHeight = sheetHeightOut > 0 ? Math.round(sheetHeightOut / args.rows) : null;
-  if (cellWidth !== null && cellWidth * args.cols !== sheetWidthOut) {
-    warnings.push(
-      `cellWidth*cols=${cellWidth * args.cols} \u4E0E\u56FE\u96C6\u5BBD ${sheetWidthOut} \u5DEE ${sheetWidthOut - cellWidth * args.cols}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
-    );
-  }
-  if (cellHeight !== null && cellHeight * args.rows !== sheetHeightOut) {
-    warnings.push(
-      `cellHeight*rows=${cellHeight * args.rows} \u4E0E\u56FE\u96C6\u9AD8 ${sheetHeightOut} \u5DEE ${sheetHeightOut - cellHeight * args.rows}px\uFF08\u7F29\u653E\u53D6\u6574\uFF09`
-    );
-  }
-  let measured;
-  let decoded;
-  if (args.format === "png") {
-    try {
-      decoded = decodePng(buffer);
-      const raw = measureSheet(
-        { width: decoded.width, height: decoded.height, rgba: decoded.rgba },
-        {
-          cols: args.cols,
-          rows: args.rows,
-          cellWidth: cellWidth ?? Math.max(1, Math.round(decoded.width / args.cols)),
-          cellHeight: cellHeight ?? Math.max(1, Math.round(decoded.height / args.rows))
-        }
-      );
-      warnings.push(...raw.warnings);
-      const basis = measuredBasisOf(raw, decoded, { ...args.span ? { span: args.span } : {}, ...args.spanBasis ? { spanBasis: args.spanBasis } : {}, scaled });
-      warnings.push(...basis.warnings);
-      measured = {
-        ...raw,
-        bboxHeight: basis.bboxHeight,
-        semanticHeight: basis.semanticHeight,
-        basis: basis.basis,
-        charHeightPx: basis.charHeightPx
-      };
-      const mismatch = measuredMismatchWarning(scaled.achievedPx, basis.bboxHeight);
-      if (mismatch) warnings.push(mismatch);
-    } catch (error62) {
-      warnings.push(
-        `\u6210\u54C1\u5B9E\u6D4B\u5931\u8D25\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09\uFF1A\u8FD9\u5F20\u56FE\u6CA1\u80FD\u81EA\u8BC1\uFF0C\u522B\u53EA\u4FE1 achievedPx`
-      );
-      measured = void 0;
-    }
-  } else {
-    warnings.push("format=webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF1A\u8FD9\u6B21\u6CA1\u6709 measured\uFF08\u6210\u54C1\u5B9E\u6D4B\uFF09\uFF0C\u8981\u9A8C\u8EAB\u9AD8\u8BF7\u7528 png \u5BFC\u51FA");
-  }
-  return {
-    scaled,
-    anchor: anchorOut.anchor,
-    anchorWritten: anchorOut.written,
-    built,
-    buffer,
-    ...decoded ? { decoded } : {},
-    ...measured ? { measured } : {},
-    cellWidth,
-    cellHeight,
-    warnings
-  };
-}
-async function correctOnce(args) {
-  const { first, target } = args;
-  if (args.correctionEnabled === false) return { pass: first };
-  if (args.format !== "png" || !first.measured) return { pass: first };
-  const before = first.measured.charHeightPx;
-  const factor = correctionFactorOf(target, before);
-  if (factor === null) {
-    return { pass: first, correction: { passes: 0, basis: first.measured.basis ?? "bbox", before, after: before, target } };
-  }
-  const requested = Math.max(1, Math.round(target * factor));
-  const second = await args.run(requested);
-  const after = second.measured?.charHeightPx ?? before;
-  const correction = {
-    passes: 1,
-    basis: second.measured?.basis ?? first.measured.basis ?? "bbox",
-    before,
-    after,
-    target
-  };
-  const residual = correctionResidualWarning(target, after);
-  if (residual) second.warnings.push(residual);
-  return { pass: second, correction };
-}
-function createSpriteService(options) {
-  const log = options.log;
-  const idleMs = options.idleMs ?? 5 * 60 * 1e3;
-  const videos = /* @__PURE__ */ new Map();
-  let session;
-  let toolServer;
-  let toolOrigin = "";
-  let idleTimer;
-  let launching;
-  let stopped = false;
-  let lastPrepare;
-  let framesLost = false;
-  const touch = () => {
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      idleTimer = void 0;
-      void recycle("\u7A7A\u95F2\u8D85\u65F6");
-    }, idleMs);
-    if (typeof idleTimer === "object" && idleTimer !== null && "unref" in idleTimer) {
-      ;
-      idleTimer.unref?.();
-    }
-  };
-  const recycle = async (why) => {
-    const current = session;
-    const hadFrames = lastPrepare !== void 0;
-    session = void 0;
-    lastPrepare = void 0;
-    if (hadFrames) framesLost = true;
-    if (current) {
-      log("\u5173\u6389\u5E8F\u5217\u5E27\u6D4F\u89C8\u5668", { why });
-      await current.close().catch(() => void 0);
-    }
-  };
-  const ensureSession = async () => {
-    if (stopped) throw new Error("\u5E8F\u5217\u5E27\u670D\u52A1\u5DF2\u505C\u673A");
-    if (session) {
-      touch();
-      return session;
-    }
-    if (launching) return launching;
-    launching = (async () => {
-      if (!toolServer) {
-        const started = await startToolServer(options.toolHtmlPath, videos);
-        toolServer = started.server;
-        toolOrigin = started.origin;
-      }
-      const created = await launchBrowser({
-        toolUrl: `${toolOrigin}${PAGE_ROUTE}`,
-        ...options.browserPath ? { executable: options.browserPath } : {},
-        log
-      });
-      session = created;
-      touch();
-      return created;
-    })();
-    try {
-      return await launching;
-    } finally {
-      launching = void 0;
-    }
-  };
-  const bridge = async (name2, ...args) => {
-    const active = await ensureSession();
-    touch();
-    const expression = `(async () => {
-      const api = window.__spriteAgent
-      if (!api || !api.${name2}) return { ok: false, error: '\u9875\u9762\u6CA1\u6709 __spriteAgent.${name2}\uFF08\u6865\u63A5\u7248\u672C\u8FC7\u65E7\uFF1F\uFF09' }
-      try { return await api.${name2}(${args.map((arg) => JSON.stringify(arg ?? null)).join(", ")}) }
-      catch (error) { return { ok: false, error: String(error && error.message || error) } }
-    })()`;
-    const answer = await active.evaluate(expression, 6e5);
-    if (!answer || answer.ok !== true) {
-      const raw = String(answer?.error ?? `${name2} \u5931\u8D25\uFF08\u9875\u9762\u6CA1\u6709\u8FD4\u56DE ok\uFF09`);
-      if (framesLost) {
-        throw new Error(
-          `\u4F1A\u8BDD\u5DF2\u7A7A\u95F2\u56DE\u6536\uFF08\u8D85\u8FC7 ${Math.round(idleMs / 6e4)} \u5206\u949F\u65E0\u64CD\u4F5C\uFF09\uFF0C\u5E27\u6570\u636E\u5DF2\u91CA\u653E\uFF0C\u8BF7\u91CD\u65B0 sprite_prepare\u3002\u539F\u59CB\u9519\u8BEF\uFF1A${raw}`
-        );
-      }
-      throw new Error(raw);
-    }
-    return answer;
-  };
-  const hasBridge = async (name2) => {
-    const active = await ensureSession();
-    touch();
-    return active.evaluate(`!!(window.__spriteAgent && window.__spriteAgent.${name2})`, 1e4);
-  };
-  const outDirOf = (override) => {
-    const dir = override && override.trim() !== "" ? override.trim() : options.outDir;
-    mkdirSync6(dir, { recursive: true });
-    return dir;
-  };
-  const debugDirOf = (override) => {
-    const dir = path20.join(outDirOf(override), "_debug");
-    mkdirSync6(dir, { recursive: true });
-    return dir;
-  };
-  const writeDataUrl = (dataUrl, target) => {
-    const buffer = dataUrlToBuffer(dataUrl);
-    if (!buffer) throw new Error("\u9875\u9762\u8FD4\u56DE\u7684\u56FE\u7247\u4E0D\u662F base64 dataURL");
-    mkdirSync6(path20.dirname(target), { recursive: true });
-    writeFileSync3(target, buffer);
-    return buffer.byteLength;
-  };
-  const worstOf = async (frames, sampleLimit = 8) => {
-    const total = Math.max(1, frames);
-    const picks = /* @__PURE__ */ new Set([0]);
-    const step = Math.max(1, Math.floor(total / sampleLimit));
-    for (let i = 0; i < total; i += step) picks.add(i);
-    picks.add(total - 1);
-    const bucket = [];
-    let firstStats;
-    let border;
-    for (const frame of [...picks].slice(0, sampleLimit + 1)) {
-      try {
-        const one = await bridge("keyedDataURL", frame);
-        const buffer = dataUrlToBuffer(one.dataURL);
-        if (!buffer) continue;
-        const stats = analyzeSpritePng(buffer);
-        if (!firstStats) firstStats = stats;
-        bucket.push({ frame, stats });
-        try {
-          const edge = borderOpaqueRatio(buffer);
-          if (!border || edge.ratio > border.ratio) border = { ratio: edge.ratio, frame, bandPx: edge.bandPx };
-        } catch {
-        }
-      } catch {
-      }
-    }
-    const worst = pickWorst(bucket);
-    return {
-      ...worst ? { worst } : {},
-      ...firstStats ? { stats: firstStats } : {},
-      ...border ? { border } : {}
-    };
-  };
-  const keytedParamsOf = async () => {
-    try {
-      const state = await bridge("keyState");
-      const params = state.params ? { ...state.params, ...state.mode ? { mode: state.mode } : {} } : void 0;
-      return { ...params ? { params } : {}, keyedCount: Number(state.keyedCount ?? 0) };
-    } catch {
-      return { keyedCount: -1 };
-    }
-  };
-  const readFramePixels = async (opts, cache) => {
-    const source = opts.source === "raw" ? "raw" : "keyed";
-    const frame = Math.max(0, Math.floor(Number(opts.frame ?? 0)));
-    if (!Number.isFinite(frame)) throw new Error(`\u5E27\u53F7\u4E0D\u662F\u6570\u5B57\uFF1A${String(opts.frame)}`);
-    const key = `${source}:${frame}`;
-    const cached2 = cache?.get(key);
-    if (cached2) return cached2;
-    const bridgeName = source === "raw" ? "frameDataURL" : "keyedDataURL";
-    const answer = await bridge(bridgeName, frame);
-    const buffer = dataUrlToBuffer(answer?.dataURL);
-    if (!buffer) throw new Error(`\u7B2C ${frame} \u5E27\uFF08${source}\uFF09\u6CA1\u62FF\u5230 PNG dataURL\uFF0C\u8BFB\u4E0D\u51FA\u50CF\u7D20`);
-    const decoded = decodePng(buffer);
-    const image = { width: decoded.width, height: decoded.height, rgba: decoded.rgba };
-    cache?.set(key, image);
-    return image;
-  };
-  const frameLimitFor = (width, height) => {
-    const budget = 720 * 966;
-    const pixels = Math.max(1, Math.round(width) * Math.round(height));
-    return Math.max(6, Math.min(24, Math.round(24 * budget / pixels)));
-  };
-  const framesOf = (spec, limit) => {
-    const warnings = [];
-    if (Array.isArray(spec)) {
-      const frames = [
-        ...new Set(
-          spec.map((value) => Math.floor(Number(value))).filter((value) => Number.isFinite(value) && value >= 0)
-        )
-      ].sort((a, b) => a - b);
-      if (frames.length === 0) throw new Error('frames \u662F\u7A7A\u6570\u7EC4\uFF1A\u8981\u4E48\u7ED9\u5E27\u53F7\uFF0C\u8981\u4E48\u5199 "all"');
-      if (frames.length > limit) {
-        warnings.push(`\u6309\u4F60\u7ED9\u7684 ${frames.length} \u5E27\u5168\u8DD1\uFF08\u8D85\u8FC7\u9ED8\u8BA4\u4E0A\u9650 ${limit} \u5E27\uFF0C\u4F1A\u66F4\u6162\uFF09`);
-      }
-      return { frames, warnings };
-    }
-    const total = lastPrepare?.frames ?? 0;
-    if (total <= 0) {
-      throw new Error(
-        "\u4E0D\u77E5\u9053\u603B\u5E27\u6570\uFF1A\u672C\u6B21\u4F1A\u8BDD\u6CA1\u6709 sprite_prepare \u8BB0\u5F55\uFF08\u6216\u5E27\u5DF2\u88AB\u7A7A\u95F2\u56DE\u6536\uFF09\u3002\u8BF7\u663E\u5F0F\u7ED9\u5E27\u53F7\u5217\u8868\uFF0C\u6216\u91CD\u65B0 sprite_prepare\u3002"
-      );
-    }
-    if (total <= limit) return { frames: Array.from({ length: total }, (_one, index) => index), warnings };
-    const step = total / limit;
-    const picked = [
-      ...new Set(Array.from({ length: limit }, (_one, index) => Math.min(total - 1, Math.round(index * step))))
-    ];
-    warnings.push(
-      `\u5E8F\u5217\u5171 ${total} \u5E27\uFF0C"all" \u9ED8\u8BA4\u53EA\u626B\u7B49\u95F4\u9694\u7684 ${picked.length} \u5E27\uFF08\u9884\u7B97\u6309 24 \u5E27\xD7720\xD7966 \u6298\u7B97\uFF09\uFF1B\u8981\u5168\u8DD1\u5C31\u663E\u5F0F\u7ED9 frames \u5217\u8868\u3002`
-    );
-    return { frames: picked, warnings };
-  };
-  const referenceImageOf = async (spec, source, cache) => {
-    const imagePath = typeof spec?.imagePath === "string" ? spec.imagePath.trim() : "";
-    if (imagePath !== "") {
-      if (!existsSync3(imagePath)) throw new Error(`\u53C2\u8003\u56FE\u4E0D\u5B58\u5728\uFF1A${imagePath}`);
-      const decoded = decodePng(readFileSync6(imagePath));
-      return { image: { width: decoded.width, height: decoded.height, rgba: decoded.rgba } };
-    }
-    const frame = Math.max(0, Math.floor(Number(spec?.frame ?? 0)));
-    return { image: await readFramePixels({ frame, source }, cache), frame };
-  };
-  const wantsAnchor = (args) => typeof args.anchorX === "number" || typeof args.anchorY === "number";
-  const LOOP_VERIFY_PAIRS = 6;
-  const loopScanOf = async (params) => {
-    const startedAt = Date.now();
-    const n = Math.max(1, Math.floor(Number(params.frames)));
-    const fps = Number(params.fps) > 0 ? Number(params.fps) : 12;
-    const maskMode = params.mask === "none" ? "none" : "body-core";
-    const warnings = [];
-    if (!(fps >= 10)) throw new Error(`\u5F53\u524D\u4F1A\u8BDD fps=${fps} \u592A\u4F4E\uFF08<10\uFF09\uFF1A\u5148 sprite_prepare \u5230 12fps \u518D\u626B`);
-    if (n < 24) throw new Error(`\u5F53\u524D\u4F1A\u8BDD\u53EA\u6709 ${n} \u5E27\uFF08<24\uFF09\uFF1A\u5148 sprite_prepare \u5230 12fps\u3001\u65F6\u957F \u22652 \u79D2\u518D\u626B`);
-    if (params.source === "raw") {
-      warnings.push("\u8FD8\u6CA1 key_apply\uFF1A\u8FD9\u6B21\u7528\u539F\u5E27\u626B\uFF08\u7EFF\u5E55\u566A\u58F0\u4F1A\u538B\u4F4E\u81EA\u76F8\u5173\u7684\u5BF9\u6BD4\u5EA6\uFF09\u3002\u626B\u5B8C\u8BB0\u5F97\u6B63\u5E38\u62A0\u56FE\u518D\u5BFC\u51FA\u3002");
-    }
-    const keepInside = Math.min(LOOP_VERIFY_PAIRS + 2, n - 1);
-    const keepIdx = /* @__PURE__ */ new Set([n - 1]);
-    for (let i = 0; i <= keepInside; i++) keepIdx.add(i);
-    const kept = /* @__PURE__ */ new Map();
-    const small = [];
-    for (let i = 0; i < n; i++) {
-      const img = await readFramePixels({ frame: i, source: params.source });
-      if (keepIdx.has(i)) kept.set(i, img);
-      const down = downsample(img, LOOP_DOWNSAMPLE_FACTOR);
-      small.push({ width: down.width, height: down.height, rgba: down.rgba });
-    }
-    const first = kept.get(0);
-    if (!first) throw new Error("\u7B2C 0 \u5E27\u6CA1\u8BFB\u5230\uFF0C\u6CA1\u6CD5\u5EFA\u5171\u7528\u63A9\u819C");
-    let mask = maskMode === "none" ? fullMask(first.width, first.height) : bodyCoreMask(first);
-    if (maskMode !== "none" && maskArea(mask) < 16) {
-      throw new Error('body-core \u63A9\u819C\u51E0\u4E4E\u662F\u7A7A\u7684\uFF08alpha \u6CA1\u547D\u4E2D\u4EFB\u4F55\u50CF\u7D20\uFF09\uFF1A\u5148 key_apply \u62A0\u56FE\uFF0C\u6216\u663E\u5F0F\u4F20 mask:"none"');
-    }
-    const smallMask = downsampleMask2(mask, LOOP_DOWNSAMPLE_FACTOR);
-    if (maskArea(smallMask) < 4) {
-      throw new Error(`\u964D\u5230 1/${LOOP_DOWNSAMPLE_FACTOR} \u540E\u63A9\u819C\u91CC\u51E0\u4E4E\u6CA1\u6709\u524D\u666F\u50CF\u7D20\uFF08\u89D2\u8272\u592A\u5C0F\uFF09\uFF1A\u6362 mask:"none" \u518D\u626B`);
-    }
-    const range = scanRangeFor(n, fps, params.minPeriodSec ?? 2);
-    warnings.push(...range.warnings);
-    const curve = autocorrelation(small, smallMask, { lo: range.lo, hi: range.hi });
-    const pick2 = pickPeriod(curve);
-    const pixelsOf = async (index) => {
-      const hit = kept.get(index);
-      if (hit) return hit;
-      const img = await readFramePixels({ frame: index, source: params.source });
-      kept.set(index, img);
-      return img;
-    };
-    const scoreAt = async (L) => {
-      const pairs = Math.max(1, Math.min(LOOP_VERIFY_PAIRS, n - L));
-      let sum = 0;
-      for (let i = 0; i < pairs; i++) sum += frameDiff(await pixelsOf(i), await pixelsOf(i + L), mask);
-      return sum / pairs;
-    };
-    let periodFrames = pick2.L;
-    let fullScore = await scoreAt(periodFrames);
-    for (const neighbor of [pick2.L - 1, pick2.L + 1]) {
-      if (neighbor < range.lo || neighbor > range.hi) continue;
-      const score = await scoreAt(neighbor);
-      if (score < fullScore) {
-        periodFrames = neighbor;
-        fullScore = score;
-      }
-    }
-    if (periodFrames !== pick2.L) {
-      warnings.push(
-        `\u5168\u5206\u8FA8\u7387\u590D\u6838\u628A\u5468\u671F\u4ECE L=${pick2.L}\uFF081/${LOOP_DOWNSAMPLE_FACTOR} \u5206\u8FA8\u7387\u4E0A\u7684\u6700\u4F18\uFF09\u6539\u6210 L=${periodFrames}\uFF1A\u964D\u91C7\u6837\u91CF\u5316\u8BEF\u5DEE`
-      );
-    }
-    for (const divisor of [2, 3]) {
-      const candidate = Math.round(periodFrames / divisor);
-      if (candidate < 2 || candidate >= range.lo) continue;
-      const candidateScore = await scoreAt(candidate);
-      const suspect = multipleSuspectWarning(periodFrames, fullScore, divisor, candidateScore, range.lo, fps);
-      if (suspect) {
-        warnings.push(suspect);
-        break;
-      }
-    }
-    let adjacentSum = 0;
-    const adjPairs = Math.max(1, Math.min(LOOP_VERIFY_PAIRS, n - 1));
-    for (let i = 0; i < adjPairs; i++) adjacentSum += frameDiff(await pixelsOf(i), await pixelsOf(i + 1), mask);
-    const adjacent = adjacentSum / adjPairs;
-    if (adjacent <= 0) {
-      throw new Error(
-        '\u63A9\u819C\u5185\u76F8\u90BB\u5E27\u9010\u50CF\u7D20\u5B8C\u5168\u76F8\u540C\uFF08\u9759\u6B62\u753B\u9762\uFF09\uFF1A\u91CF\u4E0D\u51FA\u5468\u671F\uFF0C\u522B\u6309\u5FAA\u73AF\u5904\u7406\u3002\u786E\u8BA4\u89C6\u9891\u91CC\u89D2\u8272\u771F\u7684\u5728\u52A8\uFF0C\u6216\u6362 mask:"none" \u91CD\u626B'
-      );
-    }
-    const firstLast = frameDiff(await pixelsOf(n - 1), await pixelsOf(0), mask);
-    const closureScore = round4(firstLast / adjacent);
-    const suggested = suggestFps(periodFrames, fps, params.targetMultiples ?? [24, 48]);
-    return finalizeLoopScan({
-      periodFrames,
-      fps,
-      suggested,
-      curve,
-      closureScore,
-      confidence: pick2.confidence,
-      ...pick2.reason ? { reason: pick2.reason } : {},
-      warnings,
-      scanned: {
-        frames: n,
-        fps,
-        mask: maskMode,
-        source: params.source,
-        downsample: LOOP_DOWNSAMPLE_FACTOR,
-        candidates: curve.length,
-        range: { lo: range.lo, hi: range.hi }
-      },
-      elapsedMs: Date.now() - startedAt
-    });
-  };
-  const prepareLooped = async (params) => {
-    const warnings = [];
-    const preRange = await bridge(
-      "setRange",
-      params.start,
-      params.end,
-      params.preFps
-    );
-    const start = Number(preRange?.start ?? params.start);
-    const end = Number(preRange?.end ?? params.end);
-    const preFps = Number(preRange?.fps ?? params.preFps);
-    if (Math.abs(end - start) < 2) {
-      warnings.push(`\u9884\u91C7\u6837\u533A\u95F4\u53EA\u6709 ${round4(Math.abs(end - start))}s\uFF08<2 \u79D2\uFF09\uFF1A\u5468\u671F\u53EF\u80FD\u91CF\u4E0D\u51C6\uFF0C\u5EFA\u8BAE\u7ED9\u66F4\u5927\u7684 end`);
-    }
-    const pre = await bridge("extract");
-    const preFrames = Number(pre.count ?? 0);
-    let width = Number(pre.width ?? 0);
-    let height = Number(pre.height ?? 0);
-    if (preFrames <= 0) throw new Error("\u9884\u91C7\u6837\u62BD\u5E27\u7ED3\u679C\u662F 0 \u5E27\uFF1A\u68C0\u67E5 start/end \u4E0E fps");
-    if (preFrames < 24) {
-      throw new Error(
-        `\u9884\u91C7\u6837\u53EA\u6709 ${preFrames} \u5E27\uFF08<24\uFF09\uFF1A\u5FAA\u73AF\u95ED\u5408\u81F3\u5C11\u8981 2 \u79D2 \xD7 12fps\u3002\u628A end-start \u62C9\u957F\u5230 \u22652 \u79D2\uFF0C\u6216\u628A fps \u63D0\u5230 12 \u4EE5\u4E0A\u518D\u6765`
-      );
-    }
-    lastPrepare = { frames: preFrames, width, height, fps: preFps };
-    framesLost = false;
-    const keyed = await keytedParamsOf();
-    const scan = await loopScanOf({
-      fps: preFps,
-      frames: preFrames,
-      source: keyed.keyedCount > 0 ? "keyed" : "raw",
-      ...params.loop.mask ? { mask: params.loop.mask } : {},
-      ...typeof params.loop.minPeriodSec === "number" ? { minPeriodSec: params.loop.minPeriodSec } : {},
-      ...Array.isArray(params.loop.targetMultiples) ? { targetMultiples: params.loop.targetMultiples } : {}
-    });
-    warnings.push(...scan.warnings);
-    if (scan.confidence === "low") {
-      throw new Error(
-        `\u5468\u671F\u4E0D\u6E05\u6670\uFF0C\u6CA1\u6709\u6309\u5468\u671F\u91CD\u91C7\uFF08${scan.reason ?? "\u81EA\u76F8\u5173\u66F2\u7EBF\u5E73\u7F13"}\uFF09\u3002\u8FD9\u6BB5\u52A8\u753B\u66F4\u9002\u5408\u5F53\u4E00\u6B21\u6027\u52A8\u4F5C\uFF1A\u53BB\u6389 loop \u91CD\u65B0 sprite_prepare\uFF1B\u786E\u8BA4\u5B83\u786E\u5B9E\u5FAA\u73AF\u5C31\u8C03\u5C0F loop.minPeriodSec \u518D\u8BD5`
-      );
-    }
-    const multiples = Array.isArray(params.loop.targetMultiples) ? params.loop.targetMultiples : [24, 48];
-    let targetFrames = scan.targetFrames;
-    if (params.loop.targetFrames !== void 0) {
-      const wanted = Math.floor(Number(params.loop.targetFrames));
-      if (!Number.isFinite(wanted) || wanted < 2) {
-        throw new Error(`loop.targetFrames \u5FC5\u987B\u662F \u22652 \u7684\u6574\u6570\uFF08\u6536\u5230 ${String(params.loop.targetFrames)}\uFF09`);
-      }
-      targetFrames = wanted;
-      if (!multiples.includes(wanted)) {
-        warnings.push(
-          `loop.targetFrames=${wanted} \u4E0D\u5728\u5019\u9009 ${JSON.stringify(multiples)} \u91CC\uFF1A\u80FD\u4EA4\u4ED8\uFF0C\u4F46 8\xD76=48 / 8\xD73=24 \u8FD9\u7C7B\u7F51\u683C\u4F1A\u591A\u51FA\u7A7A\u4F4D`
-        );
-      }
-    }
-    const fpsNew = round4(targetFrames / scan.periodSec);
-    const loopEnd = round4(start + scan.periodSec);
-    if (loopEnd > end + 1e-6) {
-      warnings.push(`\u5468\u671F ${scan.periodSec}s \u8D85\u51FA\u9884\u91C7\u6837\u533A\u95F4 ${start}\u2192${end}s\uFF1A\u91CD\u91C7\u4F1A\u7528\u5230\u533A\u95F4\u5916\u7684\u753B\u9762\uFF08\u5230\u7247\u5C3E\u4F1A\u88AB\u5939\u77ED\uFF09`);
-    }
-    await bridge("setRange", start, loopEnd, fpsNew);
-    const re = await bridge("extract");
-    const frames = Number(re.count ?? 0);
-    width = Number(re.width ?? width);
-    height = Number(re.height ?? height);
-    lastPrepare = { frames, width, height, fps: fpsNew, looped: true };
-    framesLost = false;
-    if (frames !== targetFrames) {
-      throw new Error(
-        `\u6309\u5468\u671F\u91CD\u91C7\u540E\u5E94\u662F ${targetFrames} \u5E27\uFF0C\u5B9E\u9645\u62BD\u5230 ${frames} \u5E27\uFF08\u5468\u671F ${scan.periodSec}s \u2192 ${fpsNew}fps\uFF0C\u533A\u95F4 ${start}\u2192${loopEnd}s\uFF09\uFF1A\u5468\u671F\u6216\u91C7\u6837\u7387\u7B97\u9519\u4E86\uFF08\u7247\u5C3E\u5939\u77ED / \u5E27\u7387\u53D6\u6574\uFF09\uFF0C\u522B\u62FF\u8FD9\u6279\u5E27\u4EA4\u4ED8`
-      );
-    }
-    let firstFrame;
-    let prev;
-    let lastFrame;
-    let maskImage;
-    let adjacentSum = 0;
-    let adjPairs = 0;
-    for (let i = 0; i < frames; i++) {
-      const img = await readFramePixels({ frame: i, source: "raw" });
-      if (!firstFrame) {
-        firstFrame = img;
-        maskImage = params.loop.mask === "none" ? fullMask(img.width, img.height) : bodyCoreMask(img);
-        if (maskImage && maskArea(maskImage) < 16) {
-          maskImage = fullMask(img.width, img.height);
-          warnings.push("body-core \u63A9\u819C\u51E0\u4E4E\u662F\u7A7A\u7684\uFF08\u8FD8\u6CA1\u62A0\u56FE\uFF09\uFF0C\u95ED\u5408\u5EA6\u6539\u6210\u6574\u5E45\u7B97");
-        }
-      }
-      if (prev && maskImage) {
-        adjacentSum += frameDiff(prev, img, maskImage);
-        adjPairs++;
-      }
-      prev = img;
-      lastFrame = img;
-    }
-    const adjacent = adjPairs > 0 ? adjacentSum / adjPairs : 0;
-    const firstLast = lastFrame && firstFrame && maskImage ? frameDiff(lastFrame, firstFrame, maskImage) : 0;
-    const closure = closureOf(firstLast, adjacent);
-    if (!closure.ok) {
-      warnings.push(`\u9996\u5C3E\u5DEE ${closure.firstLastDiff} \u4E0E\u76F8\u90BB\u5E27\u5DEE ${closure.adjacentDiff} \u4E0D\u540C\u91CF\u7EA7\uFF0C\u5FAA\u73AF\u6CA1\u95ED\u5408`);
-    }
-    return {
-      ok: true,
-      frames,
-      width,
-      height,
-      video: params.video,
-      transport: params.transport,
-      fps: fpsNew,
-      periodSec: scan.periodSec,
-      loopClosed: closure.ok,
-      loop: {
-        periodFrames: scan.periodFrames,
-        targetFrames,
-        suggestedFps: scan.suggestedFps,
-        confidence: scan.confidence,
-        closure
-      },
-      warnings
-    };
-  };
-  return {
-    get busy() {
-      return session !== void 0;
-    },
-    async prepare(args) {
-      const videoPath = String(args.videoPath ?? "").trim();
-      if (videoPath === "") throw new Error("\u9700\u8981\u89C6\u9891\u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF08videoPath\uFF09");
-      const stat3 = statSync3(videoPath);
-      if (stat3.size === 0) throw new Error(`\u89C6\u9891\u6587\u4EF6\u662F\u7A7A\u7684\uFF1A${videoPath}`);
-      if (stat3.size > MAX_VIDEO_BYTES) throw new Error(`\u89C6\u9891\u592A\u5927\uFF08>200MB\uFF09\uFF0C\u5148\u88C1\u4E00\u6BB5\u518D\u6765\uFF1A${videoPath}`);
-      await ensureSession();
-      let loaded;
-      let transport = "http";
-      if (await hasBridge("loadVideoUrl")) {
-        const token = randomBytes5(9).toString("hex");
-        videos.set(token, videoPath);
-        try {
-          loaded = await bridge("loadVideoUrl", `${toolOrigin}${VIDEO_ROUTE}${token}`, path20.basename(videoPath));
-        } finally {
-          setTimeout(() => videos.delete(token), 5e3);
-        }
-        if (loaded.ok !== true) {
-          transport = "base64";
-          loaded = await bridge(
-            "loadVideoBase64",
-            readFileSync6(videoPath).toString("base64"),
-            path20.basename(videoPath)
-          );
-        }
-      } else {
-        transport = "base64";
-        loaded = await bridge(
-          "loadVideoBase64",
-          readFileSync6(videoPath).toString("base64"),
-          path20.basename(videoPath)
-        );
-      }
-      if (loaded.ok !== true) throw new Error(loaded.error ?? "\u89C6\u9891\u6CA1\u80FD\u8F7D\u5165\u9875\u9762");
-      if (args.loop !== void 0) {
-        return await prepareLooped({
-          video: String(loaded.name ?? path20.basename(videoPath)),
-          transport,
-          start: args.start ?? 0,
-          end: args.end ?? 4,
-          preFps: args.fps ?? 12,
-          loop: args.loop ?? {}
-        });
-      }
-      const fpsUsed = args.fps ?? 12;
-      await bridge("setRange", args.start ?? 0, args.end ?? 4, fpsUsed);
-      const extracted = await bridge("extract");
-      const frames = Number(extracted.count ?? 0);
-      const width = Number(extracted.width ?? 0);
-      const height = Number(extracted.height ?? 0);
-      if (frames <= 0) throw new Error("\u62BD\u5E27\u7ED3\u679C\u662F 0 \u5E27\uFF1A\u68C0\u67E5\u65F6\u95F4\u533A\u95F4\uFF08start/end\uFF09\u4E0E fps");
-      lastPrepare = { frames, width, height, fps: fpsUsed };
-      framesLost = false;
-      return { ok: true, frames, width, height, video: String(loaded.name ?? path20.basename(videoPath)), transport };
-    },
-    async loopScan(args) {
-      const prepared = lastPrepare;
-      if (!prepared) {
-        throw new Error("\u8FD8\u6CA1\u6709\u5E27\uFF1A\u5148 sprite_prepare\uFF0812fps\u3001\u226524 \u5E27\uFF09\u518D\u626B\u5468\u671F");
-      }
-      const extraWarnings = [];
-      if (typeof args.preFps === "number" && Math.abs(args.preFps - prepared.fps) > 0.01) {
-        extraWarnings.push(
-          `preFps=${args.preFps} \u4E0E\u4F1A\u8BDD\u5B9E\u9645 fps=${prepared.fps} \u4E0D\u4E00\u81F4\uFF1A\u5468\u671F\u6362\u7B97\u4E00\u5F8B\u7528\u4F1A\u8BDD\u5B9E\u9645\u5E27\u7387\uFF08\u5E27\u5C31\u662F\u6309\u5B83\u62BD\u7684\uFF09`
-        );
-      }
-      const keyed = await keytedParamsOf();
-      const result2 = await loopScanOf({
-        fps: prepared.fps,
-        frames: prepared.frames,
-        source: keyed.keyedCount > 0 ? "keyed" : "raw",
-        ...args.mask === "none" || args.mask === "body-core" ? { mask: args.mask } : {},
-        ...typeof args.minPeriodSec === "number" ? { minPeriodSec: args.minPeriodSec } : {},
-        ...Array.isArray(args.targetMultiples) ? { targetMultiples: args.targetMultiples } : {}
-      });
-      return extraWarnings.length > 0 ? { ...result2, warnings: [...extraWarnings, ...result2.warnings] } : result2;
-    },
-    async probeColor(args) {
-      const answer = await bridge("probeColor", {
-        ...typeof args.frame === "number" ? { frame: args.frame } : {},
-        ...typeof args.bandPx === "number" ? { bandPx: args.bandPx } : {}
-      });
-      return answer;
-    },
-    async keyPreview(args) {
-      const frame = Math.max(0, Math.floor(args.frame ?? 0));
-      const params = { ...args };
-      delete params.frame;
-      await bridge("setKeyParams", params);
-      const preview = await bridge("keyPreview", frame);
-      const buffer = dataUrlToBuffer(preview.dataURL);
-      if (!buffer) throw new Error("\u9875\u9762\u6CA1\u8FD4\u56DE\u9884\u89C8\u56FE\uFF08dataURL \u4E3A\u7A7A\uFF09");
-      const dir = outDirOf();
-      const previewPath = path20.join(dir, `preview-${frame}.png`);
-      writeFileSync3(previewPath, buffer);
-      let maskPath;
-      try {
-        const mask = await bridge("maskDataURL", frame);
-        const maskBuffer = dataUrlToBuffer(mask.dataURL);
-        if (maskBuffer) {
-          maskPath = path20.join(dir, `mask-${frame}.png`);
-          writeFileSync3(maskPath, maskBuffer);
-        }
-      } catch {
-      }
-      const after = await keytedParamsOf();
-      return {
-        ok: true,
-        frame,
-        stats: analyzeSpritePng(buffer),
-        previewPath,
-        ...maskPath ? { maskPath } : {},
-        ...after.params ? { appliedParams: after.params } : {},
-        // preview 之后 keyed 缓存必然被清（P2），这里说清楚，免得调用方以为还能直接 export。
-        ignored: []
-      };
-    },
-    async keyApply(args) {
-      const params = { ...args };
-      delete params.indices;
-      delete params.probeFrames;
-      await bridge("setKeyParams", params);
-      const applied = await bridge(
-        "keyApply",
-        args.indices ?? null
-      );
-      const frames = Number(applied.frames ?? 0);
-      const state = await keytedParamsOf();
-      if (state.keyedCount === 0) {
-        throw new Error("keyApply \u8DD1\u5B8C\u4F46\u62A0\u56FE\u7F13\u5B58\u662F\u7A7A\u7684\u2014\u2014\u9875\u9762\u90A3\u8FB9\u51FA\u4E86\u95EE\u9898\uFF0C\u5148\u522B export");
-      }
-      const sampled = await worstOf(frames, args.probeFrames ?? 8);
-      const warnings = [];
-      if (applied.autoEnabled === true) warnings.push("\u62A0\u56FE\u539F\u672C\u6CA1\u542F\u7528\uFF0C\u5DF2\u81EA\u52A8\u542F\u7528\uFF08\u5426\u5219\u62FC\u56FE\u4F1A\u7528\u539F\u5E27\uFF09");
-      if (sampled.border) {
-        const edgeWarning = borderOpaqueWarning(sampled.border, sampled.border.frame);
-        if (edgeWarning) warnings.push(edgeWarning);
-      }
-      return {
-        ok: true,
-        frames,
-        plateApplied: applied.plateApplied === true,
-        keyedCount: state.keyedCount,
-        ...sampled.stats ? { stats: sampled.stats } : {},
-        ...sampled.worst ? { worst: sampled.worst } : {},
-        ...state.params ? { appliedParams: state.params } : {},
-        ignored: [],
-        warnings
-      };
-    },
-    async measure(args) {
-      const frame = args.frame === "all" ? "all" : Math.max(0, Math.floor(args.frame ?? 0));
-      const answer = await bridge("measure", {
-        frame,
-        ...args.source ? { source: args.source } : {},
-        ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
-        ...Array.isArray(args.landmarks) ? { landmarks: args.landmarks } : {}
-      });
-      let overlayPath;
-      if (args.overlay !== false) {
-        try {
-          const lines = [];
-          const box = answer.alphaBBox;
-          if (box) {
-            lines.push(
-              { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y0, color: "#ff0000", label: "top" },
-              { x0: box.x0, y0: box.y1 - 1, x1: box.x1, y1: box.y1 - 1, color: "#00aaff", label: "sole" },
-              { x0: box.x0, y0: box.y0, x1: box.x0, y1: box.y1, color: "#00ff88" },
-              { x0: box.x1 - 1, y0: box.y0, x1: box.x1 - 1, y1: box.y1, color: "#00ff88" }
-            );
-          }
-          for (const mark of answer.landmarks ?? []) {
-            if (mark.px === null || mark.py === null) continue;
-            lines.push({ x0: mark.px - 8, y0: mark.py, x1: mark.px + 8, y1: mark.py, color: "#ffcc00" });
-            lines.push({ x0: mark.px, y0: mark.py - 8, x1: mark.px, y1: mark.py + 8, color: "#ffcc00" });
-          }
-          const texts = [
-            {
-              x: 8,
-              y: 8,
-              text: box ? `bbox=${box.x0},${box.y0},${box.x1 - box.x0}x${box.y1 - box.y0} h=${answer.contentHeight}` : "bbox=null",
-              color: "#ffffff"
-            }
-          ];
-          const overlay = await bridge("overlay", {
-            frame: typeof frame === "number" ? frame : 0,
-            lines,
-            texts
-          });
-          const dir = debugDirOf();
-          overlayPath = path20.join(dir, `measure-${typeof frame === "number" ? frame : "all"}-${Date.now()}.png`);
-          writeDataUrl(overlay.dataURL, overlayPath);
-        } catch {
-        }
-      }
-      return { ...answer, ...overlayPath ? { overlayPath } : {} };
-    },
-    async verify(args) {
-      const metas = Array.isArray(args.metas) ? [...args.metas] : [];
-      for (const raw of Array.isArray(args.paths) ? args.paths : []) {
-        const target = String(raw ?? "").trim();
-        if (!target) continue;
-        const abs = path20.isAbsolute(target) ? target : path20.join(outDirOf(), target);
-        let stat3;
-        try {
-          stat3 = statSync3(abs);
-        } catch {
-          throw new Error(`\u627E\u4E0D\u5230\u8FD9\u4E2A\u8DEF\u5F84\uFF1A${abs}`);
-        }
-        const files = stat3.isDirectory() ? readdirSync2(abs).filter((name2) => name2.toLowerCase().endsWith(".json")).sort().map((name2) => path20.join(abs, name2)) : [abs];
-        if (files.length === 0) throw new Error(`\u8FD9\u4E2A\u76EE\u5F55\u91CC\u6CA1\u6709 .json\uFF1A${abs}`);
-        for (const file2 of files) {
-          let parsed;
-          try {
-            parsed = JSON.parse(readFileSync6(file2, "utf8"));
-          } catch (error62) {
-            throw new Error(`\u8BFB\u4E0D\u4E86 meta\uFF08${file2}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`);
-          }
-          if (!parsed || typeof parsed !== "object") throw new Error(`\u8FD9\u4E2A\u6587\u4EF6\u4E0D\u662F meta \u5BF9\u8C61\uFF1A${file2}`);
-          metas.push(parsed);
-        }
-      }
-      if (metas.length === 0) throw new Error("\u9700\u8981 metas\uFF08\u76F4\u63A5\u7ED9\uFF09\u6216 paths\uFF08meta.json \u6216\u76EE\u5F55\uFF09");
-      return verifyConsistency(metas, {
-        ...typeof args.referenceCharHeight === "number" ? { referenceCharHeight: args.referenceCharHeight } : {},
-        ...typeof args.heightPct === "number" ? { heightPct: args.heightPct } : {},
-        ...typeof args.anchorPx === "number" ? { anchorPx: args.anchorPx } : {}
-      });
-    },
-    async baseline(args) {
-      const raw = Array.isArray(args?.paths) ? args.paths : [];
-      const wanted = raw.map((one) => String(one ?? "").trim()).filter((one) => one !== "");
-      if (wanted.length === 0) throw new Error("\u9700\u8981 paths\uFF1A\u81F3\u5C11\u4E00\u5F20\u56FE\u96C6\u8DEF\u5F84\uFF08\u540C\u76EE\u5F55\u8FD8\u8981\u6709\u914D\u5957\u7684 meta.json\uFF09");
-      const rawCellIndex = args.cellIndex ?? 0;
-      let selector;
-      if (typeof rawCellIndex === "number") {
-        if (!Number.isFinite(rawCellIndex)) throw new Error(`cellIndex \u4E0D\u662F\u6709\u6548\u6570\u5B57\uFF1A${String(rawCellIndex)}`);
-        selector = Math.max(0, Math.floor(rawCellIndex));
-      } else if (rawCellIndex === "tallest" || rawCellIndex === "median") {
-        selector = rawCellIndex;
-      } else {
-        throw new Error(`cellIndex \u53EA\u80FD\u662F\u683C\u53F7\uFF08\u6570\u5B57\uFF09\u6216 "tallest" / "median"\uFF08\u6536\u5230 ${JSON.stringify(rawCellIndex)}\uFF09`);
-      }
-      const mode = typeof selector === "number" ? "fixed" : selector;
-      const inputs = [];
-      const resolved = [];
-      const warnings = [];
-      const conventions = [];
-      const selections = [];
-      for (const target of wanted) {
-        const abs = path20.isAbsolute(target) ? target : path20.join(outDirOf(), target);
-        if (!existsSync3(abs)) throw new Error(`\u627E\u4E0D\u5230\u8FD9\u5F20\u56FE\u96C6\uFF1A${abs}`);
-        let decoded;
-        try {
-          decoded = decodePng(readFileSync6(abs));
-        } catch (error62) {
-          throw new Error(`\u8BFB\u4E0D\u4E86\u8FD9\u5F20\u56FE\u96C6\uFF08${abs}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 150)}`);
-        }
-        const candidates = metaPathCandidates(abs);
-        const metaFile = candidates.find((file2) => existsSync3(file2));
-        if (!metaFile) {
-          throw new Error(`\u627E\u4E0D\u5230\u540C\u540D meta.json\uFF1A${candidates.join(" / ")}\uFF08\u51C6\u7EF3\u56FE\u8981\u9760\u5B83\u62FF anchorX/anchorY/cellWidth/cellHeight\uFF0C\u4E0D\u8BB8\u731C\uFF09`);
-        }
-        let meta3;
-        try {
-          const parsed = JSON.parse(readFileSync6(metaFile, "utf8"));
-          if (!parsed || typeof parsed !== "object") throw new Error("\u4E0D\u662F\u5BF9\u8C61");
-          meta3 = parsed;
-        } catch (error62) {
-          throw new Error(`\u8BFB\u4E0D\u4E86 meta\uFF08${metaFile}\uFF09\uFF1A${String(error62?.message ?? error62).slice(0, 150)}`);
-        }
-        const numberOr = (key) => {
-          const value = Number(meta3[key]);
-          return Number.isFinite(value) ? value : Number.NaN;
-        };
-        const cellWidth = numberOr("cellWidth");
-        const cellHeight = numberOr("cellHeight");
-        const anchorX = numberOr("anchorX");
-        const metaAnchorY = numberOr("anchorY");
-        const missing = [];
-        if (!(cellWidth > 0)) missing.push("cellWidth");
-        if (!(cellHeight > 0)) missing.push("cellHeight");
-        if (!(anchorX >= 0 && anchorX <= 1)) missing.push("anchorX(0~1)");
-        if (!(metaAnchorY >= 0 && metaAnchorY <= 1)) missing.push("anchorY(0~1)");
-        if (missing.length > 0) {
-          throw new Error(`meta \u91CC\u7F3A ${missing.join("/")}\uFF1A${metaFile}\uFF08\u8001\u4EA7\u7269\uFF1F\u91CD\u65B0 export \u4E00\u6B21\uFF0C\u6216\u624B\u5DE5\u8865\u4E0A\u518D\u8DD1\u51C6\u7EF3\u56FE\uFF09`);
-        }
-        const convention = typeof meta3.anchorConvention === "string" ? meta3.anchorConvention : "y-from-bottom";
-        const anchorY = convention === "y-from-top" ? 1 - metaAnchorY : metaAnchorY;
-        if (convention !== "y-from-bottom" && convention !== "y-from-top") {
-          warnings.push(`${path20.basename(abs)} \u7684 anchorConvention \u662F\u300C${convention}\u300D\uFF0C\u6309 y-from-bottom \u5904\u7406`);
-        }
-        const topDownRaw = Number(meta3.anchorYTopDown);
-        conventions.push({
-          name: path20.basename(abs),
-          convention,
-          anchorY,
-          ...Number.isFinite(topDownRaw) ? { anchorYTopDown: topDownRaw } : {}
-        });
-        const cols = Number(meta3.cols) > 0 ? Math.floor(Number(meta3.cols)) : Math.max(1, Math.round(decoded.width / cellWidth));
-        const rows = Number(meta3.rows) > 0 ? Math.floor(Number(meta3.rows)) : Math.max(1, Math.round(decoded.height / cellHeight));
-        const name2 = typeof meta3.name === "string" && meta3.name.trim() !== "" ? meta3.name.trim() : path20.basename(abs, path20.extname(abs));
-        const image = { width: decoded.width, height: decoded.height, rgba: decoded.rgba };
-        let cellIndex;
-        if (typeof selector === "number") {
-          if (selector >= cols * rows) {
-            throw new Error(
-              `cellIndex=${selector} \u8D85\u51FA\u7F51\u683C\uFF08${path20.basename(abs)} \u662F ${cols}\xD7${rows}\uFF0C\u6700\u5927\u5E8F\u53F7 ${cols * rows - 1}\uFF09`
-            );
-          }
-          cellIndex = selector;
-        } else {
-          const picked = selectBaselineCell(image, { cols, rows, cellWidth, cellHeight }, selector);
-          cellIndex = picked.cellIndex;
-          if (picked.note) warnings.push(`${name2}: ${picked.note}`);
-          selections.push({ name: name2, cellIndex, basis: picked.basis, heightPx: picked.heightPx });
-        }
-        if (typeof selector === "number") selections.push({ name: name2, cellIndex, basis: "fixed", heightPx: 0 });
-        inputs.push({ name: name2, image, cellIndex, cols, cellWidth, cellHeight, anchorX, anchorY });
-        resolved.push(abs);
-      }
-      warnings.push(...anchorConventionWarnings(conventions));
-      const composed = composeBaseline(inputs, {
-        ...typeof args.gap === "number" ? { gap: args.gap } : {},
-        ...typeof args.background === "string" && args.background.trim() !== "" ? { background: args.background.trim() } : {},
-        ...typeof args.padding === "number" ? { padding: args.padding } : {}
-      });
-      warnings.push(...composed.warnings);
-      const root = typeof args.outDir === "string" && args.outDir.trim() !== "" ? args.outDir.trim() : commonParentDir(resolved);
-      const debugDir = path20.join(root, "_debug");
-      mkdirSync6(debugDir, { recursive: true });
-      const outPath = path20.join(debugDir, `baseline-${Date.now()}.png`);
-      writeFileSync3(outPath, encodePng(composed.image));
-      return {
-        ok: true,
-        path: outPath,
-        width: composed.width,
-        height: composed.height,
-        baselineY: composed.baselineY,
-        headTopY: composed.headTopY,
-        background: composed.background,
-        cellIndexUsed: { mode, perItem: selections },
-        items: composed.items,
-        warnings
-      };
-    },
-    async match(args) {
-      if (!args.templateRect || typeof args.templateRect !== "object") {
-        throw new Error("\u9700\u8981 templateRect\uFF08\u6A21\u677F\u77E9\u5F62\uFF0C\u6E90\u5E27\u50CF\u7D20 {x,y,w,h}\uFF09");
-      }
-      const source = args.source === "raw" ? "raw" : "keyed";
-      const templateFrame = Math.max(0, Math.floor(Number(args.templateFrame ?? args.inFrame ?? 0)));
-      const inFrame = Math.max(0, Math.floor(Number(args.inFrame ?? templateFrame)));
-      const cache = /* @__PURE__ */ new Map();
-      const templatePixels = await readFramePixels({ frame: templateFrame, source }, cache);
-      const template = cropRgba(templatePixels, args.templateRect);
-      const imagePixels = inFrame === templateFrame ? templatePixels : await readFramePixels({ frame: inFrame, source }, cache);
-      return matchTemplate(imagePixels, template, {
-        ...args.searchRect ? { searchRect: args.searchRect } : {},
-        ...typeof args.minScore === "number" ? { minScore: args.minScore } : {}
-      });
-    },
-    async featureFit(args) {
-      const specs = Array.isArray(args.templates) ? args.templates : [];
-      if (specs.length === 0) {
-        throw new Error("\u9700\u8981 templates\uFF1A\u81F3\u5C11 1 \u4E2A\u7279\u5F81\u6A21\u677F {rect:{x,y,w,h}}\uFF08\u5EFA\u8BAE 2 \u4E2A\u2014\u2014\u5355\u6A21\u677F\u53EA\u80FD\u5B9A\u5E73\u79FB\uFF09");
-      }
-      const templateSpecs = specs.map((one, index) => {
-        if (!one || typeof one !== "object" || !one.rect) throw new Error(`templates[${index}] \u7F3A rect`);
-        return { rect: one.rect, ...typeof one.weight === "number" ? { weight: one.weight } : {} };
-      });
-      const source = args.source === "raw" ? "raw" : "keyed";
-      const cache = /* @__PURE__ */ new Map();
-      const ref = await referenceImageOf(args.reference, source, cache);
-      const picked = framesOf(args.search?.frames ?? "all", frameLimitFor(ref.image.width, ref.image.height));
-      const warnings = [...picked.warnings];
-      let best;
-      let seed;
-      const failed = [];
-      for (const frame of picked.frames) {
-        let pixels;
-        try {
-          pixels = await readFramePixels({ frame, source }, cache);
-        } catch (error62) {
-          failed.push(`\u7B2C ${frame} \u5E27\u8BFB\u4E0D\u5230\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
-          continue;
-        }
-        let fit;
-        try {
-          fit = fitFeatureFrame(ref.image, pixels, {
-            templates: templateSpecs,
-            ...args.search?.scale ? { scale: args.search.scale } : {},
-            ...seed ? { seed } : {}
-          });
-        } catch (error62) {
-          failed.push(`\u7B2C ${frame} \u5E27\u7B97\u4E0D\u51FA\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
-          cache.clear();
-          continue;
-        }
-        seed = { scale: fit.scale, positions: fit.perTemplate.map((one) => ({ x: one.x, y: one.y })) };
-        if (!best || fit.score > best.fit.score) best = { frame, fit, width: pixels.width, height: pixels.height };
-        cache.clear();
-      }
-      if (!best) {
-        throw new Error(`\u6CA1\u6709\u4EFB\u4F55\u4E00\u5E27\u80FD\u7B97\u7279\u5F81\u5339\u914D\uFF1A${failed.slice(0, 3).join("\uFF1B") || "\u5168\u90E8\u5E27\u90FD\u8BFB\u4E0D\u5230"}`);
-      }
-      if (failed.length > 0) warnings.push(`${failed.length} \u5E27\u6CA1\u7B97\u51FA\u6765\uFF0C\u5DF2\u8DF3\u8FC7\uFF08\u9996\u6761\uFF1A${failed[0]}\uFF09`);
-      const graded = featureConfidence(best.fit.score, best.fit.residualPx);
-      const transferredAnchor = wantsAnchor(args) ? {
-        ...transferAnchor({
-          anchorX: args.anchorX ?? 0.5,
-          anchorY: args.anchorY ?? 0.5,
-          refWidth: ref.image.width,
-          refHeight: ref.image.height,
-          scale: best.fit.scale,
-          dx: best.fit.dx,
-          dy: best.fit.dy,
-          width: best.width,
-          height: best.height
-        }),
-        anchorSource: "feature"
-      } : void 0;
-      return {
-        frame: best.frame,
-        scale: best.fit.scale,
-        dx: best.fit.dx,
-        dy: best.fit.dy,
-        score: best.fit.score,
-        residualPx: best.fit.residualPx,
-        ...transferredAnchor ? { transferredAnchor } : {},
-        perTemplate: best.fit.perTemplate,
-        confidence: graded.confidence,
-        ...graded.reason ? { reason: graded.reason } : {},
-        ...warnings.length > 0 ? { warnings } : {}
-      };
-    },
-    async silhouetteFit(args) {
-      const source = args.source === "raw" ? "raw" : "keyed";
-      const cache = /* @__PURE__ */ new Map();
-      const ref = await referenceImageOf(args.reference, source, cache);
-      const picked = framesOf(args.target?.frames ?? "all", frameLimitFor(ref.image.width, ref.image.height));
-      const warnings = [...picked.warnings];
-      const mask = args.mask === "raw" ? "raw" : "body-core";
-      let best;
-      const failed = [];
-      for (const frame of picked.frames) {
-        let pixels;
-        try {
-          pixels = await readFramePixels({ frame, source }, cache);
-        } catch (error62) {
-          failed.push(`\u7B2C ${frame} \u5E27\u8BFB\u4E0D\u5230\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
-          continue;
-        }
-        let fit;
-        try {
-          fit = fitSilhouetteFrame(ref.image, pixels, {
-            mask,
-            ...args.search?.scale ? { scale: args.search.scale } : {},
-            ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {}
-          });
-        } catch (error62) {
-          failed.push(`\u7B2C ${frame} \u5E27\u7B97\u4E0D\u51FA\uFF1A${String(error62?.message ?? error62).slice(0, 100)}`);
-          cache.clear();
-          continue;
-        }
-        if (fit.reason) {
-          failed.push(`\u7B2C ${frame} \u5E27\uFF1A${fit.reason}`);
-          cache.clear();
-          continue;
-        }
-        if (!best || fit.iou > best.fit.iou) best = { frame, fit, width: pixels.width, height: pixels.height };
-        cache.clear();
-      }
-      if (!best) {
-        throw new Error(`\u6CA1\u6709\u4EFB\u4F55\u4E00\u5E27\u80FD\u7B97\u526A\u5F71\u62DF\u5408\uFF1A${failed.slice(0, 3).join("\uFF1B") || "\u5168\u90E8\u5E27\u90FD\u8BFB\u4E0D\u5230"}`);
-      }
-      if (failed.length > 0) warnings.push(`${failed.length} \u5E27\u6CA1\u7B97\u51FA\u6765\uFF0C\u5DF2\u8DF3\u8FC7\uFF08\u9996\u6761\uFF1A${failed[0]}\uFF09`);
-      const graded = silhouetteConfidence(best.fit.iou);
-      const transferredAnchor = graded.anchorSource !== null && wantsAnchor(args) ? {
-        ...transferAnchor({
-          anchorX: args.anchorX ?? 0.5,
-          anchorY: args.anchorY ?? 0.5,
-          refWidth: ref.image.width,
-          refHeight: ref.image.height,
-          scale: best.fit.scale,
-          dx: best.fit.dx,
-          dy: best.fit.dy,
-          width: best.width,
-          height: best.height
-        }),
-        anchorSource: graded.anchorSource
-      } : null;
-      return {
-        frame: best.frame,
-        iou: best.fit.iou,
-        scale: best.fit.scale,
-        dx: best.fit.dx,
-        dy: best.fit.dy,
-        transferredAnchor,
-        confidence: graded.confidence,
-        ...graded.reason ? { reason: graded.reason } : {},
-        ...warnings.length > 0 ? { warnings } : {}
-      };
-    },
-    async scaleTo(args) {
-      return bridge("scaleTo", {
-        ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
-        ...typeof args.targetCellHeight === "number" ? { targetCellHeight: args.targetCellHeight } : {},
-        ...args.span ? { span: args.span } : {}
-      });
-    },
-    async getAnchor() {
-      return bridge("getAnchor");
-    },
-    async setAnchorPx(args) {
-      return bridge("setAnchorPx", {
-        ...typeof args.x === "number" ? { x: args.x } : {},
-        ...typeof args.y === "number" ? { y: args.y } : {},
-        ...args.convention ? { convention: args.convention } : {}
-      });
-    },
-    async cleanup(args) {
-      const trim = args.trim ?? {};
-      let rect = null;
-      const warnings = [];
-      let watermarkCandidates;
-      if (args.maskRect === "auto") {
-        const maskMode = args.maskMode === "corner" ? "corner" : "auto";
-        const detected = await bridge("detectWatermark", { mode: maskMode });
-        watermarkCandidates = detected.rects ?? [];
-        const eligible = watermarkCandidates.filter((row) => row.selected !== false);
-        const best = [...eligible].filter((row) => (row.confidence ?? 0) >= WATERMARK_AUTO_CONFIDENCE).sort((a, b) => b.w * b.h - a.w * a.h)[0];
-        const fallback = [...eligible].filter((row) => row.source === "corner").sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
-        if (best) rect = { x: best.x, y: best.y, w: best.w, h: best.h };
-        else if (fallback) rect = { x: fallback.x, y: fallback.y, w: fallback.w, h: fallback.h };
-        const pageWarnings = Array.isArray(detected.warnings) ? detected.warnings.filter((row) => typeof row === "string") : [];
-        if (pageWarnings.length) warnings.push(...pageWarnings);
-        else if (!rect) warnings.push(detected.note || "\u6CA1\u68C0\u6D4B\u5230\u53EF\u4FE1\u7684\u6C34\u5370\u533A\u57DF\uFF0C\u8FD9\u6B21\u4E0D\u505A\u906E\u6321");
-      } else if (args.maskRect && typeof args.maskRect === "object") {
-        rect = args.maskRect;
-      }
-      await bridge("setMaskRect", rect);
-      if (rect) await bridge("applyMask");
-      const trimmed = await bridge("trim", trim);
-      if (trimmed.ok === true) await bridge("applyTrim");
-      return {
-        ok: true,
-        maskRect: rect,
-        ...watermarkCandidates ? { watermarkCandidates } : {},
-        trimBox: trimmed.box ?? null,
-        mode: trimmed.mode ?? (trim.mode ?? "union"),
-        pad: trimmed.pad ?? { top: 2, bottom: 2, left: 2, right: 2 },
-        alphaThreshold: trimmed.alphaThreshold ?? trim.alphaThreshold ?? 32,
-        unionFrames: trimmed.unionFrames ?? lastPrepare?.frames ?? 0,
-        ...warnings.length ? { warnings } : {}
-      };
-    },
-    async exportSheet(args) {
-      const dir = outDirOf(args.outDir);
-      const name2 = (args.name ?? "sheet").replace(/[\\/:*?"<>|]/g, "_");
-      const format = args.format === "webp" ? "webp" : "png";
-      const framesKnown = lastPrepare?.frames ?? 0;
-      const autoGrid = framesKnown === 48 ? { cols: 8, rows: 6 } : gridFor(framesKnown || 48);
-      const cols = Math.max(1, Math.floor(args.cols ?? autoGrid.cols));
-      const rows = Math.max(1, Math.floor(args.rows ?? autoGrid.rows));
-      const gridWarnings = framesKnown > 0 ? checkGridCapacity(framesKnown, cols, rows).warnings : [];
-      const state = await keytedParamsOf();
-      assertKeyedPresent(state.keyedCount);
-      const target = typeof args.charHeightPx === "number" && Number.isFinite(args.charHeightPx) && args.charHeightPx > 0 ? args.charHeightPx : void 0;
-      const passArgs = {
-        call: bridge,
-        cols,
-        rows,
-        format,
-        ...typeof args.quality === "number" ? { quality: args.quality } : {},
-        ...args.span ? { span: args.span } : {},
-        ...args.spanBasis === "bbox" ? { spanBasis: "bbox" } : {},
-        ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-        ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {}
-      };
-      let pass = await runExportPass({
-        ...passArgs,
-        ...target !== void 0 ? { charHeightPx: target } : {},
-        ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {}
-      });
-      const names = defaultFileNames({
-        name: name2,
-        cols,
-        rows,
-        format,
-        ...args.fileName ? { fileName: args.fileName } : {},
-        ...args.metaName ? { metaName: args.metaName } : {}
-      });
-      const withExt = names.file;
-      const metaBase = names.meta;
-      const targetDir = args.dirPerAction === true ? path20.join(dir, name2) : dir;
-      mkdirSync6(targetDir, { recursive: true });
-      const pngPath = path20.join(targetDir, withExt);
-      const metaPath = path20.join(targetDir, metaBase);
-      if (args.overwrite === false) {
-        if (existsSync3(pngPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${pngPath}`);
-        if (existsSync3(metaPath)) throw new Error(`\u76EE\u6807\u6587\u4EF6\u5DF2\u5B58\u5728\uFF0C\u4E14 overwrite=false\uFF1A${metaPath}`);
-      }
-      let correction;
-      if (target !== void 0) {
-        const outcome = await correctOnce({
-          first: pass,
-          target,
-          format,
-          ...args.correction === false ? { correctionEnabled: false } : {},
-          run: (requested) => runExportPass({
-            ...passArgs,
-            charHeightPx: requested,
-            ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {}
-          })
-        });
-        pass = outcome.pass;
-        correction = outcome.correction;
-      }
-      const { scaled, built, buffer, decoded: decodedSheet, measured, anchor: anchor2 } = pass;
-      const cellWidthOut = pass.cellWidth;
-      const cellHeightOut = pass.cellHeight;
-      const warnings = [...gridWarnings, ...pass.warnings];
-      const tmpPng = `${pngPath}.tmp-${process.pid}`;
-      writeFileSync3(tmpPng, buffer);
-      renameSync2(tmpPng, pngPath);
-      let loopCheck;
-      const wantsLoopCheck = args.loop === true || lastPrepare?.looped === true;
-      if (wantsLoopCheck && format === "png" && decodedSheet && cellWidthOut && cellHeightOut) {
-        const cells = framesKnown;
-        if (cells >= 2) {
-          try {
-            const sheet = decodedSheet;
-            const cellMask = fullMask(cellWidthOut, cellHeightOut);
-            const cellAt = (index) => cropRgba(sheet, {
-              x: index % cols * cellWidthOut,
-              y: Math.floor(index / cols) * cellHeightOut,
-              w: cellWidthOut,
-              h: cellHeightOut
-            });
-            let adjacentSum = 0;
-            for (let i = 0; i + 1 < cells; i++) adjacentSum += frameDiff(cellAt(i), cellAt(i + 1), cellMask);
-            loopCheck = closureOf(frameDiff(cellAt(cells - 1), cellAt(0), cellMask), adjacentSum / (cells - 1));
-            if (!loopCheck.ok) {
-              warnings.push(
-                `\u9996\u5C3E\u5DEE ${loopCheck.firstLastDiff} \u4E0E\u76F8\u90BB\u5E27\u5DEE ${loopCheck.adjacentDiff} \u4E0D\u540C\u91CF\u7EA7\uFF0C\u5FAA\u73AF\u6CA1\u95ED\u5408`
-              );
-            }
-          } catch (error62) {
-            warnings.push(
-              `\u5FAA\u73AF\u95ED\u5408\u6821\u9A8C\u6CA1\u7B97\u51FA\u6765\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09\uFF1A\u9996\u5C3E\u63A5\u4E0D\u63A5\u5F97\u4E0A\u672A\u7ECF\u9A8C\u8BC1`
-            );
-            loopCheck = void 0;
-          }
-        }
-      }
-      const meta3 = buildExportMeta({
-        built,
-        name: name2,
-        format,
-        cellWidth: cellWidthOut,
-        cellHeight: cellHeightOut,
-        anchor: anchor2,
-        anchorWritten: pass.anchorWritten,
-        fps: lastPrepare?.fps ?? 12,
-        scaled,
-        appliedParams: state.params ?? null
-      });
-      writeFileSync3(metaPath, JSON.stringify(meta3, null, 2), "utf8");
-      if (scaled.clamped) {
-        warnings.push(
-          `\u60F3\u8981 ${args.charHeightPx ?? args.targetHeight ?? "?"}px\uFF0C\u4F46\u5DE5\u5177\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u5B9E\u9645\u53EA\u6709 ${scaled.achievedPx}px`
-        );
-      }
-      let overlayPath;
-      if (args.debugOverlay === true) {
-        if (!measured || !decodedSheet) {
-          warnings.push("debugOverlay \u53EA\u5728 png \u5BFC\u51FA\u65F6\u751F\u6548\uFF08webp \u89E3\u4E0D\u56DE\u50CF\u7D20\uFF09\uFF0C\u8FD9\u6B21\u6CA1\u51FA\u6838\u5BF9\u56FE");
-        } else {
-          try {
-            const overlay = drawCellOverlay(decodedSheet, measured, { anchorX: anchor2.anchorX, anchorY: anchor2.anchorY });
-            overlayPath = path20.join(debugDirOf(args.outDir), `${name2}-overlay.png`);
-            writeFileSync3(overlayPath, encodePng(overlay.image));
-            if (measured.sampled) {
-              warnings.push(`\u6838\u5BF9\u56FE\u53EA\u753B\u4E86\u62BD\u6837\u7684 ${measured.perCell.length} \u683C\uFF08\u5171 ${measured.totalCells} \u683C\uFF09`);
-            }
-            if (overlay.flagged.length > 0) {
-              warnings.push(
-                `\u6838\u5BF9\u56FE\u91CC ${overlay.flagged.length} \u683C\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5%\uFF0C\u5DF2\u6807\u9EC4\uFF08\u7B2C ${overlay.flagged.slice(0, 5).join("\u3001")} \u683C\uFF09`
-              );
-            }
-          } catch (error62) {
-            warnings.push(`\u6838\u5BF9\u56FE\u6CA1\u753B\u51FA\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 150)}`);
-            overlayPath = void 0;
-          }
-        }
-      }
-      let worst;
-      if (format === "png") {
-        const stats = analyzeSpritePng(buffer);
-        const sampled = await worstOf(lastPrepare?.frames ?? 1, 3);
-        worst = sampled.worst;
-        void stats;
-      }
-      return {
-        ok: true,
-        pngPath,
-        metaPath,
-        sheet: { width: built.width ?? 0, height: built.height ?? 0 },
-        cell: { width: scaled.cellW, height: scaled.cellH },
-        scale: scaled.scale,
-        achievedPx: scaled.achievedPx,
-        ...scaled.auto ? {} : { charHeightPx: scaled.achievedPx },
-        ...scaled.clamped ? { scaleClamped: true } : {},
-        format,
-        bytes: buffer.byteLength,
-        ...worst ? { stats: { worst } } : {},
-        ...measured ? { measured } : {},
-        ...overlayPath ? { overlayPath } : {},
-        ...loopCheck ? { loopCheck } : {},
-        ...correction ? { correction } : {},
-        reported: { meta: meta3 },
-        warnings
-      };
-    },
-    async autotune(args) {
-      const goal = resolveAutotuneGoal(args.goal);
-      const iters = Math.max(1, Math.min(12, args.maxIters ?? 6));
-      const frame = Math.max(0, args.frame ?? 0);
-      const caller = args.params ?? {};
-      const startParams = {
-        mode: args.space?.mode?.[0] ?? "advanced",
-        intensity: args.space?.intensity?.[0] ?? 60,
-        softness: 60,
-        despill: 70,
-        greenToAlpha: 10,
-        aggressive: true,
-        autoPlate: false,
-        ...caller,
-        // 自动采色：键色错的话后面怎么调都没用（P3）。调用方显式给了 colorHex 就用它的。
-        colorHex: caller.colorHex ?? (await this.probeColor({ frame })).keyColor
-      };
-      let params = { ...startParams };
-      const trace = [];
-      let lastStats;
-      let startStats;
-      let reachedStep;
-      for (let round = 0; round < iters; round++) {
-        const preview = await this.keyPreview({ ...params, frame });
-        const stats2 = preview.stats;
-        if (!stats2) break;
-        lastStats = stats2;
-        if (round === 0) startStats = stats2;
-        const step = {
-          round,
-          params: { ...params },
-          bgResidual: stats2.bgResidual,
-          subjectCoverage: stats2.subjectCoverage,
-          edgeGreen: stats2.edgeGreen
-        };
-        trace.push(step);
-        if (stepReachedGoal(step, goal)) {
-          reachedStep = step;
-          break;
-        }
-        const bgOk = stats2.bgResidual <= goal.maxBgResidual;
-        const covOk = stats2.subjectCoverage >= goal.minSubjectCoverage;
-        const edgeOk = stats2.edgeGreen <= goal.maxEdgeGreen;
-        if (!bgOk && covOk) {
-          params = { ...params, intensity: Math.min(args.space?.intensity?.[1] ?? 90, (params.intensity ?? 60) + 10) };
-        } else if (!bgOk && !covOk) {
-          params = { ...params, softness: Math.min(100, (params.softness ?? 60) + 10) };
-        }
-        if (!edgeOk) {
-          params = { ...params, aggressive: true, greenToAlpha: Math.min(300, (params.greenToAlpha ?? 10) + 10) };
-        }
-      }
-      const outcome = resolveAutotune({ startParams, trace, goal, ...reachedStep ? { reachedStep } : {} });
-      const stats = outcome.reachedGoal ? lastStats : startStats;
-      return {
-        ok: true,
-        params: outcome.appliedParams,
-        appliedParams: outcome.appliedParams,
-        bestParams: outcome.bestParams,
-        ...outcome.bestStep ? { bestStep: outcome.bestStep } : {},
-        trace,
-        reachedGoal: outcome.reachedGoal,
-        ...outcome.warnings.length > 0 ? { warnings: outcome.warnings } : {},
-        ...stats ? { stats } : {}
-      };
-    },
-    async batch(args) {
-      const items = args.items ?? [];
-      const workers = Math.max(1, Math.min(4, Math.floor(args.concurrency ?? 1)));
-      if (workers > 1 && items.length > 1) {
-        const poolSize = Math.min(workers, items.length);
-        const pools = [];
-        try {
-          for (let i = 0; i < poolSize; i++) {
-            pools.push(createSpriteService({ ...options, idleMs }));
-          }
-          const buckets = pools.map(() => []);
-          items.forEach((item, index) => buckets[index % pools.length].push(item));
-          log("sprite_batch \u5E76\u53D1\u6267\u884C", { workers: poolSize, items: items.length });
-          const settled = await Promise.all(
-            pools.map(
-              (pool, index) => pool.batch({ outRoot: args.outRoot, items: buckets[index], ...args.overwrite === void 0 ? {} : { overwrite: args.overwrite } })
-            )
-          );
-          const results2 = settled.flatMap((one) => one.results);
-          const failures2 = settled.flatMap((one) => one.failures);
-          return { ok: failures2.length === 0, results: results2, failures: failures2 };
-        } finally {
-          await Promise.all(pools.map((pool) => pool.stop().catch(() => void 0)));
-        }
-      }
-      const results = [];
-      const failures = [];
-      for (const item of items) {
-        const name2 = item.name ?? item.action;
-        try {
-          const prepared = await this.prepare({
-            videoPath: item.videoPath,
-            start: item.start ?? 0,
-            end: item.end ?? 4,
-            fps: item.fps ?? 12
-          });
-          const keyColor = item.keyColor ?? (await this.probeColor({ frame: 0 })).keyColor;
-          const params = {
-            mode: item.mode ?? "advanced",
-            colorHex: keyColor,
-            intensity: item.intensity ?? 85,
-            softness: 100,
-            despill: 70,
-            greenToAlpha: 25,
-            aggressive: true,
-            autoPlate: false
-          };
-          const applied = await this.keyApply(params);
-          const measured = await this.measure({ frame: 0, overlay: true });
-          const cleaned = await this.cleanup({
-            maskRect: item.maskRect ?? null,
-            trim: { mode: item.trimMode ?? "union" }
-          });
-          const span = measured.alphaBBox ? { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 } : void 0;
-          const exported = await this.exportSheet({
-            ...typeof item.cols === "number" ? { cols: item.cols } : {},
-            ...typeof item.rows === "number" ? { rows: item.rows } : {},
-            ...item.targetCharHeight ? { charHeightPx: item.targetCharHeight, ...span ? { span } : {} } : {},
-            // 这个 span 是 alphaBBox（包围盒口径），不是"身高上端→下端"的语义 span：
-            // 标成 bbox，measured.basis 才不会谎称 semantic（P1-5）。
-            ...span ? { spanBasis: "bbox" } : {},
-            ...typeof item.anchorX === "number" ? { anchorX: item.anchorX } : {},
-            ...typeof item.anchorY === "number" ? { anchorY: item.anchorY } : {},
-            format: item.format ?? "png",
-            outDir: args.outRoot,
-            name: name2,
-            dirPerAction: true,
-            overwrite: args.overwrite ?? true
-          });
-          const metaAnchor = exported.reported?.meta ?? {};
-          results.push({
-            action: item.action,
-            name: name2,
-            ok: true,
-            ...exported.pngPath ? { pngPath: exported.pngPath } : {},
-            ...exported.metaPath ? { metaPath: exported.metaPath } : {},
-            ...exported.cell ? { cellW: exported.cell.width, cellH: exported.cell.height } : {},
-            ...typeof exported.scale === "number" ? { scale: exported.scale } : {},
-            ...typeof exported.achievedPx === "number" ? { charHeightPx: exported.achievedPx } : {},
-            ...typeof metaAnchor.anchorX === "number" ? { anchorX: metaAnchor.anchorX } : {},
-            ...typeof metaAnchor.anchorY === "number" ? { anchorY: metaAnchor.anchorY } : {},
-            ...typeof metaAnchor.anchorWritten === "boolean" ? { anchorWritten: metaAnchor.anchorWritten } : {},
-            ...applied.stats || applied.worst ? { stats: { ...applied.worst ? { worst: applied.worst } : {}, ...applied.stats ? { first: applied.stats } : {} } } : {},
-            ...measured.overlayPath ? { overlayPath: measured.overlayPath } : {},
-            ...exported.measured ? { measured: exported.measured } : {},
-            warnings: [
-              ...exported.warnings,
-              ...applied.warnings,
-              ...cleaned.trimBox ? [] : ["\u6CA1\u6709\u7B97\u51FA\u88C1\u526A\u6846"],
-              ...applied.plateApplied ? [] : [],
-              ...prepared.transport === "base64" ? ["\u89C6\u9891\u8D70\u7684\u662F base64 \u901A\u9053\uFF08\u8F83\u6162\uFF09"] : []
-            ]
-          });
-        } catch (error62) {
-          failures.push({ action: item.action, error: String(error62?.message ?? error62).slice(0, 300) });
-        }
-      }
-      return { ok: failures.length === 0, results, failures };
-    },
-    async auto(args) {
-      const stages = [];
-      const prepared = await this.prepare({ videoPath: args.videoPath, start: 0, end: 4, fps: 12 });
-      stages.push(`prepare: ${prepared.frames} \u5E27 ${prepared.width}x${prepared.height}`);
-      const color = await this.probeColor({ frame: 0 });
-      stages.push(`probeColor: ${color.keyColor} spread=${color.spread.toFixed(3)}`);
-      const tuned = await this.autotune({ frame: 0, maxIters: 6 });
-      const tunedParams = tuned.bestParams ?? tuned.appliedParams ?? tuned.params ?? { colorHex: color.keyColor };
-      stages.push(
-        `autotune: ${tuned.reachedGoal ? "\u8FBE\u6807" : "\u672A\u8FBE\u6807\uFF08\u6539\u7528\u641C\u7D22\u6700\u4F18\u89E3\uFF0Cwarning \u89C1\u4E0B\uFF09"}\uFF0C${tuned.trace.length} \u8F6E\uFF0C\u53C2\u6570 ${JSON.stringify(tunedParams)}`
-      );
-      const autotuneWarnings = Array.isArray(tuned.warnings) ? tuned.warnings : [];
-      const applied = await this.keyApply({ ...tunedParams });
-      stages.push(`keyApply: ${applied.frames} \u5E27\uFF0C\u7F13\u5B58 ${applied.keyedCount}`);
-      const measured = await this.measure({ frame: 0, overlay: true });
-      const span = { fromY: measured.alphaBBox.y0, toY: measured.alphaBBox.y1 - 1 };
-      stages.push(`measure: bbox=${JSON.stringify(measured.alphaBBox)} \u9AD8=${measured.contentHeight}`);
-      const cleaned = await this.cleanup({
-        maskRect: args.maskRect ?? null,
-        trim: { mode: args.trimMode ?? "union" }
-      });
-      stages.push(`cleanup: trim=${JSON.stringify(cleaned.trimBox)} mode=${cleaned.mode}`);
-      const exported = await this.exportSheet({
-        ...typeof args.cols === "number" ? { cols: args.cols } : {},
-        ...typeof args.rows === "number" ? { rows: args.rows } : {},
-        ...args.targetCharHeight ? { charHeightPx: args.targetCharHeight, span } : {},
-        // span 是 alphaBBox（包围盒口径）⇒ 标 bbox；measured 才不会把它当成语义身高（P1-5）。
-        spanBasis: "bbox",
-        // P0-1：锚点必须由 auto 转下去，否则 meta 里 anchorWritten 永远是 false，
-        // 下游只能读到默认 0.5/0（角色横向偏 20~40px）。
-        ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-        ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
-        format: args.format ?? "png",
-        ...args.outDir ? { outDir: args.outDir } : {},
-        name: args.name ?? path20.basename(args.videoPath).replace(/\.[^.]+$/, ""),
-        dirPerAction: true,
-        overwrite: true
-      });
-      stages.push(`export: ${exported.pngPath}\uFF08${exported.bytes} B\uFF09`);
-      return {
-        ...exported,
-        warnings: [...exported.warnings, ...applied.warnings, ...autotuneWarnings],
-        stages
-      };
-    },
-    async stop() {
-      if (stopped) return;
-      stopped = true;
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = void 0;
-      await recycle("\u505C\u673A");
-      const server = toolServer;
-      toolServer = void 0;
-      if (server) await new Promise((resolve) => server.close(() => resolve()));
-    }
-  };
-}
-function metaPathCandidates(imagePath) {
-  const ext = path20.extname(imagePath);
-  const stem = ext === "" ? imagePath : imagePath.slice(0, imagePath.length - ext.length);
-  return [`${stem}.meta.json`, `${stem}.json`];
-}
-function commonParentDir(paths) {
-  const dirs = paths.map((one) => path20.dirname(path20.resolve(one)));
-  if (dirs.length === 0) return process.cwd();
-  const parts = dirs.map((one) => one.split(path20.sep));
-  let common = parts[0].slice();
-  for (const other of parts.slice(1)) {
-    let i = 0;
-    while (i < common.length && i < other.length && common[i] === other[i]) i++;
-    common = common.slice(0, i);
-  }
-  if (common.length === 0) return dirs[0];
-  const joined = common.join(path20.sep);
-  return joined === "" ? dirs[0] : joined;
-}
-
-// src/sprite/guide.ts
-var SPRITE_GUIDANCE = [
-  "\u4F60\u6709\u300C\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u300D\u80FD\u529B\uFF1A\u628A\u5E26\u7EFF\u5E55\u80CC\u666F\u7684\u89C6\u9891\u8F6C\u6210\u900F\u660E\u5E95\u7CBE\u7075\u56FE\uFF08\u62BD\u5E27 \u2192 \u53D6\u8272 \u2192 \u62A0\u80CC\u666F \u2192 \u53BB\u6C34\u5370/\u88C1\u526A \u2192 \u62FC\u56FE\u5BFC\u51FA\uFF09\u3002",
-  "**\u505A\u8FD9\u7C7B\u6D3B\u4E4B\u524D\u5148\u52A0\u8F7D `dafeiyu-sprite` skill**\uFF1A\u5B83\u5199\u4E86\u91CF\u4EC0\u4E48\u3001\u5728\u54EA\u4E2A\u5750\u6807\u7A7A\u95F4\u91CF\u3001\u91CF\u9519\u4E86\u600E\u4E48\u81EA\u8BC1\uFF1B",
-  "`references/` \u91CC\u8FD8\u6709\u5DE5\u5177\u901F\u67E5\u3001\u53C2\u6570\u5206\u6863\u8868\u3001\u75C7\u72B6\u901F\u67E5\u3001\u5750\u6807\u6362\u7B97\u3002\u52A0\u8F7D\u4E0D\u5230\u5C31\u8C03 `sprite_guide`\u3002",
-  "",
-  "\u4E09\u6761\u786C\u89C4\u5219\uFF1A",
-  "- **\u952E\u8272\u5FC5\u987B\u5B9E\u6D4B**\uFF08\u7528 `sprite_probe_color`\uFF0C\u522B\u62FF #00FF00 \u786C\u731C\uFF09\uFF1B",
-  "- **\u5148 apply \u518D export**\uFF1A`sprite_key_preview` \u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF0Cexport \u524D\u5FC5\u987B\u91CD\u65B0 apply\uFF08\u5DE5\u5177\u4F1A\u76F4\u63A5\u62A5\u9519\u63D0\u9192\u4F60\uFF09\uFF1B",
-  "- \u53C2\u6570\u5206\u4E24\u6863\uFF08classic / advanced\uFF09\uFF0C\u4F20\u4E86\u4E0D\u751F\u6548\u6863\u7684\u53C2\u6570\u4F1A\u51FA\u73B0\u5728\u8FD4\u56DE\u7684 `ignored[]` \u91CC\uFF1B",
-  '- \u76EE\u6807\u5C3A\u5BF8\u7528 `sprite_scale_to` / `charHeightPx` + `span`\uFF08\u6309"\u89D2\u8272\u51C0\u9AD8"\uFF09\uFF0C\u522B\u7528 bbox \u9AD8\u786C\u51D1\u3002',
-  "",
-  '\u5224"\u767D\u8272"\u7528 `probe.channel:"whiteness"`\uFF08\u4F4E\u9971\u548C <25 \u4E14 luma >210\uFF09\uFF0C**\u522B\u7528 `r,g,b>200`**\u2014\u2014\u80A4\u8272\u4F1A\u5168\u90E8\u901A\u8FC7\u3002'
-].join("\n");
-var SPRITE_GUIDE = `# \u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\uFF08\u515C\u5E95\u901F\u67E5\uFF09
-
-> \u5B8C\u6574\u65B9\u6CD5\u8BBA\u5728 skill \`dafeiyu-sprite\`\uFF08\`SKILL.md\` + \`references/\`\uFF09\u3002\u8FD9\u4EFD\u662F\u8BFB\u4E0D\u5230\u5B83\u65F6\u7684\u515C\u5E95\u3002
-
-## \u516D\u6B65\u539F\u8BED
-
-1. \`sprite_prepare\` { videoPath, start=0, end=4, fps=12 } \u2192 \u5E27\u6570/\u5C3A\u5BF8
-2. \`sprite_probe_color\` \u2192 \`keyColor\`\uFF08**\u5FC5\u987B\u5B9E\u6D4B\u80CC\u666F\u8272**\uFF0C\u522B\u7528 #00FF00 \u786C\u731C\uFF09
-3. \`sprite_measure\` { frame, landmarks, overlay } \u2192 \`alphaBBox\` / \u6838\u5BF9\u56FE
-4. \`sprite_key_apply\` { mode, colorHex, intensity \u2026 } \u2192 \u62A0\u56FE + \`stats\` + \`worst\`
-5. \`sprite_cleanup\` { trim, maskRect:"auto" } \u2192 \u88C1\u526A\u6846
-6. \`sprite_export\` { cols, rows, charHeightPx, span, format } \u2192 PNG/webp + meta
-
-\u4E00\u6B21\u8DD1\u5B8C\u7528 \`sprite_auto\`\uFF1B\u591A\u6BB5\u7D20\u6750\u7528 \`sprite_batch\`\u3002
-
-## \u4E09\u6761\u786C\u89C4\u5219
-
-- **\u5148 apply \u518D export**\uFF1A\`sprite_key_preview\` \u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF1B
-- \u53C2\u6570\u5206 classic / advanced \u4E24\u6863\uFF0C\u4F20\u9519\u6863\u7684\u4F1A\u51FA\u73B0\u5728 \`ignored[]\`\uFF1B
-- \u76EE\u6807\u5C3A\u5BF8\u7528 \`charHeightPx\` + \`span\`\uFF08\u89D2\u8272\u51C0\u9AD8\uFF09\uFF0C\u4E0D\u8981\u7528 bbox \u9AD8\u3002
-
-## \u4E24\u4E2A\u6700\u5BB9\u6613\u8E29\u7684\u5751
-
-- \u5224\u767D\u8272\u7528 \`probe.channel:"whiteness"\`\uFF08\u9971\u548C\u5EA6 <25 \u4E14 luma >210\uFF09\uFF1B\`r,g,b>200\` \u4F1A\u628A\u80A4\u8272\u7B97\u6210\u767D\uFF1B
-- \`scan-horizontal\` / \`boundary\` \u7684 \`minRun\` **\u5FC5\u987B\u663E\u5F0F\u7ED9**\uFF0C\u5426\u5219\u4F1A\u88AB\u5446\u6BDB\u4E4B\u7C7B\u7684\u5C0F\u8272\u5757\u9A97\u8D70\u3002
-
-## meta \u5FC5\u5E26
-
-\`name / cols / rows / cellWidth / cellHeight / charHeightPx / scale / anchorX / anchorY / anchorYTopDown / anchorConvention / fps\`\uFF1B
-\`anchorY\` \u662F y-from-bottom\uFF0C\`anchorYTopDown\` \u662F\u9876\u53E3\u5F84\uFF0C\u76F4\u63A5\u8BFB\u5B57\u6BB5\u522B\u81EA\u5DF1\u6362\u7B97\u3002
-`;
-
-// src/sprite/tools.ts
-var json8 = (value) => JSON.stringify(value);
-var fail2 = (error62) => {
-  throw new Error(String(error62?.message ?? error62).slice(0, 500));
-};
-function keyParamsOf(args) {
-  const out = {};
-  if (args.mode === "classic" || args.mode === "advanced") out.mode = args.mode;
-  if (typeof args.colorHex === "string" && args.colorHex.trim() !== "") out.colorHex = args.colorHex.trim();
-  for (const key of ["intensity", "feather", "cleanup", "softness", "despill", "greenToAlpha", "advIntensity", "advFeather"]) {
-    const value = args[key];
-    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
-  }
-  for (const key of ["aggressive", "autoPlate"]) {
-    if (typeof args[key] === "boolean") out[key] = args[key];
-  }
-  return out;
-}
-function ignoredKeysOf(args) {
-  const known = /* @__PURE__ */ new Set([...KEY_PARAM_KEYS, "frame", "indices", "probeFrames"]);
-  return Object.keys(args).filter((key) => !known.has(key));
-}
-function rectOf(value) {
-  if (!value || typeof value !== "object") return void 0;
-  const raw = value;
-  const nums = [raw.x, raw.y, raw.w, raw.h];
-  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n))) return void 0;
-  return { x: Number(raw.x), y: Number(raw.y), w: Number(raw.w), h: Number(raw.h) };
-}
-function rectSchema(description) {
-  return {
-    type: "object",
-    description,
-    properties: {
-      x: { type: "number", description: "\u5DE6\u4E0A\u89D2 x\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u6574\u6570\uFF09" },
-      y: { type: "number", description: "\u5DE6\u4E0A\u89D2 y\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u6574\u6570\uFF09" },
-      w: { type: "number", description: "\u5BBD\uFF08\u50CF\u7D20\uFF0C>0\uFF09" },
-      h: { type: "number", description: "\u9AD8\uFF08\u50CF\u7D20\uFF0C>0\uFF09" }
-    },
-    required: ["x", "y", "w", "h"]
-  };
-}
-function sourceSchema() {
-  return {
-    type: "string",
-    enum: [...PIXEL_SOURCES],
-    description: "\u50CF\u7D20\u6765\u6E90\uFF1Akeyed\uFF08\u9ED8\u8BA4\uFF0C\u62A0\u56FE\u7ED3\u679C\uFF1B\u6CA1 keyApply \u4F1A\u62A5\u9519\uFF09\u6216 raw\uFF08\u539F\u5E27\uFF1B\u7EFF\u5E55\u7D20\u6750\u6574\u5E45\u4E0D\u900F\u660E\uFF0C\u526A\u5F71/\u6A21\u677F\u90FD\u4F1A\u88AB\u80CC\u666F\u6C61\u67D3\uFF09"
-  };
-}
-function scaleSchema(description) {
-  return {
-    type: "object",
-    description,
-    properties: {
-      min: { type: "number", description: "\u4E0B\u754C\uFF08\u9ED8\u8BA4\u6309\u5DE5\u5177\u7ED9\u7684\u9ED8\u8BA4\u503C\uFF09" },
-      max: { type: "number", description: "\u4E0A\u754C" },
-      step: { type: "number", description: "\u6B65\u957F" }
-    }
-  };
-}
-function scaleRangeOf(value) {
-  if (!value || typeof value !== "object") return void 0;
-  const raw = value;
-  const out = {};
-  if (typeof raw.min === "number" && Number.isFinite(raw.min)) out.min = raw.min;
-  if (typeof raw.max === "number" && Number.isFinite(raw.max)) out.max = raw.max;
-  if (typeof raw.step === "number" && Number.isFinite(raw.step)) out.step = raw.step;
-  return Object.keys(out).length > 0 ? out : void 0;
-}
-function referenceSchema(description) {
-  return {
-    type: "object",
-    description,
-    properties: {
-      frame: { type: "number", description: "\u5F53\u524D\u4F1A\u8BDD\u7684\u5E27\u53F7\uFF08\u9ED8\u8BA4 0\uFF09" },
-      imagePath: { type: "string", description: "\u78C1\u76D8\u4E0A\u4E00\u5F20 PNG \u7684\u7EDD\u5BF9\u8DEF\u5F84\uFF088-bit\u3001\u975E\u9694\u884C\uFF1B\u4E0A\u4E00\u6BB5\u7D20\u6750\u5BFC\u51FA\u7684\u90A3\u4E00\u5E27\uFF09" }
-    }
-  };
-}
-var PREPARE_LOOP_KEYS = ["targetFrames", "minPeriodSec", "targetMultiples", "mask"];
-function prepareLoopOf(value) {
-  const raw = value && typeof value === "object" ? value : {};
-  const loop = {};
-  if (typeof raw.targetFrames === "number" && Number.isFinite(raw.targetFrames)) loop.targetFrames = raw.targetFrames;
-  if (typeof raw.minPeriodSec === "number" && Number.isFinite(raw.minPeriodSec)) loop.minPeriodSec = raw.minPeriodSec;
-  if (Array.isArray(raw.targetMultiples)) {
-    const multiples = raw.targetMultiples.filter((one) => typeof one === "number" && Number.isFinite(one));
-    if (multiples.length > 0) loop.targetMultiples = multiples;
-  }
-  if (raw.mask === "body-core" || raw.mask === "none") loop.mask = raw.mask;
-  const known = new Set(PREPARE_LOOP_KEYS);
-  const ignored = Object.keys(raw).filter((key) => !known.has(key));
-  return { loop, ignored };
-}
-function referenceOf(value) {
-  if (!value || typeof value !== "object") return {};
-  const raw = value;
-  const out = {};
-  if (typeof raw.frame === "number" && Number.isFinite(raw.frame)) out.frame = raw.frame;
-  if (typeof raw.imagePath === "string" && raw.imagePath.trim() !== "") out.imagePath = raw.imagePath.trim();
-  return out;
-}
-var KEY_PROPERTIES = {
-  mode: { type: "string", enum: ["classic", "advanced"], description: "\u62A0\u56FE\u6863\u4F4D\uFF1Aclassic \u8D70 intensity/feather/cleanup\uFF1Badvanced \u8D70 softness/despill/aggressive/greenToAlpha/autoPlate" },
-  colorHex: { type: "string", description: "\u952E\u8272 #RRGGBB\u3002**\u5FC5\u987B\u7528 sprite_probe_color \u5B9E\u6D4B\u7684\u80CC\u666F\u8272**\uFF0C\u5199 #00FF00 \u57FA\u672C\u62A0\u4E0D\u51FA\u6765" },
-  intensity: { type: "number", description: "\u62A0\u8272\u529B\u5EA6 10~90\uFF08\u4E24\u6863\u90FD\u5403\uFF09" },
-  feather: { type: "number", description: "alpha \u7FBD\u5316\u534A\u5F84 0~100\uFF08\u4EC5 classic\uFF09" },
-  cleanup: { type: "number", description: "\u53BB\u8272\u6EA2\u51FA 0~100\uFF08\u4EC5 classic\uFF09" },
-  softness: { type: "number", description: "\u8F6F\u8FB9\u5BBD\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
-  despill: { type: "number", description: "\u53BB\u7EFF\u8FB9\u5F3A\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
-  greenToAlpha: { type: "number", description: "\u6B8B\u7EFF\u8F6C\u900F\u660E 0~300\uFF08\u4EC5 advanced\uFF09" },
-  aggressive: { type: "boolean", description: "\u4E3B\u4F53\u8F6E\u5ED3\u4E5F\u53BB\u7EFF\uFF08\u4EC5 advanced\uFF09" },
-  autoPlate: { type: "boolean", description: "\u81EA\u52A8\u80CC\u666F\u677F\uFF0C**\u53EA\u5728 key_apply \u751F\u6548**\uFF0Cpreview \u770B\u4E0D\u51FA\u6765\uFF08\u4EC5 advanced\uFF09" },
-  advIntensity: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u5F3A\u5EA6 0~100\uFF08\u4E0D\u6539 classic \u7684 intensity\uFF09" },
-  advFeather: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u7FBD\u5316 0~100" }
-};
-function keySchema(extra = {}) {
-  return { type: "object", properties: { ...KEY_PROPERTIES, ...extra } };
-}
-var OUT2 = {
-  schema: { type: "string" },
-  render: (_args, value) => [{ type: "text", text: String(value) }]
-};
-var LANDMARK_TYPES = [
-  "bbox-top",
-  "bbox-bottom",
-  "bbox-left",
-  "bbox-right",
-  "point",
-  "scan-vertical",
-  "scan-horizontal",
-  "boundary",
-  "bodyTop",
-  "bodyBottom"
-];
-function probeSchema(description) {
-  return {
-    type: "object",
-    description,
-    properties: {
-      channel: {
-        type: "string",
-        enum: [...SCAN_CHANNELS],
-        description: "\u901A\u9053\uFF1Ar/g/b/alpha \u53D6\u539F\u503C\uFF0Cluma=0.299r+0.587g+0.114b\uFF0Cblue-minus-red=b-r\uFF0Csaturation=max-min\uFF0Cwhiteness=\u4F4E\u9971\u548C(<25)\u4E14 luma>210 \u624D\u7B97\u767D\uFF08\u591F\u767D\u8FD4\u56DE luma\uFF0C\u5426\u5219 0\uFF1B\u5224\u767D\u8272\u522B\u7528 r,g,b>200\uFF0C\u80A4\u8272\u4F1A\u6F0F\uFF09"
-      },
-      op: { type: "string", enum: [...SCAN_OPS], description: "\u6BD4\u8F83\u65B9\u5F0F" },
-      value: { type: "number", description: "\u9608\u503C\uFF08\u901A\u9053\u53D6\u503C\u4E0E\u5B83\u6BD4\u8F83\uFF09" },
-      minRun: { type: "number", description: "\u8FDE\u7EED\u547D\u4E2D\u591A\u5C11\u884C\u624D\u7B97\u6570\uFF0C\u9ED8\u8BA4 1" }
-    },
-    required: ["channel", "op", "value"]
-  };
-}
-function buildTools(service, options) {
-  return [
-    {
-      name: "sprite_prepare",
-      description: "\u5E8F\u5217\u5E27\u7B2C\u4E00\u6B65\uFF1A\u5BFC\u5165\u89C6\u9891\u5E76\u62BD\u5E27\u3002\u8FD4\u56DE {frames,width,height,transport}\u3002transport=http \u8868\u793A\u89C6\u9891\u8D70\u672C\u5730\u76F4\u4F20\uFF08\u5FEB\uFF09\uFF1Bbase64 \u662F\u515C\u5E95\u901A\u9053\uFF08\u6162 20 \u79D2\u5DE6\u53F3\uFF09\u3002**\u5FAA\u73AF\u52A8\u4F5C**\uFF08\u8DD1/\u8D70/\u5F85\u673A/\u547C\u5438/\u6F02\u6D6E\u2014\u2014\u4F1A\u4E00\u76F4\u5FAA\u73AF\u64AD\u7684\uFF09\u52A0 `loop:{}`\uFF1A\u5185\u90E8\u4F1A\u5148\u6309 fps \u9884\u91C7\u6837\u6D4B\u51FA\u771F\u5B9E\u5468\u671F\uFF0C\u518D\u6309\u65B0\u91C7\u6837\u7387\u91CD\u65B0\u7CBE\u786E\u62BD T \u5E27\uFF0C\u8FD4\u56DE\u91CC\u591A\u7ED9 {fps,periodSec,loopClosed,loop}\uFF08\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20\uFF0C\u4F1A\u88AB\u622A\u6210\u534A\u622A\uFF09\u3002\u4E0D\u4F20 loop \u65F6\u884C\u4E3A\u4E0E\u4EE5\u524D\u5B8C\u5168\u4E00\u6837\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          videoPath: { type: "string", description: "\u89C6\u9891\u6587\u4EF6\u7EDD\u5BF9\u8DEF\u5F84\uFF08mp4/webm/mov\uFF0C\u2264200MB\uFF09" },
-          start: { type: "number", description: "\u8D77\u59CB\u79D2\uFF0C\u9ED8\u8BA4 0" },
-          end: { type: "number", description: "\u7ED3\u675F\u79D2\uFF0C\u9ED8\u8BA4 4" },
-          fps: { type: "number", description: "\u62BD\u5E27\u5E27\u7387\uFF0C\u9ED8\u8BA4 12\uFF08loop \u6A21\u5F0F\u4E0B\u662F**\u9884\u91C7\u6837**\u5E27\u7387\uFF0C\u81F3\u5C11\u8981 10\u3001\u4E14\u533A\u95F4 \u22652 \u79D2\uFF09" },
-          loop: {
-            type: "object",
-            description: '\u5FAA\u73AF\u95ED\u5408\uFF08\u53EF\u9009\u5F00\u5173\uFF09\uFF1A\u4F20\u4E86\u5C31\u8FDB"\u9884\u91C7\u6837 \u2192 \u81EA\u76F8\u5173\u6D4B\u5468\u671F \u2192 \u6309\u5468\u671F\u91CD\u91C7 T \u5E27"\u6D41\u7A0B\u3002\u5468\u671F\u5224\u4E0D\u6E05\uFF08\u66F2\u7EBF\u5E73\u7F13\uFF09\u65F6\u4F1A**\u62A5\u9519\u800C\u4E0D\u662F\u786C\u622A**\uFF0C\u8BF4\u660E\u8FD9\u6BB5\u52A8\u753B\u8BE5\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406\u3002',
-            properties: {
-              targetFrames: { type: "number", description: "\u4EA4\u4ED8\u5E27\u6570\uFF08\u9ED8\u8BA4\u4ECE targetMultiples \u91CC\u6311\uFF0C\u901A\u5E38 24 \u6216 48\uFF09" },
-              minPeriodSec: { type: "number", description: "\u6700\u77ED\u5468\u671F\uFF08\u79D2\uFF0C\u9ED8\u8BA4 2\uFF09\u3002\u52A8\u4F5C\u4E00\u4E2A\u5FAA\u73AF\u4E0D\u5230 2 \u79D2\u5C31\u8C03\u5C0F\uFF0C\u5426\u5219\u626B\u4E0D\u5230\u771F\u5468\u671F" },
-              targetMultiples: { type: "array", items: { type: "number" }, description: "\u5019\u9009\u4EA4\u4ED8\u5E27\u6570\uFF0C\u9ED8\u8BA4 [24,48]" },
-              mask: {
-                type: "string",
-                enum: [...LOOP_MASK_MODES],
-                description: "\u5468\u671F\u626B\u63CF\u7684\u63A9\u819C\u53E3\u5F84\uFF1Abody-core\uFF08\u9ED8\u8BA4\uFF09= \u7B2C 0 \u5E27\u6700\u5927\u8FDE\u901A\u57DF + 1px \u8150\u8680\uFF1Bnone = \u6574\u5E45\uFF08\u7EFF\u5E55\u7D20\u6750\u522B\u7528\uFF09"
-              }
-            }
-          }
-        },
-        required: ["videoPath"]
-      },
-      output: OUT2,
-      timeoutMs: 24e4,
-      async execute(args) {
-        const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
-        if (videoPath === "") return fail2("\u9700\u8981 videoPath\uFF08\u89C6\u9891\u7EDD\u5BF9\u8DEF\u5F84\uFF09");
-        const looped = args.loop !== void 0 ? prepareLoopOf(args.loop) : void 0;
-        try {
-          const result2 = await service.prepare({
-            videoPath,
-            ...typeof args.start === "number" ? { start: args.start } : {},
-            ...typeof args.end === "number" ? { end: args.end } : {},
-            ...typeof args.fps === "number" ? { fps: args.fps } : {},
-            ...looped ? { loop: looped.loop } : {}
-          });
-          return json8(looped && looped.ignored.length > 0 ? { ...result2, ignoredLoop: looped.ignored } : result2);
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_loop_scan",
-      description: '\u626B**\u5F53\u524D\u4F1A\u8BDD\u5DF2\u62BD\u597D\u7684\u5E27**\u7684\u5FAA\u73AF\u5468\u671F\uFF08\u81EA\u76F8\u5173\uFF1Ascore(L)=\u5E73\u5747\u5E27\u5DEE(i,i+L)\uFF09\uFF0C\u53EA\u7ED9\u5EFA\u8BAE\u3001**\u4E0D\u6539\u4F1A\u8BDD\u72B6\u6001**\uFF08\u4E0D\u6539 fps\u3001\u4E0D\u6539\u5E27\u3001\u4E0D\u6539\u951A\u70B9\uFF09\u3002\u8FD4\u56DE {periodFrames,periodSec,suggestedFps,targetFrames,scoreCurve,closureScore,confidence,suggestedAction,warnings}\u3002\u524D\u7F6E\uFF1A\u4F1A\u8BDD fps \u226510 \u4E14\u5E27\u6570 \u226524\uFF08\u4E0D\u591F\u4F1A\u76F4\u63A5\u62A5\u4E2D\u6587\u9519\uFF0C\u8BA9\u4F60\u5148 sprite_prepare \u5230 12fps\uFF09\u3002\u7B97\u6CD5\u53E3\u5F84\uFF1A\u63A9\u819C\u53EA\u7528**\u7B2C 0 \u5E27\u90A3\u5F20** body-core\uFF08\u9010\u5E27\u5404\u7B97\u4F1A\u8BA9\u8FB9\u754C\u53D8\u5316\u5192\u5145\u52A8\u4F5C\u5DEE\u5F02\uFF09\uFF1B\u81EA\u76F8\u5173\u5148\u5728 1/4 \u964D\u91C7\u6837\u4E0A\u626B\uFF08\u5168\u5206\u8FA8\u7387 48 \u5E27\xD719 \u5019\u9009 \u224816 \u4EBF\u6B21\uFF0C\u4F1A\u5361\u6B7B\uFF09\uFF0C\u53EA\u5728\u6700\u4F18 L \u4E0A\u56DE\u5168\u5206\u8FA8\u7387\u590D\u6838 L\xB11\u3002closureScore = \u672B\u5E27\u4E0E\u9996\u5E27\u4E4B\u5DEE \xF7 \u76F8\u90BB\u5E27\u5E73\u5747\u5DEE\uFF1A\u22480 \u8BF4\u660E\u8FD8\u6709\u91CD\u590D\u5E27\u3001\u660E\u663E >1 \u8BF4\u660E\u6CA1\u95ED\u5408\u3002**confidence=low \u65F6**\uFF1A\u8FD4\u56DE\u91CC\u4F1A\u6709 `suggestedAction:"treat-as-one-shot"`\uFF0C\u5E76\u4E14 `warnings[0]` \u5C31\u662F"\u5EFA\u8BAE\u6309\u4E00\u6B21\u6027\u52A8\u4F5C\u5904\u7406\uFF08\u522B\u505A\u5FAA\u73AF\u95ED\u5408\uFF09"\u2014\u2014\u76F4\u63A5\u7167\u5B83\u529E\uFF0C\u522B\u53EA\u7FFB reason\u3002**\u53EA\u5BF9\u5FAA\u73AF\u52A8\u4F5C\u8C03\u5B83**\uFF1B\u8981\u771F\u6309\u5468\u671F\u91CD\u91C7\uFF0C\u7528 sprite_prepare({loop})\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          preFps: { type: "number", description: "\u9884\u91C7\u6837\u5E27\u7387\uFF08\u9ED8\u8BA4\u53D6\u4F1A\u8BDD\u5F53\u524D fps\uFF09\uFF1A\u53EA\u7528\u4E8E\u56DE\u663E/\u5BF9\u8D26\uFF0C\u5468\u671F\u6362\u7B97\u4E00\u5F8B\u7528\u4F1A\u8BDD\u5B9E\u9645\u5E27\u7387" },
-          minPeriodSec: {
-            type: "number",
-            description: "\u6700\u77ED\u5468\u671F\uFF08\u79D2\uFF0C\u9ED8\u8BA4 2\uFF09\u3002\u4F4E\u4E8E\u5B83\uFF08\xD7 fps\uFF09\u7684\u5019\u9009\u4E0D\u626B\u2014\u2014\u52A8\u4F5C\u5468\u671F\u66F4\u77ED\u5C31\u8C03\u5C0F\uFF0C\u5426\u5219\u626B\u5230\u7684\u53EA\u4F1A\u662F\u566A\u58F0"
-          },
-          targetMultiples: {
-            type: "array",
-            items: { type: "number" },
-            description: '\u5019\u9009\u4EA4\u4ED8\u5E27\u6570\uFF08\u9ED8\u8BA4 [24,48]\uFF09\uFF1A\u6311"\u65B0\u91C7\u6837\u7387\u79BB\u9884\u91C7\u6837\u7387\u6700\u8FD1"\u7684\u90A3\u4E2A\uFF0C\u907F\u514D\u63D2\u503C\u51D1\u5E27'
-          },
-          mask: {
-            type: "string",
-            enum: [...LOOP_MASK_MODES],
-            description: "\u63A9\u819C\u53E3\u5F84\uFF1Abody-core\uFF08\u9ED8\u8BA4\uFF0C\u7B2C 0 \u5E27\u6700\u5927\u8FDE\u901A\u57DF + 1px \u8150\u8680\uFF09\u6216 none\uFF08\u6574\u5E45\u90FD\u7B97\uFF0C\u7EFF\u5E55\u566A\u58F0\u4F1A\u538B\u5BF9\u6BD4\u5EA6\uFF09"
-          }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 24e4,
-      async execute(args) {
-        try {
-          return json8(
-            await service.loopScan({
-              ...typeof args.preFps === "number" ? { preFps: args.preFps } : {},
-              ...typeof args.minPeriodSec === "number" ? { minPeriodSec: args.minPeriodSec } : {},
-              ...Array.isArray(args.targetMultiples) ? { targetMultiples: args.targetMultiples.filter((one) => typeof one === "number") } : {},
-              ...args.mask === "body-core" || args.mask === "none" ? { mask: args.mask } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_probe_color",
-      description: "\u4ECE\u5E27\u7684\u56DB\u8FB9\u5E26\u81EA\u52A8\u91C7\u6837\u80CC\u666F\u8272\uFF0C\u8FD4\u56DE {keyColor,spread,samples,rejected}\u3002spread \u8D8A\u5C0F\u8BF4\u660E\u80CC\u666F\u8D8A\u5747\u5300\uFF08<0.05 \u53EF\u7528\uFF09\uFF1B\u88AB\u4E3B\u4F53\u538B\u4F4F\u3001\u5224\u4E0D\u51C6\u7684\u8FB9\u4F1A\u8FDB rejected\u3002**\u62A0\u56FE\u524D\u5148\u8C03\u5B83\u3002**",
-      parameters: {
-        type: "object",
-        properties: {
-          frame: { type: "number", description: "\u7528\u7B2C\u51E0\u5E27\u91C7\u6837\uFF0C\u9ED8\u8BA4 0" },
-          bandPx: { type: "number", description: "\u8FB9\u6846\u5E26\u5BBD\u5EA6\uFF08\u50CF\u7D20\uFF09\uFF0C\u9ED8\u8BA4\u6309\u77ED\u8FB9 3% \u81EA\u52A8\u53D6" }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 6e4,
-      async execute(args) {
-        try {
-          return json8(
-            await service.probeColor({
-              ...typeof args.frame === "number" ? { frame: args.frame } : {},
-              ...typeof args.bandPx === "number" ? { bandPx: args.bandPx } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_key_preview",
-      description: "\u6309\u53C2\u6570\u62A0**\u4E00\u5E27**\u5E76\u8FD4\u56DE\u91CF\u5316\u6307\u6807\uFF08bgResidual/subjectCoverage/edgeGreen/alphaHistogram\uFF09\uFF0C\u79D2\u7EA7\uFF0C\u7528\u6765\u8FED\u4EE3\u53C2\u6570\u3002\u26A0\uFE0F \u5B83\u4F1A\u6E05\u7A7A\u62A0\u56FE\u7F13\u5B58\uFF1A\u4E4B\u540E\u8981\u5BFC\u51FA\u5FC5\u987B\u91CD\u65B0 sprite_key_apply\u3002autoPlate \u5728\u9884\u89C8\u91CC\u4E0D\u751F\u6548\uFF08\u53EA\u5728 apply \u751F\u6548\uFF09\u3002",
-      parameters: keySchema({ frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" } }),
-      output: OUT2,
-      timeoutMs: 12e4,
-      async execute(args) {
-        try {
-          const result2 = await service.keyPreview({
-            ...keyParamsOf(args),
-            ...typeof args.frame === "number" ? { frame: args.frame } : {}
-          });
-          return json8({ ...result2, ignored: ignoredKeysOf(args) });
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_key_apply",
-      description: "\u628A\u53C2\u6570\u5E94\u7528\u5230**\u5168\u90E8\u5E27**\uFF08\u542B\u81EA\u52A8\u80CC\u666F\u677F\uFF09\uFF0C\u5B8C\u6210\u540E\u56DE {frames,keyedCount,stats,worst,appliedParams,warnings}\u3002\u6162\uFF0C30~90 \u79D2\u3002worst \u662F\u62BD\u6837\u5E27\u91CC\u6700\u5DEE\u7684\u4E00\u5E27\u2014\u2014\u7B2C 0 \u5E27\u5E72\u51C0\u4E0D\u4EE3\u8868\u6574\u6BB5\u5E72\u51C0\u3002warnings \u91CC\u51FA\u73B0\u300C\u753B\u9762\u8FB9\u7F18\u6709\u4E3B\u4F53/\u9053\u5177\u538B\u8FB9\u300D= \u8FB9\u6846\u5E26\uFF08\u77ED\u8FB9 2%\uFF09\u4E0D\u900F\u660E > 5%\uFF1A\u591A\u534A\u662F\u624B/\u7279\u6548\u88AB\u62A0\u6210\u4E86\u4E3B\u4F53\uFF0C\u8FD9\u79CD\u5E27\u7684 bbox \u4F1A\u6491\u5230\u753B\u6846\uFF0C\u5148\u770B\u6838\u5BF9\u56FE\u518D\u5F80\u4E0B\u8D70\u3002",
-      parameters: keySchema(),
-      output: OUT2,
-      timeoutMs: 6e5,
-      async execute(args) {
-        try {
-          const result2 = await service.keyApply(keyParamsOf(args));
-          return json8({ ...result2, ignored: ignoredKeysOf(args) });
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_measure",
-      description: '\u91CF\u8FD9\u5F20\uFF08\u6216\u5168\u90E8\uFF09\u5E27\u7684\u5185\u5BB9\u8FB9\u754C\uFF1AalphaBBox / contentHeight / perFrameSpread / \u53EF\u9009 landmarks\uFF0C\u5E76\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE\uFF08overlayPath\uFF09\u3002frame:"all" \u80FD\u7ED9\u6BCF\u5E27 topY/soleY \u7684\u6781\u503C\u5206\u5E03\u2014\u2014\u7528\u5B83\u533A\u5206"\u771F\u5185\u5BB9"\u548C"\u67D0\u5E27\u7684\u6B8B\u7559"\u3002\u5750\u6807\u4E00\u5F8B\u300C\u5E27\u539F\u59CB\u50CF\u7D20\u3001\u5DE6\u4E0A\u539F\u70B9\u3001\u53F3\u4E0B\u5F00\u533A\u95F4\u300D\u3002\u540C\u65F6\u91CF\u4E86 bodyTop + bodyBottom \u65F6\u4F1A\u5728 warnings \u91CC\u62A5\u300C\u7591\u4F3C\u88AB\u906E\u6321/\u5F62\u53D8\u300D\uFF08\u5404\u5217 py \u6781\u5DEE > \u5E27\u9AD8 10% \u6216\u7F6E\u4FE1\u5EA6 < 0.6\uFF09\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          frame: { type: "number", description: "\u7B2C\u51E0\u5E27\uFF0C\u9ED8\u8BA4 0" },
-          all: { type: "boolean", description: 'true = \u7EDF\u8BA1\u5168\u90E8\u5E27\uFF08\u7ED9 perFrameSpread\uFF0C\u7528\u6765\u53D1\u73B0"\u67D0\u5E27\u6709\u6B8B\u7559"\uFF09' },
-          alphaThreshold: { type: "number", description: "alpha \u9608\u503C\uFF0C\u9ED8\u8BA4 32" },
-          overlay: { type: "boolean", description: "\u662F\u5426\u8F93\u51FA\u6838\u5BF9\u56FE\uFF0C\u9ED8\u8BA4 true" },
-          source: { type: "string", enum: ["keyed", "raw"], description: "\u91CF\u62A0\u56FE\u7ED3\u679C\uFF08\u9ED8\u8BA4 keyed\uFF09\u8FD8\u662F\u539F\u59CB\u5E27\uFF08raw\uFF09" },
-          landmarks: {
-            type: "array",
-            description: "\u8981\u91CF\u7684\u57FA\u51C6\u70B9\uFF1B\u4E0D\u4F20\u5C31\u53EA\u7ED9\u51E0\u4F55\u7EDF\u8BA1\u3002\u91CF\u989C\u8272\u4EA4\u754C\uFF08\u4E0D\u9760 alpha\uFF09\uFF1Ascan-horizontal = \u6CBF\u5217\u626B\u7B2C\u4E00\u4E2A\u8FDE\u7EED\u6EE1\u8DB3 probe \u7684 run\uFF08\u7ED9 columns \u5C31\u591A\u5217\u6295\u7968\uFF0C\u5355\u5217\u4F1A\u88AB\u5446\u6BDB/\u624B/\u7279\u6548\u9A97\u51E0\u5341 px\uFF09\uFF1Bboundary = \u300Ca \u6BB5\u7ED3\u675F\u3001\u7D27\u63A5 b \u6BB5\u300D\u7684\u4EA4\u754C\u884C\uFF08\u8FD4\u56DE\u7684 py \u662F b \u6BB5\u7B2C\u4E00\u884C\uFF09\uFF1BbodyTop = \u8EAB\u9AD8\u4E0A\u7AEF\uFF08\u591A\u5217\u626B\u63CF + \u53D6 min\uFF09\uFF1BbodyBottom = \u8EAB\u9AD8\u4E0B\u7AEF\uFF08\u4E2D\u592E\u5E26\u884C\u626B\u63CF\uFF0C\u4ECE\u4E0B\u5F80\u4E0A\u627E\uFF09\u3002\u6761\u4EF6\u5168\u7531\u4F60\u7ED9\uFF08channel/op/value\uFF09\uFF0C\u626B\u4E0D\u5230\u6216\u8D8A\u754C\u56DE found:false + reason\uFF0C\u4E0D\u4F1A\u8BA9\u6574\u6B21 measure \u5931\u8D25\u3002\u540C\u65F6\u91CF\u51FA bodyTop \u4E0E bodyBottom \u65F6\u4F1A\u505A\u4EA4\u53C9\u6821\u9A8C\uFF0C\u53EF\u7591\u5C31\u56DE warnings\uFF08\u7591\u4F3C\u88AB\u906E\u6321/\u5F62\u53D8\uFF09\u3002",
-            items: {
-              type: "object",
-              properties: {
-                id: { type: "string" },
-                type: { type: "string", enum: [...LANDMARK_TYPES] },
-                x: { type: "number", description: "\u5355\u5217\u626B\u63CF\u7684\u5217\u53F7\uFF08\u4E0E columns \u4E92\u65A5\uFF1B\u53EA\u7ED9 x \u5C31\u662F\u8001\u7684\u5355\u5217\u884C\u4E3A\uFF09" },
-                y: { type: "number" },
-                columns: {
-                  description: '\u591A\u5217\u626B\u63CF\u8981\u626B\u54EA\u51E0\u5217\uFF08\u4E0E x \u4E92\u65A5\uFF0C\u4E24\u4E2A\u90FD\u7ED9\u4F1A\u62A5\u9519\uFF09\uFF1A\u50CF\u7D20\u6570\u7EC4 [200,260,320,380]\uFF1B\u6216\u5B57\u7B26\u4E32 "0.30..0.70 step 0.05"\u2014\u2014\u5B57\u7B26\u4E32\u91CC a/b/step \u4E09\u4E2A\u6570\u662F**\u5E27\u5BBD\u7684\u6BD4\u4F8B**\uFF08\u5185\u90E8 \xD7 \u5E27\u5BBD\u53D6\u6574\uFF09\uFF0C\u4E0D\u662F\u50CF\u7D20\uFF1B\u6700\u591A 200 \u5217\u3002bodyTop \u7528\u5B83\uFF0CbodyBottom \u4E0D\u7528\u3002',
-                  oneOf: [{ type: "string" }, { type: "array", items: { type: "number" } }]
-                },
-                aggregate: {
-                  type: "string",
-                  enum: [...SCAN_AGGREGATES],
-                  description: "\u591A\u5217\u6295\u7968\u65B9\u5F0F\uFF08\u9ED8\u8BA4 median\uFF1BbodyTop \u9ED8\u8BA4 min\uFF09\u3002\u53EA\u7528\u547D\u4E2D\u7684\u5217\uFF1Bmode \u5E73\u7968\u53D6\u6700\u5C0F\u7684 py\u3002\u547D\u4E2D\u5217\u6570 < 50% \u76F4\u63A5 found:false + reason\uFF0CperColumn \u91CC\u80FD\u770B\u5230\u54EA\u51E0\u5217\u6302\u4E86\u3002"
-                },
-                minRun: { type: "number", description: "bodyTop\uFF1A\u8FDE\u7EED\u547D\u4E2D\u591A\u5C11\u884C\u624D\u7B97\u6570\uFF08\u8986\u76D6 probe.minRun\uFF09" },
-                band: {
-                  type: "object",
-                  description: "bodyBottom\uFF1A\u884C\u626B\u63CF\u7684\u4E2D\u592E\u7AD6\u5E26\uFF08\u90FD\u662F\u5E27\u5BBD\u6BD4\u4F8B\uFF0CcenterFrac \u9ED8\u8BA4 0.5\u3001widthFrac \u9ED8\u8BA4 0.4\uFF09",
-                  properties: {
-                    centerFrac: { type: "number" },
-                    widthFrac: { type: "number" }
-                  }
-                },
-                minRunPx: {
-                  type: "number",
-                  description: "bodyBottom\uFF1A\u8BE5\u884C\u4E0A\u8FDE\u7EED\u6EE1\u8DB3\u6761\u4EF6\u7684**\u50CF\u7D20\u6570**\u4E0B\u9650\uFF08\u9ED8\u8BA4 1\uFF0C\u5B9E\u9645\u7528\u5FC5\u987B\u7ED9\uFF0C\u5426\u5219\u6563\u843D\u9634\u5F71\u4E5F\u80FD\u6EE1\u8DB3\uFF09"
-                },
-                fromY: { type: "number", description: "\u626B\u63CF\u8D77\u70B9\u884C\uFF08\u542B\uFF09\uFF0C\u9ED8\u8BA4 0" },
-                toY: { type: "number", description: "\u626B\u63CF\u7EC8\u70B9\u884C\uFF08\u542B\uFF09\uFF0C\u9ED8\u8BA4 \u5E27\u9AD8 - 1" },
-                alphaThreshold: { type: "number" },
-                probe: probeSchema("\u626B\u63CF\u6761\u4EF6\uFF08\u901A\u9053 + \u6BD4\u8F83 + \u9608\u503C + \u53EF\u9009 minRun \u8FDE\u7EED\u957F\u5EA6\uFF09"),
-                a: probeSchema("boundary \u4E0A\u65B9\u90A3\u4E00\u6BB5\uFF08A\uFF09\u7684\u6761\u4EF6"),
-                b: probeSchema("boundary \u4E0B\u65B9\u90A3\u4E00\u6BB5\uFF08B\uFF09\u7684\u6761\u4EF6")
-              },
-              required: ["id", "type"]
-            }
-          }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 3e5,
-      async execute(args) {
-        try {
-          return json8(
-            await service.measure({
-              frame: args.all === true ? "all" : typeof args.frame === "number" ? args.frame : 0,
-              ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
-              ...Array.isArray(args.landmarks) ? { landmarks: args.landmarks } : {},
-              ...typeof args.overlay === "boolean" ? { overlay: args.overlay } : {},
-              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_scale_to",
-      description: '\u6309**\u76EE\u6807\u7269\u7406\u91CF**\u53CD\u63A8\u7F29\u653E\uFF0C\u56DE {scale,wantedScale,clamped,sourcePx,achievedPx,cellW,cellH}\u3002charHeightPx + span\uFF08\u4E24\u4E2A\u57FA\u51C6\u884C\uFF09\u662F\u63A8\u8350\u7528\u6CD5\uFF1BtargetCellHeight \u662F\u65E7\u7684"\u6574\u683C\u9AD8"\u8BED\u4E49\uFF1B\u90FD\u4E0D\u7ED9\u5C31\u6309\u9996\u5E27 bbox \u9AD8\u3002\u7F29\u653E\u4E0A\u9650 300%\uFF0C\u8D85\u4E86 clamped=true \u5E76\u5728 achievedPx \u91CC\u7ED9\u771F\u5B9E\u503C\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          charHeightPx: { type: "number", description: "\u76EE\u6807\uFF1A\u89D2\u8272/\u5185\u5BB9\u51C0\u9AD8\uFF08\u50CF\u7D20\uFF09" },
-          targetCellHeight: { type: "number", description: "\u76EE\u6807\uFF1A\u6574\u683C\u9AD8\uFF08\u65E7\u8BED\u4E49\uFF09" },
-          span: {
-            type: "object",
-            description: "\u53C2\u4E0E\u8BA1\u7B97\u7684\u4E24\u4E2A\u57FA\u51C6\u884C\uFF08\u5E27\u50CF\u7D20\uFF0C\u542B\u7AEF\u70B9\uFF09",
-            properties: { fromY: { type: "number" }, toY: { type: "number" } }
-          }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 12e4,
-      async execute(args) {
-        try {
-          const span = args.span && typeof args.span === "object" && typeof args.span.fromY === "number" && typeof args.span.toY === "number" ? {
-            fromY: Number(args.span.fromY),
-            toY: Number(args.span.toY)
-          } : void 0;
-          return json8(
-            await service.scaleTo({
-              ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
-              ...typeof args.targetCellHeight === "number" ? { targetCellHeight: args.targetCellHeight } : {},
-              ...span ? { span } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_get_anchor",
-      description: "\u8BFB\u5F53\u524D\u951A\u70B9\uFF1A{anchorX,anchorY,convention,pixels,frameWidth,frameHeight}\u3002convention \u56FA\u5B9A y-from-bottom\uFF080=\u5E27\u5E95\uFF09\uFF1B\u4E3B\u6D41\u8FD0\u884C\u65F6\u5E38\u7528 y-from-top\uFF0C\u4E24\u8005\u662F 1-y \u7684\u5173\u7CFB\u3002",
-      parameters: { type: "object", properties: {} },
-      output: OUT2,
-      timeoutMs: 6e4,
-      async execute() {
-        try {
-          return json8(await service.getAnchor());
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_set_anchor",
-      description: '\u6309**\u50CF\u7D20**\u8BBE\u951A\u70B9\uFF1A{x,y,convention?}\u3002\u26A0\uFE0F \u50CF\u7D20\u7A7A\u95F4\u662F**\u6700\u7EC8\u683C\u5B50**\uFF08\u88C1\u526A+\u6700\u5C0F\u5316+\u7F29\u653E\u4E4B\u540E\uFF09\uFF0C\u4E0D\u662F\u539F\u5E27\u2014\u2014\u4F20\u539F\u5E27\u5750\u6807\u4F1A\u88AB\u5939\u5230\u8FB9\u754C\u3002y \u9ED8\u8BA4\u4ECE\u683C\u5E95\u5F80\u4E0A\u91CF\uFF08y-from-bottom\uFF09\uFF1Bconvention:"y-from-top" \u65F6\u6309\u4ECE\u9876\u5F80\u4E0B\u89E3\u91CA\u3002\u8BBE\u7F6E\u540E get_anchor \u80FD\u8BFB\u56DE\u540C\u4E00\u7EC4\u503C\uFF08\u95ED\u73AF\uFF09\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          x: { type: "number", description: "\u951A\u70B9 x\uFF08\u5E27\u50CF\u7D20\uFF09" },
-          y: { type: "number", description: "\u951A\u70B9 y\uFF08\u5E27\u50CF\u7D20\uFF1B\u53E3\u5F84\u7531 convention \u51B3\u5B9A\uFF09" },
-          convention: { type: "string", enum: ["y-from-bottom", "y-from-top"], description: "\u9ED8\u8BA4 y-from-bottom" }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 6e4,
-      async execute(args) {
-        try {
-          return json8(
-            await service.setAnchorPx({
-              ...typeof args.x === "number" ? { x: args.x } : {},
-              ...typeof args.y === "number" ? { y: args.y } : {},
-              ...args.convention === "y-from-bottom" || args.convention === "y-from-top" ? { convention: args.convention } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_cleanup",
-      description: '\u53BB\u6C34\u5370\uFF08maskRect \u53EF\u9009\u77E9\u5F62\u6216 "auto" \u81EA\u52A8\u8BC6\u522B\uFF09+ \u88C1\u526A\uFF08trim \u7B56\u7565\u53EF\u9009\uFF09\u3002maskRect:"auto" \u65F6\u5148\u5728\u56DB\u89D2\u4E25\u683C\u5224\u636E\u91CC\u627E\u89D2\u6807\uFF0C\u5224\u4E0D\u51FA\u9AD8\u7F6E\u4FE1\u4F1A\u81EA\u52A8\u9000\u5230\u56DB\u89D2 40~120px \u515C\u5E95\u626B\u63CF\uFF1B\u5168\u90E8\u5019\u9009\uFF08\u542B\u7F6E\u4FE1\u5EA6\u3001\u547D\u4E2D/\u672A\u9009\u539F\u56E0\uFF09\u90FD\u5728 watermarkCandidates \u91CC\u6309\u7F6E\u4FE1\u5EA6\u964D\u5E8F\u7ED9\u51FA\u3002trim.mode:"union" \u662F 48 \u5E27\u5E76\u96C6\uFF08\u9632\u622A\u80A2\uFF0C\u4F46\u6F02\u6D6E\u7269\u4F1A\u6491\u5927\u683C\u5B50\uFF09\uFF1B"first-frame" \u53EA\u6309\u9996\u5E27+pad\uFF08\u683C\u5B50\u7A33\uFF09\u3002\u8FD4\u56DE\u91CC\u56DE\u663E pad / alphaThreshold / unionFrames\uFF0C\u65B9\u4FBF\u5BF9\u8D26\uFF08\u5DEE 1~2px \u65F6\u5148\u770B\u8FD9\u91CC\uFF09\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u8BC6\u522B\u6C34\u5370\u533A\u57DF\u518D\u906E" },
-          maskRect: {
-            type: "object",
-            description: "\u53BB\u6C34\u5370\u77E9\u5F62 {x,y,w,h}\uFF08\u7701\u7565=\u4E0D\u906E\uFF09",
-            properties: { x: { type: "number" }, y: { type: "number" }, w: { type: "number" }, h: { type: "number" } }
-          },
-          maskMode: {
-            type: "string",
-            enum: ["auto", "corner"],
-            description: "\u81EA\u52A8\u8BC6\u522B\u7684\u7B56\u7565\uFF08\u9ED8\u8BA4 auto\uFF09\uFF1Aauto = \u4E25\u683C\u5224\u636E\u4F18\u5148\u3001\u5224\u4E0D\u51FA\u9AD8\u7F6E\u4FE1\u624D\u56DB\u89D2\u515C\u5E95\uFF1Bcorner = \u8DF3\u8FC7\u4E25\u683C\u5224\u636E\u76F4\u63A5\u56DB\u89D2\u626B\u63CF\uFF08\u515C\u5E95\u5019\u9009\u7F6E\u4FE1\u5EA6\u504F\u4F4E\uFF0C\u9700\u4EBA\u5DE5\u786E\u8BA4 maskRect \u6CA1\u5403\u6389\u89D2\u8272\uFF09"
-          },
-          trim: {
-            type: "object",
-            properties: {
-              mode: { type: "string", enum: ["union", "first-frame"], description: "\u9ED8\u8BA4 union" },
-              pad: {
-                type: "object",
-                properties: { top: { type: "number" }, bottom: { type: "number" }, left: { type: "number" }, right: { type: "number" } }
-              },
-              alphaThreshold: { type: "number" }
-            }
-          }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 24e4,
-      async execute(args) {
-        try {
-          const mask = args.maskAuto === true ? "auto" : rectOf(args.maskRect) ?? null;
-          const trimArg = args.trim ?? {};
-          const padRaw = trimArg.pad ?? {};
-          return json8(
-            await service.cleanup({
-              maskRect: mask,
-              ...args.maskMode === "auto" || args.maskMode === "corner" ? { maskMode: args.maskMode } : {},
-              trim: {
-                ...trimArg.mode === "first-frame" || trimArg.mode === "union" ? { mode: trimArg.mode } : {},
-                pad: {
-                  ...typeof padRaw.top === "number" ? { top: padRaw.top } : {},
-                  ...typeof padRaw.bottom === "number" ? { bottom: padRaw.bottom } : {},
-                  ...typeof padRaw.left === "number" ? { left: padRaw.left } : {},
-                  ...typeof padRaw.right === "number" ? { right: padRaw.right } : {}
-                },
-                ...typeof trimArg.alphaThreshold === "number" ? { alphaThreshold: trimArg.alphaThreshold } : {}
-              }
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_export",
-      description: '\u62FC\u6210\u7CBE\u7075\u56FE\u5E76\u5BFC\u51FA\uFF08PNG \u6216 webp\uFF09+ meta.json\u3002**\u5BFC\u51FA\u524D\u5FC5\u987B\u6709\u62A0\u56FE\u7F13\u5B58**\uFF1A\u5982\u679C\u521A\u8DD1\u8FC7 preview \u6216\u6539\u8FC7\u53C2\u6570\uFF0C\u5B83\u4F1A\u76F4\u63A5\u62A5\u9519\u8BA9\u4F60\u5148 apply\uFF08\u4EE5\u524D\u8FD9\u91CC\u4F1A\u9759\u9ED8\u62FC\u539F\u5E27\uFF0C\u4EA4\u51FA\u7EFF\u5E95\u56FE\uFF09\u3002\u547D\u540D\u9ED8\u8BA4 <name>_<cols>x<rows>.<format>\uFF0CdirPerAction \u65F6\u653E\u8FDB <outDir>/<name>/\u3002\u8FD4\u56DE\u91CC `measured` \u662F**\u6210\u54C1\u5B9E\u6D4B**\uFF08\u89E3\u81EA\u5DF1\u5BFC\u51FA\u7684 PNG \u2192 \u6309\u683C\u5207 \u2192 \u91CF\u8EAB\u9AD8 \u2192 \u53D6\u4E2D\u4F4D\u6570\uFF09\uFF1AcharHeightPx\uFF08\u672C\u6B21\u91C7\u7528\u7684\u57FA\u51C6\uFF09/ bboxHeight\uFF08alpha \u5305\u56F4\u76D2\u53E3\u5F84\uFF09/ semanticHeight\uFF08\u8EAB\u9AD8\u4E0A\u7AEF\u2192\u4E0B\u7AEF\uFF0C\u7ED9\u7684 span \u6216\u731C\u51FA\u6765\u7684\uFF09/ basis\uFF08semantic | guessed | bbox\uFF09/ headTopY/soleY/cellWidth/cellHeight/perCell/min/max/source:"sheet-rgba"\uFF0C\u683C\u5B50\u6570 >48 \u65F6\u53EA\u7B49\u95F4\u9694\u62BD 12 \u683C\u5E76\u7ED9 sampled:true\u3002**\u5224\u6210\u54C1\u5BF9\u4E0D\u5BF9\u770B measured\uFF0C\u522B\u770B achievedPx**\u2014\u2014achievedPx \u53EA\u662F"\u4F60\u7ED9\u7684 span/\u6574\u683C\u9AD8\u88AB\u7F29\u5230\u4E86\u591A\u5C11"\u7684\u53C2\u6570\u56DE\u663E\u3002\u7ED9\u4E86 charHeightPx \u65F6\u9ED8\u8BA4\u8DD1**\u4E00\u6B21**\u6536\u655B\u95ED\u73AF\uFF1A\u91CF\u5B8C\u53D1\u73B0\u4E0E\u76EE\u6807\u5DEE\u8D85\u8FC7\u5BB9\u5DEE\uFF08\u76F8\u5BF9 1% / \u7EDD\u5BF9 2px\uFF09\u5C31\u6309 \u76EE\u6807/\u5B9E\u6D4B \u4FEE\u6B63\u4E00\u6B21\u7F29\u653E\u3001**\u91CD\u5BFC\u4E00\u6B21**\uFF08\u53EA\u4E00\u6B21\u3001\u4E0D\u5FAA\u73AF\uFF1B\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF0C\u56DE\u6267\u5728 correction {passes,basis,before,after,target}\uFF1B\u7B2C\u4E8C\u6B21\u4ECD\u4E0D\u51C6\u53EA\u5199 warning\u3001\u4E0D\u518D\u91CD\u5BFC\u3002correction:false \u53EF\u5173\uFF08\u5173\u6389\u65F6\u884C\u4E3A\u4E0E\u4EE5\u524D\u5B8C\u5168\u4E00\u81F4\u3001\u8FD4\u56DE\u91CC\u6CA1\u6709 correction\uFF09\u3002**anchorX/anchorY \u5EFA\u8BAE\u6BCF\u6B21\u90FD\u4F20**\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF0C0=\u683C\u5E95\uFF09\uFF1A\u4E0D\u4F20\u65F6 meta \u7684 anchorWritten \u662F false\uFF08\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF0C\u89D2\u8272\u6A2A\u5411\u504F 20~40px\uFF09\uFF0C\u5E76\u4F1A\u6709\u4E00\u6761\u544A\u8B66\u3002debugOverlay:true \u518D\u51FA\u4E00\u5F20 <outDir>/_debug/<name>-overlay.png\uFF08\u54C1\u7EA2=\u5B9E\u6D4B\u5934\u9876\u3001\u9752=\u5B9E\u6D4B\u811A\u5E95\u3001\u767D\u5341\u5B57=\u951A\u70B9\uFF1B\u8EAB\u9AD8\u504F\u79BB\u4E2D\u4F4D\u6570 >5% \u7684\u683C\u6574\u683C\u6807\u9EC4\uFF09\uFF0C\u8DEF\u5F84\u5728 overlayPath\u3002`loop:true`\uFF08\u6216\u672C\u6B21\u4F1A\u8BDD\u662F sprite_prepare({loop}) \u91C7\u7684\uFF09\u65F6\u989D\u5916\u7ED9 loopCheck {firstLastDiff,adjacentDiff,ok}\uFF1A\u7528**\u5DF2\u89E3\u597D\u7684\u56FE\u96C6\u683C\u5B50**\u6BD4\u9996\u5C3E\uFF0C\u4E0D\u989D\u5916\u89E3\u7801\uFF1Bok = |\u9996\u5C3E\u5DEE\u2212\u76F8\u90BB\u5E27\u5DEE|/\u76F8\u90BB\u5E27\u5DEE < 0.5\uFF0C\u4E0D ok \u65F6\u8FDB warnings\u3002\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20 loop\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          cols: { type: "number", description: "\u5217\u6570\uFF0C\u9ED8\u8BA4 8" },
-          rows: { type: "number", description: "\u884C\u6570\uFF0C\u9ED8\u8BA4 6" },
-          targetHeight: { type: "number", description: '\u65E7\u7684"\u6574\u683C\u76EE\u6807\u9AD8"\uFF08\u50CF\u7D20\uFF09' },
-          charHeightPx: { type: "number", description: "\u63A8\u8350\uFF1A\u89D2\u8272/\u5185\u5BB9\u51C0\u9AD8\uFF08\u50CF\u7D20\uFF09\uFF0C\u914D span \u4F7F\u7528" },
-          span: {
-            type: "object",
-            description: "\u4E24\u4E2A\u57FA\u51C6\u884C\uFF08\u5E27\u50CF\u7D20\uFF09\uFF1B\u6765\u81EA sprite_measure \u7684 alphaBBox",
-            properties: { fromY: { type: "number" }, toY: { type: "number" } }
-          },
-          anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309**\u8F93\u51FA\u683C**\u5BBD\u6BD4\u4F8B\uFF09\uFF1B\u4F20\u4E86 meta \u91CC anchorWritten=true" },
-          anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C0=\u683C\u5E95\uFF09\uFF1B\u4F20\u4E86 meta \u91CC anchorWritten=true" },
-          correction: {
-            type: "boolean",
-            description: "\u9ED8\u8BA4 true = \u7ED9\u4E86 charHeightPx \u5C31\u91CF\u5B8C\u518D\u6821\u6B63**\u4E00\u6B21**\uFF08\u504F\u8D85\u8FC7 1%/2px \u65F6\u91CD\u5BFC\u4E00\u6B21\uFF0C\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF1Bfalse = \u4E0D\u91CD\u5BFC\uFF08\u884C\u4E3A\u4E0E\u4EE5\u524D\u5B8C\u5168\u4E00\u81F4\uFF0C\u8FD4\u56DE\u91CC\u4E5F\u6CA1\u6709 correction\uFF09"
-          },
-          outDir: { type: "string", description: "\u8F93\u51FA\u76EE\u5F55\uFF08\u9ED8\u8BA4 storages/.../sprite-out\uFF09" },
-          fileName: { type: "string", description: "\u56FE\u7247\u6587\u4EF6\u540D\uFF08\u542B\u6269\u5C55\u540D\uFF09" },
-          metaName: { type: "string", description: "meta \u6587\u4EF6\u540D" },
-          dirPerAction: { type: "boolean", description: "true \u2192 \u653E\u8FDB <outDir>/<name>/" },
-          overwrite: { type: "boolean", description: "false \u65F6\u76EE\u6807\u5DF2\u5B58\u5728\u5C31\u62A5\u9519\uFF08\u9ED8\u8BA4 true\uFF09" },
-          format: { type: "string", enum: ["png", "webp"], description: "\u9ED8\u8BA4 png\uFF1Bwebp \u4F53\u79EF\u5C0F\u5F97\u591A\uFF0C\u4F46 webp \u89E3\u4E0D\u56DE\u50CF\u7D20 \u2192 \u6CA1\u6709 measured/overlay" },
-          quality: { type: "number", description: "webp \u8D28\u91CF 0~1\uFF0C\u9ED8\u8BA4 0.9" },
-          name: { type: "string", description: "\u52A8\u4F5C\u540D\uFF08\u7528\u4E8E\u9ED8\u8BA4\u6587\u4EF6\u540D\u4E0E\u5B50\u76EE\u5F55\uFF09" },
-          debugOverlay: {
-            type: "boolean",
-            description: "true = \u989D\u5916\u51FA\u4E00\u5F20\u6838\u5BF9\u56FE <outDir>/_debug/<name>-overlay.png\uFF08\u53EA\u5728 png \u5BFC\u51FA\u65F6\u751F\u6548\uFF09\uFF1B\u9010\u683C\u753B\u50CF\u91CF\u5934\u9876/\u811A\u5E95\u6A2A\u7EBF\u4E0E\u951A\u70B9\u5341\u5B57\uFF0C\u5F02\u5E38\u683C\u6807\u9EC4\uFF1B\u8DEF\u5F84\u56DE\u5728 overlayPath"
-          },
-          loop: {
-            type: "boolean",
-            description: "true = \u8FD9\u662F\u5FAA\u73AF\u52A8\u4F5C\uFF0C\u5BFC\u51FA\u65F6\u7B97 loopCheck\uFF08\u9996\u5C3E\u5DEE vs \u76F8\u90BB\u5E27\u5DEE\uFF0Cpng \u624D\u6709\u6548\uFF09\u5E76\u68C0\u67E5\u95ED\u5408\u5EA6\uFF1Bsprite_prepare({loop}) \u91C7\u8FC7\u7684\u4F1A\u8BDD\u4F1A\u81EA\u52A8\u5E26\u3002\u4E00\u6B21\u6027\u52A8\u4F5C\u522B\u4F20"
-          }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 6e5,
-      async execute(args) {
-        try {
-          const span = args.span && typeof args.span === "object" && typeof args.span.fromY === "number" && typeof args.span.toY === "number" ? {
-            fromY: Number(args.span.fromY),
-            toY: Number(args.span.toY)
-          } : void 0;
-          return json8(
-            await service.exportSheet({
-              ...typeof args.cols === "number" ? { cols: args.cols } : {},
-              ...typeof args.rows === "number" ? { rows: args.rows } : {},
-              ...typeof args.targetHeight === "number" ? { targetHeight: args.targetHeight } : {},
-              ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
-              ...span ? { span } : {},
-              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
-              ...typeof args.outDir === "string" ? { outDir: args.outDir } : {},
-              ...typeof args.fileName === "string" ? { fileName: args.fileName } : {},
-              ...typeof args.metaName === "string" ? { metaName: args.metaName } : {},
-              ...typeof args.dirPerAction === "boolean" ? { dirPerAction: args.dirPerAction } : {},
-              ...typeof args.overwrite === "boolean" ? { overwrite: args.overwrite } : {},
-              ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
-              ...typeof args.quality === "number" ? { quality: args.quality } : {},
-              ...typeof args.name === "string" ? { name: args.name } : {},
-              ...typeof args.debugOverlay === "boolean" ? { debugOverlay: args.debugOverlay } : {},
-              ...typeof args.loop === "boolean" ? { loop: args.loop } : {},
-              ...typeof args.correction === "boolean" ? { correction: args.correction } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_autotune",
-      description: '\u81EA\u52A8\u8C03\u53C2\uFF1A\u5148\u81EA\u52A8\u91C7\u8272\uFF0C\u7136\u540E\u6309\u6307\u6807\u8FED\u4EE3\uFF08bgResidual/subjectCoverage/edgeGreen\uFF09\uFF0C\u8FD4\u56DE {params,appliedParams,bestParams,bestStep,trace,reachedGoal,warnings}\u3002\u7701\u6389\u4F60"\u8BFB stats \u6539\u53C2\u6570\u8BD5\u4E09\u8F6E"\u3002\u26A0\uFE0F \u5B83\u5185\u90E8\u7528 preview\uFF08\u4F1A\u6E05\u7F13\u5B58\uFF09\uFF0C\u8C03\u5B8C\u8981 sprite_key_apply\u3002**P1-3 \u53E3\u5F84**\uFF1A`params` \u662F\u8D77\u70B9\uFF08\u4F60\u624B\u8C03\u597D\u7684\u90A3\u5957\u53EF\u4EE5\u4F20\u8FDB\u6765\uFF09\uFF1B**\u672A\u8FBE\u6807\u65F6 appliedParams \u5C31\u662F\u4F60\u7ED9\u7684\u8FD9\u5957**\uFF0C\u4E0D\u4F1A\u88AB\u641C\u7D22\u8FC7\u7A0B\u91CC\u7684\u52A3\u89E3\u8986\u76D6\uFF0C\u5E76\u4E14\u4E00\u5B9A\u5E26\u4E00\u6761 warning\uFF1B\u641C\u7D22\u5230\u7684\u6700\u4F18\u89E3\u5728 `bestParams`\uFF0C\u8981\u548C appliedParams \u6BD4\u8FC7\u518D\u7528\u3002\u8FBE\u6210\u76EE\u6807\u65F6 appliedParams = bestParams = \u8FBE\u6807\u90A3\u4E00\u8F6E\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          goal: {
-            type: "object",
-            properties: {
-              maxBgResidual: { type: "number", description: "\u9ED8\u8BA4 0.005\uFF08\u8BC4\u5BA1 B9\uFF09" },
-              minSubjectCoverage: { type: "number", description: "\u9ED8\u8BA4 0.6\uFF08\u4EBA\u7269\u662F\u9542\u7A7A\u5F62\u72B6\uFF0C0.98 \u4F1A\u8BA9\u5B8C\u7F8E\u53C2\u6570\u5224\u672A\u8FBE\u6807\uFF09" },
-              maxEdgeGreen: { type: "number", description: "\u9ED8\u8BA4 0.02" }
-            }
-          },
-          params: {
-            type: "object",
-            description: "\u8D77\u70B9\u53C2\u6570 = \u4F60\u624B\u8C03\u597D\u7684\u90A3\u5957\uFF08\u53EF\u9009\uFF0C\u7F3A\u7684\u9879\u8865\u9ED8\u8BA4\u503C\uFF09\u3002\u672A\u8FBE\u6807\u65F6**\u539F\u6837\u4FDD\u7559**\u5E76\u4F5C\u4E3A appliedParams \u8FD4\u56DE\uFF1B\u5B57\u6BB5\u4E0E sprite_key_apply \u4E00\u81F4\uFF08mode/colorHex/intensity/softness/despill/greenToAlpha/aggressive/autoPlate/advIntensity/advFeather\uFF09\u3002`colorHex` \u4E0D\u7ED9\u5C31\u7528\u81EA\u52A8\u91C7\u8272\u3002\u4E0D\u8BA4\u8BC6\u7684\u952E\u4F1A\u8FDB ignoredParams\u3002",
-            properties: {
-              mode: { type: "string", enum: ["classic", "advanced"] },
-              colorHex: { type: "string", description: "\u952E\u8272 #RRGGBB\uFF1B\u4E0D\u7ED9\u5C31\u81EA\u52A8\u91C7\u8272" },
-              intensity: { type: "number", description: "\u62A0\u8272\u529B\u5EA6 10~90\uFF08\u4E24\u6863\u90FD\u5403\uFF09" },
-              softness: { type: "number", description: "\u8F6F\u8FB9\u5BBD\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
-              despill: { type: "number", description: "\u53BB\u7EFF\u8FB9\u5F3A\u5EA6 0~100\uFF08\u4EC5 advanced\uFF09" },
-              greenToAlpha: { type: "number", description: "\u6B8B\u7EFF\u8F6C\u900F\u660E 0~300\uFF08\u4EC5 advanced\uFF09" },
-              aggressive: { type: "boolean", description: "\u4E3B\u4F53\u8F6E\u5ED3\u4E5F\u53BB\u7EFF\uFF08\u4EC5 advanced\uFF09" },
-              autoPlate: { type: "boolean", description: "\u81EA\u52A8\u80CC\u666F\u677F\uFF08\u53EA\u5728 key_apply \u751F\u6548\uFF09" },
-              feather: { type: "number", description: "\u7FBD\u5316 0~100\uFF08\u4EC5 classic\uFF09" },
-              cleanup: { type: "number", description: "\u53BB\u8272\u6EA2\u51FA 0~100\uFF08\u4EC5 classic\uFF09" },
-              advIntensity: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u5F3A\u5EA6 0~100" },
-              advFeather: { type: "number", description: "advanced \u6863\u81EA\u5DF1\u7684\u7FBD\u5316 0~100" }
-            }
-          },
-          space: {
-            type: "object",
-            properties: {
-              intensity: { type: "array", items: { type: "number" }, description: "[\u4E0B\u754C, \u4E0A\u754C]" },
-              mode: { type: "array", items: { type: "string" }, description: "\u53EF\u9009\u6863\u4F4D\u5217\u8868" }
-            }
-          },
-          maxIters: { type: "number", description: "\u9ED8\u8BA4 6\uFF0C\u4E0A\u9650 12" },
-          frame: { type: "number", description: "\u7528\u54EA\u4E00\u5E27\u8FED\u4EE3\uFF0C\u9ED8\u8BA4 0" }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 3e5,
-      async execute(args) {
-        try {
-          const goalRaw = args.goal ?? {};
-          const spaceRaw = args.space ?? {};
-          const paramsRaw = args.params ?? {};
-          const intensity = Array.isArray(spaceRaw.intensity) && spaceRaw.intensity.length === 2 ? [Number(spaceRaw.intensity[0]), Number(spaceRaw.intensity[1])] : void 0;
-          const params = keyParamsOf(paramsRaw);
-          const ignoredParams = Object.keys(paramsRaw).filter((key) => !KEY_PARAM_KEYS.includes(key));
-          const result2 = await service.autotune({
-            goal: {
-              ...typeof goalRaw.maxBgResidual === "number" ? { maxBgResidual: goalRaw.maxBgResidual } : {},
-              ...typeof goalRaw.minSubjectCoverage === "number" ? { minSubjectCoverage: goalRaw.minSubjectCoverage } : {},
-              ...typeof goalRaw.maxEdgeGreen === "number" ? { maxEdgeGreen: goalRaw.maxEdgeGreen } : {}
-            },
-            ...Object.keys(params).length > 0 ? { params } : {},
-            ...intensity ? { space: { intensity } } : {},
-            ...typeof args.maxIters === "number" ? { maxIters: args.maxIters } : {},
-            ...typeof args.frame === "number" ? { frame: args.frame } : {}
-          });
-          return json8(ignoredParams.length > 0 ? { ...result2, ignoredParams } : result2);
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_batch",
-      description: "\u6279\u91CF\uFF1A\u4E00\u4E2A items \u6570\u7EC4\u8DD1\u5B8C\u6574\u7BA1\u7EBF\uFF08prepare\u2192\u91C7\u8272\u2192measure\u2192apply\u2192cleanup\u2192export\uFF09\uFF0C\u5355\u6761\u5931\u8D25\u4E0D\u5F71\u54CD\u5176\u4ED6\u6761\u3002\u6BCF\u6761\u5360\u4E00\u4E2A\u5B50\u76EE\u5F55 <outRoot>/<name>/\u3002\u5F53\u524D\u4E32\u884C\u6267\u884C\uFF08\u5E76\u53D1\u9700\u8981\u4F1A\u8BDD\u9694\u79BB\uFF09\u3002**\u6BCF\u6761\u90FD\u8981\u4F20 anchorX/anchorY**\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF09\uFF1A\u4E0D\u4F20\u5C31\u53EA\u6709 anchorWritten:false \u7684\u544A\u8B66\uFF0Cmeta \u91CC\u843D\u7684\u662F\u9875\u9762\u5F53\u524D\u951A\u70B9\uFF08\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF0C\u89D2\u8272\u6A2A\u5411\u504F 20~40px\uFF09\u3002\u7ED9\u4E86 targetCharHeight \u65F6\u6BCF\u6761\u90FD\u4F1A\u8DD1\u4E00\u6B21\u6536\u655B\u95ED\u73AF\uFF08\u91CF\u5B8C\u504F\u4E86\u5C31\u6309 \u76EE\u6807/\u5B9E\u6D4B \u518D\u5BFC\u4E00\u6B21\uFF0C**\u6700\u591A\u4E00\u6B21**\uFF0C\u90A3\u4E00\u6761\u7684\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF1B\u4E0D\u60F3\u95ED\u73AF\u5C31\u5728\u5355\u6761\u91CC\u770B measured \u81EA\u5DF1\u51B3\u5B9A\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          outRoot: { type: "string", description: "\u8F93\u51FA\u6839\u76EE\u5F55" },
-          concurrency: { type: "number", description: "\u9884\u7559\uFF1A>1 \u76EE\u524D\u4ECD\u6309\u4E32\u884C\u8DD1\u5E76\u7ED9 warning" },
-          overwrite: { type: "boolean", description: "\u9ED8\u8BA4 true" },
-          items: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                videoPath: { type: "string" },
-                action: { type: "string", description: "\u52A8\u4F5C id\uFF0C\u5982 idle / sneak_eat" },
-                name: { type: "string", description: "\u4EA7\u7269\u540D\uFF0C\u9ED8\u8BA4\u7528 action" },
-                start: { type: "number" },
-                end: { type: "number" },
-                fps: { type: "number" },
-                keyColor: { type: "string", description: "\u4E0D\u7ED9\u5C31\u81EA\u52A8\u91C7\u8272" },
-                intensity: { type: "number" },
-                mode: { type: "string", enum: ["classic", "advanced"] },
-                maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u53BB\u6C34\u5370" },
-                targetCharHeight: { type: "number" },
-                trimMode: { type: "string", enum: ["union", "first-frame"] },
-                cols: { type: "number" },
-                rows: { type: "number" },
-                format: { type: "string", enum: ["png", "webp"] },
-                anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309\u8F93\u51FA\u683C\u5BBD\uFF09\u3002\u4E0D\u4F20 meta \u91CC\u5C31\u6CA1\u6709\u8FD9\u6B21\u8BBE\u7684\u951A\u70B9" },
-                anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C0=\u683C\u5E95\uFF09" }
-              },
-              required: ["videoPath", "action"]
-            }
-          }
-        },
-        required: ["outRoot", "items"]
-      },
-      output: OUT2,
-      timeoutMs: 18e5,
-      async execute(args) {
-        try {
-          const items = Array.isArray(args.items) ? args.items : [];
-          if (items.length === 0) return fail2("items \u4E0D\u80FD\u4E3A\u7A7A");
-          const outRoot = typeof args.outRoot === "string" ? args.outRoot : "";
-          if (outRoot === "") return fail2("\u9700\u8981 outRoot\uFF08\u8F93\u51FA\u6839\u76EE\u5F55\uFF09");
-          return json8(
-            await service.batch({
-              outRoot,
-              items: items.map((row) => {
-                const item = row;
-                return {
-                  videoPath: String(item.videoPath ?? ""),
-                  action: String(item.action ?? ""),
-                  ...typeof item.name === "string" ? { name: item.name } : {},
-                  ...typeof item.start === "number" ? { start: item.start } : {},
-                  ...typeof item.end === "number" ? { end: item.end } : {},
-                  ...typeof item.fps === "number" ? { fps: item.fps } : {},
-                  ...typeof item.keyColor === "string" ? { keyColor: item.keyColor } : {},
-                  ...typeof item.intensity === "number" ? { intensity: item.intensity } : {},
-                  ...item.mode === "classic" || item.mode === "advanced" ? { mode: item.mode } : {},
-                  ...item.maskAuto === true ? { maskRect: "auto" } : {},
-                  ...typeof item.targetCharHeight === "number" ? { targetCharHeight: item.targetCharHeight } : {},
-                  ...item.trimMode === "union" || item.trimMode === "first-frame" ? { trimMode: item.trimMode } : {},
-                  ...typeof item.cols === "number" ? { cols: item.cols } : {},
-                  ...typeof item.rows === "number" ? { rows: item.rows } : {},
-                  ...item.format === "png" || item.format === "webp" ? { format: item.format } : {},
-                  ...typeof item.anchorX === "number" ? { anchorX: item.anchorX } : {},
-                  ...typeof item.anchorY === "number" ? { anchorY: item.anchorY } : {}
-                };
-              }),
-              ...typeof args.concurrency === "number" ? { concurrency: args.concurrency } : {},
-              ...typeof args.overwrite === "boolean" ? { overwrite: args.overwrite } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_auto",
-      description: "\u4E00\u6BB5\u7D20\u6750\u7684\u4E00\u6761\u9F99\uFF1Aprepare \u2192 \u81EA\u52A8\u91C7\u8272 \u2192 measure \u2192 autotune \u2192 apply \u2192 cleanup \u2192 export\u3002\u8FD4\u56DE\u548C sprite_export \u4E00\u6837\u7684\u5B57\u6BB5\uFF0C\u5916\u52A0 stages\uFF08\u6BCF\u6B65\u4E00\u53E5\u8BDD\uFF0C\u51FA\u95EE\u9898\u65F6\u5148\u770B\u5B83\uFF09\u3002**\u4F20 anchorX/anchorY**\uFF080~1\uFF0CanchorY \u662F y-from-bottom\uFF09\uFF1A\u4E0D\u4F20\u5C31\u4E00\u5B9A\u4F1A\u6709\u4E00\u6761 anchorWritten:false \u7684\u544A\u8B66\uFF0Cmeta \u91CC\u843D\u7684\u662F\u9875\u9762\u5F53\u524D\u951A\u70B9\uFF08\u4E0B\u6E38\u5E38\u8BFB\u5230\u9ED8\u8BA4 0.5/0\uFF0C\u89D2\u8272\u6A2A\u5411\u504F 20~40px\uFF09\u3002\u7ED9\u4E86 targetCharHeight \u65F6\u4F1A\u8DD1\u4E00\u6B21\u6536\u655B\u95ED\u73AF\uFF1A\u91CF\u5B8C\u6210\u54C1\u53D1\u73B0\u4E0E\u76EE\u6807\u5DEE\u8D85\u8FC7\u5BB9\u5DEE\uFF08\u76F8\u5BF9 1% / \u7EDD\u5BF9 2px\uFF09\u5C31\u6309 \u76EE\u6807/\u5B9E\u6D4B \u4FEE\u6B63\u4E00\u6B21\u7F29\u653E\u3001**\u91CD\u5BFC\u4E00\u6B21**\uFF08\u53EA\u4E00\u6B21\u3001\u4E0D\u5FAA\u73AF\uFF1B\u90A3\u4E00\u6761\u8017\u65F6\u7EA6\u7FFB\u500D\uFF09\uFF0C\u56DE\u6267\u5728 correction {passes,basis,before,after,target} \u91CC\uFF1B\u7B2C\u4E8C\u6B21\u4ECD\u4E0D\u51C6\u53EA\u5199 warning\u3001\u4E0D\u518D\u91CD\u5BFC\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          videoPath: { type: "string" },
-          name: { type: "string", description: "\u4EA7\u7269\u540D\uFF0C\u9ED8\u8BA4\u7528\u6587\u4EF6\u540D" },
-          outDir: { type: "string" },
-          targetCharHeight: { type: "number", description: "\u89D2\u8272/\u5185\u5BB9\u51C0\u9AD8\uFF08\u50CF\u7D20\uFF09\uFF1B\u4F1A\u89E6\u53D1\u4E00\u6B21\u6536\u655B\u95ED\u73AF" },
-          cols: { type: "number" },
-          rows: { type: "number" },
-          format: { type: "string", enum: ["png", "webp"] },
-          trimMode: { type: "string", enum: ["union", "first-frame"] },
-          maskAuto: { type: "boolean", description: "true = \u81EA\u52A8\u53BB\u6C34\u5370" },
-          anchorX: { type: "number", description: "\u951A\u70B9 x\uFF080~1\uFF0C\u6309\u8F93\u51FA\u683C\u5BBD\uFF09\uFF1B\u5199\u4E86 meta \u91CC anchorWritten=true" },
-          anchorY: { type: "number", description: "\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C0=\u683C\u5E95\uFF09\uFF1B\u5199\u4E86 meta \u91CC anchorWritten=true" }
-        },
-        required: ["videoPath"]
-      },
-      output: OUT2,
-      timeoutMs: 9e5,
-      async execute(args) {
-        try {
-          const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
-          if (videoPath === "") return fail2("\u9700\u8981 videoPath");
-          return json8(
-            await service.auto({
-              videoPath,
-              ...typeof args.name === "string" ? { name: args.name } : {},
-              ...typeof args.outDir === "string" ? { outDir: args.outDir } : {},
-              ...typeof args.targetCharHeight === "number" ? { targetCharHeight: args.targetCharHeight } : {},
-              ...typeof args.cols === "number" ? { cols: args.cols } : {},
-              ...typeof args.rows === "number" ? { rows: args.rows } : {},
-              ...args.format === "png" || args.format === "webp" ? { format: args.format } : {},
-              ...args.trimMode === "union" || args.trimMode === "first-frame" ? { trimMode: args.trimMode } : {},
-              ...args.maskAuto === true ? { maskRect: "auto" } : {},
-              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_match",
-      description: '\u6A21\u677F\u5339\u914D\uFF1A\u5728\u67D0\u4E00\u5E27\u91CC\u627E templateRect \u90A3\u5757\u56FE\u6848\u3002NCC \u5F52\u4E00\u5316\u4E92\u76F8\u5173\uFF08\u5BF9\u4EAE\u5EA6\u7EBF\u6027\u53D8\u5316\u514D\u75AB\uFF09\uFF0C1/4 \u2192 1/2 \u2192 1 \u4E09\u7EA7\u91D1\u5B57\u5854\u7C97\u641C + \u539F\u5206\u8FA8\u7387 \xB12px \u7CBE\u4FEE\uFF0C\u6240\u4EE5\u6574\u5E45\u641C\u7D22\u4E5F\u53EA\u6709\u767E\u6BEB\u79D2\u7EA7\u3002\u5750\u6807\u4E00\u5F8B\u662F**\u6E90\u5E27\u50CF\u7D20**\uFF08space:"frame"\uFF0C\u5DE6\u4E0A\u539F\u70B9\u3001\u53F3\u4E0B\u5F00\u533A\u95F4\uFF09\uFF0C\u4E0D\u662F\u88C1\u526A\u6846/\u683C\u5B50\u5750\u6807\uFF1BtemplateRect \u5C5E\u4E8E templateFrame \u7684\u7A7A\u95F4\uFF0C\u8FD4\u56DE\u7684 x/y \u5C5E\u4E8E inFrame \u7684\u7A7A\u95F4\u3002\u8FD4\u56DE {found,x,y,score,space:"frame"}\uFF1A\u540C\u4E00\u4F4D\u7F6E\u81EA\u5339\u914D score\u22481.000\uFF08\u8FD9\u662F\u5224\u516C\u5F0F/\u65B9\u5411\u5BF9\u4E0D\u5BF9\u7684\u786C\u81EA\u68C0\uFF09\uFF1B\u4F4E\u4E8E minScore\uFF08\u9ED8\u8BA4 0.85\uFF09\u65F6 found:false\uFF0C\u4F46\u4ECD\u56DE\u4F20\u6700\u9AD8\u5206\u7684\u4F4D\u7F6E\u4E0E\u5206\u503C\u3002\u6A21\u677F\u662F\u7EAF\u8272\uFF08\u65B9\u5DEE 0\uFF09\u65F6 NCC \u65E0\u5B9A\u4E49\uFF0C\u4F1A\u8FD4\u56DE found:false + reason\u2014\u2014\u6362\u4E00\u5757\u6709\u7EB9\u7406\u7684\u533A\u57DF\uFF08\u7EBD\u6263\u3001\u5FBD\u7AE0\u3001\u773C\u775B\uFF09\u3002source=keyed\uFF08\u9ED8\u8BA4\uFF09\u7528\u62A0\u56FE\u7ED3\u679C\uFF1Braw \u662F\u539F\u5E27\uFF0C\u7EFF\u5E55\u6CA1\u62A0\u65F6\u6574\u5E45\u4E0D\u900F\u660E\uFF0C\u522B\u62FF\u5B83\u627E\u56FE\u6848\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          templateFrame: { type: "number", description: "\u6A21\u677F\u53D6\u81EA\u54EA\u4E00\u5E27\uFF0C\u9ED8\u8BA4\u540C inFrame\uFF08\u518D\u7F3A\u7701 0\uFF09" },
-          templateRect: rectSchema("\u6A21\u677F\u77E9\u5F62\uFF08**templateFrame \u7684\u6E90\u5E27\u50CF\u7D20**\uFF0C\u5FC5\u987B\u6574\u5757\u843D\u5728\u5E27\u5185\uFF09"),
-          inFrame: { type: "number", description: "\u5728\u54EA\u4E2A\u5E27\u91CC\u627E\uFF0C\u9ED8\u8BA4\u540C templateFrame" },
-          searchRect: rectSchema("\u53EA\u5728\u8FD9\u4E2A\u77E9\u5F62\u91CC\u641C\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u9ED8\u8BA4\u6574\u5E45\uFF1B\u4F1A\u88AB\u5E27\u8FB9\u754C\u5939\u7D27\uFF09"),
-          minScore: { type: "number", description: "\u5224\u5B9A\u9608\u503C\uFF0C\u9ED8\u8BA4 0.85\uFF080.90 \u4EE5\u4E0A\u53EF\u4FE1\uFF0C0.85~0.90 \u8C28\u614E\uFF0C\u66F4\u4F4E\u89C6\u4E3A\u5931\u8D25\uFF09" },
-          source: sourceSchema()
-        },
-        required: ["templateRect"]
-      },
-      output: OUT2,
-      timeoutMs: 24e4,
-      async execute(args) {
-        try {
-          const templateRect = rectOf(args.templateRect);
-          if (!templateRect) return fail2("\u9700\u8981 templateRect {x,y,w,h}\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u56DB\u4E2A\u90FD\u662F\u6570\u5B57\uFF09");
-          const searchRect = rectOf(args.searchRect);
-          return json8(
-            await service.match({
-              templateRect,
-              ...typeof args.templateFrame === "number" ? { templateFrame: args.templateFrame } : {},
-              ...typeof args.inFrame === "number" ? { inFrame: args.inFrame } : {},
-              ...searchRect ? { searchRect } : {},
-              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {},
-              ...typeof args.minScore === "number" ? { minScore: args.minScore } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_feature_fit",
-      description: '\u7279\u5F81\u53CD\u63A8\uFF1A\u7528 1~2 \u4E2A\u300C\u59FF\u52BF\u65E0\u5173\u300D\u7684\u4E0D\u53D8\u7279\u5F81\uFF08\u773C\u775B\u3001\u5934\u9970\u3001\u7EBD\u6263\u5217\uFF09\u5BF9\u9F50\u4E24\u5E27/\u4E24\u6BB5\u7D20\u6750\uFF0C\u6C42\u51FA scale + \u5E73\u79FB\uFF08dx,dy\uFF09\uFF0C\u5E76\u628A\u53C2\u8003\u5E27\u7684\u951A\u70B9\u642C\u5230\u76EE\u6807\u5E27\u3002**\u59FF\u52BF\u5DEE\u5F02\u5927\u65F6\u7528\u5B83**\uFF08\u526A\u5F71\u4F1A\u56E0\u59FF\u52BF\u800C\u5931\u914D\uFF09\u3002\u6570\u5B66\uFF1Ap_target = p_ref \xD7 scale + (dx, dy)\uFF08\u6E90\u5E27\u50CF\u7D20\uFF09\uFF1B\u5355\u6A21\u677F\u53EA\u80FD\u5B9A\u5E73\u79FB\uFF0C\u53CC\u6A21\u677F\u7528\u4E24\u70B9\u95F4\u8DDD\u6BD4\u503C\u5B9A scale\uFF0C\u4E24\u4E2A\u6A21\u677F\u5404\u81EA\u53CD\u63A8\u7684\u5E73\u79FB\u5DEE\u5C31\u662F residualPx\uFF08>2px \u8BF4\u660E\u7279\u5F81\u88AB\u906E\u6321/\u5F62\u53D8\uFF0Cconfidence \u964D\u7EA7\uFF09\u3002\u53C2\u8003\u5E27\u4E24\u79CD\u7ED9\u6CD5\uFF1A{frame} \u7528\u5F53\u524D\u4F1A\u8BDD\u67D0\u5E27\uFF1B{imagePath} \u7528\u78C1\u76D8\u4E0A\u4E00\u5F20 PNG\uFF08\u4E0A\u4E00\u6BB5\u7D20\u6750\u5BFC\u51FA\u7684\u67D0\u5E27\uFF09\u2014\u2014\u8DE8\u7D20\u6750\u5BF9\u9F50\u9760\u8FD9\u6761\u3002\u8FD4\u56DE {frame,scale,dx,dy,score,residualPx,perTemplate,confidence}\uFF0C\u7ED9\u4E86 anchorX/anchorY \u624D\u6709 transferredAnchor\uFF08\u5F52\u4E00\u5316 0~1\u3001y-from-bottom\uFF0C\u4E0E meta.json \u540C\u53E3\u5F84\uFF1B\u53EA\u7ED9\u4E00\u4E2A\u65F6\u53E6\u4E00\u4E2A\u6309 0.5 \u8865\uFF09\u3002confidence\uFF1Ascore\u22650.90 \u4E14 residual<2px \u2192 high\uFF1B0.80~0.90 \u2192 medium\uFF08\u62FF\u8BED\u4E49\u70B9\u590D\u6838\uFF09\uFF1B\u66F4\u4F4E \u2192 low\uFF08\u522B\u7528\uFF09\u3002\u9650\u5E27\uFF1Asearch.frames \u7F3A\u7701/\u5199 "all" \u65F6\u6309 24 \u5E27\xD7720\xD7966 \u6298\u7B97\u62BD\u6837\uFF08\u5E27\u66F4\u5927\u81EA\u52A8\u66F4\u5C11\uFF09\uFF0C\u663E\u5F0F\u7ED9\u5E27\u53F7\u5217\u8868\u5219\u7167\u529E\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          reference: referenceSchema("\u53C2\u8003\u5E27\uFF08\u7279\u5F81\u662F\u4ECE\u5B83\u4E0A\u9762\u88C1\u7684\uFF09\u3002\u9ED8\u8BA4 {frame:0}"),
-          templates: {
-            type: "array",
-            description: "\u7279\u5F81\u6A21\u677F\uFF0C\u5EFA\u8BAE 2 \u4E2A\uFF08\u5355\u6A21\u677F\u53EA\u80FD\u5B9A\u5E73\u79FB\uFF09\u3002rect \u662F**\u53C2\u8003\u5E27\u7684\u6E90\u5E27\u50CF\u7D20**\uFF1B\u4F18\u5148\u5934\u90E8\u7279\u5F81\uFF0C\u522B\u7528\u624B\u811A/\u62AB\u98CE\u4E0B\u6446",
-            items: {
-              type: "object",
-              properties: {
-                rect: rectSchema("\u7279\u5F81\u77E9\u5F62\uFF08\u53C2\u8003\u5E27\u7684\u6E90\u5E27\u50CF\u7D20\uFF09"),
-                weight: { type: "number", description: "\u6743\u91CD\uFF0C\u9ED8\u8BA4 1\uFF08\u5934\u90E8\u7279\u5F81\u53EF\u4EE5\u7ED9\u9AD8\u4E00\u70B9\uFF09" }
-              },
-              required: ["rect"]
-            }
-          },
-          anchorX: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 x\uFF080~1\uFF0C\u5F52\u4E00\u5316\u3001\u6309\u53C2\u8003\u5E27\u5BBD\uFF09\uFF1B\u7ED9\u4E86\u624D\u56DE\u4F20 transferredAnchor" },
-          anchorY: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 y\uFF080~1\uFF0C**y-from-bottom**\uFF0C\u4E0E meta.json \u540C\u53E3\u5F84\uFF09" },
-          search: {
-            type: "object",
-            description: "\u641C\u7D22\u8303\u56F4",
-            properties: {
-              frames: {
-                description: '\u8981\u641C\u7684\u5E27\uFF1A\u5E27\u53F7\u6570\u7EC4\uFF0C\u6216 "all"\uFF08\u9ED8\u8BA4\uFF0C\u4F1A\u6309\u9884\u7B97\u62BD\u6837\uFF0C\u89C1\u63CF\u8FF0\uFF09',
-                oneOf: [{ type: "array", items: { type: "number" } }, { type: "string", enum: ["all"] }]
-              },
-              scale: scaleSchema("\u5C3A\u5EA6\u8303\u56F4\uFF0C\u9ED8\u8BA4 0.85~1.15 step 0.01\uFF0831 \u6863\uFF1B\u5148\u7C97\u641C\u518D\u7CBE\u4FEE\uFF0C\u4E0D\u4F1A\u56E0\u4E3A 31 \u6863\u5C31\u6162\uFF09")
-            }
-          },
-          source: sourceSchema()
-        },
-        required: ["templates"]
-      },
-      output: OUT2,
-      timeoutMs: 24e4,
-      async execute(args) {
-        try {
-          const templates = Array.isArray(args.templates) ? args.templates.map((row) => {
-            const item = row;
-            const rect = rectOf(item.rect);
-            if (!rect) return void 0;
-            return { rect, ...typeof item.weight === "number" ? { weight: item.weight } : {} };
-          }).filter((one) => one !== void 0) : [];
-          if (templates.length === 0) return fail2("\u9700\u8981 templates\uFF1A[{rect:{x,y,w,h}},\u2026]\uFF08\u5EFA\u8BAE 2 \u4E2A\uFF0Crect \u662F\u53C2\u8003\u5E27\u7684\u6E90\u5E27\u50CF\u7D20\uFF09");
-          const search = {};
-          const rawSearch = args.search && typeof args.search === "object" ? args.search : {};
-          if (rawSearch.frames === "all") search.frames = "all";
-          else if (Array.isArray(rawSearch.frames)) {
-            search.frames = rawSearch.frames.filter((one) => typeof one === "number");
-          }
-          const scale = scaleRangeOf(rawSearch.scale);
-          if (scale) search.scale = scale;
-          return json8(
-            await service.featureFit({
-              reference: referenceOf(args.reference),
-              templates,
-              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
-              ...Object.keys(search).length > 0 ? { search } : {},
-              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_silhouette_fit",
-      description: '\u526A\u5F71\u62DF\u5408\uFF1A\u62FF\u53C2\u8003\u5E27\u7684\u526A\u5F71\u5F53\u5C3A\u5B50\uFF0C\u5728\u76EE\u6807\u52A8\u753B\u91CC\u627E\u59FF\u52BF\u6700\u63A5\u8FD1\u7684\u90A3\u4E00\u5E27\uFF0C\u8FD4\u56DE {frame,iou,scale,dx,dy,confidence}\u3002\u540C\u89D2\u8272\u6279\u91CF\u5BF9\u9F50\u7684\u4E3B\u529B\uFF08idle \u7684\u526A\u5F71\u53BB\u5BF9\u9F50 walk/idle2 \u8FD9\u7C7B\uFF09\u3002mask \u9ED8\u8BA4 body-core = alpha \u9608\u503C \u2192 **\u6700\u5927\u8FDE\u901A\u57DF**\uFF08\u53BB\u6389\u6F02\u6D6E\u7279\u6548/\u624B\uFF09\u2192 1px \u8150\u8680\uFF1Braw \u53EA\u6309 alpha \u9608\u503C\u3002**\u4E09\u6863\u5FC5\u987B\u770B IoU\uFF0C\u4E0D\u8BB8\u786C\u62D3\u5370**\uFF1A\u22650.90 \u7F29\u653E\u4E0E\u5E73\u79FB\u90FD\u53EF\u4FE1\uFF08transferredAnchor.anchorSource="silhouette"\uFF0C\u53EF\u62D3\u5370\uFF09\uFF1B0.75~0.90 \u53EA\u91C7\u7528 scale\uFF08anchorSource="semantic-required"\uFF0C\u951A\u70B9\u5FC5\u987B\u8D70\u8BED\u4E49\u70B9\uFF09\uFF1B<0.75 \u2192 confidence:"low" \u4E14 transferredAnchor \u76F4\u63A5\u7ED9 null\uFF08\u8FD9\u6BB5\u52A8\u753B\u91CC\u6CA1\u6709\u59FF\u52BF\u63A5\u8FD1\u7684\u5E27\uFF09\u3002\u5750\u6807\u540C sprite_match\uFF1A\u6E90\u5E27\u50CF\u7D20\u3001space \u7531\u8F93\u5165\u56FE\u51B3\u5B9A\uFF1Bp_target = p_ref \xD7 scale + (dx, dy)\u3002\u53C2\u8003\u5E27\u53EF\u4EE5\u662F {frame}\uFF08\u5F53\u524D\u4F1A\u8BDD\u67D0\u5E27\uFF09\u6216 {imagePath}\uFF08\u78C1\u76D8\u4E0A\u4E00\u5F20 PNG\uFF0C\u8DE8\u7D20\u6750\u9760\u8FD9\u6761\uFF09\u3002\u6027\u80FD\uFF1A\u7C97\u641C\u5728 1/4 \u5206\u8FA8\u7387\uFF08\u8D28\u5FC3\u5B9A\u521D\u503C\uFF09+ \u539F\u5206\u8FA8\u7387 \xB14px \u7CBE\u4FEE\uFF0C\u62A5\u7684 IoU \u662F\u539F\u5206\u8FA8\u7387\u7B97\u7684\uFF1Btarget.frames \u7F3A\u7701/\u5199 "all" \u65F6\u6309 24 \u5E27\xD7720\xD7966 \u6298\u7B97\u62BD\u6837\uFF0C\u8981\u5168\u8DD1\u5C31\u663E\u5F0F\u7ED9\u5E27\u53F7\u5217\u8868\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          reference: referenceSchema("\u53C2\u8003\u5E27\uFF08\u5C3A\u5B50\uFF09\u3002\u9ED8\u8BA4 {frame:0}"),
-          target: {
-            type: "object",
-            description: "\u5728\u54EA\u4E9B\u5E27\u91CC\u627E",
-            properties: {
-              frames: {
-                description: '\u5E27\u53F7\u6570\u7EC4\u6216 "all"\uFF08\u9ED8\u8BA4\uFF0C\u4F1A\u6309\u9884\u7B97\u62BD\u6837\uFF09',
-                oneOf: [{ type: "array", items: { type: "number" } }, { type: "string", enum: ["all"] }]
-              }
-            }
-          },
-          mask: {
-            type: "string",
-            enum: ["raw", "body-core"],
-            description: "\u63A9\u819C\u53E3\u5F84\uFF1Abody-core\uFF08\u9ED8\u8BA4\uFF09= \u6700\u5927\u8FDE\u901A\u57DF + 1px \u8150\u8680\uFF0C\u53BB\u7279\u6548/\u53BB\u624B\uFF1Braw = \u53EA\u6309 alpha \u9608\u503C\uFF08\u6548\u679C\u7269\u672C\u8EAB\u5C31\u662F\u526A\u5F71\u7684\u4E00\u90E8\u5206\u65F6\u624D\u7528\uFF09"
-          },
-          search: {
-            type: "object",
-            description: "\u641C\u7D22\u8303\u56F4",
-            properties: {
-              scale: scaleSchema("\u5C3A\u5EA6\u8303\u56F4\uFF0C\u9ED8\u8BA4 0.85~1.15 step 0.05\uFF08\u6700\u591A 9 \u6863\uFF1B\u7ED9\u66F4\u7EC6\u7684\u6B65\u957F\u4F1A\u81EA\u52A8\u5747\u5206\u6574\u4E2A\u533A\u95F4\uFF09")
-            }
-          },
-          alphaThreshold: { type: "number", description: "alpha \u9608\u503C\uFF08\u9ED8\u8BA4 32\uFF09" },
-          anchorX: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 x\uFF080~1\uFF09\uFF1B\u7ED9\u4E86\u624D\u56DE\u4F20 transferredAnchor" },
-          anchorY: { type: "number", description: "\u53C2\u8003\u5E27\u4E0A\u7684\u951A\u70B9 y\uFF080~1\uFF0Cy-from-bottom\uFF09" },
-          source: sourceSchema()
-        }
-      },
-      output: OUT2,
-      timeoutMs: 24e4,
-      async execute(args) {
-        try {
-          const rawTarget = args.target && typeof args.target === "object" ? args.target : {};
-          const target = {};
-          if (rawTarget.frames === "all") target.frames = "all";
-          else if (Array.isArray(rawTarget.frames)) {
-            target.frames = rawTarget.frames.filter((one) => typeof one === "number");
-          }
-          const rawSearch = args.search && typeof args.search === "object" ? args.search : {};
-          const scale = scaleRangeOf(rawSearch.scale);
-          return json8(
-            await service.silhouetteFit({
-              reference: referenceOf(args.reference),
-              ...Object.keys(target).length > 0 ? { target } : {},
-              ...args.mask === "raw" || args.mask === "body-core" ? { mask: args.mask } : {},
-              ...scale ? { search: { scale } } : {},
-              ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
-              ...typeof args.anchorX === "number" ? { anchorX: args.anchorX } : {},
-              ...typeof args.anchorY === "number" ? { anchorY: args.anchorY } : {},
-              ...args.source === "keyed" || args.source === "raw" ? { source: args.source } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_verify",
-      description: '\u4E00\u6279\u4EA7\u7269\u7684**\u4E00\u81F4\u6027\u81EA\u68C0**\uFF08\u7EAF\u8BFB meta\uFF0C\u4E0D\u89E3\u7801\u56FE\u7247\uFF09\uFF1A\u7EC4\u5185\u8EAB\u9AD8\u65B9\u5DEE \u22641%\u3001\u951A\u70B9 X \u504F\u5DEE \u22642px\u3001\u951A\u70B9\u53E3\u5F84\u4E00\u81F4\u3001\u5FC5\u5907\u5B57\u6BB5\u9F50\u5168\u3002\u89E3\u51B3\u7684\u662F"\u6BCF\u6761\u5355\u770B\u90FD\u6CA1\u4E8B\u3001\u6574\u7EC4\u4E0D\u50CF\u8BDD"\u2014\u20142026-11-13 \u90A3\u6279 6 \u6761\u52A8\u753B\u5355\u4EFD\u5168\u7EFF\uFF0C\u7EC4\u5185\u8EAB\u9AD8\u5DEE\u5230 \xB15%\uFF0C\u5168\u9760\u4EBA\u773C\u624D\u53D1\u73B0\u3002\u5165\u53C2\u4E8C\u9009\u4E00\uFF1Ametas \u76F4\u63A5\u7ED9\u5BF9\u8C61\u6570\u7EC4\uFF0C\u6216 paths \u7ED9 meta.json / \u76EE\u5F55\uFF08\u76EE\u5F55\u91CC\u6240\u6709 .json \u4F1A\u88AB\u5F53\u6210 meta \u8BFB\uFF09\u3002\u57FA\u51C6\u9ED8\u8BA4\u53D6\u7EC4\u5185\u4E2D\u4F4D\u6570\uFF08\u79BB\u7FA4\u70B9\u4E0D\u4F1A\u628A\u57FA\u51C6\u5E26\u8DD1\uFF09\uFF0C\u4E5F\u53EF\u4EE5\u7528 referenceCharHeight \u6307\u5B9A\uFF08\u8DE8\u6279\u6B21\u6CBF\u7528\u4E0A\u4E00\u6279\u7684\u5C3A\u5B50\uFF09\u3002\u8FD4\u56DE {ok,count,reference,tolerance,items[{name,charHeightPx,deltaPct,anchorXPx,deltaAnchorXPx,problems}],warnings}\uFF1Bok=false \u65F6\u9010\u6761 warnings \u4F1A\u5199\u6E05\u662F\u54EA\u4E00\u6761\u3001\u504F\u4E86\u591A\u5C11\u3001\u5BB9\u5DEE\u591A\u5C11\u3002\u6CE8\u610F\u5B83\u53EA\u56DE\u7B54"\u8FD9\u4E00\u7EC4\u5F7C\u6B64\u81EA\u6D3D\u5417"\uFF0C"\u6BCF\u6761\u672C\u8EAB\u51C6\u4E0D\u51C6"\u8981\u9760 measure/export \u7684\u6210\u54C1\u5B9E\u6D4B\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          paths: {
-            type: "array",
-            items: { type: "string" },
-            description: "meta.json \u7684\u8DEF\u5F84\u6216\u5305\u542B\u5B83\u4EEC\u7684\u76EE\u5F55\uFF08\u76F8\u5BF9\u8DEF\u5F84\u6309\u5BFC\u51FA\u76EE\u5F55\u89E3\u6790\uFF09"
-          },
-          metas: {
-            type: "array",
-            items: { type: "object" },
-            description: "\u76F4\u63A5\u7ED9 meta \u5BF9\u8C61\u6570\u7EC4\uFF08\u4E0E paths \u53EF\u540C\u65F6\u7528\uFF0C\u7ED3\u679C\u662F\u4E24\u8005\u5408\u5E76\uFF09"
-          },
-          referenceCharHeight: { type: "number", description: "\u57FA\u51C6\u8EAB\u9AD8\uFF08\u4E0D\u7ED9\u5C31\u53D6\u7EC4\u5185\u4E2D\u4F4D\u6570\uFF09" },
-          heightPct: { type: "number", description: "\u8EAB\u9AD8\u5141\u8BB8\u7684\u76F8\u5BF9\u504F\u5DEE\uFF0C\u9ED8\u8BA4 0.01\uFF081%\uFF09" },
-          anchorPx: { type: "number", description: "\u951A\u70B9 X \u5141\u8BB8\u7684\u6E90\u5E27\u50CF\u7D20\u504F\u5DEE\uFF0C\u9ED8\u8BA4 2" }
-        }
-      },
-      output: OUT2,
-      timeoutMs: 2e4,
-      async execute(args) {
-        try {
-          return json8(
-            await service.verify({
-              ...Array.isArray(args.paths) ? { paths: args.paths.filter((one) => typeof one === "string") } : {},
-              ...Array.isArray(args.metas) ? { metas: args.metas.filter((one) => one && typeof one === "object") } : {},
-              ...typeof args.referenceCharHeight === "number" ? { referenceCharHeight: args.referenceCharHeight } : {},
-              ...typeof args.heightPct === "number" ? { heightPct: args.heightPct } : {},
-              ...typeof args.anchorPx === "number" ? { anchorPx: args.anchorPx } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_baseline",
-      description: '\u51C6\u7EF3\u56FE\uFF1A\u628A**\u4E00\u7EC4\u56FE\u96C6**\u6309\u5404\u81EA meta \u91CC\u7684 anchorX/anchorY \u5BF9\u9F50\u5230\u540C\u4E00\u6761**\u5730\u5E73\u7EBF**\u3001\u518D\u753B\u4E0A\u5934\u9876\u7EBF\uFF0C\u4F9B\u4EBA\u76EE\u89C6\u9A8C\u6536\uFF08skill \xA79 \u7B2C 3 \u6761\uFF09\u3002\u6BCF\u5F20\u56FE\u53D6 `cellIndex` \u683C\uFF08\u9ED8\u8BA4 0=\u9996\u5E27\uFF1B**\u4E5F\u53EF\u4EE5\u7ED9 "tallest"/"median"**\u2014\u2014\u59FF\u52BF\u5DEE\u5F02\u5927\u7684\u52A8\u753B\u7528\u9996\u5E27\u7684 bbox \u9AD8\u4F1A\u8BEF\u5224\u8EAB\u9AD8\u4E0D\u4E00\u81F4\uFF09\uFF0C\u6309\u8DEF\u5F84\u987A\u5E8F\u6A2A\u5411\u6392\u5F00\u3002\u753B\u4E09\u6761\u53C2\u8003\u7EBF\uFF1A\u5730\u5E73\u7EBF\uFF08\u9752\uFF0C= \u951A\u70B9\u6240\u5728\u884C\uFF09\u3001\u5934\u9876\u7EBF\uFF08\u54C1\u7EA2\uFF0C= \u5404\u683C\u5B9E\u6D4B\u6700\u9AD8\u70B9\u7684**\u4E2D\u4F4D\u6570**\u884C\uFF09\u3001\u6BCF\u683C\u7684\u7AD6\u5411\u4E2D\u8F74\uFF08\u7EFF\uFF0C= \u951A\u70B9 x\uFF09\uFF1B\u6BCF\u683C\u5934\u9876\u518D\u70B9\u4E00\u4E2A\u5C0F\u5341\u5B57\uFF0C\u770B\u5F97\u51FA\u7EBF\u662F\u600E\u4E48\u6765\u7684\u3002**meta \u662F\u786C\u8981\u6C42**\uFF1A`x.png` \u627E\u540C\u76EE\u5F55 `x.meta.json`\uFF0C\u518D\u9000\u56DE `x.json`\uFF1B\u627E\u4E0D\u5230\u76F4\u63A5\u62A5\u9519\uFF08\u4E0D\u731C\u951A\u70B9\uFF09\uFF0Cmeta \u91CC\u7F3A cellWidth/cellHeight/anchorX/anchorY \u4E5F\u62A5\u9519\uFF08\u8001\u4EA7\u7269\u5148\u91CD\u65B0 export\uFF09\u3002\u26A0\uFE0F \u8FD9\u91CC\u91CF\u7684\u662F**\u6210\u54C1\u50CF\u7D20**\uFF08\u89E3 PNG \u2192 \u6309\u683C\u5207 \u2192 alpha \u5305\u56F4\u76D2\uFF09\uFF0C\u4E0D\u662F meta \u7684\u53C2\u6570\u56DE\u663E\u3002\u5E95\u8272**\u4E0D\u7ED9\u5C31\u6309\u4E3B\u4F53\u4EAE\u5EA6\u81EA\u9002\u5E94**\uFF08\u504F\u4EAE\u2192\u6DF1\u5E95 #202030\u3001\u504F\u6697\u2192\u6D45\u5E95 #f2f2f5\uFF09\uFF0C\u7ED9\u7684\u663E\u5F0F\u503C\u6C38\u8FDC\u8D62\u3002\u951A\u70B9\u53E3\u5F84\u4F1A\u6821\u9A8C\uFF1A\u4E00\u7EC4\u91CC anchorConvention \u6DF7\u7528\u3001\u6216 anchorY \u4E0E anchorYTopDown \u5BF9\u4E0D\u4E0A\u90FD\u4F1A warning\uFF08\u53E3\u5F84\u4E0D\u4E00\u81F4=\u6574\u6761\u5730\u5E73\u7EBF\u5E73\u79FB\uFF09\u3002\u8F93\u51FA `<outDir>/_debug/baseline-<ts>.png`\uFF08outDir \u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09\u3002\u8FD4\u56DE {ok,path,width,height,baselineY,headTopY,background,cellIndexUsed,items[{name,cellIndex,charHeightPx,\u2026}],warnings}\uFF1B\u7EC4\u5185\u8EAB\u9AD8\u5DEE >1% \u65F6\u4F1A\u5199 warning\u3002',
-      parameters: {
-        type: "object",
-        properties: {
-          paths: {
-            type: "array",
-            items: { type: "string" },
-            description: "\u56FE\u96C6\u8DEF\u5F84\uFF08png\uFF0C\u76F8\u5BF9\u8DEF\u5F84\u6309\u5BFC\u51FA\u76EE\u5F55\u89E3\u6790\uFF09\uFF1B\u987A\u5E8F\u5C31\u662F\u51C6\u7EF3\u56FE\u91CC\u4ECE\u5DE6\u5230\u53F3\u7684\u987A\u5E8F"
-          },
-          cellIndex: {
-            oneOf: [{ type: "number" }, { type: "string", enum: ["tallest", "median"] }],
-            description: '\u53D6\u54EA\u4E00\u683C\uFF1A\u4E0D\u4F20=0\uFF08\u9996\u5E27\uFF0C\u5411\u540E\u517C\u5BB9\uFF09\uFF1B"tallest"=\u8BED\u4E49\u8EAB\u9AD8\u6700\u5927\u7684\u90A3\u4E00\u683C\uFF08\u731C\u4E0D\u5230\u8BED\u4E49\u8EAB\u9AD8\u5C31\u9000\u56DE bbox \u9AD8\uFF0C\u9002\u5408\u5439\u54E8/\u60CA\u5413\u8FD9\u7C7B\u59FF\u52BF\u5DEE\u5F02\u5927\u7684\u52A8\u753B\uFF09\uFF1B"median"=bbox \u9AD8\u6700\u63A5\u8FD1\u4E2D\u4F4D\u6570\u7684\u90A3\u4E00\u683C\u3002\u56FA\u5B9A\u683C\u53F7\u4ECD\u53EF\u4F20\u6570\u5B57\u3002'
-          },
-          gap: { type: "number", description: "\u683C\u4E0E\u683C\u7684\u6A2A\u5411\u7A7A\u9699\uFF08\u50CF\u7D20\uFF0C\u9ED8\u8BA4 8\uFF09" },
-          background: {
-            type: "string",
-            description: "\u5E95\u8272 #RRGGBB\u3002\u4E0D\u7ED9\u5C31\u6309\u4E3B\u4F53\u4EAE\u5EA6\u81EA\u9002\u5E94\uFF08\u6D45\u8272\u89D2\u8272\u2192\u6DF1\u5E95\u3001\u6DF1\u8272\u89D2\u8272\u2192\u6D45\u5E95\uFF09\uFF1B\u7ED9\u4E86\u5C31\u7528\u7ED9\u7684"
-          },
-          padding: { type: "number", description: "\u56DB\u5468\u7559\u767D\uFF08\u50CF\u7D20\uFF0C\u9ED8\u8BA4 4\uFF09" },
-          outDir: { type: "string", description: "\u8F93\u51FA\u6839\u76EE\u5F55\uFF08\u9ED8\u8BA4\u53D6\u6240\u6709\u8F93\u5165\u8DEF\u5F84\u7684\u516C\u5171\u7236\u76EE\u5F55\uFF09" }
-        },
-        required: ["paths"]
-      },
-      output: OUT2,
-      timeoutMs: 12e4,
-      async execute(args) {
-        try {
-          const cellIndex = args.cellIndex;
-          return json8(
-            await service.baseline({
-              paths: (Array.isArray(args.paths) ? args.paths : []).filter((one) => typeof one === "string"),
-              ...typeof cellIndex === "number" && Number.isFinite(cellIndex) ? { cellIndex } : cellIndex === "tallest" || cellIndex === "median" ? { cellIndex } : {},
-              ...typeof args.gap === "number" ? { gap: args.gap } : {},
-              ...typeof args.background === "string" ? { background: args.background } : {},
-              ...typeof args.padding === "number" ? { padding: args.padding } : {},
-              ...typeof args.outDir === "string" ? { outDir: args.outDir } : {}
-            })
-          );
-        } catch (error62) {
-          return fail2(error62);
-        }
-      }
-    },
-    {
-      name: "sprite_guide",
-      description: "\u8FD4\u56DE\u8FD9\u5957\u5DE5\u5177\u7684\u5B8C\u6574\u6307\u5357\uFF08\u65B9\u6CD5\u8BBA / \u516D\u6B65\u539F\u8BED / \u53C2\u6570\u8BED\u4E49\u8868 / \u75C7\u72B6\u901F\u67E5 / \u5750\u6807\u6362\u7B97 / \u951A\u70B9\u53E3\u5F84\uFF09\u3002\u5B83\u4E0E skill `dafeiyu-sprite` \u662F\u540C\u4E00\u4EFD\u5185\u5BB9\uFF1A\u4F18\u5148\u7528 skill\uFF0C\u52A0\u8F7D\u4E0D\u5230\u518D\u8C03\u5B83\u3002",
-      parameters: { type: "object", properties: {} },
-      output: OUT2,
-      timeoutMs: 1e4,
-      async execute() {
-        return options?.guideBody?.() ?? SPRITE_GUIDE;
-      }
-    }
-  ];
-}
-
-// src/sprite/skill.ts
-import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import path21 from "node:path";
-var SPRITE_SKILL_NAME = "dafeiyu-sprite";
-var VERSION_FILE = ".dafeiyu-skill-version";
 function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync3(path21.join(base, rel), { withFileTypes: true });
+      entries = readdirSync2(path17.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -44605,7 +37684,7 @@ function fingerprint(dir) {
       if (entry.isDirectory()) out.push(...walk2(base, childRel));
       else {
         try {
-          out.push(`${childRel}:${statSync4(path21.join(base, childRel)).size}`);
+          out.push(`${childRel}:${statSync3(path17.join(base, childRel)).size}`);
         } catch {
           out.push(`${childRel}:?`);
         }
@@ -44613,26 +37692,26 @@ function fingerprint(dir) {
     }
     return out;
   };
-  return walk2(dir, "").filter((line) => !line.startsWith(VERSION_FILE)).join("|");
+  return walk2(dir, "").filter((line) => !line.startsWith(SKILL_VERSION_FILE)).join("|");
 }
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync3(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path21.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync4(path21.join(entry.dir, "SKILL.md")));
+    entries = readdirSync2(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path17.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync2(path17.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
   if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
   const installed = [];
   for (const entry of entries) {
-    const target = path21.join(deps.dshHome, "skills", entry.name);
-    const stamp = path21.join(target, VERSION_FILE);
+    const target = path17.join(deps.dshHome, "skills", entry.name);
+    const stamp = path17.join(target, SKILL_VERSION_FILE);
     try {
-      if (existsSync4(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
-      mkdirSync7(path21.dirname(target), { recursive: true });
-      if (existsSync4(target)) rmSync2(target, { recursive: true, force: true });
+      if (existsSync2(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
+      mkdirSync6(path17.dirname(target), { recursive: true });
+      if (existsSync2(target)) rmSync(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
-      writeFileSync4(stamp, `${deps.version}
+      writeFileSync2(stamp, `${deps.version}
 `, "utf8");
       installed.push(entry.name);
     } catch (error62) {
@@ -44640,1017 +37719,29 @@ function installBundledSkills(deps) {
         skill: entry.name,
         message: String(error62?.message ?? error62).slice(0, 120)
       });
-      return { ok: installed.length > 0, installed, reason: `copy-failed: ${entry.name}` };
+      return { ok: false, installed, reason: `copy-failed: ${entry.name}` };
     }
   }
   if (installed.length > 0) deps.log("\u5185\u7F6E skill \u5DF2\u94FA\u5F00", { skills: installed.join(","), version: deps.version });
   return { ok: true, installed };
 }
-var cachedBody;
-function readSpriteSkillBody(assetsRoot) {
-  if (cachedBody !== void 0) return cachedBody;
+function installPackagedSkills(deps) {
   try {
-    const raw = readFileSync7(path21.join(assetsRoot, "SKILL.md"), "utf8");
-    cachedBody = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
-  } catch {
-    cachedBody = SPRITE_GUIDE;
-  }
-  return cachedBody;
-}
-
-// src/sprite/start.ts
-function packageRoot() {
-  try {
-    return path22.resolve(path22.dirname(fileURLToPath(import.meta.url)), "..", "..");
-  } catch {
-    return process.cwd();
-  }
-}
-function packageVersion() {
-  try {
-    const raw = readFileSync8(path22.join(packageRoot(), "package.json"), "utf8");
-    const parsed = JSON.parse(raw);
-    return typeof parsed.version === "string" ? parsed.version : "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-function startSprite(ctx, deps) {
-  const probe = {};
-  const toolHtmlPath = deps.toolHtmlPath ?? path22.join(packageRoot(), "assets", "sprite", "sprite-tool.html");
-  const outDir = deps.outDir ?? path22.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "sprite-out");
-  const skillAssetsRoot = path22.join(packageRoot(), "assets", "skills", SPRITE_SKILL_NAME);
-  let service;
-  if (deps.enabled === false) {
-    probe.service = "disabled";
-  } else if (!existsSync5(toolHtmlPath)) {
-    probe.service = `missing-tool-html: ${toolHtmlPath}`;
-    deps.log("\u5E8F\u5217\u5E27\u5DE5\u5177\u9875\u4E0D\u5B58\u5728\uFF08\u5DE5\u5177\u4E0D\u4F1A\u6CE8\u518C\uFF09", { path: toolHtmlPath });
-  } else {
-    try {
-      service = createSpriteService({ toolHtmlPath, outDir, log: deps.log });
-      probe.service = "ready";
-      try {
-        const installed = installBundledSkills({
-          dshHome: deps.dshHome,
-          assetsRoot: path22.join(packageRoot(), "assets", "skills"),
-          version: packageVersion(),
-          log: deps.log
-        });
-        probe.skills = installed.ok ? `installed(${installed.installed.length})` : `skipped: ${installed.reason ?? "unknown"}`;
-      } catch (error62) {
-        probe.skills = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-      }
-      void sweepOrphanBrowsers(deps.log).then((count) => {
-        if (count > 0) probe.orphansSwept = String(count);
-      }).catch(() => void 0);
-    } catch (error62) {
-      service = void 0;
-      probe.service = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
-    }
-  }
-  let toolCount = 0;
-  if (service) {
-    try {
-      const tools = ctx.get?.("tools", true);
-      if (tools && typeof tools.register === "function") {
-        const definitions = buildTools(service, { guideBody: () => readSpriteSkillBody(skillAssetsRoot) });
-        for (const definition of definitions) tools.register(definition);
-        toolCount = definitions.length;
-        probe.tools = `registered(${toolCount})`;
-      } else {
-        probe.tools = "no-tools";
-      }
-    } catch (error62) {
-      probe.tools = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
-    }
-  } else {
-    probe.tools = "skipped";
-  }
-  try {
-    const systemPrompt = ctx.get?.("systemPrompt", true);
-    if (service && systemPrompt && typeof systemPrompt.section === "function") {
-      systemPrompt.section({ name: "dafeiyu:sprite", order: 10091, text: SPRITE_GUIDANCE });
-      probe.section = "registered";
-    } else {
-      probe.section = service ? "no-systemPrompt" : "skipped";
-    }
-  } catch (error62) {
-    probe.section = `threw: ${String(error62?.message ?? error62).slice(0, 120)}`;
-  }
-  let web;
-  let unregister;
-  let started = false;
-  let stopped = false;
-  const tryStart = () => {
-    if (started || stopped || !web || !service) return;
-    started = true;
-    try {
-      unregister = web.register({
-        kind: "exact",
-        path: SPRITE_PAGE_ROUTE,
-        handler: spritePageHandler({ toolHtmlPath, log: deps.log })
-      });
-      probe.routes = "registered";
-    } catch (error62) {
-      probe.routes = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-      started = false;
-    }
-  };
-  const acceptWeb = (value, via) => {
-    if (!value || typeof value !== "object") return false;
-    if (typeof value.register !== "function") {
-      probe.webServer = "object without register()";
-      return false;
-    }
-    web = value;
-    probe.webServer = via;
-    tryStart();
-    return true;
-  };
-  const pickFrom = (source) => {
-    if (!source || typeof source !== "object") return void 0;
-    const asContext = source;
-    if (typeof asContext.get === "function") {
-      try {
-        const got = asContext.get("webServer", true);
-        if (got) return got;
-      } catch {
-      }
-    }
-    try {
-      return source["webServer"];
-    } catch {
-      return void 0;
-    }
-  };
-  try {
-    const found = ctx.get?.("webServer", true);
-    if (found) acceptWeb(found, "via get");
-    else probe.webServer = "none";
-  } catch (error62) {
-    probe.webServer = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-  }
-  try {
-    ctx.inject?.(["webServer"], ((...args) => {
-      try {
-        for (const candidate of [args[0], ...args, ctx]) {
-          if (acceptWeb(pickFrom(candidate), "via inject")) return;
-        }
-      } catch (error62) {
-        probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
-      }
-    }));
-  } catch (error62) {
-    probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
-  }
-  return {
-    probe,
-    service,
-    stop() {
-      if (stopped) return;
-      stopped = true;
-      try {
-        unregister?.();
-      } catch {
-      }
-      void service?.stop().catch(() => void 0);
-    }
-  };
-}
-
-// src/xyq/start.ts
-import path24 from "node:path";
-
-// src/xyq/service.ts
-function parseJson(text) {
-  const trimmed = text.trim();
-  if (trimmed === "") return void 0;
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const lines = trimmed.split(/\r?\n/).filter((line) => line.trim() !== "");
-    for (let i = lines.length - 1; i >= 0; i -= 1) {
-      try {
-        return JSON.parse(lines[i]);
-      } catch {
-      }
-    }
-    return void 0;
-  }
-}
-function authMessage(text) {
-  if (/登录凭证|XYQ_ACCESS_KEY|未授权|unauthorized|401|403/i.test(text)) {
-    return "\u5C0F\u4E91\u96C0 Access Key \u5DF2\u8FC7\u671F\u6216\u65E0\u6548\u3002\u8BF7\u5230\u5C0F\u4E91\u96C0\u5B98\u7F51 \u2192 \u26A1CLI/API \u2192 API \u2192 \u7BA1\u7406 Access Key \u66F4\u65B0\u540E\uFF0C\u5728\u300C\u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0\u300D\u91CC\u91CD\u65B0\u586B\u5199\u3002";
-  }
-  return void 0;
-}
-function createXyqService(deps) {
-  const sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-  const pollInterval = deps.pollIntervalMs ?? 5e3;
-  const videoTimeout = deps.videoTimeoutMs ?? 15 * 6e4;
-  const imageTimeout = deps.imageTimeoutMs ?? 6 * 6e4;
-  const budgets = /* @__PURE__ */ new Map();
-  const readConfig2 = () => readXyqConfig(deps.configFile);
-  function budgetOf(sessionKey2) {
-    const current = budgets.get(sessionKey2);
-    if (current) return current;
-    const fresh = { images: 0, videos: 0 };
-    budgets.set(sessionKey2, fresh);
-    return fresh;
-  }
-  async function call(args, timeoutMs) {
-    const config2 = readConfig2();
-    if (!config2.enabled) return { result: { code: -1, stdout: "", stderr: "", timedOut: false }, message: "\u5C0F\u4E91\u96C0\u80FD\u529B\u5DF2\u5173\u95ED\uFF08\u8BBE\u7F6E\u9875 \u2192 \u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0\uFF09" };
-    if (config2.accessKey === "") {
-      return {
-        result: { code: -1, stdout: "", stderr: "", timedOut: false },
-        message: "\u8FD8\u6CA1\u586B\u5C0F\u4E91\u96C0 Access Key\u3002\u8BF7\u5230\u5C0F\u4E91\u96C0\u5B98\u7F51 \u2192 \u26A1CLI/API \u2192 API \u2192 \u7BA1\u7406 Access Key \u65B0\u5EFA\uFF0C\u7136\u540E\u586B\u5230\u300C\u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0\u300D\u91CC\u3002"
-      };
-    }
-    const cli = await deps.resolveCli();
-    if (cli === void 0) {
-      return {
-        result: { code: -1, stdout: "", stderr: "", timedOut: false },
-        message: "\u6CA1\u627E\u5230 pippit-tool-cli\uFF0C\u81EA\u52A8\u5B89\u88C5\u4E5F\u5931\u8D25\u4E86\u3002\u8BF7\u5148\u5728\u7EC8\u7AEF\u8FD0\u884C `npx @pippit-dev/cli@latest install`\uFF0C\u518D\u91CD\u8BD5\u3002"
-      };
-    }
-    const result2 = await deps.run([cli, ...args], { env: { XYQ_ACCESS_KEY: config2.accessKey }, timeoutMs });
-    const combined = `${result2.stdout}
-${result2.stderr}`;
-    const auth = authMessage(combined);
-    if (auth !== void 0) return { result: result2, message: auth };
-    const modelMissing = combined.match(/未找到可用模型[^\n]*/);
-    if (modelMissing) return { result: result2, message: modelMissing[0].trim() };
-    const json12 = parseJson(result2.stdout);
-    if (result2.timedOut) return { result: result2, message: `\u5C0F\u4E91\u96C0\u547D\u4EE4\u8D85\u65F6\uFF08${Math.round(timeoutMs / 1e3)} \u79D2\uFF09` };
-    if (json12 === void 0) {
-      const reason = result2.stderr.trim() !== "" ? result2.stderr.trim() : result2.stdout.trim();
-      return { result: result2, message: reason !== "" ? `\u5C0F\u4E91\u96C0\u8FD4\u56DE\u4E86\u65E0\u6CD5\u89E3\u6790\u7684\u5185\u5BB9\uFF1A${reason.slice(0, 200)}` : "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE\u5185\u5BB9" };
-    }
-    return { result: result2, json: json12 };
-  }
-  async function poll(threadId, runId, outDir, timeoutMs) {
-    const started = (deps.now ?? Date.now)();
-    for (; ; ) {
-      const answered = await call(
-        ["query-result", "--thread-id", threadId, "--run-id", runId, "--download-dir", outDir],
-        Math.max(3e4, timeoutMs)
-      );
-      if (answered.message !== void 0) return { ok: false, files: [], message: answered.message };
-      const json12 = answered.json ?? {};
-      const status = typeof json12.status === "string" ? json12.status : "unknown";
-      if (json12.error_message !== void 0 && String(json12.error_message).trim() !== "") {
-        return { ok: false, files: [], status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${String(json12.error_message).slice(0, 200)}` };
-      }
-      if (status === "succeeded") {
-        const files = [];
-        for (const key of ["videos", "images"]) {
-          const list = Array.isArray(json12[key]) ? json12[key] : [];
-          for (const item of list) {
-            if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
-          }
-        }
-        return { ok: true, files, status };
-      }
-      if (status === "failed" || status === "canceled" || status === "interrupted") {
-        return { ok: false, files: [], status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1${status === "canceled" ? "\u88AB\u53D6\u6D88" : "\u5931\u8D25"}\u4E86` };
-      }
-      if ((deps.now ?? Date.now)() - started > timeoutMs) {
-        return { ok: false, files: [], status, message: `\u7B49\u5C0F\u4E91\u96C0\u51FA\u7247\u8D85\u65F6\uFF08${Math.round(timeoutMs / 6e4)} \u5206\u949F\uFF09\uFF0C\u4EFB\u52A1\u8FD8\u5728\u8DD1\uFF1B\u7A0D\u540E\u53EF\u4EE5\u7528 thread_id/run_id \u7EE7\u7EED\u67E5\uFF1A${threadId} / ${runId}` };
-      }
-      await sleep(pollInterval);
-    }
-  }
-  return {
-    config: readConfig2,
-    view: () => viewXyqConfig(readConfig2()),
-    update: (patch) => viewXyqConfig(writeXyqConfig(deps.configFile, patch)),
-    async status() {
-      const answered = await call(["status"], 3e4);
-      if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      return {
-        ok: true,
-        loggedIn: json12.logged_in === true,
-        source: typeof json12.source === "string" ? json12.source : "",
-        ...json12.logged_in === true ? {} : { message: "Access Key \u672A\u751F\u6548\uFF0C\u8BF7\u68C0\u67E5\u662F\u5426\u8FC7\u671F" }
-      };
-    },
-    async balance() {
-      const answered = await call(["get-credit-balance"], 3e4);
-      if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      return { ok: true, totalRemain: typeof json12.total_remain_amount === "string" ? json12.total_remain_amount : String(json12.total_remain_amount ?? "") };
-    },
-    async models(kind) {
-      const answered = await call(["model", "list", "--type", kind], 6e4);
-      if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      const list = Array.isArray(json12.models) ? json12.models : [];
-      return {
-        ok: true,
-        models: list.filter((row) => typeof row.name === "string" && String(row.name).trim() !== "").map((row) => ({
-          // 生图模型只有 name（CLI 就用完整名称）；生视频模型有 key（提交要用 key）。
-          key: typeof row.key === "string" && row.key !== "" ? String(row.key) : String(row.name),
-          name: String(row.name)
-        }))
-      };
-    },
-    async generateImage(input2) {
-      const config2 = readConfig2();
-      const sessionKey2 = input2.sessionKey ?? "default";
-      const budget = budgetOf(sessionKey2);
-      if (config2.budget.images > 0 && budget.images >= config2.budget.images) {
-        return { ok: false, message: `\u672C\u4F1A\u8BDD\u7684\u751F\u56FE\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF08\u4E0A\u9650 ${config2.budget.images} \u5F20\uFF0C\u53EF\u5728\u300C\u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0\u300D\u91CC\u8C03\u6574\uFF09` };
-      }
-      const model2 = (input2.model ?? config2.defaultImageModel).trim();
-      if (model2 === "") {
-        return { ok: false, message: "\u6CA1\u6307\u5B9A\u56FE\u7247\u6A21\u578B\u3002\u5148\u7528 `model list --type image` \u67E5\u53EF\u7528\u6A21\u578B\uFF0C\u6216\u5728\u300C\u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0\u300D\u91CC\u8BBE\u9ED8\u8BA4\u56FE\u7247\u6A21\u578B\u3002" };
-      }
-      const args = ["generate-image", "--prompt", input2.prompt, "--model", model2];
-      for (const image of input2.images ?? []) {
-        if (typeof image === "string" && image !== "") args.push("--image", image);
-      }
-      if (typeof input2.ratio === "string" && input2.ratio !== "") args.push("--ratio", input2.ratio);
-      if (typeof input2.count === "number" && Number.isFinite(input2.count) && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
-      const submitted = await call(args, 12e4);
-      if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
-      if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id\uFF0C\u751F\u6210\u672A\u63D0\u4EA4\u6210\u529F" };
-      budget.images += 1;
-      const outDir = input2.outDir ?? "xyq_output";
-      const polled = await poll(threadId, runId, outDir, imageTimeout);
-      return {
-        ok: polled.ok,
-        ...polled.ok ? {} : { message: polled.message },
-        threadId,
-        runId,
-        files: polled.files,
-        ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {}
-      };
-    },
-    /** UI 用：只提交生图任务，返回 thread/run（结果由 queryOnce 轮询）。 */
-    async startImage(input2) {
-      const config2 = readConfig2();
-      const budget = budgetOf(input2.sessionKey ?? "default");
-      if (config2.budget.images > 0 && budget.images >= config2.budget.images) {
-        return { ok: false, message: `\u672C\u4F1A\u8BDD\u7684\u751F\u56FE\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF08\u4E0A\u9650 ${config2.budget.images} \u5F20\uFF09` };
-      }
-      if (input2.model.trim() === "") return { ok: false, message: "\u6CA1\u6307\u5B9A\u56FE\u7247\u6A21\u578B" };
-      const args = ["generate-image", "--prompt", input2.prompt, "--model", input2.model];
-      for (const image of input2.images ?? []) if (image !== "") args.push("--image", image);
-      if (typeof input2.ratio === "string" && input2.ratio !== "") args.push("--ratio", input2.ratio);
-      if (typeof input2.resolution === "string" && input2.resolution !== "") args.push("--resolution", input2.resolution);
-      if (typeof input2.count === "number" && input2.count > 0) args.push("--generate-image-count", String(Math.round(input2.count)));
-      const submitted = await call(args, 12e4);
-      if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
-      if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
-      budget.images += 1;
-      return { ok: true, threadId, runId, ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {} };
-    },
-    /** UI 用：只提交生视频任务。 */
-    async startVideo(input2) {
-      const config2 = readConfig2();
-      const budget = budgetOf(input2.sessionKey ?? "default");
-      if (config2.budget.videos > 0 && budget.videos >= config2.budget.videos) {
-        return { ok: false, message: `\u672C\u4F1A\u8BDD\u7684\u89C6\u9891\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF08\u4E0A\u9650 ${config2.budget.videos} \u6761\uFF09` };
-      }
-      if (input2.model.trim() === "") return { ok: false, message: "\u6CA1\u6307\u5B9A\u89C6\u9891\u6A21\u578B" };
-      const duration3 = Math.min(config2.budget.maxVideoSeconds, Math.max(4, Math.round(input2.duration ?? config2.defaultVideoDurationSec)));
-      const args = ["generate-video", "--model", input2.model, "--prompt", input2.prompt, "--duration", String(duration3)];
-      for (const image of input2.images ?? []) if (image !== "") args.push("--image", image);
-      if (typeof input2.ratio === "string" && input2.ratio !== "" && input2.ratio !== "adaptive") args.push("--ratio", input2.ratio);
-      if (typeof input2.resolution === "string" && input2.resolution !== "") args.push("--resolution", input2.resolution);
-      args.push("--task-type", "reference");
-      const submitted = await call(args, 18e4);
-      if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
-      if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id" };
-      budget.videos += 1;
-      return { ok: true, threadId, runId, ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {} };
-    },
-    /** UI 用：查一次任务状态（不轮询、不阻塞）。 */
-    async queryOnce(threadId, runId, outDir) {
-      const answered = await call(
-        ["query-result", "--thread-id", threadId, "--run-id", runId, "--download-dir", outDir],
-        12e4
-      );
-      if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      const status = typeof json12.status === "string" ? json12.status : "unknown";
-      if (typeof json12.error_message === "string" && json12.error_message !== "") {
-        return { ok: false, status, message: `\u5C0F\u4E91\u96C0\u4EFB\u52A1\u5931\u8D25\uFF1A${json12.error_message.slice(0, 200)}` };
-      }
-      if (status !== "succeeded") return { ok: true, status };
-      const files = [];
-      for (const key of ["videos", "images"]) {
-        const list = Array.isArray(json12[key]) ? json12[key] : [];
-        for (const item of list) {
-          if (typeof item.output_path === "string" && item.output_path !== "") files.push(item.output_path);
-        }
-      }
-      return { ok: true, status, files };
-    },
-    /** 模型详情（比例/分辨率/时长等），给设置面板的下拉框用。 */
-    async describe(name2, kind) {
-      const answered = await call(["model", "describe", name2, "--type", kind], 6e4);
-      if (answered.message !== void 0) return { ok: false, message: answered.message };
-      const json12 = answered.json ?? {};
-      const model2 = json12.model && typeof json12.model === "object" ? json12.model : void 0;
-      if (model2 === void 0) return { ok: false, message: "\u6CA1\u6709\u62FF\u5230\u6A21\u578B\u8BE6\u60C5" };
-      return { ok: true, model: model2 };
-    },
-    async generateVideo(input2) {
-      const config2 = readConfig2();
-      const sessionKey2 = input2.sessionKey ?? "default";
-      const budget = budgetOf(sessionKey2);
-      if (config2.budget.videos > 0 && budget.videos >= config2.budget.videos) {
-        return { ok: false, message: `\u672C\u4F1A\u8BDD\u7684\u89C6\u9891\u989D\u5EA6\u5DF2\u7528\u5B8C\uFF08\u4E0A\u9650 ${config2.budget.videos} \u6761\uFF0C\u53EF\u5728\u300C\u5927\u80A5\u9C7C \u2192 \u5C0F\u4E91\u96C0\u300D\u91CC\u8C03\u6574\uFF09` };
-      }
-      const model2 = (input2.model ?? config2.defaultVideoModel).trim();
-      if (model2 === "") return { ok: false, message: "\u6CA1\u6307\u5B9A\u89C6\u9891\u6A21\u578B\uFF08\u9ED8\u8BA4 Seedance_2.0_mini_lite\uFF0C\u53EF\u5728\u8BBE\u7F6E\u91CC\u6539\uFF09" };
-      const duration3 = Math.min(config2.budget.maxVideoSeconds, Math.max(4, Math.round(input2.duration ?? config2.defaultVideoDurationSec)));
-      const args = ["generate-video", "--model", model2, "--prompt", input2.prompt, "--duration", String(duration3)];
-      for (const image of input2.images ?? []) {
-        if (typeof image === "string" && image !== "") args.push("--image", image);
-      }
-      if (typeof input2.ratio === "string" && input2.ratio !== "") args.push("--ratio", input2.ratio);
-      args.push("--task-type", "reference");
-      const submitted = await call(args, 18e4);
-      if (submitted.message !== void 0) return { ok: false, message: submitted.message };
-      const json12 = submitted.json ?? {};
-      const threadId = typeof json12.thread_id === "string" ? json12.thread_id : "";
-      const runId = typeof json12.run_id === "string" ? json12.run_id : "";
-      if (threadId === "" || runId === "") return { ok: false, message: "\u5C0F\u4E91\u96C0\u6CA1\u6709\u8FD4\u56DE thread_id / run_id\uFF0C\u751F\u6210\u672A\u63D0\u4EA4\u6210\u529F" };
-      budget.videos += 1;
-      const outDir = input2.outDir ?? "xyq_output";
-      const polled = await poll(threadId, runId, outDir, videoTimeout);
-      return {
-        ok: polled.ok,
-        ...polled.ok ? {} : { message: polled.message },
-        threadId,
-        runId,
-        files: polled.files,
-        ...typeof json12.web_thread_link === "string" ? { webLink: json12.web_thread_link } : {}
-      };
-    }
-  };
-}
-
-// src/xyq/routes.ts
-var XYQ_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/xyq/config";
-var XYQ_STATUS_ROUTE = "/api/dsh-remote-dafeiyu/xyq/status";
-var XYQ_BALANCE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/balance";
-var XYQ_MODELS_ROUTE = "/api/dsh-remote-dafeiyu/xyq/models";
-var XYQ_DESCRIBE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/describe";
-var XYQ_GENERATE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/generate";
-var XYQ_RESULT_ROUTE = "/api/dsh-remote-dafeiyu/xyq/result";
-var XYQ_FILE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/file";
-function json9(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function rejected4(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
-  return void 0;
-}
-function readBody4(request) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    request.on("data", (chunk2) => {
-      size += chunk2.byteLength;
-      if (size > 16 * 1024) {
-        reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
-        request.destroy();
-        return;
-      }
-      chunks.push(chunk2);
+    return installBundledSkills({
+      dshHome: deps.dshHome,
+      assetsRoot: path17.join(packageRoot(), "assets", "skills"),
+      version: packageVersion(),
+      log: deps.log
     });
-    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    request.on("error", reject);
-  });
-}
-function xyqConfigHandler(deps) {
-  return async (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected4(request);
-    if (denied) {
-      json9(response, 403, { ok: false, error: denied });
-      return;
-    }
-    if (request.method === "GET" || request.method === "HEAD") {
-      json9(response, 200, { ok: true, config: deps.service.view() });
-      return;
-    }
-    if (request.method !== "POST") {
-      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
-      return;
-    }
-    if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json9(response, 403, { ok: false, error: "missing x-drc-pair" });
-      return;
-    }
-    try {
-      const body = JSON.parse(await readBody4(request));
-      json9(response, 200, { ok: true, config: deps.service.update(body) });
-    } catch (error62) {
-      json9(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function xyqQueryHandler(kind, deps) {
-  return async (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected4(request);
-    if (denied) {
-      json9(response, 403, { ok: false, error: denied });
-      return;
-    }
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-      return;
-    }
-    try {
-      if (kind === "status") {
-        json9(response, 200, await deps.service.status());
-        return;
-      }
-      if (kind === "balance") {
-        json9(response, 200, await deps.service.balance());
-        return;
-      }
-      const url2 = new URL(request.url ?? "/", "http://localhost");
-      const type = url2.searchParams.get("type") === "image" ? "image" : "video";
-      json9(response, 200, await deps.service.models(type));
-    } catch (error62) {
-      deps.log("\u5C0F\u4E91\u96C0\u67E5\u8BE2\u8DEF\u7531\u5931\u8D25", { kind, message: String(error62?.message ?? error62).slice(0, 160) });
-      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function xyqDescribeHandler(deps) {
-  return async (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected4(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const name2 = (url2.searchParams.get("name") ?? "").trim();
-    const type = url2.searchParams.get("type") === "video" ? "video" : "image";
-    if (name2 === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 name" });
-    try {
-      json9(response, 200, await deps.service.describe(name2, type));
-    } catch (error62) {
-      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function xyqGenerateHandler(deps) {
-  return async (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected4(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "POST") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
-    if (String(request.headers["x-drc-pair"] ?? "") === "") return json9(response, 403, { ok: false, error: "missing x-drc-pair" });
-    try {
-      const body = JSON.parse(await readBody4(request));
-      const type = body.type === "video" ? "video" : "image";
-      const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-      const model2 = typeof body.model === "string" ? body.model.trim() : "";
-      if (prompt === "" || model2 === "") return json9(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
-      try {
-        const { mkdirSync: mkdirSync10 } = await import("node:fs");
-        mkdirSync10(deps.outDir, { recursive: true });
-      } catch {
-      }
-      const sessionKey2 = typeof body.sessionKey === "string" && body.sessionKey !== "" ? body.sessionKey : "xyq-panel";
-      const result2 = type === "video" ? await deps.service.startVideo({
-        prompt,
-        model: model2,
-        sessionKey: sessionKey2,
-        ...typeof body.duration === "number" ? { duration: body.duration } : {},
-        ...typeof body.ratio === "string" ? { ratio: body.ratio } : {},
-        ...typeof body.resolution === "string" ? { resolution: body.resolution } : {}
-      }) : await deps.service.startImage({
-        prompt,
-        model: model2,
-        sessionKey: sessionKey2,
-        ...typeof body.ratio === "string" ? { ratio: body.ratio } : {},
-        ...typeof body.resolution === "string" ? { resolution: body.resolution } : {},
-        ...typeof body.count === "number" ? { count: body.count } : {}
-      });
-      json9(response, result2.ok ? 200 : 502, result2);
-    } catch (error62) {
-      json9(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function xyqResultHandler(deps) {
-  return async (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected4(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const threadId = (url2.searchParams.get("threadId") ?? "").trim();
-    const runId = (url2.searchParams.get("runId") ?? "").trim();
-    if (threadId === "" || runId === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 threadId / runId" });
-    try {
-      json9(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir));
-    } catch (error62) {
-      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function xyqFileHandler(deps) {
-  return async (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected4(request);
-    if (denied) return json9(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const target = (url2.searchParams.get("path") ?? "").trim();
-    if (target === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
-    const path31 = await import("node:path");
-    const fs10 = await import("node:fs");
-    const resolved = path31.resolve(target);
-    const root = path31.resolve(deps.outDir);
-    if (!resolved.startsWith(root + path31.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
-    try {
-      const data = fs10.readFileSync(resolved);
-      const ext = path31.extname(resolved).toLowerCase();
-      const mime = ext === ".mp4" ? "video/mp4" : ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "application/octet-stream";
-      response.writeHead(200, { "Content-Type": mime, "Content-Length": data.byteLength });
-      if (request.method === "HEAD") response.end();
-      else response.end(data);
-    } catch {
-      json9(response, 404, { ok: false, error: "\u6587\u4EF6\u4E0D\u5B58\u5728" });
-    }
-  };
-}
-
-// src/xyq/tools.ts
-function sessionKeyOf(exec) {
-  const record2 = exec && typeof exec === "object" ? exec : void 0;
-  const agent = record2?.agent && typeof record2.agent === "object" ? record2.agent : void 0;
-  const session = agent?.session && typeof agent.session === "object" ? agent.session : void 0;
-  const id = session?.id ?? record2?.sessionId ?? record2?.session;
-  return typeof id === "string" && id !== "" ? id : "default";
-}
-function resultText(result2) {
-  if (!result2.ok) return `\u751F\u6210\u5931\u8D25\uFF1A${result2.message ?? "\u672A\u77E5\u539F\u56E0"}`;
-  const files = result2.files ?? [];
-  const lines = [`\u751F\u6210\u5B8C\u6210\uFF0C${files.length} \u4E2A\u6587\u4EF6\uFF1A`, ...files.map((file2) => `- ${file2}`)];
-  if (result2.webLink !== void 0) lines.push(`\u5728\u7EBF\u67E5\u770B\uFF1A${result2.webLink}`);
-  if (result2.threadId !== void 0) lines.push(`\u4EFB\u52A1\uFF1A${result2.threadId}`);
-  return lines.join("\n");
-}
-function xyqTools(service) {
-  return [
-    {
-      name: "generate_image",
-      description: "\u7528\u5C0F\u4E91\u96C0\u751F\u6210/\u7F16\u8F91\u56FE\u7247\u3002prompt \u5FC5\u987B\u662F\u7528\u6237\u539F\u59CB\u63CF\u8FF0\uFF1B\u53EF\u4F20\u53C2\u8003\u56FE\uFF08\u672C\u5730\u7EDD\u5BF9\u8DEF\u5F84\uFF09\u3002\u6309\u5F20\u6D88\u8017\u79EF\u5206\u3002\u7528\u6237\u6CA1\u6709\u660E\u786E\u8981\u6C42\u753B\u56FE\u65F6\u4E0D\u8981\u8C03\u7528\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          prompt: { type: "string", description: "\u56FE\u7247\u63CF\u8FF0\uFF08\u7528\u6237\u539F\u8BDD\uFF0C\u4E0D\u8981\u6269\u5199\uFF09" },
-          model: { type: "string", description: "\u56FE\u7247\u6A21\u578B\u5B8C\u6574\u540D\u79F0\uFF08\u5148\u7528 xyq_models \u67E5 image \u5217\u8868\uFF09\uFF1B\u4E0D\u4F20\u5219\u7528\u8BBE\u7F6E\u91CC\u7684\u9ED8\u8BA4\u503C" },
-          images: { type: "array", items: { type: "string" }, description: "\u53C2\u8003\u56FE\u672C\u5730\u7EDD\u5BF9\u8DEF\u5F84\uFF0C\u53EF\u591A\u5F20" },
-          ratio: { type: "string", description: "\u6BD4\u4F8B\uFF08\u6A21\u578B\u8FD4\u56DE\u7684\u6570\u5B57\u679A\u4E3E\uFF0C\u5982 3 \u8868\u793A 9:16\uFF09" },
-          count: { type: "number", description: "\u751F\u6210\u6570\u91CF\uFF08\u53EF\u9009\uFF09" },
-          outDir: { type: "string", description: "\u4E0B\u8F7D\u76EE\u5F55\uFF1B\u9ED8\u8BA4 xyq_output" }
-        },
-        required: ["prompt"]
-      },
-      output: { schema: { type: "string" }, render: (_args, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 10 * 6e4,
-      async execute(args, exec) {
-        const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
-        if (prompt === "") throw new Error("\u9700\u8981 prompt\uFF08\u7528\u6237\u539F\u59CB\u63CF\u8FF0\uFF09");
-        const images = Array.isArray(args.images) ? args.images.filter((value) => typeof value === "string" && value !== "") : [];
-        const result2 = await service.generateImage({
-          prompt,
-          ...typeof args.model === "string" && args.model !== "" ? { model: args.model } : {},
-          images,
-          ...typeof args.ratio === "string" && args.ratio !== "" ? { ratio: args.ratio } : {},
-          ...typeof args.count === "number" ? { count: args.count } : {},
-          ...typeof args.outDir === "string" && args.outDir !== "" ? { outDir: args.outDir } : {},
-          sessionKey: sessionKeyOf(exec)
-        });
-        if (!result2.ok) throw new Error(result2.message ?? "\u751F\u6210\u5931\u8D25");
-        return resultText(result2);
-      }
-    },
-    {
-      name: "generate_video",
-      description: "\u7528\u5C0F\u4E91\u96C0\u751F\u6210\u89C6\u9891\uFF08\u652F\u6301\u53C2\u8003\u56FE/\u9996\u5C3E\u5E27\uFF09\u3002\u6309\u65F6\u957F\u8BA1\u8D39\uFF08Seedance 2.0 Mini \u4F53\u9A8C\u7248\u7EA6 4 \u79EF\u5206/\u79D2\uFF09\u3002\u7528\u6237\u6CA1\u6709\u660E\u786E\u8981\u6C42\u751F\u6210\u89C6\u9891\u65F6\u4E0D\u8981\u8C03\u7528\uFF1B\u65F6\u957F\u4F1A\u88AB\u8BBE\u7F6E\u91CC\u7684\u4E0A\u9650\u622A\u65AD\u3002",
-      parameters: {
-        type: "object",
-        properties: {
-          prompt: { type: "string", description: "\u89C6\u9891\u63CF\u8FF0\uFF08\u7528\u6237\u539F\u8BDD\uFF09" },
-          model: { type: "string", description: "\u89C6\u9891\u6A21\u578B key\uFF08\u5148\u7528 xyq_models \u67E5 video \u5217\u8868\uFF09\uFF1B\u4E0D\u4F20\u7528\u9ED8\u8BA4 Seedance_2.0_mini_lite" },
-          duration: { type: "number", description: "\u65F6\u957F\uFF08\u79D2\uFF0C4~30\uFF0C\u4F1A\u88AB\u8BBE\u7F6E\u4E0A\u9650\u622A\u65AD\uFF09" },
-          ratio: { type: "string", description: "\u6BD4\u4F8B\uFF0C\u5982 1:1 / 16:9 / 9:16" },
-          images: { type: "array", items: { type: "string" }, description: "\u53C2\u8003\u56FE\u672C\u5730\u7EDD\u5BF9\u8DEF\u5F84\uFF0C\u53EF\u591A\u5F20" },
-          outDir: { type: "string", description: "\u4E0B\u8F7D\u76EE\u5F55\uFF1B\u9ED8\u8BA4 xyq_output" }
-        },
-        required: ["prompt"]
-      },
-      output: { schema: { type: "string" }, render: (_args, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 20 * 6e4,
-      async execute(args, exec) {
-        const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
-        if (prompt === "") throw new Error("\u9700\u8981 prompt\uFF08\u7528\u6237\u539F\u59CB\u63CF\u8FF0\uFF09");
-        const images = Array.isArray(args.images) ? args.images.filter((value) => typeof value === "string" && value !== "") : [];
-        const result2 = await service.generateVideo({
-          prompt,
-          ...typeof args.model === "string" && args.model !== "" ? { model: args.model } : {},
-          ...typeof args.duration === "number" ? { duration: args.duration } : {},
-          ...typeof args.ratio === "string" && args.ratio !== "" ? { ratio: args.ratio } : {},
-          images,
-          ...typeof args.outDir === "string" && args.outDir !== "" ? { outDir: args.outDir } : {},
-          sessionKey: sessionKeyOf(exec)
-        });
-        if (!result2.ok) throw new Error(result2.message ?? "\u751F\u6210\u5931\u8D25");
-        return resultText(result2);
-      }
-    },
-    {
-      name: "xyq_balance",
-      description: "\u67E5\u8BE2\u5C0F\u4E91\u96C0\u8D26\u6237\u5269\u4F59\u79EF\u5206\u3002\u751F\u6210\u524D\u5148\u67E5\uFF0C\u907F\u514D\u4F59\u989D\u4E0D\u8DB3\u3002",
-      parameters: { type: "object", properties: {} },
-      output: { schema: { type: "string" }, render: (_args, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 6e4,
-      async execute() {
-        const result2 = await service.balance();
-        if (!result2.ok) throw new Error(result2.message ?? "\u67E5\u8BE2\u4F59\u989D\u5931\u8D25");
-        return `\u5C0F\u4E91\u96C0\u5269\u4F59\u79EF\u5206\uFF1A${result2.totalRemain ?? "\u672A\u77E5"}`;
-      }
-    },
-    {
-      name: "xyq_models",
-      description: "\u67E5\u8BE2\u5C0F\u4E91\u96C0\u53EF\u7528\u6A21\u578B\uFF08type=video \u6216 image\uFF09\u3002\u751F\u56FE/\u751F\u89C6\u9891\u524D\u7528\u5B83\u786E\u8BA4\u6A21\u578B\u540D\u3002",
-      parameters: {
-        type: "object",
-        properties: { type: { type: "string", enum: ["video", "image"], description: "\u6A21\u578B\u7C7B\u578B" } },
-        required: ["type"]
-      },
-      output: { schema: { type: "string" }, render: (_args, value) => [{ type: "text", text: String(value) }] },
-      timeoutMs: 9e4,
-      async execute(args) {
-        const kind = args.type === "image" ? "image" : "video";
-        const result2 = await service.models(kind);
-        if (!result2.ok) throw new Error(result2.message ?? "\u67E5\u8BE2\u6A21\u578B\u5931\u8D25");
-        const list = result2.models ?? [];
-        return list.length === 0 ? "\uFF08\u6CA1\u6709\u67E5\u5230\u6A21\u578B\uFF09" : list.map((model2) => `- ${model2.name}\uFF08${model2.key}\uFF09`).join("\n");
-      }
-    }
-  ];
-}
-
-// src/xyq/cli.ts
-import { spawn as spawn4 } from "node:child_process";
-import fs9 from "node:fs";
-import os5 from "node:os";
-import path23 from "node:path";
-function platformDir() {
-  const arch = process.arch === "arm64" ? "arm64" : "x64";
-  if (process.platform === "win32") return `win32-${arch}`;
-  if (process.platform === "darwin") return `darwin-${arch}`;
-  return `linux-${arch}`;
-}
-function binaryName() {
-  return process.platform === "win32" ? "pippit-tool-cli.exe" : "pippit-tool-cli";
-}
-function cachedCliCandidates(home = os5.homedir()) {
-  const base = path23.join(home, ".cache", "pippit-tool-cli", "xyq-skill", platformDir(), "current");
-  return [
-    path23.join(base, "node_modules", "@pippit-dev", "cli", "bin", binaryName()),
-    path23.join(base, "node_modules", ".bin", binaryName())
-  ];
-}
-function ensureCliScript(home = os5.homedir()) {
-  return path23.join(home, ".agents", "skills", "xyq-skill", "scripts", "ensure-cli.js");
-}
-var defaultCliRunner = (args, options) => new Promise((resolve) => {
-  const child = spawn4(cliPathForRun(args), args.slice(1), {
-    env: { ...process.env, ...options.env },
-    windowsHide: true,
-    // 同 sprite/browser.ts 的理由：**别继承宿主的工作目录**。
-    // 子进程以某个目录为 cwd 时，Windows 不允许把那个目录改名；DSH 自更新恰恰要把
-    // `D:\FeiYu` 改成 `D:\FeiYu.old-*`，一个还活着的子进程就能让安装器连试 10 次
-    // `error 32` 后放弃（2026-11-12 现场就是这样）。CLI 跑完就退，但别赌它来得及。
-    cwd: os5.tmpdir()
-  });
-  let stdout = "";
-  let stderr = "";
-  let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    try {
-      child.kill();
-    } catch {
-    }
-  }, options.timeoutMs);
-  child.stdout?.on("data", (chunk2) => {
-    stdout += chunk2.toString("utf8");
-  });
-  child.stderr?.on("data", (chunk2) => {
-    stderr += chunk2.toString("utf8");
-  });
-  child.on("error", (error62) => {
-    clearTimeout(timer);
-    resolve({ code: -1, stdout, stderr: `${stderr}${String(error62?.message ?? error62)}`, timedOut });
-  });
-  child.on("close", (code) => {
-    clearTimeout(timer);
-    resolve({ code: code ?? -1, stdout, stderr, timedOut });
-  });
-});
-function cliPathForRun(args) {
-  return args[0] ?? "";
-}
-async function installCli(run, options = {}) {
-  const home = options.home ?? os5.homedir();
-  const script = ensureCliScript(home);
-  if (!fs9.existsSync(script)) return void 0;
-  const result2 = await run([process.execPath, script], { env: {}, timeoutMs: options.timeoutMs ?? 3e5 });
-  const lines = result2.stdout.split(/\r?\n/).filter((line) => line.trim() !== "");
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    try {
-      const parsed = JSON.parse(lines[i]);
-      if (typeof parsed.cli_path === "string" && parsed.cli_path !== "") return parsed.cli_path;
-    } catch {
-    }
-  }
-  return void 0;
-}
-async function resolveCliPath(run, options = {}) {
-  const home = options.home ?? os5.homedir();
-  for (const candidate of cachedCliCandidates(home)) {
-    if (fs9.existsSync(candidate)) return candidate;
-  }
-  const installed = await installCli(run, { home });
-  if (installed !== void 0 && fs9.existsSync(installed)) {
-    options.log?.("\u5C0F\u4E91\u96C0 CLI \u5DF2\u5B89\u88C5", { path: path23.basename(installed) });
-    return installed;
-  }
-  return void 0;
-}
-
-// src/xyq/start.ts
-function startXyq(ctx, deps) {
-  const probe = {};
-  const run = deps.run ?? defaultCliRunner;
-  const resolveCli = deps.resolveCli ?? (() => resolveCliPath(run, { log: (message, fields) => deps.log(message, fields) }));
-  const configFile2 = resolveXyqConfigFile(deps.dshHome);
-  const service = createXyqService({ configFile: configFile2, run, resolveCli, log: deps.log });
-  const disposers = [];
-  let unregister;
-  let started = false;
-  let stopped = false;
-  const outDir = path24.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "xyq-output");
-  const routeDeps = { service, outDir, log: deps.log };
-  const tryStart = () => {
-    if (started || stopped) return;
-    started = true;
-    try {
-      const registers = [
-        [XYQ_CONFIG_ROUTE, xyqConfigHandler(routeDeps)],
-        [XYQ_STATUS_ROUTE, xyqQueryHandler("status", routeDeps)],
-        [XYQ_BALANCE_ROUTE, xyqQueryHandler("balance", routeDeps)],
-        [XYQ_MODELS_ROUTE, xyqQueryHandler("models", routeDeps)],
-        [XYQ_DESCRIBE_ROUTE, xyqDescribeHandler(routeDeps)],
-        [XYQ_GENERATE_ROUTE, xyqGenerateHandler(routeDeps)],
-        [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
-        [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)]
-      ];
-      for (const [path31, handler] of registers) disposers.push(web.register({ kind: "exact", path: path31, handler }));
-      unregister = () => {
-        for (const dispose of disposers.splice(0)) dispose();
-      };
-      probe.routes = "registered";
-    } catch (error62) {
-      probe.routes = `register threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-      started = false;
-      if (disposers.length > 0) {
-        const registered = disposers.splice(0);
-        unregister = () => {
-          for (const dispose of registered) dispose();
-        };
-      }
-    }
-  };
-  let web;
-  const acceptWeb = (value, via) => {
-    if (!value || typeof value !== "object") return false;
-    if (typeof value.register !== "function") {
-      probe.webServer = "object without register()";
-      return false;
-    }
-    web = value;
-    probe.webServer = via;
-    tryStart();
-    return true;
-  };
-  const pickFrom = (source) => {
-    if (!source || typeof source !== "object") return void 0;
-    const asContext = source;
-    if (typeof asContext.get === "function") {
-      try {
-        const got = asContext.get("webServer", true);
-        if (got) return got;
-      } catch {
-      }
-    }
-    try {
-      return source["webServer"];
-    } catch {
-      return void 0;
-    }
-  };
-  try {
-    const found = ctx.get?.("webServer", true);
-    if (found) acceptWeb(found, "via get");
-    else probe.webServer = "none";
   } catch (error62) {
-    probe.webServer = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+    return { ok: false, installed: [], reason: `threw: ${String(error62?.message ?? error62).slice(0, 160)}` };
   }
-  try {
-    ctx.inject?.(["webServer"], ((...args) => {
-      try {
-        for (const candidate of [args[0], ...args, ctx]) if (acceptWeb(pickFrom(candidate), "via inject")) return;
-        probe.webServer = `${probe.webServer ?? "none"} (inject fired, empty)`;
-      } catch (error62) {
-        probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
-      }
-    }));
-  } catch (error62) {
-    probe["injectThrew:webServer"] = String(error62?.message ?? error62).slice(0, 160);
-  }
-  const config2 = readXyqConfig(configFile2);
-  if (!config2.enabled) {
-    probe.tools = "disabled-by-config";
-  } else {
-    try {
-      const tools = ctx.get?.("tools", true);
-      if (tools && typeof tools.register === "function") {
-        for (const tool of xyqTools(service)) tools.register(tool);
-        probe.tools = "registered";
-      } else {
-        probe.tools = "no-tools";
-      }
-    } catch (error62) {
-      probe.tools = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-    }
-    try {
-      const systemPrompt = ctx.get?.("systemPrompt", true);
-      if (systemPrompt && typeof systemPrompt.section === "function") {
-        systemPrompt.section({ name: "dafeiyu:xyq", order: 10095, text: xyqGuidance(config2.freedom) });
-        probe.section = "registered";
-      } else {
-        probe.section = "no-systemPrompt";
-      }
-    } catch (error62) {
-      probe.section = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-    }
-  }
-  return {
-    probe,
-    service,
-    stop() {
-      if (stopped) return;
-      stopped = true;
-      try {
-        unregister?.();
-      } catch {
-      }
-      unregister = void 0;
-    }
-  };
 }
 
 // src/extensions/service.ts
-import { spawn as spawn5 } from "node:child_process";
-import { existsSync as existsSync6, readFileSync as readFileSync9, renameSync as renameSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync5 } from "node:fs";
-import path25 from "node:path";
+import { spawn as spawn2 } from "node:child_process";
+import { existsSync as existsSync3, readFileSync as readFileSync6, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import path18 from "node:path";
 
 // src/extensions/registry.ts
 var EXTENSIONS = [
@@ -45669,6 +37760,22 @@ var EXTENSIONS = [
     description: "\u628A\u300C\u6539\u53C2\u6570 \u2192 \u89C2\u6D4B \u2192 \u5224\u636E \u2192 \u641C\u7D22\u300D\u7684\u95ED\u73AF\u8DD1\u8D77\u6765\uFF0C\u4EA7\u51FA\u53EF\u590D\u9A8C\u7684\u8BC1\u636E\u5305\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin",
     commit: "7744f957562fcc97fe6fa3279c862e82c4d9b06d"
+  },
+  {
+    id: "vision",
+    packageName: "dsh-vision-dafeiyu",
+    label: "\u80A5\u9C7C\u8BC6\u56FE / \u5C0F\u4E91\u96C0",
+    description: "\u8BC6\u56FE\uFF08\u5916\u6302\u89C6\u89C9\u6A21\u578B\uFF09\u4E0E\u5C0F\u4E91\u96C0\uFF08\u751F\u56FE/\u751F\u89C6\u9891 CLI\uFF09\uFF1A\u4E24\u4E2A\u8BBE\u7F6E\u5206\u680F + \u60AC\u6D6E\u5FEB\u6377\u5165\u53E3\u3002",
+    gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-vision",
+    commit: "ae45df22ec59d3e1fc2e9233807c41683e35335c"
+  },
+  {
+    id: "dev-kit",
+    packageName: "dsh-dev-kit-dafeiyu",
+    label: "\u5E8F\u5217\u5E27\u5DE5\u5177",
+    description: "\u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\u751F\u6210\u5668\uFF1A20 \u4E2A sprite_* \u5DE5\u5177\u3001\u5DE5\u5177\u9875\u4E0E\u914D\u5957 skill\u3002",
+    gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-dev-kit",
+    commit: "baf4e526ff4072bf52fc95111e50401ea726e966"
   }
 ];
 function findExtension(id) {
@@ -45686,25 +37793,25 @@ function isExtensionAction(value) {
   return typeof value === "string" && EXTENSION_ACTIONS.includes(value);
 }
 var nodeFs = {
-  existsSync: (file2) => existsSync6(file2),
+  existsSync: (file2) => existsSync3(file2),
   // 包一层而不是直接传引用：node 的 readFileSync 是重载，直接传会被 TS 判成 Buffer 那个签名。
-  readFileSync: (file2, encoding) => readFileSync9(file2, encoding),
-  writeFileSync: (file2, data, encoding) => writeFileSync5(file2, data, encoding),
-  renameSync: (from, to) => renameSync3(from, to),
+  readFileSync: (file2, encoding) => readFileSync6(file2, encoding),
+  writeFileSync: (file2, data, encoding) => writeFileSync3(file2, data, encoding),
+  renameSync: (from, to) => renameSync2(from, to),
   unlinkSync: (file2) => unlinkSync2(file2)
 };
 function profilePackageFile(profileDir) {
-  return path25.join(profileDir, "package.json");
+  return path18.join(profileDir, "package.json");
 }
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
-function readProfilePackage(profileDir, fs10 = nodeFs) {
+function readProfilePackage(profileDir, fs8 = nodeFs) {
   const file2 = profilePackageFile(profileDir);
-  if (!fs10.existsSync(file2)) return { kind: "missing", file: file2 };
+  if (!fs8.existsSync(file2)) return { kind: "missing", file: file2 };
   let text;
   try {
-    text = fs10.readFileSync(file2, "utf8");
+    text = fs8.readFileSync(file2, "utf8");
   } catch (error62) {
     return { kind: "broken", file: file2, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 160)}` };
   }
@@ -45727,13 +37834,13 @@ function dependenciesOf(doc) {
   return asRecord(doc.dependencies);
 }
 function installedPackageFile(profileDir, packageName) {
-  return path25.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
+  return path18.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
 }
-function readInstalledVersion(profileDir, spec, fs10) {
+function readInstalledVersion(profileDir, spec, fs8) {
   const file2 = installedPackageFile(profileDir, spec.packageName);
-  if (!fs10.existsSync(file2)) return void 0;
+  if (!fs8.existsSync(file2)) return void 0;
   try {
-    const parsed = JSON.parse(fs10.readFileSync(file2, "utf8"));
+    const parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
     const version2 = asRecord(parsed).version;
     return typeof version2 === "string" && version2 !== "" ? version2 : void 0;
   } catch {
@@ -45741,11 +37848,11 @@ function readInstalledVersion(profileDir, spec, fs10) {
   }
 }
 function readExtensionStatus(profileDir, spec, options = {}) {
-  const fs10 = options.fs ?? nodeFs;
-  const read = readProfilePackage(profileDir, fs10);
+  const fs8 = options.fs ?? nodeFs;
+  const read = readProfilePackage(profileDir, fs8);
   const doc = read.kind === "ok" ? read.doc : {};
   const hasDependency = typeof dependenciesOf(doc)[spec.packageName] === "string";
-  const installed = hasDependency && fs10.existsSync(installedPackageFile(profileDir, spec.packageName));
+  const installed = hasDependency && fs8.existsSync(installedPackageFile(profileDir, spec.packageName));
   const enabled = bundlesOf(doc).includes(spec.packageName);
   const status = {
     id: spec.id,
@@ -45754,7 +37861,7 @@ function readExtensionStatus(profileDir, spec, options = {}) {
     installed,
     enabled
   };
-  const version2 = installed ? readInstalledVersion(profileDir, spec, fs10) : void 0;
+  const version2 = installed ? readInstalledVersion(profileDir, spec, fs8) : void 0;
   if (version2 !== void 0) status.version = version2;
   if (options.pendingRestart?.has(spec.id) === true) status.needsRestart = true;
   return status;
@@ -45822,40 +37929,40 @@ function verifyWrites(doc, writes, spec) {
   if (writes.removeBundle === true && bundles.includes(spec.packageName)) return "bundles \u91CC\u6CA1\u79FB\u9664\u5B83";
   return void 0;
 }
-function restoreFile(file2, originalText, fs10) {
+function restoreFile(file2, originalText, fs8) {
   try {
     const tmp = `${file2}.dafeiyu-restore-${Date.now()}.tmp`;
-    fs10.writeFileSync(tmp, originalText, "utf8");
-    fs10.renameSync(tmp, file2);
+    fs8.writeFileSync(tmp, originalText, "utf8");
+    fs8.renameSync(tmp, file2);
     return true;
   } catch {
     try {
-      fs10.writeFileSync(file2, originalText, "utf8");
+      fs8.writeFileSync(file2, originalText, "utf8");
       return true;
     } catch {
       return false;
     }
   }
 }
-function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs10 = nodeFs) {
+function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs8 = nodeFs) {
   const text = `${JSON.stringify(nextDoc, null, 2)}
 `;
   const tmp = `${file2}.dafeiyu-${Date.now()}.tmp`;
   try {
     try {
-      fs10.writeFileSync(`${file2}.bak`, originalText, "utf8");
+      fs8.writeFileSync(`${file2}.bak`, originalText, "utf8");
     } catch (error62) {
       return { ok: false, message: `\u5907\u4EFD\u5931\u8D25\uFF0C\u6CA1\u6709\u52A8 profile\uFF1A${String(error62?.message ?? error62).slice(0, 160)}` };
     }
-    fs10.writeFileSync(tmp, text, "utf8");
-    fs10.renameSync(tmp, file2);
+    fs8.writeFileSync(tmp, text, "utf8");
+    fs8.renameSync(tmp, file2);
     let parsed;
     try {
-      parsed = JSON.parse(fs10.readFileSync(file2, "utf8"));
+      parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
     } catch (error62) {
-      const restored = restoreFile(file2, originalText, fs10);
+      const restored = restoreFile(file2, originalText, fs8);
       try {
-        fs10.unlinkSync?.(tmp);
+        fs8.unlinkSync?.(tmp);
       } catch {
       }
       return {
@@ -45866,7 +37973,7 @@ function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs10 = 
     }
     const mismatch = verifyWrites(asRecord(parsed), writes, spec);
     if (mismatch !== void 0) {
-      const restored = restoreFile(file2, originalText, fs10);
+      const restored = restoreFile(file2, originalText, fs8);
       return {
         ok: false,
         rolledBack: restored,
@@ -45875,9 +37982,9 @@ function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs10 = 
     }
     return { ok: true };
   } catch (error62) {
-    const restored = restoreFile(file2, originalText, fs10);
+    const restored = restoreFile(file2, originalText, fs8);
     try {
-      fs10.unlinkSync?.(tmp);
+      fs8.unlinkSync?.(tmp);
     } catch {
     }
     return {
@@ -45892,8 +37999,8 @@ function pnpmInstallArgs(pnpmScript) {
   return [pnpmScript, "install"];
 }
 function resolveRuntimeDir(env = process.env, options = {}) {
-  const exists = options.exists ?? existsSync6;
-  const hasPnpm = (dir) => exists(path25.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
+  const exists = options.exists ?? existsSync3;
+  const hasPnpm = (dir) => exists(path18.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
   const candidates = [];
   const explicit = (env.DSH_RUNTIME_DIR ?? "").trim();
   if (explicit !== "") candidates.push(explicit);
@@ -45901,17 +38008,17 @@ function resolveRuntimeDir(env = process.env, options = {}) {
   if (installDir !== "") {
     let current = installDir;
     for (let depth = 0; depth < 8; depth += 1) {
-      const parent = path25.dirname(current);
+      const parent = path18.dirname(current);
       if (parent === current) break;
       current = parent;
-      if (path25.basename(current).toLowerCase() === "resources") {
-        candidates.push(path25.join(current, "runtime", "primary-runtime"), path25.join(current, "runtime"));
+      if (path18.basename(current).toLowerCase() === "resources") {
+        candidates.push(path18.join(current, "runtime", "primary-runtime"), path18.join(current, "runtime"));
         break;
       }
     }
   }
   const resources = (options.resourcesPath ?? process.resourcesPath ?? "").trim();
-  if (resources !== "") candidates.push(path25.join(resources, "runtime", "primary-runtime"), path25.join(resources, "runtime"));
+  if (resources !== "") candidates.push(path18.join(resources, "runtime", "primary-runtime"), path18.join(resources, "runtime"));
   for (const dir of candidates) if (hasPnpm(dir)) return dir;
   return void 0;
 }
@@ -45929,9 +38036,9 @@ function runPnpmInstall(input2) {
   if (runtimeDir === void 0) {
     return Promise.resolve({ ok: false, message: "\u627E\u4E0D\u5230\u5BBF\u4E3B\u81EA\u5E26\u7684 pnpm\uFF08\u8FD0\u884C\u65F6\u76EE\u5F55\u672A\u5B9A\u4F4D\uFF09\uFF0C\u6CA1\u6CD5\u5B89\u88C5\uFF1B\u8BF7\u7528\u684C\u9762\u7248\u5B89\u88C5\u5668\u91CD\u88C5\u540E\u518D\u8BD5" });
   }
-  const pnpmScript = path25.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
-  const nodeExe = path25.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
-  const useBundledNode = existsSync6(nodeExe);
+  const pnpmScript = path18.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
+  const nodeExe = path18.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
+  const useBundledNode = existsSync3(nodeExe);
   const command = useBundledNode ? nodeExe : process.execPath;
   const env = useBundledNode ? { ...process.env } : { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
   return new Promise((resolve) => {
@@ -45945,7 +38052,7 @@ function runPnpmInstall(input2) {
     };
     let child;
     try {
-      child = spawn5(command, pnpmInstallArgs(pnpmScript), {
+      child = spawn2(command, pnpmInstallArgs(pnpmScript), {
         cwd: input2.profileDir,
         env,
         windowsHide: true,
@@ -45962,11 +38069,11 @@ function runPnpmInstall(input2) {
       }
       finish({ ok: false, timedOut: true, message: summarizePnpmFailure({ timedOut: true, stderr, stdout, timeoutMs }) });
     }, timeoutMs);
-    child.stderr?.on("data", (chunk2) => {
-      stderr = (stderr + chunk2.toString("utf8")).slice(-16e3);
+    child.stderr?.on("data", (chunk) => {
+      stderr = (stderr + chunk.toString("utf8")).slice(-16e3);
     });
-    child.stdout?.on("data", (chunk2) => {
-      stdout = (stdout + chunk2.toString("utf8")).slice(-16e3);
+    child.stdout?.on("data", (chunk) => {
+      stdout = (stdout + chunk.toString("utf8")).slice(-16e3);
     });
     child.on("error", (error62) => {
       clearTimeout(timer);
@@ -45986,15 +38093,15 @@ var ACTION_VERB = {
   uninstall: "\u5DF2\u5378\u8F7D"
 };
 async function applyAction(profileDir, spec, action, options = {}) {
-  const fs10 = options.fs ?? nodeFs;
-  const read = readProfilePackage(profileDir, fs10);
+  const fs8 = options.fs ?? nodeFs;
+  const read = readProfilePackage(profileDir, fs8);
   if (read.kind === "missing") {
     return { ok: false, changed: false, needsRestart: false, message: `\u627E\u4E0D\u5230 profile \u7684 package.json\uFF08${read.file}\uFF09` };
   }
   if (read.kind === "broken") {
     return { ok: false, changed: false, needsRestart: false, message: `profile \u7684 package.json \u8BFB\u4E0D\u51FA\u6765\uFF1A${read.message}\uFF08\u5148\u4FEE\u597D\u5B83\uFF0C\u8FD9\u91CC\u4E0D\u8986\u76D6\u574F\u6587\u4EF6\uFF09` };
   }
-  const status = readExtensionStatus(profileDir, spec, { fs: fs10 });
+  const status = readExtensionStatus(profileDir, spec, { fs: fs8 });
   let plan;
   try {
     plan = planAction(spec, action, status);
@@ -46005,7 +38112,7 @@ async function applyAction(profileDir, spec, action, options = {}) {
     return { ok: true, changed: false, needsRestart: false, message: plan.message };
   }
   const nextDoc = applyWrites(read.doc, plan.writes, spec);
-  const written = writeProfilePackage(read.file, nextDoc, read.text, plan.writes, spec, fs10);
+  const written = writeProfilePackage(read.file, nextDoc, read.text, plan.writes, spec, fs8);
   if (!written.ok) {
     options.log?.("\u6269\u5C55 profile \u5199\u5165\u5931\u8D25", { id: spec.id, action, message: written.message ?? "" });
     return { ok: false, changed: false, needsRestart: false, message: written.message };
@@ -46014,7 +38121,7 @@ async function applyAction(profileDir, spec, action, options = {}) {
     const runner = options.runPnpm ?? runPnpmInstall;
     const result2 = await runner({ profileDir, timeoutMs: options.timeoutMs ?? PNPM_TIMEOUT_MS });
     if (!result2.ok) {
-      const restored = restoreFile(read.file, read.text, fs10);
+      const restored = restoreFile(read.file, read.text, fs8);
       options.log?.("\u6269\u5C55 pnpm \u5931\u8D25\uFF0Cprofile \u5DF2\u56DE\u6EDA", { id: spec.id, action, message: result2.message });
       return {
         ok: false,
@@ -46025,7 +38132,7 @@ async function applyAction(profileDir, spec, action, options = {}) {
     }
   }
   options.pendingRestart?.add(spec.id);
-  const after = readExtensionStatus(profileDir, spec, { fs: fs10, pendingRestart: options.pendingRestart });
+  const after = readExtensionStatus(profileDir, spec, { fs: fs8, pendingRestart: options.pendingRestart });
   options.log?.("\u6269\u5C55\u52A8\u4F5C\u5B8C\u6210\uFF08\u9700\u91CD\u542F\u751F\u6548\uFF09", { id: spec.id, action, version: after.version ?? "" });
   return {
     ok: true,
@@ -46036,12 +38143,12 @@ async function applyAction(profileDir, spec, action, options = {}) {
   };
 }
 function createExtensionsService(deps) {
-  const fs10 = deps.fs ?? nodeFs;
+  const fs8 = deps.fs ?? nodeFs;
   const pendingRestart = deps.pendingRestart ?? /* @__PURE__ */ new Set();
   return {
     profileDir: deps.profileDir,
     list() {
-      return readExtensions(deps.profileDir, { fs: fs10, pendingRestart });
+      return readExtensions(deps.profileDir, { fs: fs8, pendingRestart });
     },
     async act(id, action) {
       const spec = findExtension(id);
@@ -46052,7 +38159,7 @@ function createExtensionsService(deps) {
         return { ok: false, changed: false, needsRestart: false, message: `\u4E0D\u652F\u6301\u7684\u52A8\u4F5C\uFF1A${String(action ?? "").slice(0, 40)}` };
       }
       return applyAction(deps.profileDir, spec, action, {
-        fs: fs10,
+        fs: fs8,
         runPnpm: deps.runPnpm,
         log: deps.log,
         pendingRestart,
@@ -46065,18 +38172,18 @@ function resolveProfileDir(env = process.env, dshHome) {
   const explicit = (env.DSH_PROFILE_DIR ?? "").trim();
   if (explicit !== "") return explicit;
   const profile = (env.DSH_PROFILE ?? "").trim() || "desktop";
-  return path25.join(dshHome, "profiles", profile);
+  return path18.join(dshHome, "profiles", profile);
 }
 
 // src/extensions/routes.ts
 var EXTENSIONS_ROUTE = "/api/dsh-remote-control/extensions";
 var EXTENSIONS_ACTION_ROUTE = "/api/dsh-remote-control/extensions/action";
-function json10(response, status, body) {
+function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected5(request) {
+function rejected3(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -46085,18 +38192,18 @@ var GUARD_MESSAGE = {
   "host-not-loopback": "\u53EA\u63A5\u53D7\u672C\u673A\u56DE\u73AF\u8BF7\u6C42",
   "origin-not-trusted": "\u8BF7\u6C42\u6765\u6E90\u4E0D\u53EF\u4FE1\uFF08\u53EA\u8BA4\u5BBF\u4E3B\u81EA\u5DF1\uFF09"
 };
-function readBody5(request) {
+function readBody3(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
-    request.on("data", (chunk2) => {
-      size += chunk2.byteLength;
+    request.on("data", (chunk) => {
+      size += chunk.byteLength;
       if (size > 8 * 1024) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     request.on("error", reject);
@@ -46106,22 +38213,22 @@ function extensionsListHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
+    const denied = rejected3(request);
     if (denied !== void 0) {
       deps.log("\u6269\u5C55\u5217\u8868\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard: denied });
-      json10(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json7(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json10(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
-      json10(response, 200, { ok: true, extensions: deps.list() });
+      json7(response, 200, { ok: true, extensions: deps.list() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u6269\u5C55\u5217\u8868\u8BFB\u4E0D\u51FA\u6765", { message });
-      json10(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
+      json7(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
     }
   };
 }
@@ -46129,30 +38236,30 @@ function extensionsActionHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
+    const denied = rejected3(request);
     if (denied !== void 0) {
       deps.log("\u6269\u5C55\u52A8\u4F5C\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard: denied });
-      json10(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json7(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "POST") {
-      json10(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
+      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json10(response, 403, { ok: false, error: "missing x-drc-pair", message: "\u7F3A\u5C11 x-drc-pair \u5934\uFF08\u53EA\u6709\u672C\u673A\u9875\u9762\u80FD\u6539\u6269\u5C55\uFF09" });
+      json7(response, 403, { ok: false, error: "missing x-drc-pair", message: "\u7F3A\u5C11 x-drc-pair \u5934\uFF08\u53EA\u6709\u672C\u673A\u9875\u9762\u80FD\u6539\u6269\u5C55\uFF09" });
       return;
     }
     let body;
     try {
-      const text = await readBody5(request);
+      const text = await readBody3(request);
       const parsed = JSON.parse(text === "" ? "{}" : text);
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("\u8BF7\u6C42\u4F53\u4E0D\u662F JSON \u5BF9\u8C61");
       body = parsed;
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 160);
       deps.log("\u6269\u5C55\u52A8\u4F5C\u7684\u8BF7\u6C42\u4F53\u8BFB\u4E0D\u51FA\u6765", { message });
-      json10(response, 400, { ok: false, message: `\u8BF7\u6C42\u4F53\u4E0D\u5BF9\uFF1A${message}` });
+      json7(response, 400, { ok: false, message: `\u8BF7\u6C42\u4F53\u4E0D\u5BF9\uFF1A${message}` });
       return;
     }
     const id = typeof body.id === "string" ? body.id : "";
@@ -46170,7 +38277,7 @@ function extensionsActionHandler(deps) {
     } catch (error62) {
       deps.log("\u6269\u5C55\u52A8\u4F5C\u540E\u5217\u8868\u5237\u65B0\u5931\u8D25", { message: String(error62?.message ?? error62).slice(0, 160) });
     }
-    json10(response, 200, {
+    json7(response, 200, {
       ok: result2.ok === true,
       changed: result2.changed === true,
       needsRestart: result2.needsRestart === true,
@@ -46296,17 +38403,17 @@ function startExtensions(ctx, deps) {
 
 // src/memory/routes.ts
 var MEMORY_ROUTE = "/api/dsh-remote-dafeiyu/memory";
-function json11(response, status, body) {
+function json8(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected6(request) {
+function rejected4(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
 }
-function readBody6(request) {
+function readBody4(request) {
   return new Promise((resolve) => {
     const chunks = [];
     let size = 0;
@@ -46316,14 +38423,14 @@ function readBody6(request) {
       settled = true;
       resolve(value);
     };
-    request.on("data", (chunk2) => {
-      size += chunk2.byteLength;
+    request.on("data", (chunk) => {
+      size += chunk.byteLength;
       if (size > 1024 * 1024) {
         finish({ ok: false, status: 413, error: "\u8BF7\u6C42\u592A\u5927" });
         request.destroy();
         return;
       }
-      chunks.push(chunk2);
+      chunks.push(chunk);
     });
     request.on("end", () => finish({ ok: true, text: Buffer.concat(chunks).toString("utf8") }));
     request.on("error", (error62) => finish({ ok: false, status: 400, error: String(error62?.message ?? error62) }));
@@ -46340,39 +38447,39 @@ function personaOf(request) {
 }
 function memoryHandler(deps) {
   return async (request, response) => {
-    const denied = rejected6(request);
+    const denied = rejected4(request);
     if (denied) {
-      json11(response, 403, { ok: false, error: denied });
+      json8(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
       const persona2 = personaOf(request);
       if (persona2 === "") {
-        json11(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
+        json8(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
         return;
       }
-      json11(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
+      json8(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
       return;
     }
     if (request.method !== "POST") {
-      json11(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
-    const body = await readBody6(request);
+    const body = await readBody4(request);
     if (!body.ok) {
-      json11(response, body.status, { ok: false, error: body.error });
+      json8(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json11(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json8(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const persona = typeof parsed.persona === "string" ? parsed.persona.trim() : "";
     if (persona === "") {
-      json11(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
+      json8(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
       return;
     }
     const action = typeof parsed.action === "string" ? parsed.action : "add";
@@ -46380,39 +38487,39 @@ function memoryHandler(deps) {
       const text = typeof parsed.text === "string" ? parsed.text : "";
       const result2 = deps.service.add(persona, text, { importance: parsed.importance, source: "manual" });
       if (!result2.ok) {
-        json11(response, 400, { ok: false, error: result2.error });
+        json8(response, 400, { ok: false, error: result2.error });
         return;
       }
-      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json8(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "remove") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.remove(persona, id)) {
-        json11(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json8(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json8(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "update") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.update(persona, id, { text: parsed.text, importance: parsed.importance })) {
-        json11(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json8(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json11(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json8(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "clear") {
       if (!deps.service.clear(persona)) {
-        json11(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
+        json8(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
         return;
       }
-      json11(response, 200, { ok: true, entries: [] });
+      json8(response, 200, { ok: true, entries: [] });
       return;
     }
-    json11(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
+    json8(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
   };
 }
 function registerMemoryRoutes(webServer, deps) {
@@ -46638,12 +38745,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync9, mkdirSync as mkdirSync9, readdirSync as readdirSync5, readFileSync as readFileSync12, renameSync as renameSync4, rmSync as rmSync4, statSync as statSync6, writeFileSync as writeFileSync7 } from "node:fs";
-import path28 from "node:path";
+import { existsSync as existsSync6, mkdirSync as mkdirSync8, readdirSync as readdirSync4, readFileSync as readFileSync9, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync5 } from "node:fs";
+import path21 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync7, readFileSync as readFileSync10 } from "node:fs";
-import path26 from "node:path";
+import { existsSync as existsSync4, readFileSync as readFileSync7 } from "node:fs";
+import path19 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -46655,26 +38762,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path26.join(dshHome, "dsh-backup-git");
+  return path19.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path26.join(backupDir(dshHome), "config.json");
+  return path19.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path26.join(backupDir(dshHome), "credential.json");
+  return path19.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path26.join(backupDir(dshHome), "status.json");
+  return path19.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path26.join(backupDir(dshHome), "work");
+  return path19.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync7(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync4(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync10(file2, "utf8"));
+    parsed = JSON.parse(readFileSync7(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -46787,9 +38894,9 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync7(file2)) return "";
+  if (!existsSync4(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync10(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync7(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -46812,7 +38919,7 @@ function redactToken(token) {
 }
 
 // src/backup/git.ts
-import { spawn as spawn6, spawnSync } from "node:child_process";
+import { spawn as spawn3, spawnSync } from "node:child_process";
 var DEFAULT_TIMEOUT_MS = 12e4;
 var MAX_BUFFER = 32 * 1024 * 1024;
 function baseEnv(extra) {
@@ -46872,7 +38979,7 @@ function runGitAsync(args, options) {
     };
     let timer = setTimeout(() => void 0, 0);
     try {
-      const child = spawn6("git", args, {
+      const child = spawn3("git", args, {
         cwd: options.cwd,
         env: baseEnv(options.env),
         windowsHide: true,
@@ -46885,11 +38992,11 @@ function runGitAsync(args, options) {
       timer.unref?.();
       child.stdout?.setEncoding("utf8");
       child.stderr?.setEncoding("utf8");
-      child.stdout?.on("data", (chunk2) => {
-        if (stdout.length < MAX_BUFFER) stdout += chunk2;
+      child.stdout?.on("data", (chunk) => {
+        if (stdout.length < MAX_BUFFER) stdout += chunk;
       });
-      child.stderr?.on("data", (chunk2) => {
-        if (stderr.length < MAX_BUFFER) stderr += chunk2;
+      child.stderr?.on("data", (chunk) => {
+        if (stderr.length < MAX_BUFFER) stderr += chunk;
       });
       child.on("error", () => finish(-1));
       child.on("close", (code) => finish(typeof code === "number" ? code : -1));
@@ -46900,23 +39007,23 @@ function runGitAsync(args, options) {
 }
 
 // src/backup/pack.ts
-import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync8, readdirSync as readdirSync4, readFileSync as readFileSync11, statSync as statSync5 } from "node:fs";
+import { createHash as createHash5 } from "node:crypto";
+import { existsSync as existsSync5, readdirSync as readdirSync3, readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path27 from "node:path";
+import path20 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path27.join(sessionsRoot, slug);
+    const slugDir = path20.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path27.join(slugDir, dirName);
+      const sessionDir = path20.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path27.join(sessionDir, fileName);
+        const file2 = path20.join(sessionDir, fileName);
         let stat3;
         try {
-          stat3 = statSync5(file2);
+          stat3 = statSync4(file2);
         } catch {
           continue;
         }
@@ -46925,7 +39032,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path27.posix.join(slug, dirName, fileName),
+          relPath: path20.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -46939,14 +39046,14 @@ function isSessionFile(fileName) {
 }
 function safeDirs(dir) {
   try {
-    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
 }
 function safeFiles(dir) {
   try {
-    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
@@ -46974,11 +39081,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path27.join(input2.stagingDir, "latest");
+  const staging = path20.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path27.join(staging, "sessions", entry.relPath);
+    const target = path20.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -46987,20 +39094,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path27.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path20.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path27.join(staging, "profiles", path27.basename(input2.profileDir));
+    const target = path20.join(staging, "profiles", path20.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path27.join(input2.profileDir, name2);
-      if (!existsSync8(source)) continue;
-      await copyFileFresh(source, path27.join(target, name2));
+      const source = path20.join(input2.profileDir, name2);
+      if (!existsSync5(source)) continue;
+      await copyFileFresh(source, path20.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path27.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path20.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -47016,18 +39123,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path27.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path20.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path27.join(stagingDir, "archive");
+  const root = path20.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path27.join(root, entry.relPath);
-    if (existsSync8(target)) continue;
+    const target = path20.join(root, entry.relPath);
+    if (existsSync5(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -47040,7 +39147,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync8(dir)) return;
+  if (!existsSync5(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -47072,7 +39179,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path27.join(dir, entry.name);
+    const full = path20.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -47083,8 +39190,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path27.dirname(target), { recursive: true });
-  if (existsSync8(target)) {
+  await mkdir(path20.dirname(target), { recursive: true });
+  if (existsSync5(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -47092,25 +39199,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync8(sourceDir)) return [];
+  if (!existsSync5(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path27.join(sourceDir, name2), path27.join(targetDir, name2));
+    await copyFileFresh(path20.join(sourceDir, name2), path20.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync8(sourceDir)) return total;
+  if (!existsSync5(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path27.join(sourceDir, entry.name);
-    const target = path27.join(targetDir, entry.name);
+    const source = path20.join(sourceDir, entry.name);
+    const target = path20.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -47129,7 +39236,7 @@ async function walk(sourceDir, targetDir, total) {
 }
 async function sha256Of(file2) {
   try {
-    return createHash6("sha256").update(await readFile(file2)).digest("hex").slice(0, 16);
+    return createHash5("sha256").update(await readFile(file2)).digest("hex").slice(0, 16);
   } catch {
     return "";
   }
@@ -47142,17 +39249,17 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync8(profilesRoot)) return "";
+  if (!existsSync5(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path27.join(profilesRoot, name2);
-    const manifest = path27.join(dir, "package.json");
-    if (!existsSync8(manifest)) continue;
+    const dir = path20.join(profilesRoot, name2);
+    const manifest = path20.join(dir, "package.json");
+    if (!existsSync5(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync11(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync8(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
-      const mtimeMs = statSync5(manifest).mtimeMs;
+      const mtimeMs = statSync4(manifest).mtimeMs;
       if (mtimeMs > best.mtimeMs) best = { dir, mtimeMs };
     } catch {
       continue;
@@ -47311,7 +39418,7 @@ var BackupService = class {
     this.status.running = true;
     try {
       const dirs = this.layout();
-      mkdirSync9(dirs.base, { recursive: true });
+      mkdirSync8(dirs.base, { recursive: true });
       const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
@@ -47398,13 +39505,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path28.join(base, "staging"),
-      hotRepo: path28.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path28.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path28.join(this.deps.dshHome, "sessions"),
-      storagesDir: path28.join(this.deps.dshHome, "storages"),
-      profilesRoot: path28.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path28.join(this.deps.dshHome, "attachments")
+      staging: path21.join(base, "staging"),
+      hotRepo: path21.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path21.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path21.join(this.deps.dshHome, "sessions"),
+      storagesDir: path21.join(this.deps.dshHome, "storages"),
+      profilesRoot: path21.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path21.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -47426,8 +39533,8 @@ var BackupService = class {
     return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
   async prepareRepo(repo) {
-    mkdirSync9(repo, { recursive: true });
-    if (!existsSync9(path28.join(repo, ".git"))) {
+    mkdirSync8(repo, { recursive: true });
+    if (!existsSync6(path21.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -47447,8 +39554,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path28.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync9(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path21.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync6(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -47491,15 +39598,15 @@ var BackupService = class {
   }
   askpassScript() {
     const base = backupDir(this.deps.dshHome);
-    mkdirSync9(base, { recursive: true });
+    mkdirSync8(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path28.join(base, "askpass.cmd");
-      if (!existsSync9(file3)) writeFileSync7(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path21.join(base, "askpass.cmd");
+      if (!existsSync6(file3)) writeFileSync5(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path28.join(base, "askpass.sh");
-    if (!existsSync9(file2)) {
-      writeFileSync7(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+    const file2 = path21.join(base, "askpass.sh");
+    if (!existsSync6(file2)) {
+      writeFileSync5(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
   }
@@ -47521,32 +39628,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path28.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path21.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path28.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path28.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path21.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path21.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path28.join(staging, "latest");
-      const restoredHot = existsSync9(path28.join(restoreLatest, "sessions")) ? countSessionFiles(path28.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path21.join(staging, "latest");
+      const restoredHot = existsSync6(path21.join(restoreLatest, "sessions")) ? countSessionFiles(path21.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path28.join(this.deps.dshHome, name2);
-        if (existsSync9(target)) {
-          renameSync4(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
+        const target = path21.join(this.deps.dshHome, name2);
+        if (existsSync6(target)) {
+          renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path28.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path28.join(restoreLatest, "storages"), path28.join(this.deps.dshHome, "storages"));
-      if (existsSync9(path28.join(restoreLatest, "attachments"))) {
-        await mergeTree(path28.join(restoreLatest, "attachments"), path28.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path21.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path21.join(restoreLatest, "storages"), path21.join(this.deps.dshHome, "storages"));
+      if (existsSync6(path21.join(restoreLatest, "attachments"))) {
+        await mergeTree(path21.join(restoreLatest, "attachments"), path21.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path28.join(staging, "archive"), sessionsRoot);
-      const profiles = path28.join(restoreLatest, "profiles");
-      if (existsSync9(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path21.join(staging, "archive"), sessionsRoot);
+      const profiles = path21.join(restoreLatest, "profiles");
+      if (existsSync6(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -47580,38 +39687,38 @@ ${result2.stdout}`.toLowerCase();
   return /couldn't find remote ref|could not find remote ref|unknown revision|no such ref/.test(text);
 }
 function clearExceptGit(repo) {
-  for (const entry of readdirSync5(repo, { withFileTypes: true })) {
+  for (const entry of readdirSync4(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path28.join(repo, entry.name);
-    rmSync4(target, { recursive: true, force: true });
+    const target = path21.join(repo, entry.name);
+    rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync9(source)) return;
-  for (const entry of readdirSync5(source, { withFileTypes: true })) {
-    const from = path28.join(source, entry.name);
-    const to = path28.join(target, entry.name);
+  if (!existsSync6(source)) return;
+  for (const entry of readdirSync4(source, { withFileTypes: true })) {
+    const from = path21.join(source, entry.name);
+    const to = path21.join(target, entry.name);
     if (entry.isDirectory()) {
-      mkdirSync9(to, { recursive: true });
+      mkdirSync8(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync9(to)) continue;
-    mkdirSync9(target, { recursive: true });
+    if (existsSync6(to)) continue;
+    mkdirSync8(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync9(profilesRoot)) return;
-  for (const entry of readdirSync5(source, { withFileTypes: true })) {
+  if (!existsSync6(profilesRoot)) return;
+  for (const entry of readdirSync4(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path28.join(source, entry.name);
-    const to = path28.join(profilesRoot, entry.name);
-    if (!existsSync9(to)) continue;
-    for (const file2 of readdirSync5(from, { withFileTypes: true })) {
+    const from = path21.join(source, entry.name);
+    const to = path21.join(profilesRoot, entry.name);
+    if (!existsSync6(to)) continue;
+    for (const file2 of readdirSync4(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path28.join(from, file2.name), path28.join(to, file2.name));
+      await copyFileFresh(path21.join(from, file2.name), path21.join(to, file2.name));
     }
   }
 }
@@ -47620,17 +39727,17 @@ function countSessionFiles(root) {
   const walk2 = (dir) => {
     let entries;
     try {
-      entries = readdirSync5(dir, { withFileTypes: true });
+      entries = readdirSync4(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
-      const full = path28.join(dir, entry.name);
+      const full = path21.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync9(root)) walk2(root);
+  if (existsSync6(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -47640,8 +39747,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync13 } from "node:fs";
-import path29 from "node:path";
+import { readFileSync as readFileSync10 } from "node:fs";
+import path22 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -47671,14 +39778,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path29.dirname(statusFile2) : dataDir();
-  return path29.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path22.dirname(statusFile2) : dataDir();
+  return path22.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync13(file2, "utf8");
+    raw = readFileSync10(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -47686,12 +39793,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path29.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path22.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path29.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path22.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -47730,7 +39837,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path29.dirname(file2));
+    ensureSecureDir(path22.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -47913,7 +40020,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path30.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path23.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -47936,7 +40043,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path30.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path23.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -48485,7 +40592,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path30.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path23.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -48667,7 +40774,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path30.dirname(path30.dirname(config2.statusFile)) : path30.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path23.dirname(path23.dirname(config2.statusFile)) : path23.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -48786,21 +40893,13 @@ function applyInner(ctx, injected, clock) {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
-  let spriteHandle;
   try {
-    spriteHandle = startSprite(ctx, { dshHome: resolveDshHome(process.env), log });
+    const skillsInstalled = installPackagedSkills({ dshHome, log });
+    if (!skillsInstalled.ok && skillsInstalled.reason !== void 0) {
+      log("\u5185\u7F6E skill \u6CA1\u94FA\u6210\uFF08\u4E0D\u5F71\u54CD\u529F\u80FD\uFF09", { reason: skillsInstalled.reason.slice(0, 160) });
+    }
   } catch (error62) {
-    spriteHandle = void 0;
-    log("\u5E8F\u5217\u5E27\u5DE5\u5177\u8D77\u4E0D\u6765\uFF08\u5176\u5B83\u529F\u80FD\u4E0D\u53D7\u5F71\u54CD\uFF09", {
-      message: String(error62?.message ?? error62).slice(0, 200)
-    });
-  }
-  let xyqHandle;
-  try {
-    xyqHandle = startXyq(ctx, { dshHome: resolveDshHome(process.env), log });
-  } catch (error62) {
-    xyqHandle = void 0;
-    log("\u5C0F\u4E91\u96C0\u80FD\u529B\u8D77\u4E0D\u6765\uFF08\u8FDC\u63A7/\u8BC6\u56FE/\u8BB0\u5FC6\u4E0D\u53D7\u5F71\u54CD\uFF09", {
+    log("\u5185\u7F6E skill \u94FA\u5F00\u629B\u9519\uFF08\u5DF2\u541E\u6389\uFF09", {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
@@ -48813,15 +40912,6 @@ function applyInner(ctx, injected, clock) {
   } catch (error62) {
     extensionsHandle = void 0;
     log("\u6269\u5C55\u5217\u8868\u8D77\u4E0D\u6765\uFF08\u8FDC\u63A7/\u5176\u5B83\u529F\u80FD\u4E0D\u53D7\u5F71\u54CD\uFF09", {
-      message: String(error62?.message ?? error62).slice(0, 200)
-    });
-  }
-  let visionHandle;
-  try {
-    visionHandle = startVision(ctx, { dshHome, log });
-  } catch (error62) {
-    visionHandle = void 0;
-    log("\u8BC6\u56FE\u670D\u52A1\u8D77\u4E0D\u6765\uFF08\u8FDC\u63A7/\u4EBA\u8BBE\u4E0D\u53D7\u5F71\u54CD\uFF09", {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
@@ -48884,23 +40974,11 @@ function applyInner(ctx, injected, clock) {
       oneShot.cancelAll();
       pillRoutes?.stop();
       try {
-        visionHandle?.stop();
-      } catch {
-      }
-      try {
         subagentsHandle?.stop();
       } catch {
       }
       try {
         handoffHandle?.stop();
-      } catch {
-      }
-      try {
-        spriteHandle?.stop();
-      } catch {
-      }
-      try {
-        xyqHandle?.stop();
       } catch {
       }
       try {

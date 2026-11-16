@@ -4,14 +4,18 @@
  * 合包前是两张互不相干的卡（「远程控制」与「人设」分属两个包）。合包后把设置页那一格
  * 合成一张卡。2026-11-16 起分栏按已批准的样板重排（`docs/mockup/panel-tabs-mockup-20261116.html`）：
  *
- *   [远程控制] [人设] [Agent 团队] [肥鱼识图] [小云雀] [住客房间…]
+ *   [远程控制] [人设] [Agent 团队] [住客房间…]
  *
  * - 「远程控制」= 远控原有那整页 DOM（`buildSettingsSection` 灌进去的）+ 扩展列表；
  * - 「人设」= 人设客户端那整块（`PersonaSettingsSection`，生成物，原样嵌）+ 长期记忆；
  * - 「Agent 团队」= 派活助手设置 + 转生/分身入口 + 给 Agent 的调用入口表；
- * - 「肥鱼识图」= 识图状态 + 模型配置 + 试一张（**2026-11-16 从「人设」里抽出来独立成栏**）；
- * - 「小云雀」= CLI 生图/生视频的设置（0.9.x 就有，样板里没画它，但功能不能丢）；
- * - 后面的房间由**别的包**通过 `rooms.ts` 领（形象等），没装就没有那几栏。
+ * - 后面的房间由**别的包**通过 `rooms.ts` 领，没装就没有那几栏：
+ *   形象（`dsh-avatar-dafeiyu`，order10）、肥鱼识图（`dsh-vision-dafeiyu`，order40）、
+ *   小云雀（同一个包的 `xyq` 房间，order50）、序列帧（`dsh-dev-kit-dafeiyu`，order60）。
+ *
+ * ⚠️ 2026-11-16 之前「肥鱼识图」「小云雀」是本表里写死的两栏；它们**连同服务端那一半**
+ * 整块搬去 `dsh-vision-dafeiyu`，所以从 `TAB_LABELS` 与下面的 body 分支里一起删掉了。
+ * 本体自带的分栏从此刻起固定是**远程控制 / 人设 / Agent 团队**三栏。
  *
  * 纪律（与远控其余部分同款）：
  * 1. **挂不上就返回 false**，由调用方决定降级成「老样子两张卡」——合页失败不许把设置页
@@ -37,9 +41,7 @@ import { buildSettingsSection, mountSettingsSection, type SettingsHost } from '.
 import { type CreateElement } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
 import { buildMemoryPanel } from './memory-panel.js'
-import { buildXyqPanel } from './xyq-panel.js'
 import { buildExtensionsPanel } from './extensions-panel.js'
-import { buildVisionTab } from './vision-tab.js'
 import { buildAgentTeamTab, type AgentTeamHandoffKind } from './agent-team-tab.js'
 import { card, columnStyle, hintStyle } from './panel-kit.js'
 import { listRooms, onRoomsChange, type DafeiyuRoom } from './rooms.js'
@@ -56,20 +58,18 @@ export const DAFEIYU_TAB_PERSONA = 'persona'
  * 跟着标签走比留一个旧名字更好读。
  */
 export const DAFEIYU_TAB_TEAM = 'team'
-export const DAFEIYU_TAB_VISION = 'vision'
-export const DAFEIYU_TAB_XYQ = 'xyq'
 
 const TAB_LABELS: Record<string, string> = {
   [DAFEIYU_TAB_REMOTE]: '远程控制',
   [DAFEIYU_TAB_PERSONA]: '人设',
   [DAFEIYU_TAB_TEAM]: 'Agent 团队',
-  [DAFEIYU_TAB_VISION]: '肥鱼识图',
-  // 样板里没有「小云雀」这一栏（它是 0.9.x 就有的 CLI 设置），功能不能因为重排丢掉，
-  // 于是排在「肥鱼识图」之后、住客房间之前：前面四栏是样板定的顺序，后面是附加项。
-  [DAFEIYU_TAB_XYQ]: '小云雀',
-  // ⚠️ 「形象」不在这里（2026-11-16）：它搬去独立包 `dsh-avatar-dafeiyu`，
-  // 由那个包通过 `rooms.ts` 的 `registerRoom({ id:'avatar', label:'形象' })` 领一间房。
-  // **没装就没有这个 tab**——这正是"房间协议"要的效果，不是回归。
+  // ⚠️ 2026-11-16 起这个表里**只剩本体自带的三栏**，其余全是住客：
+  //   · 「形象」→ `dsh-avatar-dafeiyu`（order10）
+  //   · 「肥鱼识图」→ `dsh-vision-dafeiyu` 的 `vision` 房间（order40）
+  //   · 「小云雀」→ `dsh-vision-dafeiyu` 的 `xyq` 房间（order50）
+  //   · 「序列帧」→ `dsh-dev-kit-dafeiyu` 的 `sprite` 房间（order60）
+  // 它们通过 `rooms.ts` 的 `registerRoom({ id, label, order })` 领房，**没装就没有那个 tab**。
+  // 这正是"房间协议"要的效果，不是回归；判据钉的是"顺序按 order 排、住客不许插到本体中间"。
 }
 
 export interface DafeiyuPageDeps {
@@ -120,10 +120,6 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks })
   // 「Agent 团队」整栏（派活助手设置 + 转生/分身入口 + 调用入口表）。
   const agentTeamTab = buildAgentTeamTab({ createElement, hooks: reactHooks, openHandoff: deps.openHandoff })
-  // 「肥鱼识图」整栏（2026-11-16 从人设栏抽出来）：状态 + 模型配置 + 试一张 + 最近几次。
-  const visionTab = buildVisionTab({ createElement, hooks: reactHooks })
-  // 小云雀（CLI 生图/生视频）：Key、预算、自由度。
-  const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks })
   // 扩展列表（2026-11-16）：「远程控制」分栏里、配对码那块**下面**。
   const extensionsPanel = buildExtensionsPanel({ createElement, hooks: reactHooks })
 
@@ -257,10 +253,30 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
        * 那四块不是我们画的（见文件头），这里只做两件事：
        *   ① 把人设整块放进我们自己的一张卡（样板里"整页是一个卡片列"）；
        *   ② 在卡尾**标注一句**体积守门在哪 —— 不重复渲染它（重复 = 两份互相打架的开关）。
-       * 曾经的识图配置块已搬去「肥鱼识图」栏，这里不再有它。
+       * 曾经的识图配置块 2026-11-16 起随 `dsh-vision-dafeiyu` 走了（那个包自己的「肥鱼识图」房间），
+       * 人设栏里不再有它——本仓也不再有任何识图 UI。
        */
-      const personaCard = card(createElement, '人设', [
-        createElement(personaSettings, { t: personaT }),
+      const personaCard = card(createElement, '人设组件（外来）', [
+        /*
+         * 人设组件（生成物）**只包外壳**：顺序 / 折叠 / 内部间距都不归我们管。
+         * 这里能统一的三件事全是"容器级"的：
+         *   ① 字号与字色（内部没有显式字号的地方跟着它走，不再各自默认成 16px 正文）；
+         *   ② 竖向节奏（它自己画的几块之间靠这个 gap 撑开）；
+         *   ③ 内边距（卡已经有 16px，这里不再叠加，只保证最小宽度不被挤扁）。
+         */
+        createElement('div', {
+          'data-persona-host': '',
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            minWidth: 0,
+            fontSize: '13px',
+            lineHeight: '1.6',
+            color: 'var(--dsw-alias-label-primary, inherit)',
+          },
+          children: createElement(personaSettings, { t: personaT }),
+        }),
         createElement('p', {
           style: hintStyle,
           children:
@@ -279,14 +295,6 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
       body = agentTeamTab
         ? createElement(agentTeamTab, {})
         : fallbackLine(createElement, 'Agent 团队面板起不来（宿主没给 react hooks）。')
-    } else if (activeTab === DAFEIYU_TAB_VISION) {
-      body = visionTab
-        ? createElement(visionTab, {})
-        : fallbackLine(createElement, '肥鱼识图面板起不来（宿主没给 react hooks）。')
-    } else if (activeTab === DAFEIYU_TAB_XYQ) {
-      body = xyqPanel
-        ? createElement(xyqPanel, {})
-        : fallbackLine(createElement, '小云雀面板起不来（宿主没给 react hooks）。')
     } else if (rooms.some((room) => room.id === activeTab)) {
       // 住客的房间：只给容器，装修它自己来（`attachRoom` 管挂载/清理/崩了说人话）
       const room = rooms.find((candidate) => candidate.id === activeTab) as DafeiyuRoom

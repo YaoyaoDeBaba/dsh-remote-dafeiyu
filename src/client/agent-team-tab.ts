@@ -32,7 +32,23 @@
  *   · 转生 / 分身 —— 只有面板入口与三条宿主路由，**没有任何 Agent 可调的工具**。
  */
 import { buildSubagentsPanel } from './subagents-settings.js'
-import { card, codeStyle, hintStyle, notesStyle, rowStyle, columnStyle, button, tag, tdStyle, thStyle, tableStyle, type CreateElement, type TagTone } from './panel-kit.js'
+import {
+  button,
+  card,
+  codeStyle,
+  hintStyle,
+  item,
+  itemSub,
+  itemTitle,
+  notesStyle,
+  columnStyle,
+  tag,
+  tdStyle,
+  thStyle,
+  tableStyle,
+  type CreateElement,
+  type TagTone,
+} from './panel-kit.js'
 
 type Hooks = {
   useState?: <S>(initial: S) => [S, (next: S) => void]
@@ -131,21 +147,26 @@ export function buildAgentTeamTab(deps: AgentTeamTabDeps): (() => unknown) | und
       }
     }
     return card(h, '一键转生 / 一键分身', [
-      h('p', {
-        style: notesStyle,
-        children:
-          '转生 = 让当前会话写一份交接文档，然后在**新会话**里接着干（上下文快满时用）；' +
-          '分身 = 把当前上下文复制成新会话，两边并行干活。点了会打开转生/分身面板，流程在面板里走完。',
-      }),
-      h('div', {
-        style: rowStyle,
-        children: [
-          button(h, '一键转生', () => run('rebirth'), { kind: 'primary', disabled: !available }),
-          button(h, '一键分身', () => run('branch'), { disabled: !available }),
+      /* 两个动作各占一行（样板里是两张卡、各一个动作；我们两个动作共用一个面板，
+         所以并成一张卡里的两行：左文说清它是什么、右端一颗按钮）。 */
+      item(
+        h,
+        [
+          itemTitle(h, '一键转生'),
+          itemSub(h, '当前会话写一份交接文档，然后在**新会话**里接着干（上下文快满时用）'),
         ],
-      }),
+        [button(h, '一键转生', () => run('rebirth'), { kind: 'primary', disabled: !available })],
+      ),
+      item(
+        h,
+        [
+          itemTitle(h, '一键分身'),
+          itemSub(h, '把当前上下文复制成新会话，两边并行干活'),
+        ],
+        [button(h, '一键分身', () => run('branch'), { disabled: !available })],
+      ),
       available
-        ? h('p', { style: hintStyle, children: '宿主侧等交接文档最多 180 秒；旧会话不会自动归档，确认后手动归档。' })
+        ? h('p', { style: hintStyle, children: '点了会打开转生/分身面板，流程在面板里走完；宿主侧等交接文档最多 180 秒，旧会话不会自动归档，确认后手动归档。' })
         : h('p', {
             style: notesStyle,
             children: '这个入口没接上（转生/分身面板没起来）：装了悬浮形象时可以从它的菜单打开，两个动作仍然可用。',
@@ -185,7 +206,11 @@ export function buildAgentTeamTab(deps: AgentTeamTabDeps): (() => unknown) | und
           style: notesStyle,
           children: '没装悬浮形象时，怎么让 Agent 用这些能力就看这张表。',
         }),
-        h('table', { style: tableStyle, children: [h('thead', { children: header }), h('tbody', { children: rows })] }),
+        /* 窄卡里表格会挤出右边（「工具 / 说法」那列是长串）；给一层横向滚动，
+           而不是让整张卡片跟着变宽。 */
+        h('div', { style: { overflowX: 'auto', minWidth: 0 }, children: [
+          h('table', { style: tableStyle, children: [h('thead', { children: header }), h('tbody', { children: rows })] }),
+        ] }),
         h('ul', { style: { ...hintStyle, margin: 0, paddingLeft: '18px' }, children: reasons }),
         h('p', {
           style: hintStyle,

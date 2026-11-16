@@ -14,6 +14,7 @@ import {
   handoffStatusHandler,
   type HandoffRouteDeps,
 } from './routes.js'
+import { buildHandoffTools } from './tools.js'
 import { createHandoffService, type HandoffService } from './service.js'
 
 interface LooseContext {
@@ -105,7 +106,30 @@ export function startHandoff(
     }
   }
 
-  const acceptWeb = (value: unknown, via: string): boolean => {
+  /*
+ * 给 agent 的两个工具（2026-11-16）：转生 / 分身 原来只能人点，模型没法发起。
+ * 工具不重写逻辑，调的就是面板调的那个 `service.start()`。
+ * 拿不到 tools 服务只写 probe，不影响路由与面板。
+ */
+try {
+  const tools = ctx.get?.('tools', true) as
+    | { register?: (definition: Record<string, unknown>) => unknown }
+    | undefined
+  if (tools && typeof tools.register === 'function') {
+    const definitions = buildHandoffTools({
+      service: { start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary) },
+      log: input.log,
+    })
+    for (const definition of definitions) tools.register(definition)
+    probe.tool = 'registered'
+  } else {
+    probe.tool = 'no-tools'
+  }
+} catch (error) {
+  probe.tool = `threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+}
+
+const acceptWeb = (value: unknown, via: string): boolean => {
     if (!value || typeof value !== 'object') return false
     if (typeof (value as Registerable).register !== 'function') {
       probe.webServer = 'object without register()'

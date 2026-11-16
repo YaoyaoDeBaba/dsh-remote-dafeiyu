@@ -52,17 +52,19 @@ import { startPill, type PillHandle } from './pill/start.js'
 // 人设那一半（0.8.0 起与远控共用一个包、一行）。挂载点单列一个文件：
 // 它的判据是「探不到 systemPrompt 就不挂」，那一条必须能单独测，也必须留下原因。
 import { mountPersona } from './persona/mount.js'
-// 识图那一半（0.9.0）：外挂视觉模型 + 三条路由 + recognize_image 工具。
-// 与远控/人设同一条纪律——起不来只是少一块界面，绝不带走主链路。
-import { startVision, type VisionHandle } from './vision/start.js'
+// 识图 + 小云雀（2026-11-16 搬去独立包 `dsh-vision-dafeiyu`）：那个包自带
+// `/api/dsh-remote-dafeiyu/{vision,xyq}/*` 三条/七条路由与两个设置页房间
+// （`vision` order40、`xyq` order50）。本体这边**一行都不留**。
 // 子代理监视器（2026-11-09）：一条只读路由给桌面端页面，手机走协议命令。
 import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 一键转生 / 一键分身（0.9.0.53）：三条回环路由 + 一个作业管理器。
 import { startHandoff, type HandoffHandle } from './handoff/start.js'
-// 序列帧精灵图（0.9.0.55）：托管工具页 + 5 个 agent 工具（无头 Edge + CDP 驱动）。
-import { startSprite, type SpriteHandle } from './sprite/start.js'
-// 小云雀（CLI 工具）：生图/生视频/余额，设置页一栏。
-import { startXyq, type XyqHandle } from './xyq/start.js'
+// 序列帧精灵图（0.9.0.55 → 2026-11-16 搬去独立包 `dsh-dev-kit-dafeiyu`）：20 个工具、
+// 工具页 `/plugins/dafeiyu-sprite/`、skill 安装器全在那边；它自己领房间 `sprite`（order60）。
+// 本体只保留"铺内置 skill"这一件事（见下面 `installPackagedSkills`）：那个批量安装器
+// 原本躺在 `sprite/skill.ts` 里，但它装的是 `assets/skills/` 下的**全部** skill，包括
+// 仍留在本包的 `dafeiyu-plugin-dev`——整块删掉会让那份 skill 静默停更。
+import { installPackagedSkills } from './skills/install.js'
 // 扩展列表（2026-11-16）：设置页「远程控制」里那半张表，装/启用/禁用/卸载**白名单**里的扩展。
 import { startExtensions, type ExtensionsHandle } from './extensions/start.js'
 import { resolveProfileDir } from './extensions/service.js'
@@ -1576,22 +1578,20 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
-  let spriteHandle: SpriteHandle | undefined
+  /**
+   * 内置 skill 落成 DSH skill（2026-11-16 从 `startSprite` 里搬出来）。
+   *
+   * 装的是 `assets/skills/` 下的**全部** skill（现在只剩 `dafeiyu-plugin-dev`）：
+   * 序列帧那份指南随 `dsh-dev-kit-dafeiyu` 走了，由那个包自己的安装器负责，本包不再铺它。
+   * 版本没变就空操作（判据是内容指纹，改文档不必发版）；失败只留一行日志，不影响任何功能。
+   */
   try {
-    spriteHandle = startSprite(ctx as never, { dshHome: resolveDshHome(process.env), log })
+    const skillsInstalled = installPackagedSkills({ dshHome, log })
+    if (!skillsInstalled.ok && skillsInstalled.reason !== undefined) {
+      log('内置 skill 没铺成（不影响功能）', { reason: skillsInstalled.reason.slice(0, 160) })
+    }
   } catch (error) {
-    spriteHandle = undefined
-    log('序列帧工具起不来（其它功能不受影响）', {
-      message: String((error as Error)?.message ?? error).slice(0, 200),
-    })
-  }
-
-  let xyqHandle: XyqHandle | undefined
-  try {
-    xyqHandle = startXyq(ctx as never, { dshHome: resolveDshHome(process.env), log })
-  } catch (error) {
-    xyqHandle = undefined
-    log('小云雀能力起不来（远控/识图/记忆不受影响）', {
+    log('内置 skill 铺开抛错（已吞掉）', {
       message: String((error as Error)?.message ?? error).slice(0, 200),
     })
   }
@@ -1617,15 +1617,8 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
 
-  let visionHandle: VisionHandle | undefined
-  try {
-    visionHandle = startVision(ctx as never, { dshHome, log })
-  } catch (error) {
-    visionHandle = undefined
-    log('识图服务起不来（远控/人设不受影响）', {
-      message: String((error as Error)?.message ?? error).slice(0, 200),
-    })
-  }
+  // 识图 + 小云雀的软挂载（`startVision` / `startXyq`）2026-11-16 随包走了：
+  // 那两条路由与那两个设置页房间现在由 `dsh-vision-dafeiyu` 注册，本体不再探。
 
   try {
     pillRoutes = startPill(ctx, {
@@ -1696,11 +1689,6 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       pillRoutes?.stop()
       // 识图那三条路由同理。
       try {
-        visionHandle?.stop()
-      } catch {
-        /* 停机动作不许拖住停机 */
-      }
-      try {
         subagentsHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
@@ -1710,17 +1698,8 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       } catch {
         /* 停机动作不许拖住停机 */
       }
-      // 序列帧工具会起子进程（无头 Edge）：停机时必须收，否则留下孤儿进程。
-      try {
-        spriteHandle?.stop()
-      } catch {
-        /* 停机动作不许拖住停机 */
-      }
-      try {
-        xyqHandle?.stop()
-      } catch {
-        /* 停机动作不许拖住停机 */
-      }
+      // 序列帧（会起无头 Edge）与小云雀（会起 CLI 子进程）的 stop 2026-11-16 随包走了：
+      // 那两个包的句柄由它们自己的 `stop()` 收，本体的停机链路不再碰它们。
       // 扩展列表只是两条路由（没有定时器/子进程），但它注册了路由，同样要注销。
       try {
         extensionsHandle?.stop()

@@ -1,5 +1,5 @@
 /**
- * subagents-settings — 设置页「派活助手」分栏（React 组件）。
+ * subagents-settings — 设置页「Agent 团队」分栏里的「派活助手」那块（React 组件）。
  *
  * 三块配置：
  * - 「派活规范提示」开关（写 `guidance`，改完**重启 DSH** 才对模型生效）；
@@ -7,16 +7,33 @@
  * - 提示词预览 + 一键复制（文本由宿主 `GET .../subagents/config` 返回，与注入给模型的是**同一份**）。
  *
  * 钩子由调用方传入（不能静态 require react）；所有 DOM 操作都有退路。
+ *
+ * 2026-11-16 版式统一：这一块原来是"一句说明 + 一张自带边框的卡"，且自己抄了一套
+ * `cardStyle`/`rowStyle`/`buttonStyle`（与 `vision-panel.ts`、`memory-panel.ts` 各一份）。
+ * 现在整块就是 `./panel-kit.ts` 的**一张卡 + 三种行**（开关行 / 选择行 / 预览行），
+ * 说明也收进卡里——它属于"这一卡在管什么"，不该单独浮在卡列里。功能与文案没动。
  */
 import { resolveHostUrl } from './host-url.js'
 import { callJson } from './host-api.js'
+import {
+  button,
+  card,
+  fieldStyle,
+  hintStyle,
+  item,
+  itemSub,
+  itemTitle,
+  labelStyle,
+  notesStyle,
+  quoteStyle,
+  rowStyle,
+  type CreateElement,
+} from './panel-kit.js'
 
 type Hooks = {
   useState?: <S>(initial: S) => [S, (next: S) => void]
   useEffect?: (effect: () => void | (() => void), deps?: unknown[]) => void
 }
-
-type CreateElement = (type: unknown, props: Record<string, unknown>) => unknown
 
 export interface SubagentsSettingsView {
   enabled: boolean
@@ -36,36 +53,23 @@ const IDLE_OPTIONS: Array<[number, string]> = [
   [24 * 60 * 60 * 1000, '24 小时'],
 ]
 
-const cardStyle: Record<string, string> = {
-  border: '1px solid var(--dsw-alias-border-l2)',
-  borderRadius: '10px',
-  padding: '12px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-}
-const rowStyle: Record<string, string> = { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }
-const labelStyle: Record<string, string> = { fontSize: '12.5px', color: 'var(--dsw-alias-label-secondary)' }
-const buttonStyle: Record<string, string> = {
-  padding: '4px 12px',
-  borderRadius: '6px',
-  border: '1px solid var(--dsw-alias-border-l2)',
-  background: 'transparent',
-  color: 'var(--dsw-alias-label-primary)',
-  fontSize: '13px',
+/** 行里那颗勾选框：尺寸显式给死，别让它跟着宿主的 reset 走。 */
+const CHECKBOX_STYLE: Record<string, string | number> = {
+  width: '16px',
+  height: '16px',
+  flex: '0 0 auto',
+  margin: 0,
   cursor: 'pointer',
+  accentColor: 'var(--dsw-alias-brand-primary, #247bbf)',
 }
-const previewStyle: Record<string, string> = {
-  whiteSpace: 'pre-wrap',
-  fontSize: '12px',
-  lineHeight: '1.6',
-  color: 'var(--dsw-alias-label-secondary)',
-  background: 'var(--dsw-alias-bg-tertiary, rgba(127,127,127,.08))',
-  borderRadius: '8px',
-  padding: '10px',
-  maxHeight: '220px',
-  overflow: 'auto',
-  margin: '0',
+
+/** 行里那两格下拉：`fieldStyle` 的紧凑版（行高与文字对齐，不吃满整行）。 */
+const ROW_SELECT_STYLE: Record<string, string | number> = {
+  ...fieldStyle,
+  width: 'auto',
+  maxWidth: '100%',
+  flex: '0 0 auto',
+  padding: '4px 8px',
 }
 
 async function postConfig(patch: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -144,15 +148,12 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
       void load()
     }, [])
 
+    /* 读不到配置时也一样是一张卡（原来是裸文字 + 一颗按钮，浮在卡列里最难看）。 */
     if (cfg === null) {
-      return h('div', {
-        style: { fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
-        children: [
-          h('span', { children: status || '正在读取派活助手配置…' }),
-          ' ',
-          h('button', { type: 'button', style: buttonStyle, onClick: () => void load(), children: '刷新' }),
-        ],
-      })
+      return card(h, '派活助手', [
+        h('p', { style: notesStyle, children: status || '正在读取派活助手配置…' }),
+        h('div', { style: rowStyle, children: [button(h, '刷新', () => void load())] }),
+      ])
     }
 
     const copy = async (): Promise<void> => {
@@ -164,79 +165,77 @@ export function buildSubagentsPanel(deps: { createElement: CreateElement; hooks:
       }
     }
 
-    return h('div', {
-      style: { display: 'flex', flexDirection: 'column', gap: '12px' },
-      children: [
+    return card(
+      h,
+      '派活助手',
+      [
         h('p', {
-          style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-secondary)', lineHeight: '1.6' },
+          style: notesStyle,
           children:
             '派活助手 = 子代理监视器：派出去的子代理会出现在电脑右侧 / 手机对话页的 🐝 面板里。' +
             '想让用户的机器人都按「名称｜简述」派活，就保持下面的规范提示开启。',
         }),
+        /* 开关行：左文右勾（样板 .item） */
+        item(
+          h,
+          [itemTitle(h, '派活规范提示'), itemSub(h, '重启 DSH 后生效')],
+          [
+            h('input', {
+              type: 'checkbox',
+              style: CHECKBOX_STYLE,
+              checked: cfg.guidance,
+              disabled: busy,
+              onChange: (event: { target?: { checked?: boolean } }) =>
+                void save({ guidance: event?.target?.checked === true }),
+            }),
+          ],
+        ),
+        /* 选择行：左文右选 */
+        item(
+          h,
+          [itemTitle(h, '派活风格'), itemSub(h, '重启 DSH 后生效')],
+          [
+            h('select', {
+              value: cfg.mode ?? 'foreman',
+              disabled: busy,
+              style: ROW_SELECT_STYLE,
+              onChange: (event: { target?: { value?: string } }) =>
+                void save({ mode: event?.target?.value === 'hands-on' ? 'hands-on' : 'foreman' }),
+              children: [
+                h('option', { value: 'foreman', children: '包工头：主动拆活/派活/验收/汇报' }),
+                h('option', { value: 'hands-on', children: '亲力亲为：自己动手为主' }),
+              ],
+            }),
+          ],
+        ),
+        /* 阈值行：左文右选（即时生效，所以副标题说清"即时"） */
+        item(
+          h,
+          [itemTitle(h, '闲置阈值'), itemSub(h, '超过它算"太久"，可一键归档；即时生效')],
+          [
+            h('select', {
+              value: String(cfg.idleWarnMs),
+              disabled: busy,
+              style: ROW_SELECT_STYLE,
+              onChange: (event: { target?: { value?: string } }) =>
+                void save({ idleWarnMs: Number(event?.target?.value ?? 0) }),
+              children: IDLE_OPTIONS.map(([ms, label]) => h('option', { key: String(ms), value: String(ms), children: label })),
+            }),
+          ],
+        ),
+        /* 预览：标题一行 + 动作在右，正文是那块引文 */
         h('div', {
-          style: cardStyle,
+          style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
           children: [
-            h('div', {
-              style: rowStyle,
-              children: [
-                h('span', { style: labelStyle, children: '派活规范提示（重启 DSH 后生效）' }),
-                h('input', {
-                  type: 'checkbox',
-                  checked: cfg.guidance,
-                  disabled: busy,
-                  onChange: (event: { target?: { checked?: boolean } }) =>
-                    void save({ guidance: event?.target?.checked === true }),
-                }),
-                h('span', { style: { ...labelStyle, fontSize: '11.5px' }, children: cfg.guidance ? '开' : '关' }),
-              ],
-            }),
-            h('div', {
-              style: rowStyle,
-              children: [
-                h('span', { style: labelStyle, children: '派活风格（重启 DSH 后生效）' }),
-                h('select', {
-                  value: cfg.mode ?? 'foreman',
-                  disabled: busy,
-                  style: { ...buttonStyle, padding: '4px 8px' },
-                  onChange: (event: { target?: { value?: string } }) =>
-                    void save({ mode: event?.target?.value === 'hands-on' ? 'hands-on' : 'foreman' }),
-                  children: [
-                    h('option', { value: 'foreman', children: '包工头：主动拆活/派活/验收/汇报' }),
-                    h('option', { value: 'hands-on', children: '亲力亲为：自己动手为主' }),
-                  ],
-                }),
-              ],
-            }),
-            h('div', {
-              style: rowStyle,
-              children: [
-                h('span', { style: labelStyle, children: '闲置阈值（超过它算“太久”，可一键归档）' }),
-                h(
-                  'select',
-                  {
-                    value: String(cfg.idleWarnMs),
-                    disabled: busy,
-                    style: { ...buttonStyle, padding: '4px 8px' },
-                    onChange: (event: { target?: { value?: string } }) =>
-                      void save({ idleWarnMs: Number(event?.target?.value ?? 0) }),
-                    children: IDLE_OPTIONS.map(([ms, label]) => h('option', { key: String(ms), value: String(ms), children: label })),
-                  },
-                ),
-                h('span', { style: { ...labelStyle, fontSize: '11.5px' }, children: status }),
-              ],
-            }),
-            h('div', {
-              style: { display: 'flex', gap: '8px', alignItems: 'center' },
-              children: [
-                h('span', { style: labelStyle, children: '提示词预览（与注入给模型的是同一份）' }),
-                h('button', { type: 'button', style: buttonStyle, onClick: () => void copy(), children: '复制' }),
-                h('button', { type: 'button', style: buttonStyle, onClick: () => void load(), children: '刷新' }),
-              ],
-            }),
-            h('pre', { style: previewStyle, children: preview || '（宿主没有返回提示词文本）' }),
+            h('span', { style: { ...labelStyle, marginBottom: 0, flex: '1 1 auto' }, children: '提示词预览（与注入给模型的是同一份）' }),
+            button(h, '复制', () => void copy(), { disabled: busy }),
+            button(h, '刷新', () => void load(), { disabled: busy }),
           ],
         }),
+        h('pre', { style: quoteStyle, children: preview || '（宿主没有返回提示词文本）' }),
+        status === '' ? null : h('p', { style: hintStyle, children: status }),
       ],
-    })
+      { count: cfg.guidance ? '规范提示已开' : '规范提示已关' },
+    )
   }
 }
