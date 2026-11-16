@@ -37132,16 +37132,10 @@ function handoffStatusHandler(deps) {
 
 // src/handoff/tools.ts
 var OUT2 = {
-  type: "object",
-  properties: {
-    ok: { type: "boolean" },
-    jobId: { type: "string" },
-    status: { type: "string" },
-    message: { type: "string" },
-    handoffFile: { type: "string" }
-  },
-  required: ["ok"],
-  additionalProperties: false
+  schema: { type: "object" },
+  render: (_args, value) => [
+    { type: "text", text: typeof value === "string" ? value : JSON.stringify(value) }
+  ]
 };
 function resolveSessionId(exec) {
   const candidate = exec ?? {};

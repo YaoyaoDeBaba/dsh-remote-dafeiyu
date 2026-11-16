@@ -38,17 +38,20 @@ interface HandoffStartResult {
   handoffFile?: string
 }
 
+/**
+ * 工具输出声明。
+ *
+ * ⚠️ 内核要的是 `{ schema, render }`（`presentationMeta?` 可选），**不是裸 JSON Schema**。
+ * 我第一版写成裸 schema，`tools.register` 直接抛：
+ *   `tool "handoff_rebirth" must declare output { schema, render, presentationMeta? }`
+ * 而我当时把异常吞进 probe 了——于是"工具没注册"这件事**没有任何报错**，
+ * 只有把 probe 写进 status.json 才看见。工具定义写错一定要让它在开发期炸出来。
+ */
 const OUT = {
-  type: 'object',
-  properties: {
-    ok: { type: 'boolean' },
-    jobId: { type: 'string' },
-    status: { type: 'string' },
-    message: { type: 'string' },
-    handoffFile: { type: 'string' },
-  },
-  required: ['ok'],
-  additionalProperties: false,
+  schema: { type: 'object' },
+  render: (_args: unknown, value: unknown): unknown[] => [
+    { type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value) },
+  ],
 }
 
 /**
