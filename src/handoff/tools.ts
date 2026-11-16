@@ -96,9 +96,13 @@ export function buildHandoffTools(deps: HandoffToolDeps): Array<Record<string, u
     description:
       kind === 'rebirth'
         ? '把**当前会话**一键转生：让本会话写一份交接文档，然后在**新会话**里接着干。适合上下文要满了、或要把一件事交出去。\n' +
-          '返回 `jobId`；作业跑完（新会话已发出第一句）前状态是 `running`，可用 `handoff_status` 查。'
+          '**你（agent）可以直接发起，不需要用户点任何按钮**——用户说"你自己转生/分身"时，就是让你调这个工具。\n' +
+          '返回 `jobId`。调完你会收到一条"写交接文档"的指令：把交接内容写进指定文件，宿主等它出现后再建新会话并投递第一句。\n' +
+          '**兜底**：本工具不可用时，改用 `schedule_create`（`target: new_once` + 一次性 rrule），把"读交接文档、接手"作为投递到新会话的第一条指令——效果等价、不依赖本插件。'
         : '把**当前会话**一键分身：复制上下文成**新会话**，两边并行干活、互不影响。\n' +
-          '典型用法：把某个模块的后续维护交给分身去迭代，主会话继续干别的。返回 `jobId`。',
+          '**你（agent）可以直接发起，不需要用户点任何按钮**——用户说"你自己分身"时，就是让你调这个工具。\n' +
+          '`note` 必填：写清楚分身要干什么，否则分出去的会话不知道自己的职责。返回 `jobId`。\n' +
+          '**兜底**：同上，本工具不可用时改用 `schedule_create`（`target: new_once`）投递第一条指令。',
     parameters: {
       type: 'object',
       properties: {
