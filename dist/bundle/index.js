@@ -40658,6 +40658,10 @@ function applyInner(ctx, injected, clock) {
       // 配对入口（那颗 pill 的六条路由）为什么没起，是"配不了对"唯一的排查入口：
       // 这里直接把软探测的结果带出来。
       pill: pillRoutes?.probe ?? { webServer: "not-started" },
+      // 转生/分身的软探测（2026-11-16）：	ool 是 agent 工具那条链的唯一取证点——
+      // 面板能开（走 HTTP 路由）不代表工具注册上了（走 tools 服务）。
+      handoff: softProbe.handoff ?? { started: "no" },
+      subagents: softProbe.subagents ?? { started: "no" },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: void 0,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -40782,6 +40786,7 @@ function applyInner(ctx, injected, clock) {
     clientIdsOf: (id) => relay?.clientIdsOf(id) ?? [],
     startRuntime: () => runtime?.start()
   });
+  const softProbe = {};
   const carrier = createCarrierProbe({
     clock,
     log,
@@ -40866,6 +40871,7 @@ function applyInner(ctx, injected, clock) {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
+  softProbe.subagents = subagentsHandle?.probe;
   let handoffHandle;
   try {
     handoffHandle = startHandoff(ctx, {
@@ -40946,6 +40952,7 @@ function applyInner(ctx, injected, clock) {
       message: String(error62?.message ?? error62).slice(0, 200)
     });
   }
+  softProbe.handoff = handoffHandle?.probe;
   try {
     const skillsInstalled = installPackagedSkills({ dshHome, log });
     if (!skillsInstalled.ok && skillsInstalled.reason !== void 0) {

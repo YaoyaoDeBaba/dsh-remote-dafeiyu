@@ -1148,6 +1148,10 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       // 配对入口（那颗 pill 的六条路由）为什么没起，是"配不了对"唯一的排查入口：
       // 这里直接把软探测的结果带出来。
       pill: pillRoutes?.probe ?? { webServer: 'not-started' },
+    // 转生/分身的软探测（2026-11-16）：	ool 是 agent 工具那条链的唯一取证点——
+    // 面板能开（走 HTTP 路由）不代表工具注册上了（走 tools 服务）。
+    handoff: softProbe.handoff ?? { started: 'no' },
+    subagents: softProbe.subagents ?? { started: 'no' },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: undefined,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -1358,7 +1362,20 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   })
 
   // ── 载体探测：services > (mock)（v5 R2c 抽出 → `core/carrier-probe.ts`）──
+  /**
+   * 转生/分身的软探测容器（2026-11-16）。
+   *
+   * ⚠️ 必须是**提前声明的可变对象**：state() 会被 carrier 探针的定时器调用，
+   * 那时 handoffHandle / subagentsHandle 还没赋值——直接读它们会撞 TDZ
+   * （Cannot access 'handoffHandle' before initialization，真机测试里表现为整个套件挂住）。
+   */
+  const softProbe: {
+    handoff?: Record<string, string>
+    subagents?: Record<string, string>
+  } = {}
+
   const carrier = createCarrierProbe({
+
     clock,
     log,
     config: { newSessionCwd: config.newSessionCwd, mockBridge: config.mockBridge },
@@ -1493,6 +1510,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       message: String((error as Error)?.message ?? error).slice(0, 200),
     })
   }
+  softProbe.subagents = subagentsHandle?.probe
 
   let handoffHandle: HandoffHandle | undefined
   try {
@@ -1577,6 +1595,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       message: String((error as Error)?.message ?? error).slice(0, 200),
     })
   }
+  softProbe.handoff = handoffHandle?.probe
 
   /**
    * 内置 skill 落成 DSH skill（2026-11-16 从 `startSprite` 里搬出来）。
