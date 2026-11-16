@@ -139,27 +139,58 @@ const acceptTools = (value: unknown, via: string): boolean => {
   }
 }
 
-try {
-  const found = ctx.get?.('tools', true)
-  if (!acceptTools(found, 'via get')) probe.tool = probe.tool ?? 'none'
-} catch (error) {
-  probe.tool = `get threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
-}
-try {
-  ctx.inject?.(['tools'], ((...args: unknown[]) => {
+/**
+ * 拿 tools 服务：先同步试一次，再**轮询**（最多 30 秒）。
+ *
+ * 为什么不用"只 inject 一次"：真机上 `tools` 在 apply 期间还没就位，
+ * 而 inject 回调会不会来、什么时候来，取决于内核的装载顺序——这条路我在真机上验过没生效。
+ * 轮询对"晚到服务"是最稳的：服务一出现，下一拍就注册上。
+ */
+let toolsTimer: ReturnType<typeof setInterval> | undefined
+const tryToolsOnce = (via: string): boolean => {
+  let value: unknown
+  try {
+    value = ctx.get?.('tools', true)
+  } catch (error) {
+    probe.tool = `get threw: ${String((error as Error)?.message ?? error).slice(0, 80)}`
+    return false
+  }
+  if (!value) {
+    // 直接属性访问在某些内核里会抛（没有 inject 声明时），包一层
     try {
-      for (const candidate of [...args, ctx]) {
-        const value = (candidate as { get?: (n: string, optional: true) => unknown })?.get?.('tools', true)
-        if (acceptTools(value ?? candidate, 'via inject')) return
-      }
-      probe.tool = `${probe.tool ?? 'none'} (inject fired, empty)`
-    } catch (error) {
-      probe['injectThrew:tools'] = String((error as Error)?.message ?? error).slice(0, 160)
+      value = (ctx as unknown as Record<string, unknown>)['tools']
+    } catch {
+      value = undefined
     }
-  }) as never)
-} catch (error) {
-  probe['injectThrew:tools'] = String((error as Error)?.message ?? error).slice(0, 160)
+  }
+  return acceptTools(value, via)
 }
+
+tryToolsOnce('via get')
+if (!toolsRegistered) {
+  let attempts = 0
+  try {
+    toolsTimer = setInterval(() => {
+      attempts += 1
+      if (toolsRegistered) {
+        if (toolsTimer !== undefined) clearInterval(toolsTimer)
+        return
+      }
+      if (tryToolsOnce('via poll')) {
+        if (toolsTimer !== undefined) clearInterval(toolsTimer)
+        return
+      }
+      // 30 秒（60 拍）还没等到就收手，别再空转
+      if (attempts >= 60) {
+        if (toolsTimer !== undefined) clearInterval(toolsTimer)
+        probe.tool = `${probe.tool ?? 'none'} (poll gave up after ${attempts})`
+      }
+    }, 500)
+  } catch (error) {
+    probe['pollThrew:tools'] = String((error as Error)?.message ?? error).slice(0, 160)
+  }
+}
+
 
 const acceptWeb = (value: unknown, via: string): boolean => {
     if (!value || typeof value !== 'object') return false
@@ -216,6 +247,11 @@ const acceptWeb = (value: unknown, via: string): boolean => {
   return {
     probe,
     stop(): void {
+      try {
+        if (toolsTimer !== undefined) clearInterval(toolsTimer)
+      } catch {
+        /* 清理不许抛 */
+      }
       if (stopped) return
       stopped = true
       try {

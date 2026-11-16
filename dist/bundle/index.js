@@ -37584,26 +37584,46 @@ function startHandoff(ctx, input2) {
       return false;
     }
   };
-  try {
-    const found = ctx.get?.("tools", true);
-    if (!acceptTools(found, "via get")) probe.tool = probe.tool ?? "none";
-  } catch (error62) {
-    probe.tool = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
-  }
-  try {
-    ctx.inject?.(["tools"], ((...args) => {
+  let toolsTimer;
+  const tryToolsOnce = (via) => {
+    let value;
+    try {
+      value = ctx.get?.("tools", true);
+    } catch (error62) {
+      probe.tool = `get threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
+      return false;
+    }
+    if (!value) {
       try {
-        for (const candidate of [...args, ctx]) {
-          const value = candidate?.get?.("tools", true);
-          if (acceptTools(value ?? candidate, "via inject")) return;
-        }
-        probe.tool = `${probe.tool ?? "none"} (inject fired, empty)`;
-      } catch (error62) {
-        probe["injectThrew:tools"] = String(error62?.message ?? error62).slice(0, 160);
+        value = ctx["tools"];
+      } catch {
+        value = void 0;
       }
-    }));
-  } catch (error62) {
-    probe["injectThrew:tools"] = String(error62?.message ?? error62).slice(0, 160);
+    }
+    return acceptTools(value, via);
+  };
+  tryToolsOnce("via get");
+  if (!toolsRegistered) {
+    let attempts = 0;
+    try {
+      toolsTimer = setInterval(() => {
+        attempts += 1;
+        if (toolsRegistered) {
+          if (toolsTimer !== void 0) clearInterval(toolsTimer);
+          return;
+        }
+        if (tryToolsOnce("via poll")) {
+          if (toolsTimer !== void 0) clearInterval(toolsTimer);
+          return;
+        }
+        if (attempts >= 60) {
+          if (toolsTimer !== void 0) clearInterval(toolsTimer);
+          probe.tool = `${probe.tool ?? "none"} (poll gave up after ${attempts})`;
+        }
+      }, 500);
+    } catch (error62) {
+      probe["pollThrew:tools"] = String(error62?.message ?? error62).slice(0, 160);
+    }
   }
   const acceptWeb = (value, via) => {
     if (!value || typeof value !== "object") return false;
@@ -37656,6 +37676,10 @@ function startHandoff(ctx, input2) {
   return {
     probe,
     stop() {
+      try {
+        if (toolsTimer !== void 0) clearInterval(toolsTimer);
+      } catch {
+      }
       if (stopped) return;
       stopped = true;
       try {
