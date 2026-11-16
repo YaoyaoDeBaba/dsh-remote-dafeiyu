@@ -48,12 +48,14 @@ interface HandoffStartResult {
  * 只有把 probe 写进 status.json 才看见。工具定义写错一定要让它在开发期炸出来。
  */
 const OUT = {
-  schema: { type: 'object' },
+  // 类型必须与 execute 的返回值一致：我们返回的是 JSON 字符串，所以这里是 string。
+  // 写成 object 会被内核拒收：returned invalid output: value must be an object。
+  // （subagents 的工具也是 string + 同一个 render，照它的形状抄准没错。）
+  schema: { type: 'string' },
   render: (_args: unknown, value: unknown): unknown[] => [
     { type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value) },
   ],
 }
-
 /**
  * 从工具执行上下文里找"当前会话 id"。
  *

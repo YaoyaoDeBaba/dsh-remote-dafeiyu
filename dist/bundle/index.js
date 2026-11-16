@@ -37132,7 +37132,10 @@ function handoffStatusHandler(deps) {
 
 // src/handoff/tools.ts
 var OUT2 = {
-  schema: { type: "object" },
+  // 类型必须与 execute 的返回值一致：我们返回的是 JSON 字符串，所以这里是 string。
+  // 写成 object 会被内核拒收：returned invalid output: value must be an object。
+  // （subagents 的工具也是 string + 同一个 render，照它的形状抄准没错。）
+  schema: { type: "string" },
   render: (_args, value) => [
     { type: "text", text: typeof value === "string" ? value : JSON.stringify(value) }
   ]
