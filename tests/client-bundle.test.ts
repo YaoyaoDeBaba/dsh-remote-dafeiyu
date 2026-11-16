@@ -41,6 +41,14 @@ const CONFIG_ROUTE = '/plugins/dsh-remote-control/config'
 /** 会话备份那张卡那条路由（2026-10-28 加）。同上：字面量，由产物那条判据对齐。 */
 const BACKUP_ROUTE = '/plugins/dsh-remote-control/backup'
 /**
+ * 识图那两条路由（2026-11-16 加：设置页「肥鱼识图」栏的状态卡与「试一张」）。
+ *
+ * 同 `CONFIG_ROUTE` 的处理：**写字面量**（浏览器面不能 import 宿主侧路由表——那支
+ * `src/vision/routes.ts` 连着 node:http），再由「识图路由常量没漂」那条判据把两边钉在一起。
+ */
+const VISION_CONFIG_ROUTE = '/api/dsh-remote-dafeiyu/vision/config'
+const VISION_RECOGNIZE_ROUTE = '/api/dsh-remote-dafeiyu/vision/recognize'
+/**
  * 序列帧工具页（0.55）。
  *
  * 2026-11-16 起它**不再是**「浏览器这一半跳转的目标」：形象小窗（含那颗 🎞 菜单）搬去独立包
@@ -61,6 +69,13 @@ import {
 // 设置页「进阶」那一栏那条路由（2026-10-11 加）：常量在 `config-routes.ts`，注册点仍是
 // `registerPillRoutes`。产物里那个字面量必须与它逐字一致（见下面那条反证判据）。
 import { PLUGIN_CONFIG_ROUTE } from '../src/pill/config-routes.js'
+// 识图那两条路由（2026-11-16 加）：「肥鱼识图」栏的状态卡与「试一张」打的就是它们。
+// 这里**从宿主侧 import**（tests 走 tsconfig.json，有 node 类型），只为把浏览器半个字面量
+// 与它钉在一起——浏览器面自己不能 import 这张表（`src/vision/routes.ts` 连着 node:http）。
+import {
+  VISION_CONFIG_ROUTE as HOST_VISION_CONFIG_ROUTE,
+  VISION_RECOGNIZE_ROUTE as HOST_VISION_RECOGNIZE_ROUTE,
+} from '../src/vision/routes.js'
 
 /**
  * 清单那一格：`dsh.client.inject` 是**包名**列表（排装载顺序），不是 cordis 服务名。
@@ -264,6 +279,22 @@ interface LoadOptions {
   configWriteHttp?: number
   /** `POST /config` 直接抛。 */
   configWriteThrows?: boolean
+  /**
+   * `GET /vision/config` 的回答（2026-11-16 加：设置页「肥鱼识图」栏的状态卡读它）。
+   * 不给就用下面 `DEFAULT_VISION_CONFIG_ANSWER`（一台"配好了、能用"的机器）。
+   */
+  visionConfig?: Record<string, unknown>
+  /** `GET /vision/config` 回非 200（老版宿主没有这条路由时真机就是 404）。 */
+  visionConfigHttp?: number
+  /** `POST /vision/recognize` 的回答文本；回 `null` = 宿主那句中文失败原因（`errorText`）。 */
+  visionRecognizeText?: string | null
+  /** `POST /vision/recognize` 失败时宿主回的中文原因。 */
+  visionRecognizeError?: string
+  /**
+   * 已经领了房门的住客（形象包那种）：在 `apply()` 之后、渲染之前注册进
+   * `window.__dafeiyuRooms`。用来验"住客的房间排在**最后**"（tab 顺序判据）。
+   */
+  rooms?: Array<{ id: string; label: string; order?: number }>
 }
 
 /** `GET /config` 的默认回答：一台"官方中继 + 认领来的口令"的机器。 */
@@ -277,12 +308,37 @@ const DEFAULT_CONFIG_ANSWER = {
   userConfigFile: '/home/u/.dsh/dsh-remote-control/user-config.json',
 }
 
+/**
+ * `GET /vision/config` 的默认回答（形状照宿主侧的 `toView(config)`，见 `src/vision/config.ts:68-81`）。
+ *
+ * ⚠️ **故意不含** `lastCallAt` / `lastOk` / `lastError` 这几个字段：宿主现在根本没有
+ * "最近一次调用"这一组数据（`service.recognize()` 不落调用记录）。判据正是靠这一点
+ * 钉住"没有记录就不许画那一行"。
+ */
+const DEFAULT_VISION_CONFIG_ANSWER = {
+  enabled: true,
+  apiBase: 'https://vision.example.com/v1',
+  model: 'deepseek-vl',
+  protocol: 'auto',
+  prompt: '详细描述画面内容，并把图里的文字逐字转录出来',
+  timeoutMs: 60_000,
+  requestTemplate: '',
+  responsePath: '',
+  apiKeySet: true,
+  apiKeyHint: 'sk-…abcd',
+}
+
 interface Harness {
   module: ClientModule
   /** fetch 收到的 URL。 */
   requests: string[]
   /** `POST /config` 的 body（解析过的）——"只提交改动过的那一项"那条判据读它。 */
   configWrites: Array<Record<string, unknown>>
+  /**
+   * `POST /vision/recognize` 的 body（解析过的，2026-11-16 加）。
+   * 「识图试一张」那条判据读它：`imageBase64` 与 `mime` 必须与选中的文件一致。
+   */
+  recognizeBodies: Array<Record<string, unknown>>
   /** 每条 fetch 收到的 `init.signal`——3 秒硬超时的判据（见 `signals()`）。 */
   signals: unknown[]
   /** 被记下来的 console.error。 */
@@ -526,6 +582,7 @@ const DEFAULT_STATUS = {
 function load(options: LoadOptions = {}): Harness {
   const requests: string[] = []
   const configWrites: Array<Record<string, unknown>> = []
+  const recognizeBodies: Array<Record<string, unknown>> = []
   /**
    * `GET /config` 的回答**可变**：写路由落地之后它要跟着变（真宿主就是这样回我们
    * "现在生效的是什么"）。固定一份的话，"只提交改动项"那条路会自相矛盾
@@ -586,6 +643,26 @@ function load(options: LoadOptions = {}): Harness {
     // 真浏览器有 `AbortSignal.timeout`，pill 拿它做每条请求的 3 秒硬超时。
     // 夹具不给它的话，那条路在 vm 里会静悄悄退回"没有 signal"，判据也就测了个空。
     AbortSignal,
+    /**
+     * `FileReader` 的桩（2026-11-16 加）：识图「试一张」要把本地图读成 base64
+     * （`fileToBase64` 走 `readAsDataURL`）。
+     *
+     * 不给的话 `new FileReader()` 在 vm 里是 ReferenceError ⇒ 那条路只能测到"读不出文件"，
+     * `POST .../vision/recognize` 一次都不会发生 —— 而"能打到那条路由"正是这次要钉的东西
+     * （与下面 `setTimeout` 那条桩同一个理由：不桩就只是把退路测了个空）。
+     *
+     * **同步**回调：沙箱里的 `setTimeout` 是"只记录不触发"的假实现，用真异步的话
+     * `onload` 永远等不到。
+     */
+    FileReader: class FakeFileReader {
+      result: string | null = null
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      readAsDataURL(file: { type?: string }): void {
+        this.result = `data:${file?.type ?? 'image/png'};base64,AAEC`
+        this.onload?.()
+      }
+    },
     setInterval: (callback: () => void) => {
       timers.push({ id: timers.length + 1, callback, cleared: false })
       return timers.length
@@ -665,8 +742,7 @@ function load(options: LoadOptions = {}): Harness {
           json: async () => (options.approveHttp === 409 ? { state: 'stale' } : { state: 'ok' }),
         }
       }
-      if (url.startsWith(CONFIG_ROUTE)) {
-        if (method === 'POST') {
+      if (url.startsWith(CONFIG_ROUTE)) {        if (method === 'POST') {
           // 写配置走写路由那一档守卫：这条会改"这台主机连哪台中继"。
           assert.equal(
             init?.headers?.[PAIR_MARKER_HEADER],
@@ -701,6 +777,30 @@ function load(options: LoadOptions = {}): Harness {
         if (options.configWriteThrows) throw new Error('配置那条断了')
         const readStatus = options.configHttp ?? 200
         return { ok: readStatus === 200, status: readStatus, json: async () => configAnswer }
+      }
+      // 识图配置（2026-11-16）：设置页「肥鱼识图」栏的状态卡读它。
+      // ⚠️ 识图那半边走的是 `callJson()`（先 `response.text()` 再 JSON.parse），
+      // 所以这里必须给 `text()`——只给 `json()` 的话面板会静悄悄退到"读取失败"。
+      if (url.startsWith(VISION_CONFIG_ROUTE)) {
+        assert.equal(method, 'GET', '读识图配置只接受 GET')
+        const visionStatus = options.visionConfigHttp ?? 200
+        const answer = visionStatus === 200
+          ? { ok: true, config: { ...DEFAULT_VISION_CONFIG_ANSWER, ...(options.visionConfig ?? {}) } }
+          : { ok: false, error: '宿主没有这条路由' }
+        return { ok: visionStatus === 200, status: visionStatus, text: async () => JSON.stringify(answer) }
+      }
+      // 识图识别（「试一张」那条）。`visionRecognizeText: null` = 演宿主那句中文失败原因。
+      if (url.startsWith(VISION_RECOGNIZE_ROUTE)) {
+        assert.equal(method, 'POST', '识图只接受 POST')
+        recognizeBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
+        const failed = options.visionRecognizeText === null
+        const failedAnswer = { ok: false, error: options.visionRecognizeError ?? '识图未开启：请先在设置页填好接口地址与密钥' }
+        const okAnswer = { ok: true, text: options.visionRecognizeText ?? '图里是一只蓝白色的圆胖鲸鱼。' }
+        return {
+          ok: !failed,
+          status: failed ? 400 : 200,
+          text: async () => JSON.stringify(failed ? failedAnswer : okAnswer),
+        }
       }
       assert.equal(method, 'GET', `${url} 不该收到 ${method}`)
       return { ok: true, status: 200, json: async () => ({}) }
@@ -775,6 +875,18 @@ function load(options: LoadOptions = {}): Harness {
   })
   module.apply(ctx)
 
+  /*
+   * 住客的房间（2026-11-16）：本体的 `apply` 第一步会把 `window.__dafeiyuRooms` 装好，
+   * 所以这里（apply 之后、渲染之前）才注册得上。注册完 `listRooms()` 在下一次渲染时就带着它。
+   */
+  if (options.rooms !== undefined && options.rooms.length > 0) {
+    const roomWindow = (sandbox.window ?? {}) as { __dafeiyuRooms?: { register: (room: unknown) => unknown } }
+    assert.ok(roomWindow.__dafeiyuRooms, '本体 apply 必须先把房间注册表挂上（`installRoomHost`），否则住客领不到房')
+    for (const room of options.rooms) {
+      roomWindow.__dafeiyuRooms!.register({ ...room, mount: () => undefined })
+    }
+  }
+
   /**
    * 那颗 pill 的 ref 回调：mount / unmount 都走它，与宿主真正做的事一致。
    * `attach` 是 `mountPill` 里那一份闭包，两次 `component()` 拿到的是**同一个函数**——
@@ -792,6 +904,7 @@ function load(options: LoadOptions = {}): Harness {
     module,
     requests,
     configWrites,
+    recognizeBodies,
     signals,
     errors,
     warnings,
@@ -883,7 +996,7 @@ test('外壳注册的形状：id 与包名一致，导出 name/inject/apply；in
   )
 })
 
-test('0.8.0 合页：设置页只有一格、id 是 dafeiyu，渲染出来含三个分栏', async () => {
+test('0.8.0 合页：设置页只有一格、id 是 dafeiyu，渲染出来含各分栏', async () => {
   const harness = load({ react: FAKE_REACT, slots: true, lateSlots: true })
   await flush()
   harness.flushInject()
@@ -914,12 +1027,17 @@ test('0.8.0 合页：设置页只有一格、id 是 dafeiyu，渲染出来含三
   const text = JSON.stringify(root)
   assert.ok(text.includes('远程控制'), '分栏一：远程控制')
   assert.ok(text.includes('人设'), '分栏二：人设')
+  // ⚠️ 「派活助手」2026-11-16 改名「Agent 团队」：这一栏除了派活助手设置，还多了
+  // 转生/分身入口与「给 Agent 的调用入口」表，旧名字已经名不副实（设计说明见
+  // `dafeiyu-page.ts` 里 `DAFEIYU_TAB_TEAM` 的注释）。内容没有丢，见下面那条按栏判据。
+  assert.ok(text.includes('Agent 团队'), '分栏三：Agent 团队')
+  // 2026-11-16 新增：识图从「人设」里抽出来独立成栏（识图是模型配置，不是人设）。
+  assert.ok(text.includes('肥鱼识图'), '分栏四：肥鱼识图')
   // ⚠️ 「形象」自 2026-11-16 起**不在本体**：它搬去 `dsh-avatar-dafeiyu`，
   // 由那个包通过房间协议 `registerRoom({ id:'avatar', label:'形象' })` 领一间房。
   // 所以这里断言的是"**没有形象时**页面上不该出现它"——这正是房间协议要的效果。
   assert.ok(!text.includes('形象'), '没住客时不该有形象分栏（空 tab 是缺陷，不是留白）')
-  assert.ok(text.includes('派活助手'), '分栏三：派活助手')
-  assert.ok(text.includes('小云雀'), '分栏四：小云雀')
+  assert.ok(text.includes('小云雀'), '分栏五：小云雀（样板里没画它，但它是 0.9.x 就有的设置，没有丢）')
   assert.equal(harness.errors.length, 0, '合页不是故障，不许有 error')
 })
 
@@ -3690,7 +3808,7 @@ test('大肥鱼合页：有「小云雀」分栏（CLI 生图/生视频的设置
   assert.ok(labels.includes('小云雀'), `分栏必须有「小云雀」，实际：${labels.join(' / ')}`)
 })
 
-test('大肥鱼合页：有「派活助手」分栏（子代理监视器的设置入口）', () => {
+test('大肥鱼合页：有「Agent 团队」分栏（派活助手设置的入口；2026-11-16 由「派活助手」改名）', () => {
   const harness = load({ react: FAKE_REACT as never, slots: true })
   const section = harness
     .slotRegisters()
@@ -3710,7 +3828,10 @@ test('大肥鱼合页：有「派活助手」分栏（子代理监视器的设�
     return out
   }
   const labels = flatten(tree, [])
-  assert.ok(labels.includes('派活助手'), `分栏必须有「派活助手」，实际：${labels.join(' / ')}`)
+  // ⚠️ 改名而不是删栏：「派活助手」这三件配置（规范提示 / 派活风格 / 闲置阈值）没有丢，
+  // 它们现在是「Agent 团队」栏里的第一块，见下面那条"按栏渲染"的判据（会真的把栏画出来查）。
+  assert.ok(labels.includes('Agent 团队'), `分栏必须有「Agent 团队」，实际：${labels.join(' / ')}`)
+  assert.ok(!labels.includes('派活助手'), `旧栏名「派活助手」不该还在（已并入 Agent 团队），实际：${labels.join(' / ')}`)
 })
 
 test('大肥鱼合页：人设分栏拿到的 t 是「中文优先」（宿主语言 en 也拦不住面板汉化）', () => {
@@ -3754,4 +3875,378 @@ test('大肥鱼合页：人设分栏拿到的 t 是「中文优先」（宿主�
   assert.equal(t!('scopeGlobal'), '全局', `宿主语言 en 时面板也必须中文，实际：${t!('scopeGlobal')}`)
   assert.equal(t!('listTitle'), '人设列表')
   assert.equal(t!('zzzUnknownKey'), 'zzzUnknownKey', '词典里没有的 key 要原样兜底（不吞错）')
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2026-11-16 设置页分栏重排（人设 / Agent 团队 / 肥鱼识图）
+//
+// 上一轮重排的是第一个分栏（远程控制，见本文件前面那一大段）。这一轮做剩下三栏：
+//   · 「肥鱼识图」**新增**（识图配置从人设栏抽出来独立成栏）；
+//   · 「Agent 团队」**改名拓展**（原「派活助手」+ 转生/分身入口 + 给 Agent 的调用入口表）；
+//   · 「人设」只做**外壳统一**（人设组件在上、长期记忆在下；那四块内部顺序锁在生成物里）。
+//
+// 四条新判据（对应交付要求）：
+//   ① tab 顺序与数量；② 识图栏含「试一张」且能打到 recognize 路由；
+//   ③ Agent 团队栏有调用入口表、转生/分身标"暂无工具"；④ 人设栏里不再有识图配置块。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 只把 `useState` 钉在某个分栏的 react（其余走 `FAKE_REACT`）。 */
+function reactOnTab(tab: string): Record<string, unknown> {
+  return {
+    createElement: FAKE_REACT.createElement,
+    useState: <S>(_initial: S): [S, (next: S) => void] => [tab as unknown as S, () => undefined],
+    useEffect: () => undefined,
+  }
+}
+
+/**
+ * 「会记状态的假 react」：`useState` 把值存进一个表、`useEffect` **当场执行**。
+ *
+ * 为什么需要它：`FAKE_REACT` 的 `useState` 每次调用都返回初值、`useEffect` 是空的，
+ * 于是"读完配置之后屏幕上写什么"这一类根本测不到（组件函数只在渲染那一刻跑一遍）。
+ * 这里把状态存进 `store`、渲染一遍之后 `await flush()` 再把组件跑第二遍，就能看到
+ * 「已就绪 / 宿主那句失败原因」这些**真的落到了界面上**。
+ *
+ * ⚠️ 钩子上限：按**调用顺序**下标存值 ⇒ 每次渲染前必须 `reset()`，且同一棵树的
+ * 组件顺序必须稳定（本轮这几个组件没有条件钩子，所以成立）。
+ * 前两格固定留给 TabPage（当前分栏 / 房间版本号）。
+ */
+function makeStateReact(tab: string): { api: Record<string, unknown>; reset: () => void } {
+  const store: unknown[] = []
+  let cursor = 0
+  const api = {
+    createElement: FAKE_REACT.createElement,
+    useState: <S>(initial: S): [S, (next: S) => void] => {
+      const index = cursor++
+      if (index === 0) return [tab as unknown as S, () => undefined]
+      if (index === 1) return [0 as unknown as S, () => undefined]
+      if (index >= store.length) store[index] = initial
+      return [
+        store[index] as S,
+        (next: S) => {
+          store[index] = next
+        },
+      ]
+    },
+    useEffect: (effect: () => void | (() => void)): void => {
+      effect()
+    },
+  }
+  return {
+    api,
+    reset: () => {
+      cursor = 0
+    },
+  }
+}
+
+/** 取「大肥鱼」合页那一格渲染出来的树（`TabPage` 的返回值）。 */
+function dafeiyuPage(harness: Harness): { type?: unknown; props?: Record<string, unknown> } {
+  const section = harness
+    .slotRegisters()
+    .find((row) => row.definition?.name === 'settings.section' && row.definition?.id === 'dafeiyu')
+  assert.ok(section, '必须先注册「大肥鱼」这一格')
+  const root = section.component!() as { type?: unknown; props?: Record<string, unknown> }
+  return (root.type as () => unknown)() as { type?: unknown; props?: Record<string, unknown> }
+}
+
+/** 分栏条上从左到右的字（判据读它验顺序）。 */
+function dafeiyuTabLabels(harness: Harness): string[] {
+  const page = dafeiyuPage(harness)
+  const children = page.props?.children
+  assert.ok(Array.isArray(children) && children.length >= 2, '合页应渲染成 [tabBar, body] 两段')
+  const bar = children[0] as { props?: Record<string, unknown> }
+  const buttons = (bar.props?.children ?? []) as Array<{ props?: Record<string, unknown> }>
+  assert.ok(Array.isArray(buttons) && buttons.length > 0, '分栏条上至少有一颗按钮')
+  // ⚠️ `Array.from` 而不是 `buttons.map`：`buttons` 是 vm 那个 realm 里造的数组，
+  // 在它上面 `.map` 出来的还是 vm 的数组（原型不同 ⇒ `deepEqual` 会红，且红得很像"顺序不对"）。
+  return Array.from(buttons, (button) => String(button.props?.children ?? ''))
+}
+
+/** 当前分栏的 body（未渲染的组件树）。 */
+function dafeiyuBody(harness: Harness): { type?: unknown; props: Record<string, unknown> } {
+  const page = dafeiyuPage(harness)
+  const children = page.props?.children
+  assert.ok(Array.isArray(children) && children.length >= 2, '合页应渲染成 [tabBar, body] 两段')
+  const body = children[1] as { type?: unknown; props?: Record<string, unknown> } | undefined
+  assert.ok(body, '合页的第二段必须是当前分栏的 body')
+  return { type: body.type, props: body.props ?? {} }
+}
+
+/**
+ * 把树里的函数组件**真执行掉**（`FAKE_REACT` 只造引用不渲染）。
+ *
+ * 与上面老判据里那个 `render()` 同一套做法，区别是它继续往下走数组/单个 children，
+ * 这样一栏里嵌套的几块（状态卡 / 配置块 / 试一张）也能被检查。
+ */
+function renderDeep(node: unknown): unknown {
+  if (node === null || node === undefined) return node
+  if (Array.isArray(node)) return node.map((child) => renderDeep(child))
+  if (typeof node !== 'object') return node
+  const element = node as { type?: unknown; props?: Record<string, unknown> }
+  const props = element.props ?? {}
+  if (typeof element.type === 'function') {
+    return renderDeep((element.type as (input: Record<string, unknown>) => unknown)(props))
+  }
+  if (props.children === undefined) return node
+  return { type: element.type, props: { ...props, children: renderDeep(props.children) } }
+}
+
+/** 渲染后的树里所有文字（含数字 props 不取，只取 children 里的字）。 */
+function treeText(node: unknown): string {
+  const out: string[] = []
+  const walk = (value: unknown): void => {
+    if (value === null || value === undefined) return
+    if (typeof value === 'string') {
+      out.push(value)
+      return
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') return
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item)
+      return
+    }
+    if (typeof value === 'object') walk((value as { props?: Record<string, unknown> }).props?.children)
+  }
+  walk(node)
+  return out.join(' ')
+}
+
+/** 在（未渲染或已渲染的）树里找第一个满足条件的元素。 */
+function findElement(
+  node: unknown,
+  match: (element: { type?: unknown; props: Record<string, unknown> }) => boolean,
+): { type?: unknown; props: Record<string, unknown> } | undefined {
+  if (node === null || node === undefined || typeof node !== 'object') return undefined
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findElement(child, match)
+      if (found) return found
+    }
+    return undefined
+  }
+  const element = node as { type?: unknown; props?: Record<string, unknown> }
+  const props = element.props ?? {}
+  if (match({ type: element.type, props })) return { type: element.type, props }
+  return findElement(props.children, match)
+}
+
+test('分栏①：tab 顺序与数量照样板（远程控制 → 人设 → Agent 团队 → 肥鱼识图 → 小云雀），住客排最后', () => {
+  // 没住客：五栏，且不该有「形象」（空 tab 是缺陷）
+  const bare = load({ react: FAKE_REACT as never, slots: true })
+  assert.deepEqual(
+    dafeiyuTabLabels(bare),
+    ['远程控制', '人设', 'Agent 团队', '肥鱼识图', '小云雀'],
+    '分栏顺序是样板定的：远程控制 → 人设 → Agent 团队 → 肥鱼识图（小云雀在这四栏之后，样板没画它但不能丢）',
+  )
+  // 有住客（形象包那种）：房间排在**最后**，且栏名字由住客自己定
+  const withRoom = load({ react: FAKE_REACT as never, slots: true, rooms: [{ id: 'avatar', label: '形象', order: 10 }] })
+  assert.deepEqual(
+    dafeiyuTabLabels(withRoom),
+    ['远程控制', '人设', 'Agent 团队', '肥鱼识图', '小云雀', '形象'],
+    '住客的房间必须排在写死的分栏**之后**（本体不许被住客插到中间）',
+  )
+})
+
+/**
+ * 把「肥鱼识图」栏渲染出来（两遍：第一遍发出 `/vision/config`，第二遍把读回来的画到屏上）。
+ *
+ * ⚠️ 必须用 `makeStateReact` 而不是 `reactOnTab`：配置块自己有好几个数组态
+ * （`models` 之类），常量钩子会让它拿到一个字符串然后 `slice().map` 当场炸。
+ */
+async function renderVisionTab(
+  options: Partial<LoadOptions> = {},
+): Promise<{ harness: Harness; rendered: unknown; text: string; rerender: () => string }> {
+  const state = makeStateReact('vision')
+  const harness = load({ ...options, react: state.api as never, slots: true })
+  state.reset()
+  renderDeep(dafeiyuBody(harness))
+  await flush()
+  state.reset()
+  const rendered = renderDeep(dafeiyuBody(harness))
+  const rerender = (): string => {
+    state.reset()
+    return treeText(renderDeep(dafeiyuBody(harness)))
+  }
+  return { harness, rendered, text: treeText(rendered), rerender }
+}
+
+test('分栏②：肥鱼识图栏含「试一张」，选一张图真的 POST 到识图识别路由', async () => {
+  const { harness, rendered, text, rerender } = await renderVisionTab()
+  // 四块都在（状态 / 模型配置 / 试一张 / 最近几次）
+  for (const title of ['状态', '模型配置', '试一张', '最近几次']) {
+    assert.ok(text.includes(title), `肥鱼识图栏要有「${title}」这一块，实际：${text.slice(0, 300)}`)
+  }
+  assert.ok(text.includes('复制结果'), '试一张要有「复制结果」（识图结果只显示在这一栏，得能拿走）')
+
+  // 选一张图（夹具的 FileReader 会回 `data:image/png;base64,AAEC`）
+  const input = findElement(rendered, (element) => element.type === 'input' && element.props.type === 'file')
+  assert.ok(input, '试一张必须有选图的 file input（否则用户没地方选图片）')
+  const onChange = input.props.onChange as (event: unknown) => void
+  onChange({ target: { files: [{ name: 'shot.png', type: 'image/png', size: 2048 }] } })
+  await flush()
+
+  const posted = harness.requests.filter((url) => url.includes(VISION_RECOGNIZE_ROUTE))
+  assert.equal(posted.length, 1, `选完图要打一次 ${VISION_RECOGNIZE_ROUTE}，实际请求：${harness.requests.join(' | ')}`)
+  assert.equal(harness.recognizeBodies.length, 1, '识图请求要带 body')
+  const body = harness.recognizeBodies[0]!
+  assert.equal(body.imageBase64, 'AAEC', 'body 里必须是**裸 base64**（不带 data: 前缀，宿主那条路由就是这么收的）')
+  assert.equal(body.mime, 'image/png', 'mime 要跟着文件类型走（宿主按它拼上游请求）')
+
+  // 结果真的落到界面上（再渲染一遍读的是"识别完成"之后的状态）
+  const afterText = rerender()
+  assert.match(afterText, /蓝白色/, `识别文本要显示出来，实际：${afterText.slice(0, 400)}`)
+  assert.equal(harness.errors.length, 0, '这一栏不是故障，不许有 error')
+})
+
+test('分栏②：识图栏的状态卡读宿主配置（已就绪 / 模型名 / 协议），宿主没给"最近一次"就不画那一行', async () => {
+  const state = makeStateReact('vision')
+  const harness = load({ react: state.api as never, slots: true })
+  // 第一遍：挂上去（`useEffect` 当场把 `/vision/config` 发出去）
+  state.reset()
+  renderDeep(dafeiyuBody(harness))
+  await flush()
+  // 第二遍：读回来的配置落到屏幕上
+  state.reset()
+  const text = treeText(renderDeep(dafeiyuBody(harness)))
+  assert.match(text, /已就绪/, `配好了就该说「已就绪」，实际：${text.slice(0, 400)}`)
+  assert.match(text, /deepseek-vl/, '状态卡要显示模型名')
+  assert.match(text, /自动（按地址猜）/, '状态卡要显示协议（认不出的 id 原样印）')
+  // ⚠️ 宿主现在**没有**"最近一次调用"这组数据（`/vision/config` 的 `toView` 不带，
+  // `service.recognize()` 也不落调用记录）⇒ 这一行必须**整行不出现**。
+  // 判据写成"不许出现"是刻意的：凭空写一句"最近一次：成功"就是假数据。
+  assert.ok(!text.includes('最近一次'), `宿主没给调用记录时不许画「最近一次」，实际：${text.slice(0, 400)}`)
+})
+
+test('分栏②：试一张失败时把宿主那句中文原因显示出来（不吞成"失败"两个字）', async () => {
+  const state = makeStateReact('vision')
+  const harness = load({
+    react: state.api as never,
+    slots: true,
+    visionRecognizeText: null,
+    visionRecognizeError: '识图未开启：请先在设置页填好接口地址与密钥',
+  })
+  state.reset()
+  const first = renderDeep(dafeiyuBody(harness))
+  await flush()
+  const input = findElement(first, (element) => element.type === 'input' && element.props.type === 'file')
+  assert.ok(input, '试一张必须有选图的 file input')
+  ;(input.props.onChange as (event: unknown) => void)({ target: { files: [{ name: 'bad.png', type: 'image/png', size: 1024 }] } })
+  await flush()
+  state.reset()
+  const text = treeText(renderDeep(dafeiyuBody(harness)))
+  assert.match(text, /识图未开启/, `失败要把宿主的中文原因显示出来，实际：${text.slice(0, 400)}`)
+})
+
+test('分栏③：Agent 团队栏有派活助手设置、转生/分身入口，以及「给 Agent 的调用入口」表', async () => {
+  const harness = load({ react: reactOnTab('team') as never, slots: true })
+  const rendered = renderDeep(dafeiyuBody(harness))
+  const text = treeText(rendered)
+
+  // ① 派活助手那三件设置还在（栏改名了，内容没丢）
+  assert.match(text, /派活规范提示/, '派活助手设置要留在这一栏（原来是独立一栏，现在并进 Agent 团队）')
+  // ② 转生 / 分身：给的是**入口按钮**（点开同一个悬浮面板），不是重写一遍的内嵌页
+  assert.match(text, /一键转生/, '要有「一键转生」入口')
+  assert.match(text, /一键分身/, '要有「一键分身」入口')
+  // ③ 调用入口表
+  assert.match(text, /给 Agent 的调用入口/, '要有「给 Agent 的调用入口」那张表')
+  for (const tool of ['subagent', 'subagent_fork', 'list_agents', 'subagent_archive']) {
+    assert.match(text, new RegExp(tool), `表里要写出工具名 ${tool}`)
+  }
+  // 转生 / 分身：**如实**标"暂无工具（面板可用）"——它们只有面板入口，Agent 调不到。
+  // 判据数的是**表里那两格标签**（`data-tone="off"` 的 tag），不是全文出现次数：
+  // 表格下面那串"为什么"里也写着同一句，全文计数会把原因也数进去（4 次 ≠ 缺陷）。
+  const offTags: string[] = []
+  const walkTags = (node: unknown): void => {
+    if (node === null || node === undefined || typeof node !== 'object') return
+    if (Array.isArray(node)) {
+      for (const child of node) walkTags(child)
+      return
+    }
+    const props = (node as { props?: Record<string, unknown> }).props ?? {}
+    if (props['data-tone'] === 'off') offTags.push(treeText(props.children))
+    walkTags(props.children)
+  }
+  walkTags(rendered)
+  assert.deepEqual(
+    offTags.filter((label) => label === '暂无工具（面板可用）'),
+    ['暂无工具（面板可用）', '暂无工具（面板可用）'],
+    `转生与分身两格都该标「暂无工具（面板可用）」，实际标签：${offTags.join(' / ')}`,
+  )
+  // 表里那两行（转生/分身）必须是 `data-state=none`：判据读结构，不只读字
+  const rowStates: string[] = []
+  const walk = (node: unknown): void => {
+    if (node === null || node === undefined || typeof node !== 'object') return
+    if (Array.isArray(node)) { for (const child of node) walk(child); return }
+    const props = (node as { props?: Record<string, unknown> }).props ?? {}
+    if (props['data-state'] !== undefined) rowStates.push(String(props['data-state']))
+    walk(props.children)
+  }
+  walk(rendered)
+  assert.deepEqual(rowStates.sort(), ['none', 'none', 'ok', 'ok'], '调用入口表的四行：两条"可用"、两条"暂无工具"')
+})
+
+test('分栏③：转生/分身入口接到的是**已挂上的**那个悬浮面板（不是另写一个）', () => {
+  const harness = load({ react: reactOnTab('team') as never, slots: true })
+  const rendered = renderDeep(dafeiyuBody(harness))
+  assert.ok(harness.fakeDocument().listenerCount('DOMContentLoaded') >= 1, '面板要真的挂上了（这幅夹具没有 body，面板等 DOMContentLoaded）')
+  // 两颗按钮点下去不许抛（接不上时 `?.` 兜住，页面照常；错误进 console.error 会被下面抓到）
+  for (const label of ['一键转生', '一键分身']) {
+    const button = findElement(rendered, (element) => element.type === 'button' && element.props.children === label)
+    assert.ok(button, `没找到「${label}」按钮`)
+    assert.equal(button.props.disabled, false, `「${label}」入口接上了就不该禁用`)
+    ;(button.props.onClick as () => void)()
+  }
+  assert.equal(harness.errors.length, 0, '点入口不是故障：不许留 console.error')
+  /*
+   * 真接线在组装点（`src/client/main.ts`）：这一栏拿到的是 `handoffPanel.open`。
+   * 假 DOM 里那个面板没有 `body`（走"等 DOMContentLoaded"的退路），点下去看不出效果，
+   * 所以这里把**那一行接线**钉住——它断了的表现是"按钮能点，但弹不出面板"。
+   */
+  const mainSource = readFileSync(path.join(here, '..', '..', 'src', 'client', 'main.ts'), 'utf8')
+  assert.match(
+    mainSource,
+    /openHandoff: \(kind\) => handoffPanel\?\.open\(kind\)/,
+    'Agent 团队栏的转生/分身入口必须接到 `handoffPanel.open`（同一个悬浮面板，不许另写一个）',
+  )
+})
+
+test('分栏④：人设栏是人设组件在上、长期记忆在下，且**不再挂识图配置块**', async () => {
+  // 人设栏要真的渲一层才能认出长期记忆（那块自己读人设列表）：用会记状态的假 react，
+  // 否则 `useState` 每格都回同一个分栏名，`personas.map` 当场炸。
+  const state = makeStateReact('persona')
+  const harness = load({ react: state.api as never, slots: true })
+  state.reset()
+  const body = dafeiyuBody(harness)
+  assert.equal(body.props['data-panel'], 'persona', '人设栏的 body 要带 data-panel=persona')
+  const children = body.props.children as unknown[]
+  assert.ok(Array.isArray(children), '人设栏应是"一列卡片"')
+  assert.equal(children.length, 2, `人设栏 = 人设卡 + 长期记忆卡，实际 ${children.length} 块`)
+
+  // ① 人设组件（带 t 的那个生成物）在**第一块**里，长期记忆在**第二块**里
+  const personaBlock = children[0] as { props?: Record<string, unknown> }
+  const memoryBlock = children[1] as { props?: Record<string, unknown> }
+  const personaHasT = findElement(personaBlock, (element) => typeof element.props.t === 'function') !== undefined
+  assert.ok(personaHasT, '人设组件必须还挂着（`PersonaSettingsSection` 的 `t` 是它唯一的入参）')
+  // 长期记忆：浅渲染一层，标题得在（顺序判据的另一半：它必须排在第二块）
+  const memoryText = treeText(renderDeep(memoryBlock))
+  assert.match(memoryText, /长期记忆/, '第二块必须是长期记忆面板（按设计它在人设组件**下面**）')
+
+  // ② 识图配置块（带 `data-block="vision-config"` 的结构标记）**不在**人设栏里
+  const strayVision = findElement(children, (element) => element.props['data-block'] === 'vision-config')
+  assert.equal(strayVision, undefined, '识图配置块已经搬去「肥鱼识图」栏，人设栏里不许再有它')
+
+  // ③ 而在「肥鱼识图」栏里，那个标记必须在（否则上面那条"不在人设栏"就是恒绿的）
+  const vision = await renderVisionTab()
+  const inVision = findElement(vision.rendered, (element) => element.props['data-block'] === 'vision-config')
+  assert.ok(inVision, '「肥鱼识图」栏里必须能找到识图配置块（`data-block=vision-config`）')
+})
+
+test('识图路由常量没漂：浏览器半的字面量与宿主侧路由表逐字一致', () => {
+  // 浏览器面不能 import 宿主侧那张表（连着 node:http），所以这里把两边钉在一起。
+  // 漂了的表现：设置页「试一张」一直 404，而日志里只有一句"识别失败：宿主返回了非 JSON"。
+  assert.equal(VISION_CONFIG_ROUTE, HOST_VISION_CONFIG_ROUTE, '读配置那条路由两边不一致')
+  assert.equal(VISION_RECOGNIZE_ROUTE, HOST_VISION_RECOGNIZE_ROUTE, '识图那条路由两边不一致')
+  const raw = readFileSync(CLIENT, 'utf8')
+  assert.ok(raw.includes(VISION_RECOGNIZE_ROUTE), `产物里必须真写着 ${VISION_RECOGNIZE_ROUTE}（否则「试一张」打的是别处）`)
 })

@@ -35,8 +35,14 @@ export interface ExtensionSpec {
 }
 
 /**
- * 可安装扩展。现在只有「形象」一条——
- * 它是房间协议（`src/client/rooms.ts`）的第一个住客，装上之后设置页多出「形象」那一栏。
+ * 可安装扩展。两条：形象 + 肥鱼自治（selfloop）。
+ *
+ * 形象是房间协议（`src/client/rooms.ts`）的第一个住客，装上之后设置页多出「形象」那一栏；
+ * selfloop 目前没有 `dsh.client`（它的 UI 由自己的静态服托管），所以装上了也**不会有 tab**，
+ * 但它仍是可安装/启用/禁用的资产。
+ *
+ * ⚠️ `commit` 必须是**该版本已发布的完整 40 位 sha**：从 UI 重装会按这条重新钉版本，
+ * 写旧了就是"点安装把包降级"。
  */
 export const EXTENSIONS: readonly ExtensionSpec[] = [
   {
@@ -45,9 +51,16 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     label: '形象',
     description: '大肥鱼的形象包：设置页「形象」分栏（素材查看器）与桌面悬浮小鲸鱼。',
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-avatar',
-    commit: 'cdeeb8895689b2f39ef54c762cd948b1a2173c0a',
+    commit: '54db2db11445d0d049f8fdc0ef55fd044810e116',
   },
-  // 将来 `selfloop`（闭环调参）也加在这里：它已经是独立包，只差一条白名单 + 一个 commit。
+  {
+    id: 'selfloop',
+    packageName: 'dsh-selfloop',
+    label: '肥鱼自治（Selfloop）',
+    description: '把「改参数 → 观测 → 判据 → 搜索」的闭环跑起来，产出可复验的证据包。',
+    gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin',
+    commit: '7744f957562fcc97fe6fa3279c862e82c4d9b06d',
+  },
 ]
 
 /** 按 id 找白名单条目；找不到就是 undefined（调用方负责拒）。 */

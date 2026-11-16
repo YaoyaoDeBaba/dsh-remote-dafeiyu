@@ -45660,9 +45660,16 @@ var EXTENSIONS = [
     label: "\u5F62\u8C61",
     description: "\u5927\u80A5\u9C7C\u7684\u5F62\u8C61\u5305\uFF1A\u8BBE\u7F6E\u9875\u300C\u5F62\u8C61\u300D\u5206\u680F\uFF08\u7D20\u6750\u67E5\u770B\u5668\uFF09\u4E0E\u684C\u9762\u60AC\u6D6E\u5C0F\u9CB8\u9C7C\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-avatar",
-    commit: "cdeeb8895689b2f39ef54c762cd948b1a2173c0a"
+    commit: "54db2db11445d0d049f8fdc0ef55fd044810e116"
+  },
+  {
+    id: "selfloop",
+    packageName: "dsh-selfloop",
+    label: "\u80A5\u9C7C\u81EA\u6CBB\uFF08Selfloop\uFF09",
+    description: "\u628A\u300C\u6539\u53C2\u6570 \u2192 \u89C2\u6D4B \u2192 \u5224\u636E \u2192 \u641C\u7D22\u300D\u7684\u95ED\u73AF\u8DD1\u8D77\u6765\uFF0C\u4EA7\u51FA\u53EF\u590D\u9A8C\u7684\u8BC1\u636E\u5305\u3002",
+    gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin",
+    commit: "7744f957562fcc97fe6fa3279c862e82c4d9b06d"
   }
-  // 将来 `selfloop`（闭环调参）也加在这里：它已经是独立包，只差一条白名单 + 一个 commit。
 ];
 function findExtension(id) {
   const needle = typeof id === "string" ? id.trim() : "";

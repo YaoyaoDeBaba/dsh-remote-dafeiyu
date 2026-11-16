@@ -628,3 +628,15 @@ test('pnpm 参数只给 install：不带 npm 风格的 --no-audit/--no-fund', as
   assert.ok(!args.includes('--no-fund'), '不该有 --no-fund')
   assert.equal(args[0], 'C:/runtime/dependencies/pnpm/bin/pnpm.mjs', '第一个参数是 pnpm 脚本路径')
 })
+test('白名单每条都必须是 40 位真 sha + https 地址（占位符/分支名会让"点安装"直接装不上）', async () => {
+  // 2026-11-16 实录：加 selfloop 条目时我随手写了 `7744f957000...` 这种占位 sha。
+  // 这种错**编译能过、测试也能过**，只有在真机上点「安装」才会炸，而且报错是 git 的。
+  const { EXTENSIONS } = await import('../src/extensions/registry.js')
+  assert.ok(EXTENSIONS.length > 0, '白名单不能是空的')
+  for (const spec of EXTENSIONS) {
+    assert.match(spec.commit, /^[0-9a-f]{40}$/, `${spec.id} 的 commit 不是 40 位小写 sha：${spec.commit}`)
+    assert.match(spec.gitUrl, /^https:\/\/github\.com\/[^/]+\/[^/]+$/, `${spec.id} 的 gitUrl 形状不对：${spec.gitUrl}`)
+    assert.match(spec.packageName, /^[a-z0-9][a-z0-9-]*$/, `${spec.id} 的包名不合法`)
+    assert.ok(spec.label.trim() !== '' && spec.description.trim() !== '', `${spec.id} 缺中文名或说明`)
+  }
+})

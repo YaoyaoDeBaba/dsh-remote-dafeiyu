@@ -1,14 +1,17 @@
 /**
- * dafeiyu-page — 0.8.0 的「大肥鱼」合页：设置页里**一个入口、三个分栏**。
+ * dafeiyu-page — 设置页里的「大肥鱼」合页：**一个入口、多分栏**。
  *
  * 合包前是两张互不相干的卡（「远程控制」与「人设」分属两个包）。合包后把设置页那一格
- * 合成一张卡：
+ * 合成一张卡。2026-11-16 起分栏按已批准的样板重排（`docs/mockup/panel-tabs-mockup-20261116.html`）：
  *
- *   [远程控制] [人设] [形象]
+ *   [远程控制] [人设] [Agent 团队] [肥鱼识图] [小云雀] [住客房间…]
  *
- * - 「远程控制」页 = 远控原有那整页 DOM（`buildSettingsSection` 灌进去的，一行没动）；
- * - 「人设」页 = 人设客户端原有的 `PersonaSettingsSection`（React 组件，原样嵌进来）；
- * - 「形象」页 = 占位（素材管道已通，等素材落地再填）。
+ * - 「远程控制」= 远控原有那整页 DOM（`buildSettingsSection` 灌进去的）+ 扩展列表；
+ * - 「人设」= 人设客户端那整块（`PersonaSettingsSection`，生成物，原样嵌）+ 长期记忆；
+ * - 「Agent 团队」= 派活助手设置 + 转生/分身入口 + 给 Agent 的调用入口表；
+ * - 「肥鱼识图」= 识图状态 + 模型配置 + 试一张（**2026-11-16 从「人设」里抽出来独立成栏**）；
+ * - 「小云雀」= CLI 生图/生视频的设置（0.9.x 就有，样板里没画它，但功能不能丢）；
+ * - 后面的房间由**别的包**通过 `rooms.ts` 领（形象等），没装就没有那几栏。
  *
  * 纪律（与远控其余部分同款）：
  * 1. **挂不上就返回 false**，由调用方决定降级成「老样子两张卡」——合页失败不许把设置页
@@ -17,29 +20,54 @@
  *    直接复用 `mountSettingsSection` 的注册骨架，只把组件换掉。
  * 3. React 不静态 require：`createElement` / `useState` 都由调用方（装载器给的 require）
  *    传进来；这里只按参数干活。
+ * 4. **每栏都要能降级**：某块面板起不来（宿主没给 hooks / 模块没导出来）时画一行中文说明，
+ *    不许留空白格、不许抛错。
+ *
+ * ## 「人设」栏为什么只有外壳统一、不能真的重排顺序
+ *
+ * 人设栏里「人设库 / 生效范围 / 工作区生效规则 / 体积守门」这四块**不是我们画的**：
+ * 它们由 `src/persona/client-factory.js`（人设包的生成物，90KB）里那个
+ * `PersonaSettingsSection(props)` 一次画完，它**只接一个 `t`（翻译函数）**，
+ * 没有 `collapsed` / `order` / `compact` 之类 props。生成物的内部顺序是
+ * 当前生效 → 生效范围 → 时间差段 → 体积守门 → 工作区生效规则 → 人设列表 → 导入。
+ * ⇒ 我们能做的只有：把整块放进自己的一张卡、把长期记忆放到它**下面**、并**标注一句**
+ * 体积守门在哪里（不重复渲染）。真折叠/真换序需要 persona 侧配合，清单一并交付。
  */
 import { buildSettingsSection, mountSettingsSection, type SettingsHost } from './settings.js'
 import { type CreateElement } from './pill.js'
 import { resolveHostUrl } from './host-url.js'
-import { buildVisionPanel } from './vision-panel.js'
 import { buildMemoryPanel } from './memory-panel.js'
-import { buildSubagentsPanel } from './subagents-settings.js'
 import { buildXyqPanel } from './xyq-panel.js'
 import { buildExtensionsPanel } from './extensions-panel.js'
+import { buildVisionTab } from './vision-tab.js'
+import { buildAgentTeamTab, type AgentTeamHandoffKind } from './agent-team-tab.js'
+import { card, columnStyle, hintStyle } from './panel-kit.js'
 import { listRooms, onRoomsChange, type DafeiyuRoom } from './rooms.js'
 
-/** 三个分栏的 id。 */
+/** 各分栏的 id（顺序即 tab 顺序；房间排在最后，见 `TAB_LABELS` 的说明）。 */
 export const DAFEIYU_TAB_REMOTE = 'remote'
 export const DAFEIYU_TAB_PERSONA = 'persona'
-export const DAFEIYU_TAB_SUBAGENTS = 'subagents'
+/**
+ * 「Agent 团队」。
+ *
+ * 2026-11-16 之前这一栏叫「派活助手」，id 是 `subagents`；重排时按样板改成
+ * 「Agent 团队」（内容除了派活助手设置，还多了转生/分身入口与调用入口表，叫"派活助手"
+ * 已经名不副实）。id 一起改成 `team`——它是内部值（没有持久化、没有跨包约定），
+ * 跟着标签走比留一个旧名字更好读。
+ */
+export const DAFEIYU_TAB_TEAM = 'team'
+export const DAFEIYU_TAB_VISION = 'vision'
 export const DAFEIYU_TAB_XYQ = 'xyq'
 
 const TAB_LABELS: Record<string, string> = {
   [DAFEIYU_TAB_REMOTE]: '远程控制',
   [DAFEIYU_TAB_PERSONA]: '人设',
-  [DAFEIYU_TAB_SUBAGENTS]: '派活助手',
+  [DAFEIYU_TAB_TEAM]: 'Agent 团队',
+  [DAFEIYU_TAB_VISION]: '肥鱼识图',
+  // 样板里没有「小云雀」这一栏（它是 0.9.x 就有的 CLI 设置），功能不能因为重排丢掉，
+  // 于是排在「肥鱼识图」之后、住客房间之前：前面四栏是样板定的顺序，后面是附加项。
   [DAFEIYU_TAB_XYQ]: '小云雀',
-  // ⚠️ 「形象」不在这里了（2026-11-16）：它搬去独立包 `dsh-avatar-dafeiyu`，
+  // ⚠️ 「形象」不在这里（2026-11-16）：它搬去独立包 `dsh-avatar-dafeiyu`，
   // 由那个包通过 `rooms.ts` 的 `registerRoom({ id:'avatar', label:'形象' })` 领一间房。
   // **没装就没有这个 tab**——这正是"房间协议"要的效果，不是回归。
 }
@@ -57,6 +85,22 @@ export interface DafeiyuPageDeps {
   personaSettings: unknown
   /** 人设那套字典的翻译函数；给不出就用 key 兜底。 */
   personaT: (key: string) => string
+  /**
+   * 打开「一键转生 / 一键分身」那个悬浮面板（2026-11-16）。
+   *
+   * 面板本身在 `handoff-panel.ts`（`main.ts` 里 mount 的那一个），这一页只把它的 `open(kind)`
+   * 透出来当入口按钮——**故意不把 modal 重写成内嵌页**（理由见 `agent-team-tab.ts` 文件头）。
+   * 拿不到这个回调时那两颗按钮禁用并说清为什么，页面照常。
+   */
+  openHandoff?: (kind: AgentTeamHandoffKind) => void
+}
+
+/** 降级那行：一块面板起不来时画它，不留空白格。 */
+function fallbackLine(createElement: CreateElement, text: string): unknown {
+  return createElement('p', {
+    style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
+    children: text,
+  })
 }
 
 /**
@@ -72,11 +116,12 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   if (typeof createElement !== 'function' || typeof useState !== 'function') {
     return false
   }
-  // 识图配置块（0.9.0）与长期记忆块（0.9.x）：人设分栏里、人设组件下面那两块。
-  const visionPanel = buildVisionPanel({ createElement, hooks: reactHooks })
+  // 人设栏里、人设组件下面那块（0.9.x）：长期记忆。
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks })
-  // 派活助手（子代理监视器）的设置块：规范提示开关 / 闲置阈值 / 提示词预览。
-  const subagentsPanel = buildSubagentsPanel({ createElement, hooks: reactHooks })
+  // 「Agent 团队」整栏（派活助手设置 + 转生/分身入口 + 调用入口表）。
+  const agentTeamTab = buildAgentTeamTab({ createElement, hooks: reactHooks, openHandoff: deps.openHandoff })
+  // 「肥鱼识图」整栏（2026-11-16 从人设栏抽出来）：状态 + 模型配置 + 试一张 + 最近几次。
+  const visionTab = buildVisionTab({ createElement, hooks: reactHooks })
   // 小云雀（CLI 生图/生视频）：Key、预算、自由度。
   const xyqPanel = buildXyqPanel({ createElement, hooks: reactHooks })
   // 扩展列表（2026-11-16）：「远程控制」分栏里、配对码那块**下面**。
@@ -204,39 +249,53 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
         style: { display: 'flex', flexDirection: 'column', gap: '12px' },
         children: remoteChildren,
       })
+    } else if (activeTab === DAFEIYU_TAB_PERSONA) {
+      /*
+       * 人设栏（2026-11-16 重排：**只有外壳统一**）。
+       *
+       * 顺序：人设组件（整块，含人设库/生效范围/体积守门…）在上，长期记忆在下。
+       * 那四块不是我们画的（见文件头），这里只做两件事：
+       *   ① 把人设整块放进我们自己的一张卡（样板里"整页是一个卡片列"）；
+       *   ② 在卡尾**标注一句**体积守门在哪 —— 不重复渲染它（重复 = 两份互相打架的开关）。
+       * 曾经的识图配置块已搬去「肥鱼识图」栏，这里不再有它。
+       */
+      const personaCard = card(createElement, '人设', [
+        createElement(personaSettings, { t: personaT }),
+        createElement('p', {
+          style: hintStyle,
+          children:
+            '体积守门（长度 / 截断）在一块里由人设组件自己渲染，位置在「生效范围」下面，本外壳不重复画它。' +
+            '它默认展开、顺序也由人设组件固定——要让它默认收起需要人设侧支持（见交付报告）。',
+        }),
+      ])
+      const personaChildren: unknown[] = [personaCard]
+      if (memoryPanel) personaChildren.push(createElement(memoryPanel, {}))
+      body = createElement('div', {
+        'data-panel': DAFEIYU_TAB_PERSONA,
+        style: columnStyle,
+        children: personaChildren,
+      })
+    } else if (activeTab === DAFEIYU_TAB_TEAM) {
+      body = agentTeamTab
+        ? createElement(agentTeamTab, {})
+        : fallbackLine(createElement, 'Agent 团队面板起不来（宿主没给 react hooks）。')
+    } else if (activeTab === DAFEIYU_TAB_VISION) {
+      body = visionTab
+        ? createElement(visionTab, {})
+        : fallbackLine(createElement, '肥鱼识图面板起不来（宿主没给 react hooks）。')
     } else if (activeTab === DAFEIYU_TAB_XYQ) {
       body = xyqPanel
         ? createElement(xyqPanel, {})
-        : createElement('p', {
-            style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
-            children: '小云雀面板起不来（宿主没给 react hooks）。',
-          })
-    } else if (activeTab === DAFEIYU_TAB_SUBAGENTS) {
-      body = subagentsPanel
-        ? createElement(subagentsPanel, {})
-        : createElement('p', {
-            style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
-            children: '派活助手面板起不来（宿主没给 react hooks）。',
-          })
-    } else if (activeTab === DAFEIYU_TAB_PERSONA) {
-      const extras: unknown[] = []
-      if (visionPanel) extras.push(createElement(visionPanel, {}))
-      if (memoryPanel) extras.push(createElement(memoryPanel, {}))
-      body = createElement('div', {
-        children: [createElement(personaSettings, { t: personaT }), ...extras],
-      })
+        : fallbackLine(createElement, '小云雀面板起不来（宿主没给 react hooks）。')
     } else if (rooms.some((room) => room.id === activeTab)) {
       // 住客的房间：只给容器，装修它自己来（`attachRoom` 管挂载/清理/崩了说人话）
       const room = rooms.find((candidate) => candidate.id === activeTab) as DafeiyuRoom
       body = createElement('div', { ref: attachRoom(room), 'data-room': room.id })
     } else {
-      body = createElement('p', {
-        style: { margin: 0, fontSize: '13px', color: 'var(--dsw-alias-label-tertiary)' },
-        children: '未实现的分栏。',
-      })
+      body = fallbackLine(createElement, '未实现的分栏。')
     }
     return createElement('div', {
-      style: { display: 'flex', flexDirection: 'column', gap: '12px' },
+      style: columnStyle,
       children: [tabBar, body],
     })
   }

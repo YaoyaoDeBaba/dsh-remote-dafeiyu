@@ -91,7 +91,8 @@ export function apply(ctx: ClientContext): (() => void) | void {
   }
 
   /**
-   * ② 设置页那一格：0.8.0 起是「大肥鱼」合页——一个入口、三个分栏（远程控制 / 人设 / 形象）。
+   * ② 设置页那一格：0.8.0 起是「大肥鱼」合页——一个入口、多个分栏
+   * （2026-11-16 起：远程控制 / 人设 / Agent 团队 / 肥鱼识图 / 小云雀 / 住客房间）。
    *
    * 这一条是配对的**正门**：pill 挂的槽位只在有会话时渲染（宿主那条条件是
    * `sessionId !== void 0`），所以"打开浏览器、还没有任何会话"的人找不到出码入口
@@ -213,7 +214,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
   let settingsMounted = false
   let dafeiyuMerged = false
   let personaMounted = false
-  // ③a 优先走合页：一个入口、三个分栏。
+  // ③a 优先走合页：一个入口、多个分栏。
   try {
     if (personaClient && typeof createElement === 'function' && reactHooks && typeof reactHooks.useState === 'function') {
       dafeiyuMerged = mountDafeiyuSettings({
@@ -222,6 +223,13 @@ export function apply(ctx: ClientContext): (() => void) | void {
         reactHooks,
         personaSettings: personaClient.PersonaSettingsSection,
         personaT: resolvePersonaT(ctx, (personaClient as { zh?: Record<string, string> }).zh),
+        /*
+         * 「Agent 团队」栏里那两颗入口按钮（2026-11-16）：打开的还是**同一个**悬浮面板
+         * （`handoff-panel.ts` 那一个，宿主侧三条路由与 180 秒流程都不动）。
+         * `handoffPanel` 在这里可能还没 mount 上（前面那条 try 失败时），回调里用 `?.`
+         * 兜住——按钮会显示"入口没接上"那句，页面照常。
+         */
+        openHandoff: (kind) => handoffPanel?.open(kind),
       })
     }
   } catch (error) {

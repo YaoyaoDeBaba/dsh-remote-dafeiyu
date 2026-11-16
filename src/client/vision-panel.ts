@@ -2,8 +2,10 @@
  * vision-panel — 「识图」的浏览器那一半（0.9.0）。
  *
  * 两块：
- * 1. **设置页「人设」分栏里的识图配置块**：外挂视觉模型的地址/密钥/模型/协议/提示词，
- *    保存走宿主那三条路由（`/api/dsh-remote-dafeiyu/vision/*`）。
+ * 1. **识图配置块**（外挂视觉模型的地址/密钥/模型/协议/提示词）：保存走宿主那三条路由
+ *    （`/api/dsh-remote-dafeiyu/vision/*`）。
+ *    ⚠️ 2026-11-16：它搬去独立的「肥鱼识图」分栏（`./vision-tab.ts` 负责那栏的壳与另两块），
+ *    **不再挂在「人设」分栏里**——识图是模型配置，不是人设。
  * 2. **聊天页那颗鲸鱼按钮（FAB）**：选一张图 → 发给宿主识图 → 把识别文本注入当前会话
  *    （与 `dsh-vision` 同一条路：`ctx.sessions.binding(id).session.prompt([...], 'queue')`）。
  *    注入不了（这一代宿主没给 sessions）就退化成"显示识别结果 + 复制"。
@@ -38,6 +40,13 @@ export interface VisionPanelDeps {
   hooks: Hooks
   /** 把识别文本注入当前会话；注入不了返回 false（面板退化成复制）。 */
   injectText?: (text: string) => Promise<boolean> | boolean
+  /**
+   * `true` = **只画内容、不画自己的那圈边框**（2026-11-16）。
+   *
+   * 「肥鱼识图」分栏把它放进我们自己的一张卡里（标题「模型配置」），卡片自己已经有边框/
+   * 内边距；这里再画一圈就变成"卡里套卡"。不传时行为与 0.9.x 完全一致（自带边框那块）。
+   */
+  bare?: boolean
 }
 
 
@@ -76,9 +85,20 @@ const PROTOCOLS: Array<[string, string]> = [
   ['custom', '自定义模板'],
 ]
 
+/**
+ * 协议 id → 人话。**状态卡与配置下拉共用这一份**（两处各写一份必然漂）。
+ * 认不出的 id 原样印出来——比"未知"更有用于排错。
+ */
+export function protocolLabel(protocol: unknown): string {
+  const id = typeof protocol === 'string' ? protocol : ''
+  for (const [value, label] of PROTOCOLS) if (value === id) return label
+  return id === '' ? '（未设置）' : id
+}
+
 /** 设置页里的识图配置块（React 组件）。宿主没给 useState 时返回 undefined（调用方不渲染这块）。 */
 export function buildVisionPanel(deps: VisionPanelDeps): (() => unknown) | undefined {
   const { createElement: h, hooks } = deps
+  const bare = deps.bare === true
   const useState = hooks.useState
   const useEffect = hooks.useEffect
   if (typeof useState !== 'function') return undefined
@@ -174,14 +194,20 @@ export function buildVisionPanel(deps: VisionPanelDeps): (() => unknown) | undef
         display: 'flex',
         flexDirection: 'column',
         gap: '10px',
-        padding: '12px',
-        border: '1px solid var(--dsw-alias-border-l2)',
-        borderRadius: '10px',
-        marginTop: '16px',
+        // `bare`（进「肥鱼识图」分栏那张卡）时不画自己的边框与内边距，见 `bare` 的说明。
+        ...(bare
+          ? {}
+          : {
+              padding: '12px',
+              border: '1px solid var(--dsw-alias-border-l2)',
+              borderRadius: '10px',
+              marginTop: '16px',
+            }),
       },
       children: [
-        h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }, children: [
-          h('strong', { style: { fontSize: '14px' }, children: '识图（大肥鱼看懂图）' }),
+        h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }, children: [
+          // 卡片标题在壳那边（「模型配置」）；`bare` 时这里不再重复一个大标题。
+          bare ? null : h('strong', { style: { fontSize: '14px' }, children: '识图（大肥鱼看懂图）' }),
           h('label', { style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }, children: [
             h('input', { type: 'checkbox', checked: cfg.enabled, onChange: (event: Event) => patch({ enabled: (event.target as HTMLInputElement).checked }) }),
             '开启',
@@ -384,7 +410,13 @@ export function mountVisionFab(deps: {
   return cleanup
 }
 
-function fileToBase64(file: File): Promise<string> {
+/**
+ * 把一张本地图片读成 base64（不带 `data:` 前缀 —— 宿主那条路由收的就是裸 base64）。
+ *
+ * 导出给「肥鱼识图」分栏的「试一张」复用：同一件事只写一份，否则两条路的
+ * `data:` 前缀处理必然分叉（一条去掉前缀、一条没去 ⇒ 宿主那边一处能解一处不能）。
+ */
+export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {

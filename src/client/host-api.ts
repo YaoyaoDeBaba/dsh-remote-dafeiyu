@@ -7,6 +7,17 @@
 import { resolveHostUrl } from './host-url.js'
 
 export const VISION_BASE = '/api/dsh-remote-dafeiyu/vision'
+/**
+ * 识图那条 POST（`{ imageBase64, mime }` → `{ ok, text }`）。
+ *
+ * 与宿主侧 `src/vision/routes.ts` 的 `VISION_RECOGNIZE_ROUTE` **必须逐字一致**：
+ * 这条是浏览器半个字面量（浏览器面不能 import 宿主侧那支路由表，它连着 node:http），
+ * 由 `tests/client-bundle.test.ts` 把两边钉在一起。
+ *
+ * ⚠️ 刻意写成**整串**而不是 `${VISION_BASE}/recognize`：拼出来的写法在压缩后会变成
+ * 常量拼接，判据就没法在产物里逐字找到这条路由（而"产物里真有这条路由"正是那条判据要钉的）。
+ */
+export const VISION_RECOGNIZE_ROUTE = '/api/dsh-remote-dafeiyu/vision/recognize'
 export const MEMORY_BASE = '/api/dsh-remote-dafeiyu/memory'
 export const PERSONA_STATUS = '/api/dsh-persona-dafeiyu/status'
 
