@@ -408,7 +408,9 @@ details.drc-sec-card[data-role="danger"] > summary.drc-fold-summary {
       background: #0d1117; color: #4b7bec; cursor: pointer;
       display: none; align-items: center; justify-content: center; font-size: 18px;
       box-shadow: 0 4px 14px rgba(0,0,0,.3); }
-    #dafeiyu-subagent-fab.open, #dafeiyu-subagent-fab.has-items { display: flex; }
+    /* 2026-11-16\uFF1A\u5165\u53E3\u5E38\u663E\u3002\u539F\u6765\u662F\u300C\u9762\u677F\u5F00\u7740 / \u672C\u4F1A\u8BDD\u6709\u5B50\u4EE3\u7406\u300D\u624D\u663E\u793A\uFF0C\u7ED3\u679C\u662F\u6CA1\u6D3E\u6D3B\u65F6\u5165\u53E3\u7B49\u4E8E\u4E0D\u5B58\u5728\uFF08\u7528\u6237\u62A5\u300C\u6709\u65F6\u5019\u4F1A\u5192\u51FA\u6765\u300D\uFF09\u3002\r
+   \u5FBD\u6807\u4ECD\u7136\u53EA\u6570\u5728\u7528\u7684\uFF0C\u4F46\u6309\u94AE\u672C\u8EAB\u4E00\u76F4\u5728\u2014\u2014\u6D3E\u6D3B\u52A9\u624B\u662F\u5E38\u89C4\u529F\u80FD\uFF0C\u4E0D\u8BE5\u9760\u8FD0\u6C14\u624D\u70B9\u5F97\u5230\u3002 */\r
+  #dafeiyu-subagent-fab { display: flex; }
   #dafeiyu-subagent-fab[hidden] { display: none !important; }
     #dafeiyu-subagent-fab:hover { border-color: #4b7bec; }
     #dafeiyu-subagent-fab .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;

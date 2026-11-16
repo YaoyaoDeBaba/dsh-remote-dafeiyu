@@ -90,7 +90,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       background: #0d1117; color: #4b7bec; cursor: pointer;
       display: none; align-items: center; justify-content: center; font-size: 18px;
       box-shadow: 0 4px 14px rgba(0,0,0,.3); }
-    #dafeiyu-subagent-fab.open, #dafeiyu-subagent-fab.has-items { display: flex; }
+    /* 2026-11-16：入口常显。原来是「面板开着 / 本会话有子代理」才显示，结果是没派活时入口等于不存在（用户报「有时候会冒出来」）。\r\n   徽标仍然只数在用的，但按钮本身一直在——派活助手是常规功能，不该靠运气才点得到。 */\r\n  #dafeiyu-subagent-fab { display: flex; }
   #dafeiyu-subagent-fab[hidden] { display: none !important; }
     #dafeiyu-subagent-fab:hover { border-color: #4b7bec; }
     #dafeiyu-subagent-fab .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
