@@ -28,7 +28,7 @@
 import type { QuestionItem, SessionSummary } from '@dsh-remote/protocol'
 import fs from 'node:fs'
 import path from 'node:path'
-import { loadAvatarManifest } from '../avatar/routes.js'
+import { loadAvatarManifest } from './avatar-manifest.js'
 import { emitSubagentChange } from '../subagents/bus.js'
 import { messageOf } from '../shell/log-line.js'
 import { canParticipate, guardedSubscribe } from './guard.js'

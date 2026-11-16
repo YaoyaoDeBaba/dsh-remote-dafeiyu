@@ -21,69 +21,10 @@ export const AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`
 export const AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`
 export const AVATAR_STATE_ROUTE = `${AVATAR_BASE}/state`
 
-export interface AvatarState {
-  id: string
-  label: string
-  cols: number
-  rows: number
-  frames: number
-  cellWidth: number
-  cellHeight: number
-  file: string
-  /** 锚点（0~1，y 以格子顶部为 0）；缺省时端上回落 0.5 / 0.955。 */
-  anchorX?: number
-  anchorY?: number
-}
-
-export interface AvatarManifest {
-  version: number
-  states: AvatarState[]
-}
-
-export function avatarDir(dshHome: string): string {
-  return path.join(dshHome, 'storages', 'dsh-remote-dafeiyu', 'avatar')
-}
-
-function sanitizeState(row: unknown): AvatarState | undefined {
-  if (!row || typeof row !== 'object') return undefined
-  const value = row as Record<string, unknown>
-  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : 0)
-  // 锚点是 0~1 的归一化值：非数字 / 越界一律丢弃，让端上走兜底，不会画出格。
-  const unit = (v: unknown): number | undefined =>
-    typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined
-  const cols = num(value.cols)
-  const rows = num(value.rows)
-  const frames = num(value.frames)
-  const file = typeof value.file === 'string' ? value.file : ''
-  if (typeof value.id !== 'string' || cols <= 0 || rows <= 0 || frames <= 0 || file === '') return undefined
-  if (path.basename(file) !== file) return undefined
-  const anchorX = unit(value.anchorX)
-  const anchorY = unit(value.anchorY)
-  return {
-    id: value.id,
-    label: typeof value.label === 'string' && value.label !== '' ? value.label : value.id,
-    cols,
-    rows,
-    frames,
-    cellWidth: num(value.cellWidth) || 1,
-    cellHeight: num(value.cellHeight) || 1,
-    file,
-    ...(anchorX !== undefined ? { anchorX } : {}),
-    ...(anchorY !== undefined ? { anchorY } : {}),
-  }
-}
-
-/** 读 manifest；文件缺失/坏了返回 undefined（端上显示“素材未安装”）。 */
-export function loadAvatarManifest(dir: string): AvatarManifest | undefined {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as { version?: unknown; states?: unknown }
-    const states = Array.isArray(parsed.states) ? parsed.states.map(sanitizeState).filter((s): s is AvatarState => s !== undefined) : []
-    if (states.length === 0) return undefined
-    return { version: typeof parsed.version === 'number' ? parsed.version : 1, states }
-  } catch {
-    return undefined
-  }
-}
+// 素材契约与读盘都在 `platform/avatar-manifest.ts`（本体协议层也要用，形象拆包后它留下）。
+// 这里**引入并转出**，避免同一份 schema 在 `avatar/` 里再存一遍。
+import { loadAvatarManifest, type AvatarManifest, type AvatarState } from '../platform/avatar-manifest.js'
+export { avatarDir, loadAvatarManifest, type AvatarManifest, type AvatarState } from '../platform/avatar-manifest.js'
 
 function json(response: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body)

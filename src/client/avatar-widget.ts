@@ -44,25 +44,50 @@ const ANCHOR_SCREEN_Y = STAGE_HEIGHT - 8
 const POS_KEY = 'drc.avatarWidgetPos'
 const DRAG_SLOP = 4
 
+/**
+ * 每个池子是"候选清单"，抽签时 **按 manifest 里实际存在与否过滤**（pickClip 里已有 available 判断）。
+ * 所以这里可以放心写还没有的 id：素材没装就自动跳过，装了就能播——扩容不需要改代码。
+ */
 const STATE_POOLS: Record<'idle' | 'think' | 'talk', Array<{ id: string; weight: number; loops?: number }>> = {
   idle: [
-    { id: 'idle', weight: 60, loops: 2 },
-    { id: 'nap', weight: 25, loops: 2 },
-    { id: 'eat', weight: 15, loops: 1 },
+    { id: 'idle', weight: 40, loops: 2 },
+    { id: 'nap', weight: 16, loops: 2 },
+    { id: 'eat', weight: 10, loops: 1 },
+    { id: 'bubble', weight: 12, loops: 1 },
+    { id: 'sad', weight: 8, loops: 1 },
+    { id: 'greet', weight: 7, loops: 1 },
+    { id: 'think', weight: 7, loops: 1 },
   ],
   think: [
-    { id: 'think', weight: 60, loops: 1 },
-    { id: 'eat', weight: 25, loops: 1 },
-    { id: 'sneak', weight: 15, loops: 1 },
+    { id: 'think', weight: 40, loops: 1 },
+    { id: 'eat', weight: 12, loops: 1 },
+    { id: 'sneak', weight: 8, loops: 1 },
+    { id: 'shock', weight: 10, loops: 1 },
+    { id: 'angry', weight: 10, loops: 1 },
+    { id: 'bubble', weight: 8, loops: 1 },
+    { id: 'boss_point', weight: 7, loops: 1 },
+    { id: 'boss_whistle', weight: 5, loops: 1 },
   ],
   talk: [
-    { id: 'talk', weight: 65, loops: 1 },
-    { id: 'dance', weight: 20, loops: 1 },
-    { id: 'tsundere', weight: 15, loops: 1 },
+    { id: 'talk', weight: 38, loops: 1 },
+    { id: 'dance', weight: 12, loops: 1 },
+    { id: 'tsundere', weight: 10, loops: 1 },
+    { id: 'greet', weight: 10, loops: 1 },
+    { id: 'angry', weight: 9, loops: 1 },
+    { id: 'shock', weight: 8, loops: 1 },
+    { id: 'boss_point', weight: 8, loops: 1 },
+    { id: 'boss_whistle', weight: 5, loops: 1 },
   ],
 }
+/** 任务开始的瞬间强制播一次"包工头"，播完自动回池子（不常驻）。 */
+const BOSS_CLIPS = ['boss_point', 'boss_whistle']
+const BOSS_COOLDOWN_MS = 30_000
 const POKE_CLIP = 'tsundere'
 const POKE_MS = 1800
+/** 子代理工地鱼：任务在跑时出现在母体周围，跑动 ↔ 干活交替。 */
+const WORK_SWARM_SIZE = 2
+const WORK_SWARM_CLIPS = ['worker_screw', 'worker_brick', 'worker_look']
+const WORK_SWARM_HEIGHT = 96
 
 export interface AvatarWidgetDeps {
   getCurrentSession: () => string | undefined | null
@@ -193,6 +218,7 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   let placed = false
   let drag: { x: number; y: number; left: number; top: number; moved: boolean } | undefined
   let pokeUntil = 0
+  let bossCooldownUntil = 0
   let lastClipId: string | undefined
   let manifestVersion = 0
 
@@ -426,6 +452,105 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     return 'idle'
   }
 
+  /* ───────────────── 子代理工地鱼集群 ───────────────── */
+
+  interface SwarmWorker {
+    node: HTMLDivElement
+    baseX: number
+    baseY: number
+    frame: number
+    meta?: { cols: number; rows: number; frames: number }
+  }
+
+  const swarm: SwarmWorker[] = []
+
+  const setWorkerClip = (worker: SwarmWorker, id: string): void => {
+    const state = states.find((row) => row.id === id)
+    if (state === undefined) return
+    worker.node.style.backgroundImage = `url("${assetUrl(state)}")`
+    worker.node.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`
+    // 容器必须按"格子宽高比"定尺寸，否则每个动作的格子比例不同 → 小人被拉伸
+    const width =
+      state.cellWidth > 0 && state.cellHeight > 0
+        ? Math.round((WORK_SWARM_HEIGHT * state.cellWidth) / state.cellHeight)
+        : Math.round(WORK_SWARM_HEIGHT * 0.75)
+    worker.node.style.height = `${WORK_SWARM_HEIGHT}px`
+    worker.node.style.width = `${width}px`
+    worker.frame = 0
+    worker.meta = { cols: state.cols, rows: state.rows, frames: state.frames }
+  }
+
+  const spawnWorker = (): void => {
+    const rect = wrap.getBoundingClientRect()
+    const dir = swarm.length % 2 === 0 ? -1 : 1
+    const node = doc.createElement('div')
+    node.style.cssText =
+      'position:fixed;background-repeat:no-repeat;background-position:0 0;pointer-events:none;' +
+      'z-index:2147482998;opacity:0;transition:left 2.6s linear,opacity .4s ease;'
+    const baseX = rect.left + rect.width / 2 + dir * (44 + Math.random() * 70)
+    const baseY = rect.top + rect.height * 0.58 + Math.random() * 16
+    node.style.left = `${baseX}px`
+    node.style.top = `${baseY}px`
+    doc.body.appendChild(node)
+
+    const worker: SwarmWorker = { node, baseX, baseY, frame: 0 }
+    swarm.push(worker)
+    setWorkerClip(worker, 'worker_run')
+    requestAnimationFrame(() => {
+      node.style.opacity = '0.95'
+    })
+
+    const wander = (): void => {
+      if (!node.isConnected) return
+      setTimeout(() => {
+        if (!node.isConnected) return
+        if (Math.random() < 0.55) {
+          setWorkerClip(worker, WORK_SWARM_CLIPS[Math.floor(Math.random() * WORK_SWARM_CLIPS.length)] ?? 'worker_run')
+          setTimeout(() => {
+            if (!node.isConnected) return
+            setWorkerClip(worker, 'worker_run')
+            node.style.left = `${baseX + (Math.random() < 0.5 ? -1 : 1) * (20 + Math.random() * 40)}px`
+          }, 3500 + Math.random() * 2500)
+        } else {
+          node.style.left = `${baseX + (Math.random() < 0.5 ? -1 : 1) * (20 + Math.random() * 50)}px`
+        }
+        wander()
+      }, 2000 + Math.random() * 2500)
+    }
+    wander()
+  }
+
+  const syncWorkers = (running: boolean): void => {
+    if (!running) {
+      for (const worker of swarm.splice(0)) {
+        try {
+          worker.node.remove()
+        } catch {
+          /* ignore */
+        }
+      }
+      return
+    }
+    // 素材没到齐就等下一次轮询，避免生成一堆空白块
+    if (states.length === 0) return
+    while (swarm.length < WORK_SWARM_SIZE) spawnWorker()
+  }
+
+  /** 工地鱼有自己的 24fps 节拍（和主舞台同一个 ticker）。 */
+  const paintWorkers = (): void => {
+    for (const worker of swarm) {
+      const meta = worker.meta
+      if (meta === undefined) continue
+      worker.frame = (worker.frame + 1) % Math.max(1, meta.frames)
+      const col = worker.frame % meta.cols
+      const row = Math.floor(worker.frame / meta.cols) % meta.rows
+      const px = meta.cols > 1 ? (col / (meta.cols - 1)) * 100 : 0
+      const py = meta.rows > 1 ? (row / (meta.rows - 1)) * 100 : 0
+      worker.node.style.backgroundPosition = `${px}% ${py}%`
+    }
+  }
+
+
   const refresh = (): void => {
     if (disposed) return
     for (const stale of Array.from(doc.querySelectorAll('#dafeiyu-avatar-widget'))) {
@@ -450,8 +575,21 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
         const answer = (await response.json()) as { status?: string }
         const status = answer.status === 'running' ? 'running' : 'idle'
         if (lastStatus === 'running' && status === 'idle') talkUntil = Date.now() + 2000
+        const justStarted = lastStatus !== 'running' && status === 'running'
         lastStatus = status
         ;(globalThis as Record<string, unknown>).__dafeiyuAvatarStatus = status
+        // 任务开始的这一拍：强制播一次"包工头"（指点/吹哨），播完自动回池子。
+        // 冷却 30s，避免连续轮询把包工头反复顶上来。
+        if (justStarted && Date.now() > bossCooldownUntil) {
+          const bossId = BOSS_CLIPS[Math.floor(Math.random() * BOSS_CLIPS.length)]
+          const bossSpec = bossId === undefined ? undefined : specOf(bossId, 1)
+          if (bossSpec !== undefined && pacer.force(bossSpec)) {
+            pokeUntil = Date.now() + POKE_MS
+            bossCooldownUntil = Date.now() + BOSS_COOLDOWN_MS
+          }
+        }
+        // 有任务在跑 → 母体周围出动工地鱼；跑完自动收工。
+        syncWorkers(status === 'running')
         if (Date.now() < pokeUntil) {
           wrap.hidden = false
           return
@@ -536,6 +674,7 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
   // 掉拍（主线程被别的模块占用 / 窗口被 throttle）只会让动画播得慢一点。
   timer = setInterval(() => {
     if (playing) paint()
+    paintWorkers()
   }, Math.round(1000 / FPS))
   pollTimer = setInterval(refresh, 2500)
   refresh()
@@ -545,6 +684,13 @@ export function mountAvatarWidget(deps: AvatarWidgetDeps): () => void {
     drag = undefined
     if (timer) clearInterval(timer)
     if (pollTimer) clearInterval(pollTimer)
+    for (const worker of swarm.splice(0)) {
+      try {
+        worker.node.remove()
+      } catch {
+        /* ignore */
+      }
+    }
     try {
       doc.removeEventListener('click', onDocClick)
       doc.removeEventListener('keydown', onKey as EventListener)

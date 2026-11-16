@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path29 from "node:path";
+import path30 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path30) {
-  if (!path30)
+function getElementAtPath(obj, path31) {
+  if (!path31)
     return obj;
-  return path30.reduce((acc, key) => acc?.[key], obj);
+  return path31.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path30, issues) {
+function prefixIssues(path31, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path30);
+    iss.path.unshift(path31);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path30 = []) => {
+  const processError = (error63, path31 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path30, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else {
-        const fullpath = [...path30, ...issue2.path];
+        const fullpath = [...path31, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path30 = []) => {
+  const processError = (error63, path31 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path30, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path30, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else {
-        const fullpath = [...path30, ...issue2.path];
+        const fullpath = [...path31, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path30 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path30) {
+  const path31 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path31) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path30 = ref.slice(1).split("/").filter(Boolean);
-  if (path30.length === 0) {
+  const path31 = ref.slice(1).split("/").filter(Boolean);
+  if (path31.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path30[0] === defsKey) {
-    const key = path30[1] === void 0 ? void 0 : decodeJSONPointerSegment(path30[1]);
+  if (path31[0] === defsKey) {
+    const key = path31[1] === void 0 ? void 0 : decodeJSONPointerSegment(path31[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -31575,633 +31575,15 @@ var SystemSleepBackend = class {
 
 // src/platform/carrier-services.ts
 import fs3 from "node:fs";
-import path7 from "node:path";
-
-// src/avatar/routes.ts
-import fs2 from "node:fs";
 import path6 from "node:path";
 
-// src/pill/routes.ts
-import { createHash as createHash3 } from "node:crypto";
-
-// src/shell/user-config.ts
-import { mkdirSync as mkdirSync2, readFileSync } from "node:fs";
+// src/platform/avatar-manifest.ts
+import fs2 from "node:fs";
 import path5 from "node:path";
-var USER_CONFIG_FILE = "user-config.json";
-var MAX_TOKEN_INPUT = 256;
-function resolveUserConfigFile(statusFile2) {
-  const base = statusFile2 ? path5.dirname(statusFile2) : dataDir();
-  return path5.join(base, USER_CONFIG_FILE);
-}
-function normalizeUserOverrides(input2) {
-  const value = {};
-  if ("serverUrl" in input2) {
-    if (typeof input2.serverUrl !== "string") return { ok: false, field: "serverUrl", error: "must be a string" };
-    const trimmed = input2.serverUrl.trim();
-    if (trimmed === "") {
-      value.serverUrl = void 0;
-    } else {
-      if (!/^wss?:\/\/.+/.test(trimmed)) {
-        return { ok: false, field: "serverUrl", error: "must start with ws:// or wss://" };
-      }
-      value.serverUrl = trimmed;
-    }
-  }
-  if ("hostToken" in input2) {
-    if (typeof input2.hostToken !== "string") return { ok: false, field: "hostToken", error: "must be a string" };
-    const trimmed = input2.hostToken.trim();
-    if (trimmed === "") {
-      value.hostToken = void 0;
-    } else {
-      if (trimmed.length > MAX_TOKEN_INPUT) {
-        return { ok: false, field: "hostToken", error: `must be at most ${MAX_TOKEN_INPUT} characters` };
-      }
-      value.hostToken = trimmed;
-    }
-  }
-  return { ok: true, value };
-}
-function readUserConfig(file2, log) {
-  if (!file2) return {};
-  let raw;
-  try {
-    raw = readFileSync(file2, "utf8");
-  } catch {
-    return {};
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    log?.("user-config is not JSON, ignoring it", { file: path5.basename(file2) });
-    return {};
-  }
-  if (!parsed || typeof parsed !== "object") {
-    log?.("user-config has an unknown shape, ignoring it", { file: path5.basename(file2) });
-    return {};
-  }
-  const record2 = parsed;
-  const value = {};
-  for (const field of ["serverUrl", "hostToken"]) {
-    if (!(field in record2)) continue;
-    const one = normalizeUserOverrides({ [field]: record2[field] });
-    if (!one.ok) {
-      log?.("user-config item ignored", { field, reason: one.error });
-      continue;
-    }
-    const kept = one.value[field];
-    if (typeof kept === "string") value[field] = kept;
-  }
-  return value;
-}
-function writeUserConfig(file2, overrides, now, log) {
-  if (!file2) return false;
-  const body = { version: 1, ...overrides, savedAt: now };
-  try {
-    mkdirSync2(path5.dirname(file2), { recursive: true });
-    writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
-    return true;
-  } catch (error62) {
-    log?.("user-config save failed", { message: String(error62?.message ?? error62).slice(0, 120) });
-    return false;
-  }
-}
-
-// src/pill/config-routes.ts
-var PLUGIN_CONFIG_ROUTE = "/plugins/dsh-remote-control/config";
-var MAX_CONFIG_BODY_BYTES = 8 * 1024;
-function json2(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-async function readJsonBody(request) {
-  return new Promise((resolve) => {
-    const chunks = [];
-    let size = 0;
-    let done = false;
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      resolve(value);
-    };
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
-      if (size > MAX_CONFIG_BODY_BYTES) {
-        finish(void 0);
-        return;
-      }
-      chunks.push(chunk2);
-    });
-    request.on("end", () => {
-      try {
-        const text = Buffer.concat(chunks).toString("utf8").trim();
-        finish(text === "" ? {} : JSON.parse(text));
-      } catch {
-        finish(void 0);
-      }
-    });
-    request.on("error", () => finish(void 0));
-  });
-}
-function configReadHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json2(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json2(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    try {
-      json2(response, 200, deps.config());
-    } catch (error62) {
-      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function configWriteHandler(deps) {
-  return async (request, response) => {
-    if (request.method !== "POST") {
-      json2(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u914D\u7F6E\u5199\u5165\u88AB\u5B88\u536B\u62D2", { guard });
-      json2(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    const body = await readJsonBody(request);
-    if (body === void 0 || typeof body !== "object" || body === null || Array.isArray(body)) {
-      json2(response, 400, { error: "invalid", field: "body", detail: "body must be a JSON object" });
-      return;
-    }
-    const normalized = normalizeUserOverrides(body);
-    if (!normalized.ok) {
-      json2(response, 400, { error: "invalid", field: normalized.field, detail: normalized.error });
-      return;
-    }
-    try {
-      const saved = deps.saveConfig(normalized.value);
-      if (!saved.ok) {
-        json2(response, 400, { error: "invalid", field: saved.field, detail: saved.error });
-        return;
-      }
-      deps.log("\u8BBE\u7F6E\u9875\u5199\u5165\u81EA\u5B9A\u4E49\u914D\u7F6E", {
-        serverUrlSet: normalized.value.serverUrl !== void 0,
-        hostTokenSet: normalized.value.hostToken !== void 0
-      });
-      json2(response, 200, { state: "ok", saved: normalized.value, restartRequired: true, config: deps.config() });
-    } catch (error62) {
-      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function configRouteHandler(deps) {
-  const read = configReadHandler(deps);
-  const write = configWriteHandler(deps);
-  return (request, response) => request.method === "POST" ? write(request, response) : read(request, response);
-}
-
-// src/backup/routes.ts
-var BACKUP_ROUTE = "/plugins/dsh-remote-control/backup";
-var MAX_BODY_BYTES = 16 * 1024;
-function json3(response, code, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function readJson(request) {
-  return new Promise((resolve) => {
-    const chunks = [];
-    let size = 0;
-    let done = false;
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      resolve(value);
-    };
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
-      if (size > MAX_BODY_BYTES) {
-        finish(void 0);
-        return;
-      }
-      chunks.push(chunk2);
-    });
-    request.on("end", () => {
-      try {
-        const text = Buffer.concat(chunks).toString("utf8").trim();
-        finish(text === "" ? {} : JSON.parse(text));
-      } catch {
-        finish(void 0);
-      }
-    });
-    request.on("error", () => finish(void 0));
-  });
-}
-function publicConfig(config2) {
-  return { ...config2 };
-}
-function backupRouteHandler(deps) {
-  return async (request, response) => {
-    if (request.method === "GET" || request.method === "HEAD") {
-      if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-        json3(response, 403, { state: "failed", error: "request-not-trusted" });
-        return;
-      }
-      try {
-        const status = deps.status();
-        json3(response, 200, { state: "ok", status, config: publicConfig(deps.config()) });
-      } catch (error62) {
-        json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
-      }
-      return;
-    }
-    if (request.method !== "POST") {
-      json3(response, 405, { state: "failed", error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u5907\u4EFD\u8DEF\u7531\u88AB\u5B88\u536B\u62D2", { guard });
-      json3(response, 403, { state: "failed", error: "request-not-trusted", detail: guard });
-      return;
-    }
-    const body = await readJson(request);
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      json3(response, 400, { state: "failed", error: "invalid", detail: "body \u8981\u662F\u4E00\u4E2A JSON \u5BF9\u8C61" });
-      return;
-    }
-    const payload = body;
-    const action = typeof payload.action === "string" ? payload.action : "";
-    try {
-      if (action === "save") {
-        const patch = payload.config && typeof payload.config === "object" && !Array.isArray(payload.config) ? payload.config : {};
-        const saved = deps.saveConfig(patch);
-        if (!saved.ok) {
-          json3(response, 400, { state: "failed", error: "invalid", field: saved.field, detail: saved.error });
-          return;
-        }
-        if ("token" in payload) {
-          const token = typeof payload.token === "string" ? payload.token.trim() : "";
-          const set2 = deps.setToken(token);
-          if (!set2.ok) {
-            json3(response, 400, { state: "failed", error: "invalid", field: "token", detail: set2.error ?? "" });
-            return;
-          }
-        }
-        json3(response, 200, { state: "ok", config: publicConfig(saved.config), status: deps.status() });
-        return;
-      }
-      if (action === "run") {
-        void deps.runNow("\u624B\u52A8").catch(() => {
-        });
-        json3(response, 202, { state: "ok", started: "run" });
-        return;
-      }
-      if (action === "restore") {
-        void deps.restore().catch(() => {
-        });
-        json3(response, 202, { state: "ok", started: "restore" });
-        return;
-      }
-      json3(response, 400, { state: "failed", error: "invalid", field: "action", detail: "\u53EA\u8BA4 save / run / restore" });
-    } catch (error62) {
-      json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-
-// src/pill/routes.ts
-var PAIR_NEW_ROUTE = "/plugins/dsh-remote-control/pairing/new";
-var PAIR_IMAGE_ROUTE = "/plugins/dsh-remote-control/pairing.png";
-var PAIR_STATUS_ROUTE = "/plugins/dsh-remote-control/status";
-var PAIR_APPROVE_ROUTE = "/plugins/dsh-remote-control/pair/approve";
-var PAIR_UNPAIR_ROUTE = "/plugins/dsh-remote-control/unpair";
-var PAIR_MARKER_HEADER = "x-drc-pair";
-var CLIENT_REPORT_ROUTE = "/plugins/dsh-remote-control/client-report";
-var PAIR_MARKER_VALUE = "1";
-function pairingEpoch(token) {
-  return createHash3("sha256").update(`dsh-rc/mp-code:${token}`).digest("hex").slice(0, 16);
-}
-var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-var HOST_ORIGIN_SCHEMES = /* @__PURE__ */ new Set(["dsh-app:"]);
-function hostnameOf(host) {
-  const trimmed = host.trim().toLowerCase();
-  if (trimmed.startsWith("[")) {
-    const end = trimmed.indexOf("]");
-    if (end === -1) return trimmed;
-    const rest = trimmed.slice(end + 1);
-    if (rest !== "" && !/^:\d+$/.test(rest)) return trimmed;
-    return trimmed.slice(0, end + 1);
-  }
-  const colon = trimmed.lastIndexOf(":");
-  if (colon !== -1 && !trimmed.slice(0, colon).includes(":") && /^\d+$/.test(trimmed.slice(colon + 1))) {
-    return trimmed.slice(0, colon);
-  }
-  return trimmed;
-}
-function hostIsLoopback(host) {
-  if (host === void 0 || host.trim() === "") return false;
-  return LOOPBACK_HOSTS.has(hostnameOf(host));
-}
-function originIsLoopbackOrAbsent(origin) {
-  if (origin === void 0 || origin.trim() === "") return true;
-  return originLooksLikeTheHostItself(origin);
-}
-function originLooksLikeTheHostItself(origin) {
-  try {
-    const url2 = new URL(origin);
-    if (HOST_ORIGIN_SCHEMES.has(url2.protocol)) return true;
-    if (url2.protocol !== "http:" && url2.protocol !== "https:") return false;
-    return LOOPBACK_HOSTS.has(url2.hostname);
-  } catch {
-    return false;
-  }
-}
-function rejectedBy(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (request.headers[PAIR_MARKER_HEADER] !== PAIR_MARKER_VALUE) return "pair-marker-missing";
-  const origin = request.headers.origin;
-  if (origin !== void 0 && origin.trim() !== "" && !originLooksLikeTheHostItself(origin)) return "origin-not-trusted";
-  return void 0;
-}
-function applyCors(request, response) {
-  const origin = request?.headers?.origin;
-  if (origin === void 0 || origin.trim() === "" || !originLooksLikeTheHostItself(origin)) return;
-  if (typeof response.setHeader !== "function") return;
-  try {
-    response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Vary", "Origin");
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS");
-    response.setHeader("Access-Control-Allow-Headers", "content-type, x-drc-pair");
-    response.setHeader("Access-Control-Max-Age", "600");
-  } catch {
-  }
-}
-function preflight(request, response) {
-  if (request.method !== "OPTIONS") return false;
-  applyCors(request, response);
-  response.writeHead(204, { "Access-Control-Max-Age": "600", "Content-Length": "0" });
-  response.end();
-  return true;
-}
-function json4(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function pairNewHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u53D1\u7801\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
-      json4(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    try {
-      const pairing = deps.ensureFresh();
-      if (!pairing) {
-        json4(response, 200, { state: "unavailable", reason: "relay-offline" });
-        return;
-      }
-      const epoch = pairingEpoch(pairing.token);
-      deps.log("\u914D\u5BF9\u7801\u7ECF\u72B6\u6001\u680F\u53D1\u51FA", { epoch: epoch.slice(0, 8), tokenLength: pairing.token.length });
-      json4(response, 200, {
-        state: "ready",
-        epoch,
-        token: pairing.token,
-        expiresInMs: Math.max(0, pairing.expiresAt - Date.now())
-      });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function pairImageHandler(deps) {
-  return async (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    try {
-      const pairing = deps.current();
-      if (!pairing) {
-        response.writeHead(204);
-        response.end();
-        return;
-      }
-      const bytes = await deps.mpCodeFor(pairing.token);
-      if (!bytes || bytes.length === 0) {
-        json4(response, 503, { error: "mp_code_unavailable" });
-        return;
-      }
-      response.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": bytes.length,
-        // 一张码会被就地换掉（半程刷新、被手机用掉），所以绝不许缓存。
-        "Cache-Control": "no-store",
-        ETag: `"${pairingEpoch(pairing.token)}"`
-      });
-      if (request.method === "HEAD") response.end();
-      else response.end(bytes);
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function pillStatusHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    try {
-      const status = deps.status();
-      json4(response, 200, {
-        relay: status.relay,
-        paired: status.paired,
-        pairings: status.pairings,
-        serverUrl: status.serverUrl,
-        version: status.version,
-        waiting: status.waiting,
-        waitingOldestSec: status.waitingOldestSec,
-        // 白名单**逐字**列字段：漏一条就是功能不通，多一条就是凭据外泄。
-        pairApproval: status.pairApproval,
-        // 2026-10-21 晚：主机自动放行之后，最近放行的那 6 位数字改由这一格带着
-        // （放行是"取走即焚"，`pairApproval` 立刻变 null ⇒ 主机界面再也显示不出那串数字，
-        // 而它是用户唯一能对照的东西）。它**不是凭据**（真凭据在密文里）。
-        //
-        // ⚠️ 白名单是**逐字**列的 ⇒ 少列这一条，UI 就读不到它（而 status.json 里有，
-        // 于是 e2e 全绿、真机是坏的 —— 这条判据就是为它准备的）。
-        // 2026-10-26：码龄 / 剩余寿命（只有两个数字，不含 token/psk）——
-        // UI 据此显示"这张码 45 秒前生成，还有 135 秒"，而不是让用户扫了才知道失效。
-        pairing: status.pairing,
-        lastPairApproval: status.lastPairApproval
-      });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function pairApproveHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u914D\u5BF9\u653E\u884C\u88AB\u5B88\u536B\u62D2", { guard });
-      json4(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    try {
-      const approved = deps.approvePair();
-      deps.log("\u7ECF\u72B6\u6001\u680F\u653E\u884C\u914D\u5BF9", { approved });
-      if (!approved) {
-        json4(response, 409, { state: "stale" });
-        return;
-      }
-      json4(response, 200, { state: "ok" });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function unpairHandler(deps) {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    const guard = rejectedBy(request);
-    if (guard) {
-      deps.log("\u89E3\u914D\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
-      json4(response, 403, { error: "request-not-trusted", guard });
-      return;
-    }
-    try {
-      const unpaired = deps.unpair();
-      deps.log("\u7ECF\u72B6\u6001\u680F\u9000\u51FA\u914D\u5BF9", { unpaired });
-      json4(response, 200, { state: "ok", unpaired });
-    } catch (error62) {
-      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-    }
-  };
-}
-function clientReportHandler() {
-  return (request, response) => {
-    if (request.method !== "POST") {
-      json4(response, 405, { error: "method not allowed" });
-      return;
-    }
-    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    if (request.headers[PAIR_MARKER_HEADER] === void 0) {
-      json4(response, 403, { error: "request-not-trusted" });
-      return;
-    }
-    const chunks = [];
-    let size = 0;
-    request.on("data", (chunk2) => {
-      size += chunk2.length;
-      if (size <= 4096) chunks.push(chunk2);
-    });
-    request.on("end", () => {
-      try {
-        const path30 = __require("node:path");
-        const fs10 = __require("node:fs");
-        const dir = path30.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs10.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs10.writeFileSync(
-          path30.join(dir, "client-report.json"),
-          `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
-`,
-          { mode: 384 }
-        );
-        json4(response, 200, { ok: true });
-      } catch (error62) {
-        json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
-      }
-    });
-  };
-}
-function registerPillRoutes(webServer, deps) {
-  const off = [];
-  const definitions = [
-    { kind: "exact", path: PAIR_NEW_ROUTE, handler: pairNewHandler(deps) },
-    { kind: "exact", path: PAIR_IMAGE_ROUTE, handler: pairImageHandler(deps) },
-    { kind: "exact", path: PAIR_STATUS_ROUTE, handler: pillStatusHandler(deps) },
-    { kind: "exact", path: PAIR_UNPAIR_ROUTE, handler: unpairHandler(deps) },
-    { kind: "exact", path: PLUGIN_CONFIG_ROUTE, handler: configRouteHandler(deps) },
-    { kind: "exact", path: CLIENT_REPORT_ROUTE, handler: clientReportHandler() },
-    // 2026-10-21 加：用户确认「数字一致」后的放行口。**排在最后**，前面各条的编号语义不变。
-    { kind: "exact", path: PAIR_APPROVE_ROUTE, handler: pairApproveHandler(deps) }
-  ];
-  if (deps.backup) {
-    definitions.push({ kind: "exact", path: BACKUP_ROUTE, handler: backupRouteHandler(deps.backup) });
-  }
-  const wrapped = definitions.map((definition) => ({
-    ...definition,
-    handler: (request, response) => {
-      applyCors(request, response);
-      if (preflight(request, response)) return;
-      if (request?.method === "OPTIONS") {
-        response.writeHead(204);
-        response.end();
-        return;
-      }
-      return definition.handler(request, response);
-    }
-  }));
-  try {
-    for (const definition of wrapped) off.push(webServer.register(definition));
-  } catch (error62) {
-    for (const unregister of off.splice(0)) {
-      try {
-        unregister();
-      } catch {
-      }
-    }
-    throw error62;
-  }
-  return () => {
-    for (const unregister of off) {
-      try {
-        unregister();
-      } catch {
-      }
-    }
-  };
-}
-
-// src/avatar/routes.ts
-var AVATAR_BASE = "/api/dsh-remote-dafeiyu/avatar";
-var AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`;
-var AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`;
-var AVATAR_STATE_ROUTE = `${AVATAR_BASE}/state`;
 function avatarDir(dshHome) {
-  return path6.join(dshHome, "storages", "dsh-remote-dafeiyu", "avatar");
+  return path5.join(dshHome, "storages", "dsh-remote-dafeiyu", "avatar");
 }
-function sanitizeState(row) {
+function sanitizeAvatarState(row) {
   if (!row || typeof row !== "object") return void 0;
   const value = row;
   const num = (v) => typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0;
@@ -32211,7 +31593,7 @@ function sanitizeState(row) {
   const frames = num(value.frames);
   const file2 = typeof value.file === "string" ? value.file : "";
   if (typeof value.id !== "string" || cols <= 0 || rows <= 0 || frames <= 0 || file2 === "") return void 0;
-  if (path6.basename(file2) !== file2) return void 0;
+  if (path5.basename(file2) !== file2) return void 0;
   const anchorX = unit(value.anchorX);
   const anchorY = unit(value.anchorY);
   return {
@@ -32220,6 +31602,7 @@ function sanitizeState(row) {
     cols,
     rows,
     frames,
+    // 与拆包前保持一致：格子尺寸缺省为 1（端上会按 cols/rows 再算），不在这里猜。
     cellWidth: num(value.cellWidth) || 1,
     cellHeight: num(value.cellHeight) || 1,
     file: file2,
@@ -32229,88 +31612,18 @@ function sanitizeState(row) {
 }
 function loadAvatarManifest(dir) {
   try {
-    const parsed = JSON.parse(fs2.readFileSync(path6.join(dir, "manifest.json"), "utf8"));
-    const states = Array.isArray(parsed.states) ? parsed.states.map(sanitizeState).filter((s) => s !== void 0) : [];
+    const raw = fs2.readFileSync(path5.join(dir, "manifest.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return void 0;
+    const value = parsed;
+    const rows = Array.isArray(value.states) ? value.states : [];
+    const states = rows.map(sanitizeAvatarState).filter((row) => row !== void 0);
     if (states.length === 0) return void 0;
-    return { version: typeof parsed.version === "number" ? parsed.version : 1, states };
+    const version2 = typeof value.version === "number" && Number.isFinite(value.version) ? value.version : 1;
+    return { version: version2, states };
   } catch {
     return void 0;
   }
-}
-function json5(response, status, body) {
-  const payload = JSON.stringify(body);
-  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
-  response.end(payload);
-}
-function rejected(request) {
-  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
-  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
-  return void 0;
-}
-function readonly2(request) {
-  return request.method === "GET" || request.method === "HEAD";
-}
-function avatarManifestHandler(dir) {
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected(request);
-    if (denied) return json5(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const manifest = loadAvatarManifest(dir);
-    response.setHeader("Cache-Control", "no-store");
-    if (manifest === void 0) return json5(response, 200, { ok: true, manifest: null, message: "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5" });
-    json5(response, 200, { ok: true, manifest });
-  };
-}
-function avatarSheetHandler(dir) {
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected(request);
-    if (denied) return json5(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const id = (url2.searchParams.get("id") ?? "").trim();
-    if (id === "") return json5(response, 400, { ok: false, error: "\u7F3A\u5C11 id" });
-    const manifest = loadAvatarManifest(dir);
-    const state = manifest?.states.find((row) => row.id === id);
-    if (state === void 0) return json5(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u52A8\u4F5C" });
-    const file2 = path6.resolve(dir, state.file);
-    if (!file2.startsWith(path6.resolve(dir) + path6.sep)) return json5(response, 403, { ok: false, error: "path-escape" });
-    let data;
-    try {
-      data = fs2.readFileSync(file2);
-    } catch {
-      return json5(response, 404, { ok: false, error: "\u7D20\u6750\u6587\u4EF6\u4E0D\u5B58\u5728" });
-    }
-    response.writeHead(200, {
-      "Content-Type": "image/webp",
-      "Content-Length": data.byteLength,
-      "Cache-Control": "public, max-age=86400, immutable"
-    });
-    if (request.method === "HEAD") response.end();
-    else response.end(data);
-  };
-}
-function avatarStateHandler(getStatus) {
-  return (request, response) => {
-    applyCors(request, response);
-    if (preflight(request, response)) return;
-    const denied = rejected(request);
-    if (denied) return json5(response, 403, { ok: false, error: denied });
-    if (!readonly2(request)) return json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
-    const url2 = new URL(request.url ?? "/", "http://localhost");
-    const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
-    if (sessionId === "") return json5(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
-    let status;
-    try {
-      status = getStatus(sessionId);
-    } catch {
-      status = void 0;
-    }
-    json5(response, 200, { ok: true, status: status === "running" ? "running" : "idle" });
-  };
 }
 
 // src/subagents/bus.ts
@@ -32665,8 +31978,8 @@ function createServicesKernel(services, options) {
     const manifest = loadAvatarManifest(dir);
     const state = manifest?.states.find((row) => row.id === id);
     if (state === void 0) return null;
-    const file2 = path7.resolve(dir, state.file);
-    if (!file2.startsWith(path7.resolve(dir) + path7.sep)) return null;
+    const file2 = path6.resolve(dir, state.file);
+    if (!file2.startsWith(path6.resolve(dir) + path6.sep)) return null;
     try {
       const data = fs3.readFileSync(file2);
       if (data.byteLength > 8 * 1024 * 1024) return null;
@@ -34514,8 +33827,8 @@ function createOneShotTimers(clock) {
 }
 
 // src/shell/status.ts
-import { mkdirSync as mkdirSync3 } from "node:fs";
-import path8 from "node:path";
+import { mkdirSync as mkdirSync2 } from "node:fs";
+import path7 from "node:path";
 var STATUS_REFRESH_MS = 3e3;
 var StatusFile = class {
   constructor(file2, clock, refreshMs = STATUS_REFRESH_MS) {
@@ -34530,7 +33843,7 @@ var StatusFile = class {
   write(snapshot) {
     if (!this.file) return;
     try {
-      mkdirSync3(path8.dirname(this.file), { recursive: true });
+      mkdirSync2(path7.dirname(this.file), { recursive: true });
       writeSecure(
         this.file,
         JSON.stringify({ ...snapshot, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), pid: process.pid }, null, 2) + "\n"
@@ -34567,8 +33880,8 @@ var StatusFile = class {
 
 // src/shell/host-id.ts
 import { randomBytes as randomBytes4 } from "node:crypto";
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync2 } from "node:fs";
-import path9 from "node:path";
+import { mkdirSync as mkdirSync3, readFileSync } from "node:fs";
+import path8 from "node:path";
 var HOST_ID = /^drc-[0-9a-f]{12}$/;
 function newHostId() {
   return `drc-${randomBytes4(6).toString("hex")}`;
@@ -34576,23 +33889,23 @@ function newHostId() {
 function resolveHostId(dir, configured) {
   if (configured) return configured;
   if (!dir) return newHostId();
-  const file2 = path9.join(dir, "host-id");
+  const file2 = path8.join(dir, "host-id");
   let existing;
   try {
-    existing = readFileSync2(file2, "utf8").trim();
+    existing = readFileSync(file2, "utf8").trim();
   } catch {
     existing = void 0;
   }
   if (existing !== void 0 && HOST_ID.test(existing)) return existing;
   const fresh = newHostId();
   try {
-    mkdirSync4(dir, { recursive: true });
+    mkdirSync3(dir, { recursive: true });
     writeSecure(file2, `${fresh}
 `, { flag: existing === void 0 ? "wx" : "w" });
     return fresh;
   } catch {
     try {
-      const raced = readFileSync2(file2, "utf8").trim();
+      const raced = readFileSync(file2, "utf8").trim();
       if (HOST_ID.test(raced)) return raced;
     } catch {
     }
@@ -34601,9 +33914,9 @@ function resolveHostId(dir, configured) {
 }
 
 // src/shell/pair-store.ts
-import { readFileSync as readFileSync3 } from "node:fs";
-import { createHash as createHash4 } from "node:crypto";
-import path10 from "node:path";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { createHash as createHash3 } from "node:crypto";
+import path9 from "node:path";
 var storedConversationSchema = external_exports.object({
   id: external_exports.string().min(1),
   /** 配对 PSK（base64）。两把方向密钥在恢复时由它现派生，不落盘。 */
@@ -34623,12 +33936,12 @@ var storeSchema = external_exports.object({
 });
 function safeSegment2(hostId) {
   const cleaned = hostId.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 48);
-  const tag = createHash4("sha256").update(hostId).digest("hex").slice(0, 8);
+  const tag = createHash3("sha256").update(hostId).digest("hex").slice(0, 8);
   return `${cleaned || "host"}-${tag}`;
 }
 function defaultPairStoreFile(statusFile2, hostId) {
   if (!statusFile2) return "";
-  return path10.join(path10.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
+  return path9.join(path9.dirname(statusFile2), `conversations-${safeSegment2(hostId)}.json`);
 }
 var PairStore = class {
   constructor(options) {
@@ -34665,7 +33978,7 @@ var PairStore = class {
     if (!file2) return [];
     let raw;
     try {
-      raw = readFileSync3(file2, "utf8");
+      raw = readFileSync2(file2, "utf8");
     } catch {
       return [];
     }
@@ -34697,7 +34010,7 @@ var PairStore = class {
     if (!file2) return false;
     const body = JSON.stringify({ version: 1, hostId, savedAt: now, conversations }) + "\n";
     try {
-      ensureSecureDir(path10.dirname(file2));
+      ensureSecureDir(path9.dirname(file2));
       writeSecure(file2, body);
       this.savedAt = now;
       this.dirty = false;
@@ -34740,7 +34053,7 @@ function describeSelfHosting(serverUrl) {
 
 // src/shell/config.ts
 import { homedir } from "node:os";
-import path11 from "node:path";
+import path10 from "node:path";
 var DEFAULT_CONFIG = {
   enabled: true,
   /**
@@ -34765,7 +34078,7 @@ var DEFAULT_CONFIG = {
   hostLabel: "dsh-host",
   keepAwake: { enabled: true, idleReleaseSec: 300, keepDisplay: false },
   mockBridge: false,
-  statusFile: path11.join(homedir(), ".dsh", "dsh-remote-control", "status.json"),
+  statusFile: path10.join(homedir(), ".dsh", "dsh-remote-control", "status.json"),
   unarchiveOnPrompt: true,
   pairOnStartSec: 0,
   pairTtlMs: 12e4,
@@ -34793,8 +34106,8 @@ function resolvePairStoreFile(config2, hostId) {
 function resolveUploadDir(config2) {
   const configured = config2.uploadDir.trim();
   if (!configured) {
-    const base = config2.statusFile ? path11.dirname(config2.statusFile) : dataDir();
-    return path11.join(base, "uploads");
+    const base = config2.statusFile ? path10.dirname(config2.statusFile) : dataDir();
+    return path10.join(base, "uploads");
   }
   return resolveAgainstBase(configured, config2.statusFile);
 }
@@ -34956,6 +34269,618 @@ function clampSeconds(config2, problems, field, min, fallback) {
 function redact(value) {
   if (value.length <= 8) return "****";
   return `${value.slice(0, 4)}\u2026${value.slice(-2)}(${value.length})`;
+}
+
+// src/pill/routes.ts
+import { createHash as createHash4 } from "node:crypto";
+
+// src/shell/user-config.ts
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync3 } from "node:fs";
+import path11 from "node:path";
+var USER_CONFIG_FILE = "user-config.json";
+var MAX_TOKEN_INPUT = 256;
+function resolveUserConfigFile(statusFile2) {
+  const base = statusFile2 ? path11.dirname(statusFile2) : dataDir();
+  return path11.join(base, USER_CONFIG_FILE);
+}
+function normalizeUserOverrides(input2) {
+  const value = {};
+  if ("serverUrl" in input2) {
+    if (typeof input2.serverUrl !== "string") return { ok: false, field: "serverUrl", error: "must be a string" };
+    const trimmed = input2.serverUrl.trim();
+    if (trimmed === "") {
+      value.serverUrl = void 0;
+    } else {
+      if (!/^wss?:\/\/.+/.test(trimmed)) {
+        return { ok: false, field: "serverUrl", error: "must start with ws:// or wss://" };
+      }
+      value.serverUrl = trimmed;
+    }
+  }
+  if ("hostToken" in input2) {
+    if (typeof input2.hostToken !== "string") return { ok: false, field: "hostToken", error: "must be a string" };
+    const trimmed = input2.hostToken.trim();
+    if (trimmed === "") {
+      value.hostToken = void 0;
+    } else {
+      if (trimmed.length > MAX_TOKEN_INPUT) {
+        return { ok: false, field: "hostToken", error: `must be at most ${MAX_TOKEN_INPUT} characters` };
+      }
+      value.hostToken = trimmed;
+    }
+  }
+  return { ok: true, value };
+}
+function readUserConfig(file2, log) {
+  if (!file2) return {};
+  let raw;
+  try {
+    raw = readFileSync3(file2, "utf8");
+  } catch {
+    return {};
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    log?.("user-config is not JSON, ignoring it", { file: path11.basename(file2) });
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object") {
+    log?.("user-config has an unknown shape, ignoring it", { file: path11.basename(file2) });
+    return {};
+  }
+  const record2 = parsed;
+  const value = {};
+  for (const field of ["serverUrl", "hostToken"]) {
+    if (!(field in record2)) continue;
+    const one = normalizeUserOverrides({ [field]: record2[field] });
+    if (!one.ok) {
+      log?.("user-config item ignored", { field, reason: one.error });
+      continue;
+    }
+    const kept = one.value[field];
+    if (typeof kept === "string") value[field] = kept;
+  }
+  return value;
+}
+function writeUserConfig(file2, overrides, now, log) {
+  if (!file2) return false;
+  const body = { version: 1, ...overrides, savedAt: now };
+  try {
+    mkdirSync4(path11.dirname(file2), { recursive: true });
+    writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
+    return true;
+  } catch (error62) {
+    log?.("user-config save failed", { message: String(error62?.message ?? error62).slice(0, 120) });
+    return false;
+  }
+}
+
+// src/pill/config-routes.ts
+var PLUGIN_CONFIG_ROUTE = "/plugins/dsh-remote-control/config";
+var MAX_CONFIG_BODY_BYTES = 8 * 1024;
+function json2(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+async function readJsonBody(request) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
+      if (size > MAX_CONFIG_BODY_BYTES) {
+        finish(void 0);
+        return;
+      }
+      chunks.push(chunk2);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8").trim();
+        finish(text === "" ? {} : JSON.parse(text));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function configReadHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json2(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json2(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    try {
+      json2(response, 200, deps.config());
+    } catch (error62) {
+      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function configWriteHandler(deps) {
+  return async (request, response) => {
+    if (request.method !== "POST") {
+      json2(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u914D\u7F6E\u5199\u5165\u88AB\u5B88\u536B\u62D2", { guard });
+      json2(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    const body = await readJsonBody(request);
+    if (body === void 0 || typeof body !== "object" || body === null || Array.isArray(body)) {
+      json2(response, 400, { error: "invalid", field: "body", detail: "body must be a JSON object" });
+      return;
+    }
+    const normalized = normalizeUserOverrides(body);
+    if (!normalized.ok) {
+      json2(response, 400, { error: "invalid", field: normalized.field, detail: normalized.error });
+      return;
+    }
+    try {
+      const saved = deps.saveConfig(normalized.value);
+      if (!saved.ok) {
+        json2(response, 400, { error: "invalid", field: saved.field, detail: saved.error });
+        return;
+      }
+      deps.log("\u8BBE\u7F6E\u9875\u5199\u5165\u81EA\u5B9A\u4E49\u914D\u7F6E", {
+        serverUrlSet: normalized.value.serverUrl !== void 0,
+        hostTokenSet: normalized.value.hostToken !== void 0
+      });
+      json2(response, 200, { state: "ok", saved: normalized.value, restartRequired: true, config: deps.config() });
+    } catch (error62) {
+      json2(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function configRouteHandler(deps) {
+  const read = configReadHandler(deps);
+  const write = configWriteHandler(deps);
+  return (request, response) => request.method === "POST" ? write(request, response) : read(request, response);
+}
+
+// src/backup/routes.ts
+var BACKUP_ROUTE = "/plugins/dsh-remote-control/backup";
+var MAX_BODY_BYTES = 16 * 1024;
+function json3(response, code, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function readJson(request) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
+      if (size > MAX_BODY_BYTES) {
+        finish(void 0);
+        return;
+      }
+      chunks.push(chunk2);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8").trim();
+        finish(text === "" ? {} : JSON.parse(text));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function publicConfig(config2) {
+  return { ...config2 };
+}
+function backupRouteHandler(deps) {
+  return async (request, response) => {
+    if (request.method === "GET" || request.method === "HEAD") {
+      if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+        json3(response, 403, { state: "failed", error: "request-not-trusted" });
+        return;
+      }
+      try {
+        const status = deps.status();
+        json3(response, 200, { state: "ok", status, config: publicConfig(deps.config()) });
+      } catch (error62) {
+        json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
+      }
+      return;
+    }
+    if (request.method !== "POST") {
+      json3(response, 405, { state: "failed", error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u5907\u4EFD\u8DEF\u7531\u88AB\u5B88\u536B\u62D2", { guard });
+      json3(response, 403, { state: "failed", error: "request-not-trusted", detail: guard });
+      return;
+    }
+    const body = await readJson(request);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      json3(response, 400, { state: "failed", error: "invalid", detail: "body \u8981\u662F\u4E00\u4E2A JSON \u5BF9\u8C61" });
+      return;
+    }
+    const payload = body;
+    const action = typeof payload.action === "string" ? payload.action : "";
+    try {
+      if (action === "save") {
+        const patch = payload.config && typeof payload.config === "object" && !Array.isArray(payload.config) ? payload.config : {};
+        const saved = deps.saveConfig(patch);
+        if (!saved.ok) {
+          json3(response, 400, { state: "failed", error: "invalid", field: saved.field, detail: saved.error });
+          return;
+        }
+        if ("token" in payload) {
+          const token = typeof payload.token === "string" ? payload.token.trim() : "";
+          const set2 = deps.setToken(token);
+          if (!set2.ok) {
+            json3(response, 400, { state: "failed", error: "invalid", field: "token", detail: set2.error ?? "" });
+            return;
+          }
+        }
+        json3(response, 200, { state: "ok", config: publicConfig(saved.config), status: deps.status() });
+        return;
+      }
+      if (action === "run") {
+        void deps.runNow("\u624B\u52A8").catch(() => {
+        });
+        json3(response, 202, { state: "ok", started: "run" });
+        return;
+      }
+      if (action === "restore") {
+        void deps.restore().catch(() => {
+        });
+        json3(response, 202, { state: "ok", started: "restore" });
+        return;
+      }
+      json3(response, 400, { state: "failed", error: "invalid", field: "action", detail: "\u53EA\u8BA4 save / run / restore" });
+    } catch (error62) {
+      json3(response, 500, { state: "failed", error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+
+// src/pill/routes.ts
+var PAIR_NEW_ROUTE = "/plugins/dsh-remote-control/pairing/new";
+var PAIR_IMAGE_ROUTE = "/plugins/dsh-remote-control/pairing.png";
+var PAIR_STATUS_ROUTE = "/plugins/dsh-remote-control/status";
+var PAIR_APPROVE_ROUTE = "/plugins/dsh-remote-control/pair/approve";
+var PAIR_UNPAIR_ROUTE = "/plugins/dsh-remote-control/unpair";
+var PAIR_MARKER_HEADER = "x-drc-pair";
+var CLIENT_REPORT_ROUTE = "/plugins/dsh-remote-control/client-report";
+var PAIR_MARKER_VALUE = "1";
+function pairingEpoch(token) {
+  return createHash4("sha256").update(`dsh-rc/mp-code:${token}`).digest("hex").slice(0, 16);
+}
+var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+var HOST_ORIGIN_SCHEMES = /* @__PURE__ */ new Set(["dsh-app:"]);
+function hostnameOf(host) {
+  const trimmed = host.trim().toLowerCase();
+  if (trimmed.startsWith("[")) {
+    const end = trimmed.indexOf("]");
+    if (end === -1) return trimmed;
+    const rest = trimmed.slice(end + 1);
+    if (rest !== "" && !/^:\d+$/.test(rest)) return trimmed;
+    return trimmed.slice(0, end + 1);
+  }
+  const colon = trimmed.lastIndexOf(":");
+  if (colon !== -1 && !trimmed.slice(0, colon).includes(":") && /^\d+$/.test(trimmed.slice(colon + 1))) {
+    return trimmed.slice(0, colon);
+  }
+  return trimmed;
+}
+function hostIsLoopback(host) {
+  if (host === void 0 || host.trim() === "") return false;
+  return LOOPBACK_HOSTS.has(hostnameOf(host));
+}
+function originIsLoopbackOrAbsent(origin) {
+  if (origin === void 0 || origin.trim() === "") return true;
+  return originLooksLikeTheHostItself(origin);
+}
+function originLooksLikeTheHostItself(origin) {
+  try {
+    const url2 = new URL(origin);
+    if (HOST_ORIGIN_SCHEMES.has(url2.protocol)) return true;
+    if (url2.protocol !== "http:" && url2.protocol !== "https:") return false;
+    return LOOPBACK_HOSTS.has(url2.hostname);
+  } catch {
+    return false;
+  }
+}
+function rejectedBy(request) {
+  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
+  if (request.headers[PAIR_MARKER_HEADER] !== PAIR_MARKER_VALUE) return "pair-marker-missing";
+  const origin = request.headers.origin;
+  if (origin !== void 0 && origin.trim() !== "" && !originLooksLikeTheHostItself(origin)) return "origin-not-trusted";
+  return void 0;
+}
+function applyCors(request, response) {
+  const origin = request?.headers?.origin;
+  if (origin === void 0 || origin.trim() === "" || !originLooksLikeTheHostItself(origin)) return;
+  if (typeof response.setHeader !== "function") return;
+  try {
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS");
+    response.setHeader("Access-Control-Allow-Headers", "content-type, x-drc-pair");
+    response.setHeader("Access-Control-Max-Age", "600");
+  } catch {
+  }
+}
+function preflight(request, response) {
+  if (request.method !== "OPTIONS") return false;
+  applyCors(request, response);
+  response.writeHead(204, { "Access-Control-Max-Age": "600", "Content-Length": "0" });
+  response.end();
+  return true;
+}
+function json4(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function pairNewHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u53D1\u7801\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    try {
+      const pairing = deps.ensureFresh();
+      if (!pairing) {
+        json4(response, 200, { state: "unavailable", reason: "relay-offline" });
+        return;
+      }
+      const epoch = pairingEpoch(pairing.token);
+      deps.log("\u914D\u5BF9\u7801\u7ECF\u72B6\u6001\u680F\u53D1\u51FA", { epoch: epoch.slice(0, 8), tokenLength: pairing.token.length });
+      json4(response, 200, {
+        state: "ready",
+        epoch,
+        token: pairing.token,
+        expiresInMs: Math.max(0, pairing.expiresAt - Date.now())
+      });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function pairImageHandler(deps) {
+  return async (request, response) => {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    try {
+      const pairing = deps.current();
+      if (!pairing) {
+        response.writeHead(204);
+        response.end();
+        return;
+      }
+      const bytes = await deps.mpCodeFor(pairing.token);
+      if (!bytes || bytes.length === 0) {
+        json4(response, 503, { error: "mp_code_unavailable" });
+        return;
+      }
+      response.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": bytes.length,
+        // 一张码会被就地换掉（半程刷新、被手机用掉），所以绝不许缓存。
+        "Cache-Control": "no-store",
+        ETag: `"${pairingEpoch(pairing.token)}"`
+      });
+      if (request.method === "HEAD") response.end();
+      else response.end(bytes);
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function pillStatusHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    try {
+      const status = deps.status();
+      json4(response, 200, {
+        relay: status.relay,
+        paired: status.paired,
+        pairings: status.pairings,
+        serverUrl: status.serverUrl,
+        version: status.version,
+        waiting: status.waiting,
+        waitingOldestSec: status.waitingOldestSec,
+        // 白名单**逐字**列字段：漏一条就是功能不通，多一条就是凭据外泄。
+        pairApproval: status.pairApproval,
+        // 2026-10-21 晚：主机自动放行之后，最近放行的那 6 位数字改由这一格带着
+        // （放行是"取走即焚"，`pairApproval` 立刻变 null ⇒ 主机界面再也显示不出那串数字，
+        // 而它是用户唯一能对照的东西）。它**不是凭据**（真凭据在密文里）。
+        //
+        // ⚠️ 白名单是**逐字**列的 ⇒ 少列这一条，UI 就读不到它（而 status.json 里有，
+        // 于是 e2e 全绿、真机是坏的 —— 这条判据就是为它准备的）。
+        // 2026-10-26：码龄 / 剩余寿命（只有两个数字，不含 token/psk）——
+        // UI 据此显示"这张码 45 秒前生成，还有 135 秒"，而不是让用户扫了才知道失效。
+        pairing: status.pairing,
+        lastPairApproval: status.lastPairApproval
+      });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function pairApproveHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u914D\u5BF9\u653E\u884C\u88AB\u5B88\u536B\u62D2", { guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    try {
+      const approved = deps.approvePair();
+      deps.log("\u7ECF\u72B6\u6001\u680F\u653E\u884C\u914D\u5BF9", { approved });
+      if (!approved) {
+        json4(response, 409, { state: "stale" });
+        return;
+      }
+      json4(response, 200, { state: "ok" });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function unpairHandler(deps) {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    const guard = rejectedBy(request);
+    if (guard) {
+      deps.log("\u89E3\u914D\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard });
+      json4(response, 403, { error: "request-not-trusted", guard });
+      return;
+    }
+    try {
+      const unpaired = deps.unpair();
+      deps.log("\u7ECF\u72B6\u6001\u680F\u9000\u51FA\u914D\u5BF9", { unpaired });
+      json4(response, 200, { state: "ok", unpaired });
+    } catch (error62) {
+      json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function clientReportHandler() {
+  return (request, response) => {
+    if (request.method !== "POST") {
+      json4(response, 405, { error: "method not allowed" });
+      return;
+    }
+    if (!hostIsLoopback(request.headers.host) || !originIsLoopbackOrAbsent(request.headers.origin)) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    if (request.headers[PAIR_MARKER_HEADER] === void 0) {
+      json4(response, 403, { error: "request-not-trusted" });
+      return;
+    }
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk2) => {
+      size += chunk2.length;
+      if (size <= 4096) chunks.push(chunk2);
+    });
+    request.on("end", () => {
+      try {
+        const path31 = __require("node:path");
+        const fs11 = __require("node:fs");
+        const dir = path31.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs11.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs11.writeFileSync(
+          path31.join(dir, "client-report.json"),
+          `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
+`,
+          { mode: 384 }
+        );
+        json4(response, 200, { ok: true });
+      } catch (error62) {
+        json4(response, 500, { error: String(error62?.message ?? error62).slice(0, 200) });
+      }
+    });
+  };
+}
+function registerPillRoutes(webServer, deps) {
+  const off = [];
+  const definitions = [
+    { kind: "exact", path: PAIR_NEW_ROUTE, handler: pairNewHandler(deps) },
+    { kind: "exact", path: PAIR_IMAGE_ROUTE, handler: pairImageHandler(deps) },
+    { kind: "exact", path: PAIR_STATUS_ROUTE, handler: pillStatusHandler(deps) },
+    { kind: "exact", path: PAIR_UNPAIR_ROUTE, handler: unpairHandler(deps) },
+    { kind: "exact", path: PLUGIN_CONFIG_ROUTE, handler: configRouteHandler(deps) },
+    { kind: "exact", path: CLIENT_REPORT_ROUTE, handler: clientReportHandler() },
+    // 2026-10-21 加：用户确认「数字一致」后的放行口。**排在最后**，前面各条的编号语义不变。
+    { kind: "exact", path: PAIR_APPROVE_ROUTE, handler: pairApproveHandler(deps) }
+  ];
+  if (deps.backup) {
+    definitions.push({ kind: "exact", path: BACKUP_ROUTE, handler: backupRouteHandler(deps.backup) });
+  }
+  const wrapped = definitions.map((definition) => ({
+    ...definition,
+    handler: (request, response) => {
+      applyCors(request, response);
+      if (preflight(request, response)) return;
+      if (request?.method === "OPTIONS") {
+        response.writeHead(204);
+        response.end();
+        return;
+      }
+      return definition.handler(request, response);
+    }
+  }));
+  try {
+    for (const definition of wrapped) off.push(webServer.register(definition));
+  } catch (error62) {
+    for (const unregister of off.splice(0)) {
+      try {
+        unregister();
+      } catch {
+      }
+    }
+    throw error62;
+  }
+  return () => {
+    for (const unregister of off) {
+      try {
+        unregister();
+      } catch {
+      }
+    }
+  };
 }
 
 // src/pill/start.ts
@@ -36400,16 +36325,16 @@ function promptOf(config2, image) {
   const custom2 = typeof image.prompt === "string" ? image.prompt.trim() : "";
   return custom2 !== "" ? custom2 : config2.prompt;
 }
-function deepGet(value, path30) {
+function deepGet(value, path31) {
   let cursor = value;
-  for (const key of path30) {
+  for (const key of path31) {
     if (cursor === null || typeof cursor !== "object") return void 0;
     cursor = cursor[key];
   }
   return cursor;
 }
-function splitPath(path30) {
-  return String(path30 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
+function splitPath(path31) {
+  return String(path31 ?? "").split(".").map((segment) => segment.trim()).filter((segment) => segment !== "");
 }
 function textFrom(value) {
   if (typeof value === "string") return value.trim();
@@ -36566,12 +36491,12 @@ var VISION_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/vision/config";
 var VISION_RECOGNIZE_ROUTE = "/api/dsh-remote-dafeiyu/vision/recognize";
 var VISION_MODELS_ROUTE = "/api/dsh-remote-dafeiyu/vision/models";
 var MAX_BODY_BYTES2 = 25 * 1024 * 1024;
-function json6(response, status, body) {
+function json5(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected2(request) {
+function rejected(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -36601,67 +36526,67 @@ function readBody(request) {
 }
 function visionConfigHandler(deps) {
   return async (request, response) => {
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json6(response, 200, { ok: true, config: deps.service.view(), storageFile: deps.service.configFile });
+      json5(response, 200, { ok: true, config: deps.service.view(), storageFile: deps.service.configFile });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET\uFF08\u8BFB\uFF09/ POST\uFF08\u5199\uFF09" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET\uFF08\u8BFB\uFF09/ POST\uFF08\u5199\uFF09" });
       return;
     }
     const body = await readBody(request);
     if (!body.ok) {
-      json6(response, body.status, { ok: false, error: body.error });
+      json5(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const payload = parsed && typeof parsed === "object" ? parsed : {};
     const result2 = deps.service.save(payload.config !== void 0 ? payload.config : parsed);
     if (!result2.ok) {
-      json6(response, 500, { ok: false, error: result2.error ?? "\u4FDD\u5B58\u5931\u8D25" });
+      json5(response, 500, { ok: false, error: result2.error ?? "\u4FDD\u5B58\u5931\u8D25" });
       return;
     }
     deps.log("\u8BC6\u56FE\u914D\u7F6E\u5DF2\u4FDD\u5B58", { enabled: result2.config?.enabled, model: result2.config?.model });
-    json6(response, 200, { ok: true, config: result2.config });
+    json5(response, 200, { ok: true, config: result2.config });
   };
 }
 function visionRecognizeHandler(deps) {
   return async (request, response) => {
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     const body = await readBody(request);
     if (!body.ok) {
-      json6(response, body.status, { ok: false, error: body.error });
+      json5(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json5(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const imageBase64 = typeof parsed.imageBase64 === "string" ? parsed.imageBase64 : "";
     if (imageBase64 === "") {
-      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 imageBase64" });
+      json5(response, 400, { ok: false, error: "\u7F3A\u5C11 imageBase64" });
       return;
     }
     try {
@@ -36671,32 +36596,32 @@ function visionRecognizeHandler(deps) {
         prompt: typeof parsed.prompt === "string" ? parsed.prompt : void 0
       });
       deps.log("\u8BC6\u56FE\u5B8C\u6210", { chars: text.length });
-      json6(response, 200, { ok: true, text });
+      json5(response, 200, { ok: true, text });
     } catch (error62) {
       const status = error62 instanceof VisionError && error62.status >= 400 ? 502 : 400;
       const message = String(error62?.message ?? error62);
       deps.log("\u8BC6\u56FE\u5931\u8D25", { message: message.slice(0, 200) });
-      json6(response, status, { ok: false, error: message });
+      json5(response, status, { ok: false, error: message });
     }
   };
 }
 function visionModelsHandler(deps) {
   return async (request, response) => {
-    const denied = rejected2(request);
+    const denied = rejected(request);
     if (denied) {
-      json6(response, 403, { ok: false, error: denied });
+      json5(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST" && request.method !== "GET") {
-      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json5(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     try {
       const models = await deps.service.listModels();
-      json6(response, 200, { ok: true, models });
+      json5(response, 200, { ok: true, models });
     } catch (error62) {
       const status = error62 instanceof VisionError && error62.status >= 400 ? 502 : 400;
-      json6(response, status, { ok: false, error: String(error62?.message ?? error62) });
+      json5(response, status, { ok: false, error: String(error62?.message ?? error62) });
     }
   };
 }
@@ -37103,12 +37028,12 @@ var SUBAGENTS_ARCHIVE_ROUTE = "/api/dsh-remote-dafeiyu/subagents/archive";
 var SUBAGENTS_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/subagents/config";
 var GUIDANCE_PUSH_ROUTE = "/api/dsh-remote-dafeiyu/guidance/push";
 var SUBAGENTS_STREAM_ROUTE = "/api/dsh-remote-dafeiyu/subagents/stream";
-function json7(response, status, body) {
+function json6(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected3(request) {
+function rejected2(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -37117,30 +37042,30 @@ function subagentsHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
     if (sessionId === "") {
-      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     const descendants = url2.searchParams.get("descendants") === "1";
     const includeArchived = url2.searchParams.get("includeArchived") === "1";
     try {
       const items = await deps.list(sessionId, { descendants, includeArchived });
-      json7(response, 200, { ok: true, items, config: deps.config.read() });
+      json6(response, 200, { ok: true, items, config: deps.config.read() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u5B50\u4EE3\u7406\u5217\u8868\u8BFB\u53D6\u5931\u8D25", { message });
-      json7(response, 500, { ok: false, error: message });
+      json6(response, 500, { ok: false, error: message });
     }
   };
 }
@@ -37165,37 +37090,37 @@ function subagentsArchiveHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     if (!deps.archive) {
-      json7(response, 501, { ok: false, error: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5F52\u6863" });
+      json6(response, 501, { ok: false, error: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5F52\u6863" });
       return;
     }
     let body;
     try {
       body = JSON.parse(await readBody2(request));
     } catch {
-      json7(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json6(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === "string" && id.trim() !== "").map((id) => id.trim()) : typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? [body.sessionId.trim()] : [];
     if (ids.length === 0) {
-      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
+      json6(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId \u6216 ids" });
       return;
     }
     if (ids.length > 50) {
-      json7(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
+      json6(response, 400, { ok: false, error: "\u4E00\u6B21\u6700\u591A\u5F52\u6863 50 \u4E2A" });
       return;
     }
     const archived = body.archived !== false;
@@ -37214,7 +37139,7 @@ function subagentsArchiveHandler(deps) {
       for (const row of failedRows.slice(0, 10)) {
         deps.log("\u5B50\u4EE3\u7406\u5F52\u6863\u5931\u8D25", { sessionId: row.sessionId, message: row.message ?? "\u5185\u6838\u6CA1\u7ED9\u539F\u56E0", archived });
       }
-      json7(response, failed === 0 ? 200 : 207, {
+      json6(response, failed === 0 ? 200 : 207, {
         ok: failed === 0,
         ...failed === 0 ? {} : {
           message: `${failed}/${results.length} \u4E2A${archived ? "\u5F52\u6863" : "\u53D6\u6D88\u5F52\u6863"}\u5931\u8D25\uFF1A${failedRows[0]?.message ?? "\u5185\u6838\u6CA1\u7ED9\u539F\u56E0"}`
@@ -37222,7 +37147,7 @@ function subagentsArchiveHandler(deps) {
         results
       });
     } catch (error62) {
-      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37230,28 +37155,28 @@ function subagentsConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json7(response, 200, { ok: true, config: deps.config.read(), guidanceText: deps.guidanceText ? deps.guidanceText() : SUBAGENT_GUIDANCE });
+      json6(response, 200, { ok: true, config: deps.config.read(), guidanceText: deps.guidanceText ? deps.guidanceText() : SUBAGENT_GUIDANCE });
       return;
     }
     if (request.method !== "POST") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     try {
       const body = JSON.parse(await readBody2(request));
-      json7(response, 200, { ok: true, config: deps.config.write(body) });
+      json6(response, 200, { ok: true, config: deps.config.write(body) });
     } catch (error62) {
-      json7(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json6(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -37259,21 +37184,21 @@ function guidancePushHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json6(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     if (deps.pushGuidance === void 0) {
-      json7(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
+      json6(response, 503, { ok: false, error: "\u5F53\u524D\u5BBF\u4E3B\u6CA1\u6709 agents \u670D\u52A1\uFF0C\u63A8\u9001\u4E0D\u53EF\u7528" });
       return;
     }
     try {
@@ -37281,21 +37206,21 @@ function guidancePushHandler(deps) {
       const which = body.which === "xyq" ? "xyq" : body.which === "both" ? "both" : "subagent";
       const sessionId = typeof body.sessionId === "string" && body.sessionId.trim() !== "" ? body.sessionId.trim() : void 0;
       const mode = body.mode === "hands-on" || body.mode === "foreman" ? body.mode : void 0;
-      json7(response, 200, { ok: true, which, mode: mode ?? null, result: await deps.pushGuidance(which, sessionId, mode) });
+      json6(response, 200, { ok: true, which, mode: mode ?? null, result: await deps.pushGuidance(which, sessionId, mode) });
     } catch (error62) {
-      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json6(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
 function subagentsStreamHandler() {
   return (request, response) => {
-    const denied = rejected3(request);
+    const denied = rejected2(request);
     if (denied) {
-      json7(response, 403, { ok: false, error: denied });
+      json6(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET") {
-      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json6(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     response.writeHead(200, {
@@ -37979,12 +37904,12 @@ function startSubagents(ctx, input2) {
 var HANDOFF_SELF_ROUTE = "/api/dsh-remote-dafeiyu/handoff/self";
 var HANDOFF_START_ROUTE = "/api/dsh-remote-dafeiyu/handoff/start";
 var HANDOFF_STATUS_ROUTE = "/api/dsh-remote-dafeiyu/handoff/status";
-function json8(response, status, body) {
+function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected4(request) {
+function rejected3(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -38010,26 +37935,26 @@ function handoffSelfHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected4(request);
+    const denied = rejected3(request);
     if (denied) {
-      json8(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
     if (sessionId === "") {
-      json8(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     try {
       const cwd = await deps.sessionCwd(sessionId);
-      json8(response, 200, deps.selfCheck(sessionId, cwd));
+      json7(response, 200, deps.selfCheck(sessionId, cwd));
     } catch (error62) {
-      json8(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -38037,30 +37962,30 @@ function handoffStartHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected4(request);
+    const denied = rejected3(request);
     if (denied) {
-      json8(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "POST") {
-      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json8(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     let body;
     try {
       body = JSON.parse(await readBody3(request));
     } catch {
-      json8(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json7(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const kind = body.kind === "branch" ? "branch" : "rebirth";
     const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
     if (sessionId === "") {
-      json8(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+      json7(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
       return;
     }
     try {
@@ -38070,10 +37995,10 @@ function handoffStartHandler(deps) {
         typeof body.note === "string" ? body.note : void 0,
         typeof body.boundary === "string" ? body.boundary : void 0
       );
-      json8(response, answer.ok ? 200 : 400, answer);
+      json7(response, answer.ok ? 200 : 400, answer);
     } catch (error62) {
       deps.log("\u8F6C\u751F/\u5206\u8EAB\u542F\u52A8\u5931\u8D25", { message: String(error62?.message ?? error62).slice(0, 200) });
-      json8(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json7(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -38081,27 +38006,27 @@ function handoffStatusHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected4(request);
+    const denied = rejected3(request);
     if (denied) {
-      json8(response, 403, { ok: false, error: denied });
+      json7(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json7(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const jobId = (url2.searchParams.get("jobId") ?? "").trim();
     if (jobId === "") {
-      json8(response, 200, { ok: true, jobs: deps.list() });
+      json7(response, 200, { ok: true, jobs: deps.list() });
       return;
     }
     const job = deps.status(jobId);
     if (!job) {
-      json8(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u4F5C\u4E1A\uFF08\u53EF\u80FD\u91CD\u542F\u8FC7\uFF09" });
+      json7(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u4F5C\u4E1A\uFF08\u53EF\u80FD\u91CD\u542F\u8FC7\uFF09" });
       return;
     }
-    json8(response, 200, { ok: true, job });
+    json7(response, 200, { ok: true, job });
   };
 }
 
@@ -43730,7 +43655,7 @@ var SPRITE_GUIDE = `# \u5E8F\u5217\u5E27\u7CBE\u7075\u56FE\uFF08\u515C\u5E95\u90
 `;
 
 // src/sprite/tools.ts
-var json9 = (value) => JSON.stringify(value);
+var json8 = (value) => JSON.stringify(value);
 var fail2 = (error62) => {
   throw new Error(String(error62?.message ?? error62).slice(0, 500));
 };
@@ -43924,7 +43849,7 @@ function buildTools(service, options) {
             ...typeof args.fps === "number" ? { fps: args.fps } : {},
             ...looped ? { loop: looped.loop } : {}
           });
-          return json9(looped && looped.ignored.length > 0 ? { ...result2, ignoredLoop: looped.ignored } : result2);
+          return json8(looped && looped.ignored.length > 0 ? { ...result2, ignoredLoop: looped.ignored } : result2);
         } catch (error62) {
           return fail2(error62);
         }
@@ -43957,7 +43882,7 @@ function buildTools(service, options) {
       timeoutMs: 24e4,
       async execute(args) {
         try {
-          return json9(
+          return json8(
             await service.loopScan({
               ...typeof args.preFps === "number" ? { preFps: args.preFps } : {},
               ...typeof args.minPeriodSec === "number" ? { minPeriodSec: args.minPeriodSec } : {},
@@ -43984,7 +43909,7 @@ function buildTools(service, options) {
       timeoutMs: 6e4,
       async execute(args) {
         try {
-          return json9(
+          return json8(
             await service.probeColor({
               ...typeof args.frame === "number" ? { frame: args.frame } : {},
               ...typeof args.bandPx === "number" ? { bandPx: args.bandPx } : {}
@@ -44007,7 +43932,7 @@ function buildTools(service, options) {
             ...keyParamsOf(args),
             ...typeof args.frame === "number" ? { frame: args.frame } : {}
           });
-          return json9({ ...result2, ignored: ignoredKeysOf(args) });
+          return json8({ ...result2, ignored: ignoredKeysOf(args) });
         } catch (error62) {
           return fail2(error62);
         }
@@ -44022,7 +43947,7 @@ function buildTools(service, options) {
       async execute(args) {
         try {
           const result2 = await service.keyApply(keyParamsOf(args));
-          return json9({ ...result2, ignored: ignoredKeysOf(args) });
+          return json8({ ...result2, ignored: ignoredKeysOf(args) });
         } catch (error62) {
           return fail2(error62);
         }
@@ -44087,7 +44012,7 @@ function buildTools(service, options) {
       timeoutMs: 3e5,
       async execute(args) {
         try {
-          return json9(
+          return json8(
             await service.measure({
               frame: args.all === true ? "all" : typeof args.frame === "number" ? args.frame : 0,
               ...typeof args.alphaThreshold === "number" ? { alphaThreshold: args.alphaThreshold } : {},
@@ -44124,7 +44049,7 @@ function buildTools(service, options) {
             fromY: Number(args.span.fromY),
             toY: Number(args.span.toY)
           } : void 0;
-          return json9(
+          return json8(
             await service.scaleTo({
               ...typeof args.charHeightPx === "number" ? { charHeightPx: args.charHeightPx } : {},
               ...typeof args.targetCellHeight === "number" ? { targetCellHeight: args.targetCellHeight } : {},
@@ -44144,7 +44069,7 @@ function buildTools(service, options) {
       timeoutMs: 6e4,
       async execute() {
         try {
-          return json9(await service.getAnchor());
+          return json8(await service.getAnchor());
         } catch (error62) {
           return fail2(error62);
         }
@@ -44165,7 +44090,7 @@ function buildTools(service, options) {
       timeoutMs: 6e4,
       async execute(args) {
         try {
-          return json9(
+          return json8(
             await service.setAnchorPx({
               ...typeof args.x === "number" ? { x: args.x } : {},
               ...typeof args.y === "number" ? { y: args.y } : {},
@@ -44214,7 +44139,7 @@ function buildTools(service, options) {
           const mask = args.maskAuto === true ? "auto" : rectOf(args.maskRect) ?? null;
           const trimArg = args.trim ?? {};
           const padRaw = trimArg.pad ?? {};
-          return json9(
+          return json8(
             await service.cleanup({
               maskRect: mask,
               ...args.maskMode === "auto" || args.maskMode === "corner" ? { maskMode: args.maskMode } : {},
@@ -44282,7 +44207,7 @@ function buildTools(service, options) {
             fromY: Number(args.span.fromY),
             toY: Number(args.span.toY)
           } : void 0;
-          return json9(
+          return json8(
             await service.exportSheet({
               ...typeof args.cols === "number" ? { cols: args.cols } : {},
               ...typeof args.rows === "number" ? { rows: args.rows } : {},
@@ -44373,7 +44298,7 @@ function buildTools(service, options) {
             ...typeof args.maxIters === "number" ? { maxIters: args.maxIters } : {},
             ...typeof args.frame === "number" ? { frame: args.frame } : {}
           });
-          return json9(ignoredParams.length > 0 ? { ...result2, ignoredParams } : result2);
+          return json8(ignoredParams.length > 0 ? { ...result2, ignoredParams } : result2);
         } catch (error62) {
           return fail2(error62);
         }
@@ -44425,7 +44350,7 @@ function buildTools(service, options) {
           if (items.length === 0) return fail2("items \u4E0D\u80FD\u4E3A\u7A7A");
           const outRoot = typeof args.outRoot === "string" ? args.outRoot : "";
           if (outRoot === "") return fail2("\u9700\u8981 outRoot\uFF08\u8F93\u51FA\u6839\u76EE\u5F55\uFF09");
-          return json9(
+          return json8(
             await service.batch({
               outRoot,
               items: items.map((row) => {
@@ -44485,7 +44410,7 @@ function buildTools(service, options) {
         try {
           const videoPath = typeof args.videoPath === "string" ? args.videoPath : "";
           if (videoPath === "") return fail2("\u9700\u8981 videoPath");
-          return json9(
+          return json8(
             await service.auto({
               videoPath,
               ...typeof args.name === "string" ? { name: args.name } : {},
@@ -44527,7 +44452,7 @@ function buildTools(service, options) {
           const templateRect = rectOf(args.templateRect);
           if (!templateRect) return fail2("\u9700\u8981 templateRect {x,y,w,h}\uFF08\u6E90\u5E27\u50CF\u7D20\uFF0C\u56DB\u4E2A\u90FD\u662F\u6570\u5B57\uFF09");
           const searchRect = rectOf(args.searchRect);
-          return json9(
+          return json8(
             await service.match({
               templateRect,
               ...typeof args.templateFrame === "number" ? { templateFrame: args.templateFrame } : {},
@@ -44597,7 +44522,7 @@ function buildTools(service, options) {
           }
           const scale = scaleRangeOf(rawSearch.scale);
           if (scale) search.scale = scale;
-          return json9(
+          return json8(
             await service.featureFit({
               reference: referenceOf(args.reference),
               templates,
@@ -44659,7 +44584,7 @@ function buildTools(service, options) {
           }
           const rawSearch = args.search && typeof args.search === "object" ? args.search : {};
           const scale = scaleRangeOf(rawSearch.scale);
-          return json9(
+          return json8(
             await service.silhouetteFit({
               reference: referenceOf(args.reference),
               ...Object.keys(target).length > 0 ? { target } : {},
@@ -44701,7 +44626,7 @@ function buildTools(service, options) {
       timeoutMs: 2e4,
       async execute(args) {
         try {
-          return json9(
+          return json8(
             await service.verify({
               ...Array.isArray(args.paths) ? { paths: args.paths.filter((one) => typeof one === "string") } : {},
               ...Array.isArray(args.metas) ? { metas: args.metas.filter((one) => one && typeof one === "object") } : {},
@@ -44745,7 +44670,7 @@ function buildTools(service, options) {
       async execute(args) {
         try {
           const cellIndex = args.cellIndex;
-          return json9(
+          return json8(
             await service.baseline({
               paths: (Array.isArray(args.paths) ? args.paths : []).filter((one) => typeof one === "string"),
               ...typeof cellIndex === "number" && Number.isFinite(cellIndex) ? { cellIndex } : cellIndex === "tallest" || cellIndex === "median" ? { cellIndex } : {},
@@ -45301,12 +45226,12 @@ var XYQ_DESCRIBE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/describe";
 var XYQ_GENERATE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/generate";
 var XYQ_RESULT_ROUTE = "/api/dsh-remote-dafeiyu/xyq/result";
 var XYQ_FILE_ROUTE = "/api/dsh-remote-dafeiyu/xyq/file";
-function json10(response, status, body) {
+function json9(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected5(request) {
+function rejected4(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -45332,28 +45257,28 @@ function xyqConfigHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
+    const denied = rejected4(request);
     if (denied) {
-      json10(response, 403, { ok: false, error: denied });
+      json9(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
-      json10(response, 200, { ok: true, config: deps.service.view() });
+      json9(response, 200, { ok: true, config: deps.service.view() });
       return;
     }
     if (request.method !== "POST") {
-      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json10(response, 403, { ok: false, error: "missing x-drc-pair" });
+      json9(response, 403, { ok: false, error: "missing x-drc-pair" });
       return;
     }
     try {
       const body = JSON.parse(await readBody4(request));
-      json10(response, 200, { ok: true, config: deps.service.update(body) });
+      json9(response, 200, { ok: true, config: deps.service.update(body) });
     } catch (error62) {
-      json10(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json9(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -45361,30 +45286,30 @@ function xyqQueryHandler(kind, deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
+    const denied = rejected4(request);
     if (denied) {
-      json10(response, 403, { ok: false, error: denied });
+      json9(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
       if (kind === "status") {
-        json10(response, 200, await deps.service.status());
+        json9(response, 200, await deps.service.status());
         return;
       }
       if (kind === "balance") {
-        json10(response, 200, await deps.service.balance());
+        json9(response, 200, await deps.service.balance());
         return;
       }
       const url2 = new URL(request.url ?? "/", "http://localhost");
       const type = url2.searchParams.get("type") === "image" ? "image" : "video";
-      json10(response, 200, await deps.service.models(type));
+      json9(response, 200, await deps.service.models(type));
     } catch (error62) {
       deps.log("\u5C0F\u4E91\u96C0\u67E5\u8BE2\u8DEF\u7531\u5931\u8D25", { kind, message: String(error62?.message ?? error62).slice(0, 160) });
-      json10(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -45392,17 +45317,17 @@ function xyqDescribeHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const denied = rejected4(request);
+    if (denied) return json9(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const name2 = (url2.searchParams.get("name") ?? "").trim();
     const type = url2.searchParams.get("type") === "video" ? "video" : "image";
-    if (name2 === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 name" });
+    if (name2 === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 name" });
     try {
-      json10(response, 200, await deps.service.describe(name2, type));
+      json9(response, 200, await deps.service.describe(name2, type));
     } catch (error62) {
-      json10(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -45410,16 +45335,16 @@ function xyqGenerateHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (request.method !== "POST") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
-    if (String(request.headers["x-drc-pair"] ?? "") === "") return json10(response, 403, { ok: false, error: "missing x-drc-pair" });
+    const denied = rejected4(request);
+    if (denied) return json9(response, 403, { ok: false, error: denied });
+    if (request.method !== "POST") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 POST" });
+    if (String(request.headers["x-drc-pair"] ?? "") === "") return json9(response, 403, { ok: false, error: "missing x-drc-pair" });
     try {
       const body = JSON.parse(await readBody4(request));
       const type = body.type === "video" ? "video" : "image";
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
       const model2 = typeof body.model === "string" ? body.model.trim() : "";
-      if (prompt === "" || model2 === "") return json10(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
+      if (prompt === "" || model2 === "") return json9(response, 400, { ok: false, error: "prompt \u4E0E model \u5FC5\u586B" });
       try {
         const { mkdirSync: mkdirSync10 } = await import("node:fs");
         mkdirSync10(deps.outDir, { recursive: true });
@@ -45441,9 +45366,9 @@ function xyqGenerateHandler(deps) {
         ...typeof body.resolution === "string" ? { resolution: body.resolution } : {},
         ...typeof body.count === "number" ? { count: body.count } : {}
       });
-      json10(response, result2.ok ? 200 : 502, result2);
+      json9(response, result2.ok ? 200 : 502, result2);
     } catch (error62) {
-      json10(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json9(response, 400, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -45451,17 +45376,17 @@ function xyqResultHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const denied = rejected4(request);
+    if (denied) return json9(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const threadId = (url2.searchParams.get("threadId") ?? "").trim();
     const runId = (url2.searchParams.get("runId") ?? "").trim();
-    if (threadId === "" || runId === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 threadId / runId" });
+    if (threadId === "" || runId === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 threadId / runId" });
     try {
-      json10(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir));
+      json9(response, 200, await deps.service.queryOnce(threadId, runId, deps.outDir));
     } catch (error62) {
-      json10(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
+      json9(response, 500, { ok: false, error: String(error62?.message ?? error62).slice(0, 200) });
     }
   };
 }
@@ -45469,26 +45394,26 @@ function xyqFileHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected5(request);
-    if (denied) return json10(response, 403, { ok: false, error: denied });
-    if (request.method !== "GET" && request.method !== "HEAD") return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const denied = rejected4(request);
+    if (denied) return json9(response, 403, { ok: false, error: denied });
+    if (request.method !== "GET" && request.method !== "HEAD") return json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
     const url2 = new URL(request.url ?? "/", "http://localhost");
     const target = (url2.searchParams.get("path") ?? "").trim();
-    if (target === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
-    const path30 = await import("node:path");
-    const fs10 = await import("node:fs");
-    const resolved = path30.resolve(target);
-    const root = path30.resolve(deps.outDir);
-    if (!resolved.startsWith(root + path30.sep)) return json10(response, 403, { ok: false, error: "path-escape" });
+    if (target === "") return json9(response, 400, { ok: false, error: "\u7F3A\u5C11 path" });
+    const path31 = await import("node:path");
+    const fs11 = await import("node:fs");
+    const resolved = path31.resolve(target);
+    const root = path31.resolve(deps.outDir);
+    if (!resolved.startsWith(root + path31.sep)) return json9(response, 403, { ok: false, error: "path-escape" });
     try {
-      const data = fs10.readFileSync(resolved);
-      const ext = path30.extname(resolved).toLowerCase();
+      const data = fs11.readFileSync(resolved);
+      const ext = path31.extname(resolved).toLowerCase();
       const mime = ext === ".mp4" ? "video/mp4" : ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "application/octet-stream";
       response.writeHead(200, { "Content-Type": mime, "Content-Length": data.byteLength });
       if (request.method === "HEAD") response.end();
       else response.end(data);
     } catch {
-      json10(response, 404, { ok: false, error: "\u6587\u4EF6\u4E0D\u5B58\u5728" });
+      json9(response, 404, { ok: false, error: "\u6587\u4EF6\u4E0D\u5B58\u5728" });
     }
   };
 }
@@ -45729,7 +45654,7 @@ function startXyq(ctx, deps) {
         [XYQ_RESULT_ROUTE, xyqResultHandler(routeDeps)],
         [XYQ_FILE_ROUTE, xyqFileHandler(routeDeps)]
       ];
-      for (const [path30, handler] of registers) disposers.push(web.register({ kind: "exact", path: path30, handler }));
+      for (const [path31, handler] of registers) disposers.push(web.register({ kind: "exact", path: path31, handler }));
       unregister = () => {
         for (const dispose of disposers.splice(0)) dispose();
       };
@@ -45831,6 +45756,89 @@ function startXyq(ctx, deps) {
       }
       unregister = void 0;
     }
+  };
+}
+
+// src/avatar/routes.ts
+import fs10 from "node:fs";
+import path25 from "node:path";
+var AVATAR_BASE = "/api/dsh-remote-dafeiyu/avatar";
+var AVATAR_MANIFEST_ROUTE = `${AVATAR_BASE}/manifest`;
+var AVATAR_SHEET_ROUTE = `${AVATAR_BASE}/sheet`;
+var AVATAR_STATE_ROUTE = `${AVATAR_BASE}/state`;
+function json10(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function rejected5(request) {
+  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
+  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
+  return void 0;
+}
+function readonly2(request) {
+  return request.method === "GET" || request.method === "HEAD";
+}
+function avatarManifestHandler(dir) {
+  return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected5(request);
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (!readonly2(request)) return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const manifest = loadAvatarManifest(dir);
+    response.setHeader("Cache-Control", "no-store");
+    if (manifest === void 0) return json10(response, 200, { ok: true, manifest: null, message: "\u865A\u62DF\u5F62\u8C61\u7D20\u6750\u672A\u5B89\u88C5" });
+    json10(response, 200, { ok: true, manifest });
+  };
+}
+function avatarSheetHandler(dir) {
+  return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected5(request);
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (!readonly2(request)) return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const id = (url2.searchParams.get("id") ?? "").trim();
+    if (id === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 id" });
+    const manifest = loadAvatarManifest(dir);
+    const state = manifest?.states.find((row) => row.id === id);
+    if (state === void 0) return json10(response, 404, { ok: false, error: "\u6CA1\u6709\u8FD9\u4E2A\u52A8\u4F5C" });
+    const file2 = path25.resolve(dir, state.file);
+    if (!file2.startsWith(path25.resolve(dir) + path25.sep)) return json10(response, 403, { ok: false, error: "path-escape" });
+    let data;
+    try {
+      data = fs10.readFileSync(file2);
+    } catch {
+      return json10(response, 404, { ok: false, error: "\u7D20\u6750\u6587\u4EF6\u4E0D\u5B58\u5728" });
+    }
+    response.writeHead(200, {
+      "Content-Type": "image/webp",
+      "Content-Length": data.byteLength,
+      "Cache-Control": "public, max-age=86400, immutable"
+    });
+    if (request.method === "HEAD") response.end();
+    else response.end(data);
+  };
+}
+function avatarStateHandler(getStatus) {
+  return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected5(request);
+    if (denied) return json10(response, 403, { ok: false, error: denied });
+    if (!readonly2(request)) return json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET" });
+    const url2 = new URL(request.url ?? "/", "http://localhost");
+    const sessionId = (url2.searchParams.get("sessionId") ?? "").trim();
+    if (sessionId === "") return json10(response, 400, { ok: false, error: "\u7F3A\u5C11 sessionId" });
+    let status;
+    try {
+      status = getStatus(sessionId);
+    } catch {
+      status = void 0;
+    }
+    json10(response, 200, { ok: true, status: status === "running" ? "running" : "idle" });
   };
 }
 
@@ -46265,11 +46273,11 @@ function startMemory(ctx, deps) {
 
 // src/backup/service.ts
 import { existsSync as existsSync8, mkdirSync as mkdirSync9, readdirSync as readdirSync5, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync4, statSync as statSync6, writeFileSync as writeFileSync6 } from "node:fs";
-import path27 from "node:path";
+import path28 from "node:path";
 
 // src/backup/config.ts
 import { existsSync as existsSync6, readFileSync as readFileSync9 } from "node:fs";
-import path25 from "node:path";
+import path26 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -46281,19 +46289,19 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path25.join(dshHome, "dsh-backup-git");
+  return path26.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path25.join(backupDir(dshHome), "config.json");
+  return path26.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path25.join(backupDir(dshHome), "credential.json");
+  return path26.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path25.join(backupDir(dshHome), "status.json");
+  return path26.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path25.join(backupDir(dshHome), "work");
+  return path26.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
@@ -46530,16 +46538,16 @@ import { createHash as createHash6 } from "node:crypto";
 import { existsSync as existsSync7, readdirSync as readdirSync4, readFileSync as readFileSync10, statSync as statSync5 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path26 from "node:path";
+import path27 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path26.join(sessionsRoot, slug);
+    const slugDir = path27.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path26.join(slugDir, dirName);
+      const sessionDir = path27.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path26.join(sessionDir, fileName);
+        const file2 = path27.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync5(file2);
@@ -46551,7 +46559,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path26.posix.join(slug, dirName, fileName),
+          relPath: path27.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -46600,11 +46608,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path26.join(input2.stagingDir, "latest");
+  const staging = path27.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path26.join(staging, "sessions", entry.relPath);
+    const target = path27.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -46613,20 +46621,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path26.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path27.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path26.join(staging, "profiles", path26.basename(input2.profileDir));
+    const target = path27.join(staging, "profiles", path27.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path26.join(input2.profileDir, name2);
+      const source = path27.join(input2.profileDir, name2);
       if (!existsSync7(source)) continue;
-      await copyFileFresh(source, path26.join(target, name2));
+      await copyFileFresh(source, path27.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path26.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path27.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -46642,17 +46650,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path26.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path27.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path26.join(stagingDir, "archive");
+  const root = path27.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path26.join(root, entry.relPath);
+    const target = path27.join(root, entry.relPath);
     if (existsSync7(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -46698,7 +46706,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path26.join(dir, entry.name);
+    const full = path27.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -46709,7 +46717,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path26.dirname(target), { recursive: true });
+  await mkdir(path27.dirname(target), { recursive: true });
   if (existsSync7(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -46722,7 +46730,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path26.join(sourceDir, name2), path26.join(targetDir, name2));
+    await copyFileFresh(path27.join(sourceDir, name2), path27.join(targetDir, name2));
     names.push(name2);
   }
   return names;
@@ -46735,8 +46743,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path26.join(sourceDir, entry.name);
-    const target = path26.join(targetDir, entry.name);
+    const source = path27.join(sourceDir, entry.name);
+    const target = path27.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -46771,8 +46779,8 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync7(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path26.join(profilesRoot, name2);
-    const manifest = path26.join(dir, "package.json");
+    const dir = path27.join(profilesRoot, name2);
+    const manifest = path27.join(dir, "package.json");
     if (!existsSync7(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync10(manifest, "utf8"));
@@ -47024,13 +47032,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path27.join(base, "staging"),
-      hotRepo: path27.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path27.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path27.join(this.deps.dshHome, "sessions"),
-      storagesDir: path27.join(this.deps.dshHome, "storages"),
-      profilesRoot: path27.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path27.join(this.deps.dshHome, "attachments")
+      staging: path28.join(base, "staging"),
+      hotRepo: path28.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path28.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path28.join(this.deps.dshHome, "sessions"),
+      storagesDir: path28.join(this.deps.dshHome, "storages"),
+      profilesRoot: path28.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path28.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -47053,7 +47061,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync9(repo, { recursive: true });
-    if (!existsSync8(path27.join(repo, ".git"))) {
+    if (!existsSync8(path28.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -47073,7 +47081,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path27.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path28.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync8(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -47119,11 +47127,11 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync9(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path27.join(base, "askpass.cmd");
+      const file3 = path28.join(base, "askpass.cmd");
       if (!existsSync8(file3)) writeFileSync6(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path27.join(base, "askpass.sh");
+    const file2 = path28.join(base, "askpass.sh");
     if (!existsSync8(file2)) {
       writeFileSync6(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
@@ -47147,31 +47155,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path27.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path28.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path27.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path27.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path28.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path28.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path27.join(staging, "latest");
-      const restoredHot = existsSync8(path27.join(restoreLatest, "sessions")) ? countSessionFiles(path27.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path28.join(staging, "latest");
+      const restoredHot = existsSync8(path28.join(restoreLatest, "sessions")) ? countSessionFiles(path28.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path27.join(this.deps.dshHome, name2);
+        const target = path28.join(this.deps.dshHome, name2);
         if (existsSync8(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path27.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path27.join(restoreLatest, "storages"), path27.join(this.deps.dshHome, "storages"));
-      if (existsSync8(path27.join(restoreLatest, "attachments"))) {
-        await mergeTree(path27.join(restoreLatest, "attachments"), path27.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path28.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path28.join(restoreLatest, "storages"), path28.join(this.deps.dshHome, "storages"));
+      if (existsSync8(path28.join(restoreLatest, "attachments"))) {
+        await mergeTree(path28.join(restoreLatest, "attachments"), path28.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path27.join(staging, "archive"), sessionsRoot);
-      const profiles = path27.join(restoreLatest, "profiles");
+      await mergeTree(path28.join(staging, "archive"), sessionsRoot);
+      const profiles = path28.join(restoreLatest, "profiles");
       if (existsSync8(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -47208,15 +47216,15 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync5(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path27.join(repo, entry.name);
+    const target = path28.join(repo, entry.name);
     rmSync4(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync8(source)) return;
   for (const entry of readdirSync5(source, { withFileTypes: true })) {
-    const from = path27.join(source, entry.name);
-    const to = path27.join(target, entry.name);
+    const from = path28.join(source, entry.name);
+    const to = path28.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync9(to, { recursive: true });
       await mergeTree(from, to);
@@ -47232,12 +47240,12 @@ async function mergeProfiles(source, profilesRoot) {
   if (!existsSync8(profilesRoot)) return;
   for (const entry of readdirSync5(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path27.join(source, entry.name);
-    const to = path27.join(profilesRoot, entry.name);
+    const from = path28.join(source, entry.name);
+    const to = path28.join(profilesRoot, entry.name);
     if (!existsSync8(to)) continue;
     for (const file2 of readdirSync5(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path27.join(from, file2.name), path27.join(to, file2.name));
+      await copyFileFresh(path28.join(from, file2.name), path28.join(to, file2.name));
     }
   }
 }
@@ -47251,7 +47259,7 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path27.join(dir, entry.name);
+      const full = path28.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -47267,7 +47275,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync12 } from "node:fs";
-import path28 from "node:path";
+import path29 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -47297,8 +47305,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path28.dirname(statusFile2) : dataDir();
-  return path28.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path29.dirname(statusFile2) : dataDir();
+  return path29.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -47312,12 +47320,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path28.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path29.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path28.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path29.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -47356,7 +47364,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path28.dirname(file2));
+    ensureSecureDir(path29.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -47539,7 +47547,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path29.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path30.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -47562,7 +47570,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path29.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path30.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -48111,7 +48119,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path29.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path30.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -48293,7 +48301,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path29.dirname(path29.dirname(config2.statusFile)) : path29.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path30.dirname(path30.dirname(config2.statusFile)) : path30.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
