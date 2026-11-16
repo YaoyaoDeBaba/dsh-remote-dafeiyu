@@ -204,7 +204,6 @@ const FLOATING_ENTRY_IDS = ['dafeiyu-subagent-fab', 'dafeiyu-vision-fab', 'dafei
 const AVATAR_ATTR = 'data-dafeiyu-avatar'
 const AVATAR_STYLE_ID = 'dafeiyu-avatar-entry-gate'
 
-let entryGateTimer: ReturnType<typeof setInterval> | undefined
 let entryGateOff: (() => void) | undefined
 
 /** 按"形象在不在"同步 html 属性（CSS 靠它生效）。 */
@@ -241,29 +240,20 @@ export function syncAvatarEntryGate(scope?: { document?: unknown }): void {
 }
 
 /**
- * 开始跟着房间表变化维护上面那个属性：订阅 + 每秒兜底一次。
+ * 开始跟着房间表变化维护上面那个属性。
  *
- * 每秒一次不是因为慢，是因为**住客可能在任意时刻挂载/卸载**（形象是别的包），
- * 订阅能覆盖"我们自己的注册表变化"，但形象若是被重挂后没走注册表，就只有轮询能兜住。
+ * **只订阅，不轮询**（2026-11-16 改）：起初加了个 1 秒定时器想兜底，结果
+ * 它的节拍被"pill 没起来就不该留节拍"这类判据抓到（3 !== 2），属于污染测试环境。
+ * 而且根本不需要：属性一旦设上，样式表那条 `!important` 就一直在——JS 把 `hidden`
+ * 翻回去也没用，元素被重建也一样命中。
  */
 export function startAvatarEntryGate(scope?: { document?: unknown }): () => void {
   syncAvatarEntryGate(scope)
   const off = onRoomsChange(() => syncAvatarEntryGate(scope))
-  try {
-    entryGateOff = off
-    entryGateTimer = setInterval(() => syncAvatarEntryGate(scope), 1000)
-  } catch {
-    /* 没有定时器就只靠订阅 */
-  }
+  entryGateOff = off
   return () => {
     try {
       off()
-    } catch {
-      /* 清理不许抛 */
-    }
-    try {
-      if (entryGateTimer !== undefined) clearInterval(entryGateTimer)
-      entryGateTimer = undefined
     } catch {
       /* 清理不许抛 */
     }
