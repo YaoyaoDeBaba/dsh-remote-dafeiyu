@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.109" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.110" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36555,7 +36555,14 @@ function createMemoryService(dshHome, budget = DEFAULT_MEMORY_BUDGET) {
 }
 
 // src/subagents/config.ts
-var DEFAULT_CONFIG2 = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1e3, mode: "foreman" };
+var DEFAULT_CONFIG2 = {
+  version: 1,
+  enabled: true,
+  guidance: true,
+  idleWarnMs: 2 * 60 * 60 * 1e3,
+  mode: "foreman",
+  autoArchive: false
+};
 var MIN_IDLE = 5 * 60 * 1e3;
 var MAX_IDLE = 7 * 24 * 60 * 60 * 1e3;
 function resolveSubagentsConfigFile(dshHome = resolveDshHome(process.env)) {
@@ -36569,6 +36576,7 @@ function normalizeSubagentsConfig(raw) {
     enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_CONFIG2.enabled,
     guidance: typeof value.guidance === "boolean" ? value.guidance : DEFAULT_CONFIG2.guidance,
     mode: value.mode === "hands-on" ? "hands-on" : "foreman",
+    autoArchive: typeof value.autoArchive === "boolean" ? value.autoArchive : DEFAULT_CONFIG2.autoArchive,
     idleWarnMs: Math.min(MAX_IDLE, Math.max(MIN_IDLE, Math.round(idle)))
   };
 }
@@ -37849,7 +37857,7 @@ var EXTENSIONS = [
     label: "\u5F62\u8C61",
     description: "\u5927\u80A5\u9C7C\u7684\u5F62\u8C61\u5305\uFF1A\u8BBE\u7F6E\u9875\u300C\u5F62\u8C61\u300D\u5206\u680F\uFF08\u7D20\u6750\u67E5\u770B\u5668\uFF09\u4E0E\u684C\u9762\u60AC\u6D6E\u5C0F\u9CB8\u9C7C\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-avatar",
-    commit: "fb5335b9269797a3ff3509382c504c07287aefd3"
+    commit: "bc988d95bb30b4e0b595f56fbb1c548c737289e2"
   },
   {
     id: "selfloop",
@@ -37865,7 +37873,7 @@ var EXTENSIONS = [
     label: "\u80A5\u9C7C\u8BC6\u56FE / \u5C0F\u4E91\u96C0",
     description: "\u8BC6\u56FE\uFF08\u5916\u6302\u89C6\u89C9\u6A21\u578B\uFF09\u4E0E\u5C0F\u4E91\u96C0\uFF08\u751F\u56FE/\u751F\u89C6\u9891 CLI\uFF09\uFF1A\u4E24\u4E2A\u8BBE\u7F6E\u5206\u680F + \u60AC\u6D6E\u5FEB\u6377\u5165\u53E3\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-vision",
-    commit: "034c5fa52997080f2c79146ab44c4246cc1c3008"
+    commit: "787cb3dac56875d66fd7c1cf3ddb1a2aa1fa1da5"
   },
   {
     id: "dev-kit",
