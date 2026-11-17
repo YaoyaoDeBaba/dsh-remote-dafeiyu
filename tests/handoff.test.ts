@@ -120,6 +120,49 @@ test('注入指令：分身必须把用户原文与边界原样带进去', () =>
   assert.ok(text.includes('## 边界（不要碰的东西）'))
 })
 
+test('注入指令：动笔前必须核对现场（工作区 / 后台 / 记忆 / 版本）', () => {
+  for (const kind of ['rebirth', 'branch'] as const) {
+    const text = buildInjection({ kind, filePath: 'D:\\h\\x.md', ...(kind === 'branch' ? { note: '干活' } : {}) })
+    for (const needle of ['git status --short', 'job_list', 'list_agents', 'schedule_list', 'read_memory']) {
+      assert.ok(text.includes(needle), `${kind} 缺核对项「${needle}」：凭记忆写就会漏后台任务与半截改动`)
+    }
+  }
+})
+
+test('注入指令：体检暴露的遗漏点必须变成固定小节', () => {
+  const rebirth = buildInjection(PLAN)
+  for (const heading of ['## 后台在跑', '## 等用户拍板', '## 工作区与版本', '## 长期记忆要点', '## 边界（不要碰的东西）']) {
+    assert.ok(rebirth.includes(heading), `转生缺小节「${heading}」：9 份历史交接里 6/9 没写后台任务、7/9 没写工作区`)
+  }
+  const branch = buildInjection({ kind: 'branch', filePath: 'D:\\h\\y.md', note: '干活', boundary: '别碰 a.ts' })
+  assert.ok(branch.includes('## 后台在跑'), '分身也必须写后台任务：本体正在跑的活不许重派')
+  assert.ok(branch.includes('归本体'), '分身必须知道哪些后台任务归本体')
+  assert.ok(branch.includes('## 工作区与版本'))
+})
+
+test('注入指令：含糊话黑名单与写完自查清单都在', () => {
+  const text = buildInjection(PLAN)
+  assert.ok(text.includes('禁用含糊话'), '没有黑名单，「跑通即可」这类话就还会出现')
+  assert.ok(text.includes('跑通即可'), '黑名单要把原话列出来，别只说"别含糊"')
+  assert.ok(text.includes('未确认'), '拿不准要写未确认，不许猜')
+  assert.ok(text.includes('自查'), '写完必须自查一遍')
+  assert.ok(text.includes('importance 3'), '记忆条目要分级，光说"记几条"会全是普通级')
+  assert.ok(text.includes('必记一条指针'), '不记交接文档路径，下下次接手就找不到这份文档')
+})
+
+test('注入指令：转生也认 boundary（原来整个被丢掉）', () => {
+  const text = buildInjection({ kind: 'rebirth', filePath: 'D:\\h\\z.md', boundary: '别碰 src/client.js' })
+  assert.ok(text.includes('别碰 src/client.js'), '转生分支曾经把用户填的边界丢掉了：面板有输入框、传进来没人用')
+  assert.ok(text.includes('## 边界（不要碰的东西）'))
+})
+
+test('首句：要求交接者核对现场并报「文档缺口」', () => {
+  const text = buildFirstPrompt(PLAN)
+  assert.ok(text.includes('文档缺口'), '接手者不报缺口，漏掉的东西要等开工才发现')
+  assert.ok(text.includes('job_list'), '文档说"后台在跑"就要对一下还活着没有')
+  assert.ok(text.includes('read_memory'), '接手前先看已经记了什么')
+})
+
 test('首句：只报到，不开工', () => {
   const text = buildFirstPrompt(PLAN)
   assert.ok(text.includes(PLAN.filePath))
