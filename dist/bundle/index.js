@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path23 from "node:path";
+import path25 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path24) {
-  if (!path24)
+function getElementAtPath(obj, path26) {
+  if (!path26)
     return obj;
-  return path24.reduce((acc, key) => acc?.[key], obj);
+  return path26.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path24, issues) {
+function prefixIssues(path26, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path24);
+    iss.path.unshift(path26);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path24 = []) => {
+  const processError = (error63, path26 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path24, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path26, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
       } else {
-        const fullpath = [...path24, ...issue2.path];
+        const fullpath = [...path26, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path24 = []) => {
+  const processError = (error63, path26 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path24, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path26, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path24, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
       } else {
-        const fullpath = [...path24, ...issue2.path];
+        const fullpath = [...path26, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path24 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path24) {
+  const path26 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path26) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path24 = ref.slice(1).split("/").filter(Boolean);
-  if (path24.length === 0) {
+  const path26 = ref.slice(1).split("/").filter(Boolean);
+  if (path26.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path24[0] === defsKey) {
-    const key = path24[1] === void 0 ? void 0 : decodeJSONPointerSegment(path24[1]);
+  if (path26[0] === defsKey) {
+    const key = path26[1] === void 0 ? void 0 : decodeJSONPointerSegment(path26[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.110" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.111" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34814,12 +34814,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path24 = __require("node:path");
+        const path26 = __require("node:path");
         const fs8 = __require("node:fs");
-        const dir = path24.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path26.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs8.mkdirSync(dir, { recursive: true, mode: 448 });
         fs8.writeFileSync(
-          path24.join(dir, "client-report.json"),
+          path26.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -37139,6 +37139,8 @@ function handoffStatusHandler(deps) {
 }
 
 // src/handoff/tools.ts
+import { readFileSync as readFileSync4 } from "node:fs";
+import path16 from "node:path";
 var OUT2 = {
   // 类型必须与 execute 的返回值一致：我们返回的是 JSON 字符串，所以这里是 string。
   // 写成 object 会被内核拒收：returned invalid output: value must be an object。
@@ -37214,12 +37216,76 @@ function buildHandoffTools(deps) {
       }
     }
   });
-  return [make("rebirth"), make("branch")];
+  const makeAsk = () => ({
+    name: "handoff_ask",
+    description: "\u95EE\u300C\u524D\u4E16\u300D\u4F1A\u8BDD\u4E00\u4E2A\u4EA4\u63A5\u6587\u6863\u6CA1\u5199\u6E05\u7684\u95EE\u9898\uFF08\u5B83\u662F\u628A\u4F60\u8FD9\u6761\u6D3B\u4EA4\u63A5\u51FA\u6765\u7684\u90A3\u6761\u4F1A\u8BDD\uFF09\u3002\n**\u5148\u7528\u5B83\u3001\u518D\u95EE\u7528\u6237**\uFF1A\u6587\u6863\u7F3A\u53E3\u91CC\u300C\u5F53\u65F6\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A / \u88AB\u5426\u65B9\u6848\u7684\u539F\u56E0 / \u5728\u7B49\u8C01\u62CD\u677F\u300D\u8FD9\u7C7B\uFF0C\u524D\u4E16\u90FD\u7B54\u5F97\u4E0A\u3002\nto \u901A\u5E38\u4E0D\u7528\u4F20\uFF08\u6309 lineage.json \u81EA\u52A8\u627E\u524D\u4E16\uFF09\uFF1Bquestion \u8981\u5199\u6E05\u300C\u4F60\u7F3A\u4EC0\u4E48\u3001\u8981\u89E3\u51B3\u4EC0\u4E48\u95EE\u9898\u300D\u3002\n\u56DE\u7B54\u4F1A\u4F5C\u4E3A\u65B0\u6D88\u606F\u9001\u56DE\u6765\uFF1B\u8FD4\u56DE ok:false \u8BF4\u660E\u524D\u4E16\u4E0D\u5728\u7EBF\u2014\u2014\u90A3\u5C31\u76F4\u63A5\u95EE\u7528\u6237\uFF0C\u522B\u7B49\u3002",
+    parameters: {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "\u7F3A\u4EC0\u4E48\uFF1A\u4E00\u4E2A\u95EE\u9898\u4E00\u6761\uFF0C\u522B\u628A\u4E00\u5806\u95EE\u9898\u585E\u8FDB\u4E00\u6BB5\u3002" },
+        to: { type: "string", description: "\u524D\u4E16\u4F1A\u8BDD id\uFF08\u9009\u586B\uFF1B\u4E0D\u4F20\u5C31\u6309\u8C31\u7CFB\u81EA\u52A8\u627E\uFF09\u3002" }
+      },
+      required: ["question"]
+    },
+    output: OUT2,
+    timeoutMs: 2e4,
+    async execute(args, exec) {
+      const input2 = args ?? {};
+      const from = resolveSessionId(exec);
+      if (from === void 0) {
+        return JSON.stringify({ ok: false, error: "\u62FF\u4E0D\u5230\u5F53\u524D\u4F1A\u8BDD id\uFF1A\u6536\u4EF6\u7BB1\u8981\u5148\u77E5\u9053\u4F60\u662F\u8C01\uFF0C\u624D\u80FD\u628A\u56DE\u7B54\u9001\u56DE\u6765\u3002" });
+      }
+      const explicit = typeof input2.to === "string" ? input2.to.trim() : "";
+      const to = explicit !== "" ? explicit : parentOf(deps.handoffDir, from) ?? "";
+      if (to === "") {
+        return JSON.stringify({
+          ok: false,
+          error: "\u627E\u4E0D\u5230\u524D\u4E16\u4F1A\u8BDD\uFF08lineage.json \u91CC\u6CA1\u6709\u4F60\uFF09\uFF1A\u628A\u524D\u4E16\u4F1A\u8BDD id \u4F20\u7ED9 to\uFF0C\u6216\u8005\u76F4\u63A5\u95EE\u7528\u6237\u3002"
+        });
+      }
+      const result2 = await deps.inbox.ask({ from, to, question: String(input2.question ?? "") });
+      deps.log("agent \u7528\u6536\u4EF6\u7BB1\u95EE\u524D\u4E16", { ok: String(result2.ok), to });
+      return JSON.stringify(result2);
+    }
+  });
+  const makeAnswer = () => ({
+    name: "handoff_answer",
+    description: "\u56DE\u6536\u4EF6\u7BB1\u91CC\u300C\u6765\u751F\u300D\u7684\u63D0\u95EE\uFF08\u8F6C\u751F/\u5206\u8EAB\u540E\u63A5\u624B\u90A3\u6761\u4F1A\u8BDD\uFF09\u3002\n\u56DE\u7B54\u8981\u80FD\u76F4\u63A5\u7167\u505A\uFF1A\u6539\u54EA\u4E2A\u6587\u4EF6\u3001\u8DD1\u4EC0\u4E48\u547D\u4EE4\u3001\u5F53\u65F6\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\u3002\n\u8FD4\u56DE ok:true \u4E14\u4E0D\u5E26 message \u8868\u793A\u56DE\u7B54\u5DF2\u9001\u56DE\u7ED9\u63D0\u95EE\u7684\u4F1A\u8BDD\uFF1B\u5E26 message \u8BF4\u660E\u5B58\u6863\u4E86\u4F46\u6CA1\u9001\u8FDB\u53BB\uFF08\u5BF9\u9762\u53EF\u80FD\u5DF2\u5F52\u6863\uFF09\u3002",
+    parameters: {
+      type: "object",
+      properties: {
+        inboxId: { type: "string", description: "\u63D0\u95EE\u91CC\u7ED9\u7684\u90A3\u4E32\u7EBF\u7A0B id\u3002" },
+        answer: { type: "string", description: "\u56DE\u7B54\u6B63\u6587\u3002" }
+      },
+      required: ["inboxId", "answer"]
+    },
+    output: OUT2,
+    timeoutMs: 2e4,
+    async execute(args) {
+      const input2 = args ?? {};
+      const id = typeof input2.inboxId === "string" ? input2.inboxId.trim() : "";
+      if (id === "") return JSON.stringify({ ok: false, error: "\u7F3A\u5C11 inboxId\uFF08\u63D0\u95EE\u91CC\u90A3\u4E32\u7EBF\u7A0B id\uFF09\u3002" });
+      const result2 = await deps.inbox.answer({ id, answer: String(input2.answer ?? "") });
+      deps.log("agent \u56DE\u6536\u4EF6\u7BB1\u56DE\u7B54", { ok: String(result2.ok) });
+      return JSON.stringify(result2);
+    }
+  });
+  return [make("rebirth"), make("branch"), makeAsk(), makeAnswer()];
+}
+function parentOf(handoffDir, sessionId) {
+  try {
+    const raw = readFileSync4(path16.join(handoffDir, "lineage.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    const parent = parsed[sessionId];
+    return typeof parent === "string" && parent.trim() !== "" ? parent.trim() : void 0;
+  } catch {
+    return void 0;
+  }
 }
 
 // src/handoff/service.ts
-import { existsSync, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync, statSync as statSync2 } from "node:fs";
-import path16 from "node:path";
+import { existsSync, mkdirSync as mkdirSync5, readFileSync as readFileSync5, readdirSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import path17 from "node:path";
 
 // src/handoff/prompt.ts
 var HANDOFF_MARKER = "DAFEIYU_HANDOFF_OK";
@@ -37270,7 +37336,19 @@ var branchSections = `## \u672C\u4F53\u80CC\u666F\uFF08\u5F53\u524D\u8FD9\u6761\
 ## \u5751\u4E0E\u6559\u8BAD\uFF08\u8E29\u8FC7\u7684\u5751\u3001\u88AB\u5426\u6389\u7684\u65B9\u6848\uFF09\uFF5C\u75C7\u72B6 \u2192 \u600E\u4E48\u4E00\u773C\u5224\u65AD \u2192 \u600E\u4E48\u7ED5
 ## \u5DE5\u4F5C\u533A\u4E0E\u7248\u672C\uFF5Cgit \u5206\u652F\u3001\u672A\u63D0\u4EA4\u6539\u52A8\u3001\u672A\u63A8\u9001\u63D0\u4EA4\u3001\u76D8\u4E0A\u5E76\u5B58\u7684\u534A\u6210\u54C1\u76EE\u5F55\u3001pin \u7684\u7248\u672C/sha
 ## \u76F8\u5173\u6587\u4EF6\uFF5C\u7EDD\u5BF9\u8DEF\u5F84\u4F18\u5148\uFF0C\u6807\u6E05\u54EA\u4E2A\u80FD\u6539\u3001\u54EA\u4E2A\u53EA\u8BFB`;
-var selfCheck = (kind) => `7) \u5199\u5B8C\u81EA\u67E5\u4E00\u904D\uFF0C\u9010\u6761\u6253\u52FE\uFF0C\u7F3A\u7684\u8865\u4E0A\uFF1A
+function buildFixInstruction(plan, problems, round) {
+  return `\u3010\u5927\u80A5\u9C7C\u63D2\u4EF6\xB7\u4EA4\u63A5\u6587\u6863\u5F85\u8865\u5199\uFF08\u7B2C ${round} \u8F6E\uFF09\u3011
+\u4F60\u5199\u7684\u4EA4\u63A5\u6587\u6863\uFF08${plan.filePath}\uFF09\u8FC7\u4E86"\u6587\u4EF6\u5B58\u5728"\u8FD9\u4E00\u5173\uFF0C\u4F46\u6CA1\u8FC7**\u7ED3\u6784\u5224\u636E**\u3002\u63A5\u624B\u8005\u4F1A\u5361\u5728\u8FD9\u4E9B\u5730\u65B9\uFF1A
+
+${problems.map((problem, index) => `${index + 1}. ${problem}`).join("\n")}
+
+\u8BF7**\u53EA\u8865\u8FD9\u51E0\u5904**\uFF08\u7528\u7F16\u8F91/\u5199\u6587\u4EF6\u5DE5\u5177\u6539\u540C\u4E00\u4E2A\u6587\u4EF6\uFF0C\u522B\u91CD\u5199\u6574\u4EFD\u3001\u522B\u6539\u8DEF\u5F84\u3001\u522B\u52A8\u5DF2\u7ECF\u5408\u683C\u7684\u5C0F\u8282\uFF09\u3002
+\u8865\u5B8C\u518D\u901A\u8BFB\u4E00\u904D\uFF1A\u63A5\u624B\u8005\u53EA\u770B\u8FD9\u4EFD\u6587\u6863\uFF0C\u80FD\u4E0D\u80FD\u4E0D\u7528\u56DE\u770B\u8FD9\u6761\u4F1A\u8BDD\u5C31\u63A5\u7740\u5E72\uFF1F
+
+\u8865\u5B8C\u540E**\u5355\u72EC\u4E00\u884C**\u8F93\u51FA\uFF1A${HANDOFF_MARKER}: ${plan.filePath}
+\u9664\u6B64\u4E4B\u5916\u4E0D\u8981\u6539\u4EFB\u4F55\u5176\u5B83\u6587\u4EF6\uFF0C\u4E5F\u4E0D\u8981\u5F00\u59CB\u65B0\u7684\u5F00\u53D1\u5DE5\u4F5C\u3002`;
+}
+var selfCheck = (kind) => `7) \u5199\u5B8C**\u628A\u6587\u4EF6\u8BFB\u56DE\u6765**\uFF08read \u5DE5\u5177\uFF0C\u4E0D\u662F\u51ED\u8BB0\u5FC6\uFF09\uFF0C\u9010\u8282\u81EA\u67E5\u6838\u5BF9\uFF0C\u7F3A\u7684\u7ACB\u523B\u8865\u8FDB\u6587\u4EF6\uFF1A
    ${kind === "rebirth" ? "\u76EE\u6807 / \u73B0\u72B6 / \u5DF2\u5B8C\u6210(\u5E26\u8BC1\u636E) / \u4E0B\u4E00\u6B65(\u53EF\u6267\u884C) / \u7B49\u7528\u6237\u62CD\u677F / \u540E\u53F0\u5728\u8DD1 / \u8FB9\u754C / \u957F\u671F\u8BB0\u5FC6 / \u51B3\u5B9A\u4E0E\u7406\u7531 / \u5751\u4E0E\u88AB\u5426\u65B9\u6848 / \u5DE5\u4F5C\u533A\u4E0E\u7248\u672C / \u76F8\u5173\u6587\u4EF6" : "\u672C\u4F53\u80CC\u666F / \u957F\u671F\u8BB0\u5FC6\u8981\u70B9 / \u5206\u652F\u4EFB\u52A1(\u539F\u6587) / \u8FB9\u754C / \u540E\u53F0\u5728\u8DD1 / \u51B3\u5B9A\u4E0E\u7406\u7531 / \u5751\u4E0E\u88AB\u5426\u65B9\u6848 / \u5DE5\u4F5C\u533A\u4E0E\u7248\u672C / \u76F8\u5173\u6587\u4EF6"}`;
 function buildInjection(plan) {
   const title = plan.kind === "rebirth" ? "\u4E00\u952E\u8F6C\u751F" : "\u4E00\u952E\u5206\u8EAB";
@@ -37314,19 +37392,32 @@ ${sharedTail(plan.filePath)}`;
 function buildFirstPrompt(plan) {
   const intro = plan.kind === "rebirth" ? "\u4E0A\u4E00\u4E2A\u4F1A\u8BDD\u56E0\u4E3A\u4E0A\u4E0B\u6587\u8D85\u8F7D\u5DF2\u7ECF\u8F6C\u751F\uFF0C\u4F60\u662F\u63A5\u624B\u8005\u3002" : "\u672C\u4F53\u90A3\u6761\u4F1A\u8BDD\u8FD8\u5728\u7EE7\u7EED\u539F\u6765\u7684\u5DE5\u4F5C\uFF1B\u4F60\u662F\u5B83\u7684**\u5206\u8EAB**\uFF0C\u8D1F\u8D23\u4E00\u6761\u72EC\u7ACB\u7684\u5206\u652F\u4EFB\u52A1\u3002";
   const caution = plan.kind === "rebirth" ? "\u4E0D\u8981\u4FEE\u6539\u4EFB\u4F55\u6587\u4EF6\uFF0C\u4E5F\u4E0D\u8981\u5F00\u5DE5\u3002" : "\u672C\u4F53\u6B63\u5728\u53E6\u4E00\u6761\u4F1A\u8BDD\u91CC\u5E72\u6D3B\uFF1A\u4E0D\u8981\u78B0\u4EA4\u63A5\u6587\u6863\u300C\u8FB9\u754C\u300D\u91CC\u5217\u51FA\u7684\u4E1C\u897F\uFF0C\u4E5F\u4E0D\u8981\u52A8\u300C\u540E\u53F0\u5728\u8DD1\u300D\u91CC\u5F52\u672C\u4F53\u7684\u4EFB\u52A1\uFF0C\u66F4\u4E0D\u8981\u4FEE\u6539\u4EFB\u4F55\u6587\u4EF6\u3001\u4E0D\u8981\u5F00\u5DE5\u3002";
+  const parent = String(plan.parentSessionId ?? "").trim();
+  const inboxStep = parent === "" ? `    \uFF08\u8FD9\u6761\u4EA4\u63A5\u6CA1\u5E26\u524D\u4E16\u4F1A\u8BDD id\uFF0C\u6536\u4EF6\u7BB1\u7528\u4E0D\u4E86\uFF1A\u8FD9\u7C7B\u7F3A\u53E3\u76F4\u63A5\u95EE\u6211\u3002\uFF09` : `   \xB7 \u53EA\u6709\u524D\u4E16\u6216\u7528\u6237\u77E5\u9053\u7684\uFF08\u5F53\u65F6\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\u3001\u88AB\u5426\u65B9\u6848\u7684\u539F\u56E0\u3001\u5728\u7B49\u8C01\u62CD\u677F\uFF09\u2192
+     \u8C03 handoff_ask \u95EE\u524D\u4E16\uFF1Ato="${parent}"\uFF0Cquestion \u5199\u6E05\u300C\u4F60\u7F3A\u4EC0\u4E48\u3001\u8981\u89E3\u51B3\u4EC0\u4E48\u95EE\u9898\u300D\u3002
+     \u5B83\u7684\u56DE\u7B54\u4F1A\u4F5C\u4E3A\u65B0\u6D88\u606F\u9001\u56DE\u6765\uFF0C\u522B\u518D\u8BA9\u6211\u8F6C\u8FBE\u3002`;
+  const gaps = Array.isArray(plan.knownGaps) && plan.knownGaps.length > 0 ? `
+\u5DF2\u77E5\u7F3A\u53E3\uFF08\u524D\u4E16\u8865\u5230\u4E0A\u9650\u4ECD\u672A\u8FBE\u6807\uFF0C\u4F60\u80FD\u81EA\u5DF1\u67E5\u7684\u987A\u624B\u67E5\u6389\uFF09\uFF1A
+${plan.knownGaps.map((gap, index) => `- ${gap}`).join("\n")}
+` : "";
   return `${intro}\u4EA4\u63A5\u6587\u6863\u5728\u8FD9\u91CC\uFF1A
 
 ${plan.filePath}
 
-\u5148\u5B8C\u6574\u8BFB\u5B83\uFF0C\u7136\u540E**\u53EA\u505A\u4E09\u4EF6\u4E8B\uFF0C\u505A\u5B8C\u5C31\u505C**\uFF1A
+\u5148\u5B8C\u6574\u8BFB\u5B83\uFF0C\u7136\u540E**\u53EA\u505A\u56DB\u4EF6\u4E8B\uFF0C\u505A\u5B8C\u5C31\u505C**\uFF1A
 
 1) \u6838\u5BF9\uFF0C\u522B\u53EA\u4FE1\u6587\u6863\uFF1Aread_memory \u770B\u5DF2\u7ECF\u8BB0\u4E86\u4EC0\u4E48\uFF1B\u6587\u6863\u8BF4"\u540E\u53F0\u5728\u8DD1"\u7684\uFF0C
    \u7528 job_list / list_agents / schedule_list \u5BF9\u4E00\u4E0B\u8FD8\u6D3B\u7740\u6CA1\u6709\uFF1B
    \u8BF4"\u6539\u4E86\u67D0\u4E2A\u6587\u4EF6"\u7684\uFF0C\u53BB\u8BFB\u90A3\u4E2A\u6587\u4EF6\u770B\u73B0\u72B6\u3002
 2) \u5411\u6211\u62A5\u5230\uFF0C\u4E09\u4E94\u884C\uFF1A\u505A\u5230\u54EA\u4E00\u6B65\u3001\u8FD8\u6709\u54EA\u4E9B\u6CA1\u505A\u3001\u4F60\u6253\u7B97\u7684\u7B2C\u4E00\u6B65\u662F\u4EC0\u4E48\u3002
-3) \u53E6\u8D77\u4E00\u884C\u5199\u300C\u6587\u6863\u7F3A\u53E3\u300D\uFF1A\u6587\u6863\u6CA1\u5199\u6E05\u3001\u6216\u548C\u73B0\u573A\u5BF9\u4E0D\u4E0A\u7684\u5730\u65B9\uFF08\u6CA1\u6709\u5C31\u5199"\u65E0\u7F3A\u53E3"\uFF09\u3002
-   \u4F60\u53D1\u73B0\u7F3A\u53E3\u6211\u73B0\u5728\u8865\uFF1B\u4F60\u8BF4\u6CA1\u7F3A\u53E3\u3001\u7B49\u6211\u70B9\u5934\u5F00\u5DE5\u65F6\u624D\u8E29\u7A7A\uFF0C\u90A3\u5C31\u665A\u4E86\u3002
+3) \u7F3A\u53E3**\u5148\u81EA\u5DF1\u5206\u62E3**\uFF0C\u522B\u4E00\u80A1\u8111\u4E22\u7ED9\u6211\uFF1A
+   \xB7 \u4F60\u81EA\u5DF1\u80FD\u67E5\u7684\uFF08\u6587\u4EF6\u73B0\u72B6\u3001git \u72B6\u6001\u3001\u67D0\u4E2A\u547D\u4EE4\u7684\u8F93\u51FA\uFF09\u2192 \u5F53\u573A\u67E5\u6E05\u695A\uFF0C
+     \u8FFD\u52A0\u5230\u6587\u6863\u7684\u300C## \u8865\u5145\uFF08\u6765\u751F\u81EA\u67E5\uFF09\u300D\u5C0F\u8282\uFF0C**\u4E0D\u8981\u4E0A\u62A5**\uFF1B
+${inboxStep}
+4) \u53EA\u6709"\u95EE\u4E86\u524D\u4E16\u4E5F\u6CA1\u7B54\u4E0A\u3001\u6216\u8005\u524D\u4E16\u4E0D\u5728\u7EBF"\u7684\uFF0C\u624D\u5728\u62A5\u5230\u540E\u9762\u5355\u72EC\u5217\u300C\u5C1A\u672A\u89E3\u51B3\u7684\u6587\u6863\u7F3A\u53E3\u300D
+   \uFF08\u6CA1\u6709\u5C31\u5199"\u65E0"\uFF09\u3002\u4F60\u8BF4\u6CA1\u7F3A\u53E3\u3001\u7B49\u6211\u70B9\u5934\u5F00\u5DE5\u65F6\u624D\u8E29\u7A7A\uFF0C\u90A3\u5C31\u665A\u4E86\u3002
 
+${gaps}
 ${caution}\u7B49\u6211\u70B9\u5934\u518D\u52A8\u624B\u3002`;
 }
 function handoffFileName(kind, sessionId, at) {
@@ -37336,7 +37427,119 @@ function handoffFileName(kind, sessionId, at) {
   return `${kind === "rebirth" ? "\u8F6C\u751F" : "\u5206\u8EAB"}-${short}-${stamp}.md`;
 }
 
+// src/handoff/doc-check.ts
+var REBIRTH_SECTIONS = [
+  "\u76EE\u6807",
+  "\u73B0\u72B6\uFF08\u505A\u5230\u54EA\u4E00\u6B65\uFF09",
+  "\u5DF2\u5B8C\u6210\uFF08\u4E0D\u8981\u91CD\u505A\uFF09",
+  "\u672A\u5B8C\u6210 / \u4E0B\u4E00\u6B65",
+  "\u7B49\u7528\u6237\u62CD\u677F",
+  "\u540E\u53F0\u5728\u8DD1",
+  "\u8FB9\u754C\uFF08\u4E0D\u8981\u78B0\u7684\u4E1C\u897F\uFF09",
+  "\u957F\u671F\u8BB0\u5FC6\u8981\u70B9",
+  "\u5173\u952E\u51B3\u5B9A\u4E0E\u7406\u7531",
+  "\u5751\u4E0E\u6559\u8BAD",
+  "\u5DE5\u4F5C\u533A\u4E0E\u7248\u672C",
+  "\u76F8\u5173\u6587\u4EF6"
+];
+var BRANCH_SECTIONS = [
+  "\u672C\u4F53\u80CC\u666F",
+  "\u957F\u671F\u8BB0\u5FC6\u8981\u70B9",
+  "\u5206\u652F\u4EFB\u52A1",
+  "\u8FB9\u754C\uFF08\u4E0D\u8981\u78B0\u7684\u4E1C\u897F\uFF09",
+  "\u540E\u53F0\u5728\u8DD1",
+  "\u5173\u952E\u51B3\u5B9A\u4E0E\u7406\u7531",
+  "\u5751\u4E0E\u6559\u8BAD",
+  "\u5DE5\u4F5C\u533A\u4E0E\u7248\u672C",
+  "\u76F8\u5173\u6587\u4EF6"
+];
+var NEEDS_ENTRY = ["\u672A\u5B8C\u6210 / \u4E0B\u4E00\u6B65", "\u672A\u5B8C\u6210"];
+var VAGUE = ["\u89C1\u4E4B\u524D\u5BF9\u8BDD", "\u540E\u9762\u518D\u770B", "\u89C6\u60C5\u51B5", "\u8DD1\u901A\u5373\u53EF", "\u5927\u6982\u5DEE\u4E0D\u591A", "\u7EC6\u8282\u89C1\u4E0A\u6587"];
+function splitSections(text) {
+  const out = [];
+  let current;
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.startsWith("## ")) {
+      const title = line.slice(3).trim();
+      current = { name: title.split("\uFF5C")[0].trim(), body: "" };
+      out.push(current);
+      continue;
+    }
+    if (current !== void 0) current.body += rawLine + "\n";
+  }
+  return out;
+}
+function blank(body) {
+  return body.replace(/\s+/g, "") === "";
+}
+function declaredNone(body) {
+  return /^(无|没有了|暂无)[。.]?$/.test(body.replace(/\s+/g, ""));
+}
+function hasEntry(line) {
+  if (/`[^`]+`/.test(line)) return true;
+  if (/[A-Za-z]:[\\/]/.test(line)) return true;
+  if (/[\w.-]+\/([\w.-]+\/)*[\w.-]+/.test(line)) return true;
+  if (/\.(ts|tsx|js|mjs|cjs|json|md|ps1|yml|yaml)\b/i.test(line)) return true;
+  if (/\b(git|node|pnpm|npm|pwsh|python|tsc)\b/.test(line)) return true;
+  if (line.includes("\u672A\u5B9A\u4F4D")) return true;
+  return false;
+}
+function bulletLines(body) {
+  return body.split(/\r?\n/).map((line) => line.trim()).filter((line) => /^([-*+]|\d+[.)])\s+/.test(line)).map((line) => line.replace(/^([-*+]|\d+[.)])\s+/, ""));
+}
+function checkHandoffDoc(text, kind) {
+  const problems = [];
+  const sections = splitSections(text);
+  if (sections.length === 0) {
+    problems.push("\u6574\u7BC7\u6CA1\u6709 Markdown \u5C0F\u8282\uFF08\u5FC5\u987B\u662F `## \u5C0F\u8282\u540D` \u5F00\u5934\u7684\u7ED3\u6784\uFF09\u3002");
+    return { ok: false, problems };
+  }
+  const byName = /* @__PURE__ */ new Map();
+  for (const section of sections) {
+    if (!byName.has(section.name)) byName.set(section.name, section);
+  }
+  const required2 = kind === "rebirth" ? REBIRTH_SECTIONS : BRANCH_SECTIONS;
+  const find = (name2) => {
+    for (const [key, value] of byName) {
+      if (key === name2 || key.startsWith(name2)) return value;
+    }
+    return void 0;
+  };
+  const missing = required2.filter((name2) => find(name2) === void 0);
+  if (missing.length > 0) {
+    problems.push("\u7F3A\u8FD9\u4E9B\u5C0F\u8282\uFF1A" + missing.map((name2) => "\u300C" + name2 + "\u300D").join("\u3001") + '\u3002\u6CA1\u6709\u5185\u5BB9\u7684\u5199"\u65E0"\uFF0C\u4F46\u5C0F\u8282\u6807\u9898\u5FC5\u987B\u5728\u3002');
+  }
+  for (const name2 of required2) {
+    const section = find(name2);
+    if (section === void 0) continue;
+    if (blank(section.body)) {
+      problems.push("\u300C" + name2 + '\u300D\u662F\u7A7A\u7684\uFF1A\u8981\u4E48\u5199\u5185\u5BB9\uFF0C\u8981\u4E48\u5199"\u65E0"\u3002');
+      continue;
+    }
+    if (declaredNone(section.body)) continue;
+    if (NEEDS_ENTRY.some((needle) => name2.startsWith(needle))) {
+      const bullets = bulletLines(section.body);
+      if (bullets.length === 0) {
+        problems.push("\u300C" + name2 + "\u300D\u6CA1\u6709\u6761\u76EE\uFF1A\u7528\u5217\u8868\u5199\uFF0C\u6BCF\u6761\u4E00\u4EF6\u80FD\u76F4\u63A5\u5F00\u5DE5\u7684\u4E8B\u3002");
+      } else {
+        const naked = bullets.filter((line) => !hasEntry(line));
+        if (naked.length > 0) {
+          problems.push(
+            "\u300C" + name2 + "\u300D\u91CC\u6709 " + naked.length + " \u6761\u6CA1\u7ED9\u5165\u53E3\uFF08\u6539\u54EA\u4E2A\u6587\u4EF6 / \u8DD1\u4EC0\u4E48\u547D\u4EE4 / \u600E\u4E48\u7B97\u505A\u5B8C\uFF09\uFF0C\u5199\u4E0D\u51FA\u5165\u53E3\u7684\u6807\u300C\u672A\u5B9A\u4F4D\u300D\uFF1A" + naked[0].slice(0, 40)
+          );
+        }
+      }
+    }
+  }
+  for (const word of VAGUE) {
+    if (text.includes(word)) problems.push("\u51FA\u73B0\u542B\u7CCA\u8BDD\u300C" + word + "\u300D\uFF1A\u6362\u6210\u5177\u4F53\u5224\u636E\uFF08\u8DD1\u4EC0\u4E48\u547D\u4EE4\u3001\u8F93\u51FA\u8BE5\u662F\u4EC0\u4E48\uFF09\u3002");
+  }
+  return { ok: problems.length === 0, problems: problems.slice(0, 8) };
+}
+
 // src/handoff/service.ts
+var MAX_FIX_ROUNDS = 2;
 var OVERLOAD_BYTES = 15 * 1024 * 1024;
 var MAX_JOBS = 20;
 function idOf(prefix) {
@@ -37354,12 +37557,12 @@ function sessionLogBytes(sessionsRoot, sessionId) {
   }
   for (const slug of slugs) {
     for (const candidate of [sessionId, bare, `session-${bare}`]) {
-      const dir = path16.join(sessionsRoot, slug, candidate);
+      const dir = path17.join(sessionsRoot, slug, candidate);
       if (!existsSync(dir)) continue;
       try {
         for (const file2 of readdirSync(dir)) {
           if (!file2.includes(".jsonl.")) continue;
-          total += statSync2(path16.join(dir, file2)).size;
+          total += statSync2(path17.join(dir, file2)).size;
         }
       } catch {
       }
@@ -37373,7 +37576,7 @@ function memoryEntryCount(memoryDir2) {
     for (const file2 of readdirSync(memoryDir2)) {
       if (!file2.endsWith(".json")) continue;
       try {
-        const parsed = JSON.parse(readFileSync4(path16.join(memoryDir2, file2), "utf8"));
+        const parsed = JSON.parse(readFileSync5(path17.join(memoryDir2, file2), "utf8"));
         if (Array.isArray(parsed.entries)) total += parsed.entries.length;
       } catch {
       }
@@ -37403,7 +37606,7 @@ function createHandoffService(deps) {
   const probeFile = (filePath) => {
     try {
       if (!existsSync(filePath)) return "pending";
-      const raw = readFileSync4(filePath, "utf8");
+      const raw = readFileSync5(filePath, "utf8");
       if (raw.trim() === "") return "empty";
       return raw.includes(HANDOFF_MARKER) || raw.length > 400 ? "ok" : "pending";
     } catch {
@@ -37437,6 +37640,18 @@ function createHandoffService(deps) {
     }
     touch(job, { newSessionId: created.sessionId, ...cwd ? { newSessionCwd: cwd } : {} });
     try {
+      const lineagePath = path17.join(path17.dirname(job.filePath), "lineage.json");
+      let lineage = {};
+      try {
+        lineage = JSON.parse(readFileSync5(lineagePath, "utf8"));
+      } catch {
+        lineage = {};
+      }
+      lineage[created.sessionId] = job.sessionId;
+      writeFileSync2(lineagePath, JSON.stringify(lineage, null, 2) + "\n", "utf8");
+    } catch {
+    }
+    try {
       const sent = await deps.sendPrompt(created.sessionId, buildFirstPrompt(plan));
       if (!sent.ok) {
         finish(job.id, "failed", `\u65B0\u4F1A\u8BDD\u5DF2\u5EFA\u597D\uFF08${created.sessionId}\uFF09\uFF0C\u4F46\u9996\u53E5\u6CA1\u53D1\u51FA\u53BB\uFF1A${sent.message ?? "\u672A\u77E5\u539F\u56E0"}`);
@@ -37451,12 +37666,55 @@ function createHandoffService(deps) {
   const watch = (job, plan) => {
     const startedAt = now();
     let emptyHits = 0;
+    let lastChecked = "";
+    let fixRounds = 0;
+    let awaitingFix = false;
     const tick = () => {
       const timer = setTimeout(() => {
         timers.delete(timer);
         if (stopped) return;
         const state = probeFile(job.filePath);
         if (state === "ok") {
+          let text = "";
+          try {
+            text = readFileSync5(job.filePath, "utf8");
+          } catch {
+            text = "";
+          }
+          if (awaitingFix && text === lastChecked) {
+            tick();
+            return;
+          }
+          if (text !== "" && text !== lastChecked) {
+            lastChecked = text;
+            awaitingFix = false;
+            const verdict = checkHandoffDoc(text, plan.kind);
+            if (!verdict.ok) {
+              if (fixRounds < MAX_FIX_ROUNDS) {
+                fixRounds += 1;
+                touch(job, {
+                  message: `\u4EA4\u63A5\u6587\u6863\u6709 ${verdict.problems.length} \u5904\u4E0D\u5408\u683C\uFF0C\u5DF2\u8981\u6C42\u8865\u5199\uFF08\u7B2C ${fixRounds}/${MAX_FIX_ROUNDS} \u8F6E\uFF09`
+                });
+                deps.log("\u4EA4\u63A5\u6587\u6863\u7ED3\u6784\u4E0D\u5408\u683C\uFF0C\u6253\u56DE\u8865\u5199", {
+                  jobId: job.id,
+                  round: fixRounds,
+                  problems: verdict.problems.length
+                });
+                awaitingFix = true;
+                void deps.inject(job.sessionId, buildFixInstruction(plan, verdict.problems, fixRounds));
+                tick();
+                return;
+              }
+              plan.knownGaps = verdict.problems.slice(0, 6);
+              touch(job, {
+                message: `\u4EA4\u63A5\u6587\u6863\u4ECD\u6709 ${verdict.problems.length} \u5904\u4E0D\u5408\u683C\uFF0C\u5DF2\u5E26\u8FDB\u9996\u53E5\u4EA4\u7ED9\u6765\u751F\u81EA\u67E5`
+              });
+              deps.log("\u4EA4\u63A5\u6587\u6863\u8865\u5230\u4E0A\u9650\u4ECD\u4E0D\u5408\u683C\uFF0C\u5E26\u7F3A\u53E3\u5EFA\u65B0\u4F1A\u8BDD", {
+                jobId: job.id,
+                problems: verdict.problems.length
+              });
+            }
+          }
           void spawnHeir(job, plan);
           return;
         }
@@ -37495,10 +37753,11 @@ function createHandoffService(deps) {
       } catch {
       }
       const at = new Date(now());
-      const filePath = path16.join(deps.handoffDir, handoffFileName(kind, id, at).replace(/\.md$/, `-${at.getMilliseconds()}.md`));
+      const filePath = path17.join(deps.handoffDir, handoffFileName(kind, id, at).replace(/\.md$/, `-${at.getMilliseconds()}.md`));
       const plan = {
         kind,
         filePath,
+        parentSessionId: id,
         ...trimmedNote ? { note: trimmedNote } : {},
         ...String(boundary ?? "").trim() ? { boundary: String(boundary ?? "").trim() } : {}
       };
@@ -37526,8 +37785,8 @@ function createHandoffService(deps) {
       return [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt);
     },
     selfCheck(sessionId, cwd) {
-      const logBytes = sessionLogBytes(path16.join(deps.dshHome, "sessions"), sessionId);
-      const memoryDir2 = path16.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "memory");
+      const logBytes = sessionLogBytes(path17.join(deps.dshHome, "sessions"), sessionId);
+      const memoryDir2 = path17.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "memory");
       let ready = false;
       try {
         mkdirSync5(deps.handoffDir, { recursive: true });
@@ -37558,6 +37817,136 @@ function createHandoffService(deps) {
   };
 }
 
+// src/handoff/inbox.ts
+import { mkdirSync as mkdirSync6, readFileSync as readFileSync6, readdirSync as readdirSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import path18 from "node:path";
+function ensureDir(dir) {
+  try {
+    mkdirSync6(dir, { recursive: true });
+  } catch {
+  }
+}
+function threadPath(dir, id) {
+  return path18.join(dir, String(id).replace(/[^A-Za-z0-9_-]/g, "_") + ".json");
+}
+function shortId(sessionId) {
+  return sessionId.replace(/^session-/, "").slice(0, 8);
+}
+function readThread(dir, id) {
+  try {
+    const parsed = JSON.parse(readFileSync6(threadPath(dir, id), "utf8"));
+    if (typeof parsed?.id !== "string" || typeof parsed.from !== "string" || typeof parsed.to !== "string") return void 0;
+    return parsed;
+  } catch {
+    return void 0;
+  }
+}
+function listThreads(dir) {
+  try {
+    const out = [];
+    for (const file2 of readdirSync2(dir)) {
+      if (!file2.endsWith(".json")) continue;
+      const thread = readThread(dir, file2.replace(/\.json$/, ""));
+      if (thread !== void 0) out.push(thread);
+    }
+    return out.sort((a, b) => b.createdAt - a.createdAt);
+  } catch {
+    return [];
+  }
+}
+function askDeliveryText(thread) {
+  return [
+    "\u3010\u6765\u751F\u63D0\u95EE \xB7 \u6536\u4EF6\u7BB1 " + thread.id + "\u3011",
+    "\u6765\u81EA\u4F1A\u8BDD " + shortId(thread.from) + "\uFF08\u5B83\u5728\u63A5\u624B\u4F60\u8F6C\u751F/\u5206\u8EAB\u51FA\u53BB\u7684\u90A3\u6761\u6D3B\uFF09\u3002",
+    thread.question.trim(),
+    "",
+    "\u56DE\u7B54\u8BF7\u8C03 handoff_answer\uFF1AinboxId=" + thread.id + "\uFF0Canswer \u5199\u6E05\u300C\u6539\u54EA\u4E2A\u6587\u4EF6\u3001\u8DD1\u4EC0\u4E48\u547D\u4EE4\u3001\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\u300D\u3002",
+    "\u4E0D\u77E5\u9053\u5C31\u76F4\u8BF4\u300C\u4E0D\u77E5\u9053\u300D\uFF0C\u522B\u731C\u2014\u2014\u5BF9\u9762\u4F1A\u62FF\u4F60\u7684\u8BDD\u5F53\u4E8B\u5B9E\u7528\u3002"
+  ].join("\n");
+}
+function answerDeliveryText(thread) {
+  return [
+    "\u3010\u524D\u4E16\u56DE\u590D \xB7 \u6536\u4EF6\u7BB1 " + thread.id + "\u3011",
+    String(thread.answer ?? "").trim(),
+    "",
+    "\uFF08\u8FD9\u6761\u662F " + shortId(thread.to) + " \u5BF9\u4F60\u63D0\u95EE\u7684\u56DE\u7B54\uFF1A\u5199\u8FDB\u4EA4\u63A5\u6587\u6863\u5BF9\u5E94\u5C0F\u8282\uFF0C\u5E76\u628A\u8FD9\u6761\u4ECE\u300C\u7F3A\u53E3\u300D\u91CC\u5212\u6389\u3002\uFF09"
+  ].join("\n");
+}
+function newId(now) {
+  const uuid3 = globalThis.crypto?.randomUUID?.();
+  return (uuid3 ?? String(now) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 12);
+}
+function createInbox(deps) {
+  const now = deps.now ?? (() => Date.now());
+  const save = (thread) => {
+    ensureDir(deps.dir);
+    try {
+      writeFileSync3(threadPath(deps.dir, thread.id), JSON.stringify(thread, null, 2) + "\n", "utf8");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  return {
+    /** 来生提问：落盘 → 送进前世会话。送不到就标 undeliverable，别让它以为问了。 */
+    async ask(input2) {
+      const question = String(input2.question ?? "").trim();
+      if (question === "") return { ok: false, message: "\u95EE\u9898\u4E0D\u80FD\u662F\u7A7A\u7684\uFF1A\u5199\u6E05\u4F60\u7F3A\u4EC0\u4E48\uFF08\u6539\u54EA\u4E2A\u6587\u4EF6 / \u5F53\u65F6\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\uFF09\u3002" };
+      if (String(input2.to ?? "").trim() === "") return { ok: false, message: "\u4E0D\u77E5\u9053\u8BE5\u95EE\u8C01\uFF1A\u8C03\u7528\u65F6\u628A\u524D\u4E16\u4F1A\u8BDD id \u4F20\u7ED9 to\u3002" };
+      const at = now();
+      const thread = {
+        id: newId(at),
+        from: input2.from,
+        to: input2.to,
+        question,
+        status: "open",
+        createdAt: at,
+        updatedAt: at
+      };
+      if (!save(thread)) return { ok: false, message: "\u95EE\u9898\u6CA1\u843D\u76D8\uFF08\u6536\u4EF6\u7BB1\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002\u76F4\u63A5\u95EE\u7528\u6237\u5427\u3002" };
+      const sent = await deps.deliver(thread.to, askDeliveryText(thread)).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      if (!sent.ok) {
+        thread.status = "undeliverable";
+        thread.updatedAt = now();
+        save(thread);
+        deps.log("\u6536\u4EF6\u7BB1\uFF1A\u95EE\u9898\u9001\u4E0D\u8FDB\u524D\u4E16\u4F1A\u8BDD", { id: thread.id, to: thread.to, message: String(sent.message ?? "").slice(0, 120) });
+        return {
+          ok: false,
+          thread,
+          message: "\u524D\u4E16\u4F1A\u8BDD\u4E0D\u5728\u7EBF\uFF08\u6216\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF09\uFF0C\u95EE\u9898\u5DF2\u5B58\u6863\u4F46\u9001\u4E0D\u5230\uFF1A\u76F4\u63A5\u95EE\u7528\u6237\uFF0C\u522B\u7B49\u3002"
+        };
+      }
+      deps.log("\u6536\u4EF6\u7BB1\uFF1A\u95EE\u9898\u5DF2\u9001\u8FDB\u524D\u4E16\u4F1A\u8BDD", { id: thread.id, to: thread.to });
+      return { ok: true, thread };
+    },
+    /** 前世回答：落盘 → 送回给来生。 */
+    async answer(input2) {
+      const thread = readThread(deps.dir, String(input2.id ?? "").trim());
+      if (thread === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u6761\u6536\u4EF6\u7BB1\u7EBF\u7A0B\uFF08id \u53EF\u80FD\u4E0D\u5BF9\uFF09\uFF1A\u770B\u770B\u63D0\u793A\u91CC\u90A3\u4E32 id\u3002" };
+      const answer = String(input2.answer ?? "").trim();
+      if (answer === "") return { ok: false, message: "\u56DE\u7B54\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
+      thread.answer = answer;
+      thread.status = "answered";
+      thread.updatedAt = now();
+      if (!save(thread)) return { ok: false, message: "\u56DE\u7B54\u6CA1\u843D\u76D8\uFF08\u6536\u4EF6\u7BB1\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      const sent = await deps.deliver(thread.from, answerDeliveryText(thread)).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      if (!sent.ok) {
+        deps.log("\u6536\u4EF6\u7BB1\uFF1A\u56DE\u7B54\u9001\u4E0D\u56DE\u6765\u751F\u4F1A\u8BDD", { id: thread.id, from: thread.from, message: String(sent.message ?? "").slice(0, 120) });
+        return { ok: true, thread, message: "\u56DE\u7B54\u5DF2\u5B58\u6863\uFF0C\u4F46\u6CA1\u9001\u8FDB\u5BF9\u9762\u4F1A\u8BDD\uFF08\u5B83\u53EF\u80FD\u5DF2\u5F52\u6863\uFF09\uFF1A\u544A\u8BC9\u7528\u6237\u5230\u8FD9\u91CC\u53D6\u3002" };
+      }
+      return { ok: true, thread };
+    },
+    list: () => listThreads(deps.dir),
+    get: (id) => readThread(deps.dir, id)
+  };
+}
+
 // src/handoff/start.ts
 function resolveHandoffDir(env = process.env) {
   const explicit = (env.DAFEIYU_HANDOFF_DIR ?? "").trim();
@@ -37574,6 +37963,11 @@ function startHandoff(ctx, input2) {
     newSession: input2.newSession,
     sendPrompt: input2.sendPrompt,
     sessionCwd: input2.sessionCwd
+  });
+  const inbox = createInbox({
+    dir: `${input2.handoffDir ?? resolveHandoffDir()}\\inbox`,
+    deliver: async (sessionId, text) => input2.sendPrompt(sessionId, text),
+    log: input2.log
   });
   const deps = {
     start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary),
@@ -37626,6 +38020,8 @@ function startHandoff(ctx, input2) {
     try {
       const definitions = buildHandoffTools({
         service: { start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary) },
+        inbox: { ask: (askInput) => inbox.ask(askInput), answer: (answerInput) => inbox.answer(answerInput) },
+        handoffDir: input2.handoffDir ?? resolveHandoffDir(),
         log: input2.log
       });
       for (const definition of definitions) tools.register(definition);
@@ -37748,18 +38144,18 @@ function startHandoff(ctx, input2) {
 }
 
 // src/skills/install.ts
-import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync6, readFileSync as readFileSync5, readdirSync as readdirSync2, rmSync, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import path17 from "node:path";
+import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, rmSync, statSync as statSync3, writeFileSync as writeFileSync4 } from "node:fs";
+import path19 from "node:path";
 import { fileURLToPath } from "node:url";
 var SKILL_VERSION_FILE = ".dafeiyu-skill-version";
 function packageRoot() {
   try {
-    let candidate = path17.dirname(fileURLToPath(import.meta.url));
+    let candidate = path19.dirname(fileURLToPath(import.meta.url));
     for (let depth = 0; depth < 5; depth += 1) {
-      if (existsSync2(path17.join(candidate, "package.json")) && existsSync2(path17.join(candidate, "assets", "skills"))) {
+      if (existsSync2(path19.join(candidate, "package.json")) && existsSync2(path19.join(candidate, "assets", "skills"))) {
         return candidate;
       }
-      const parent = path17.dirname(candidate);
+      const parent = path19.dirname(candidate);
       if (parent === candidate) break;
       candidate = parent;
     }
@@ -37769,7 +38165,7 @@ function packageRoot() {
 }
 function packageVersion() {
   try {
-    const raw = readFileSync5(path17.join(packageRoot(), "package.json"), "utf8");
+    const raw = readFileSync7(path19.join(packageRoot(), "package.json"), "utf8");
     const parsed = JSON.parse(raw);
     return typeof parsed.version === "string" ? parsed.version : "unknown";
   } catch {
@@ -37780,7 +38176,7 @@ function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync2(path17.join(base, rel), { withFileTypes: true });
+      entries = readdirSync3(path19.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -37790,7 +38186,7 @@ function fingerprint(dir) {
       if (entry.isDirectory()) out.push(...walk2(base, childRel));
       else {
         try {
-          out.push(`${childRel}:${statSync3(path17.join(base, childRel)).size}`);
+          out.push(`${childRel}:${statSync3(path19.join(base, childRel)).size}`);
         } catch {
           out.push(`${childRel}:?`);
         }
@@ -37803,21 +38199,21 @@ function fingerprint(dir) {
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync2(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path17.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync2(path17.join(entry.dir, "SKILL.md")));
+    entries = readdirSync3(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path19.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync2(path19.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
   if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
   const installed = [];
   for (const entry of entries) {
-    const target = path17.join(deps.dshHome, "skills", entry.name);
-    const stamp = path17.join(target, SKILL_VERSION_FILE);
+    const target = path19.join(deps.dshHome, "skills", entry.name);
+    const stamp = path19.join(target, SKILL_VERSION_FILE);
     try {
       if (existsSync2(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
-      mkdirSync6(path17.dirname(target), { recursive: true });
+      mkdirSync7(path19.dirname(target), { recursive: true });
       if (existsSync2(target)) rmSync(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
-      writeFileSync2(stamp, `${deps.version}
+      writeFileSync4(stamp, `${deps.version}
 `, "utf8");
       installed.push(entry.name);
     } catch (error62) {
@@ -37835,7 +38231,7 @@ function installPackagedSkills(deps) {
   try {
     return installBundledSkills({
       dshHome: deps.dshHome,
-      assetsRoot: path17.join(packageRoot(), "assets", "skills"),
+      assetsRoot: path19.join(packageRoot(), "assets", "skills"),
       version: packageVersion(),
       log: deps.log
     });
@@ -37846,8 +38242,8 @@ function installPackagedSkills(deps) {
 
 // src/extensions/service.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync3, readFileSync as readFileSync6, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import path18 from "node:path";
+import { existsSync as existsSync3, readFileSync as readFileSync8, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync5 } from "node:fs";
+import path20 from "node:path";
 
 // src/extensions/registry.ts
 var EXTENSIONS = [
@@ -37901,13 +38297,13 @@ function isExtensionAction(value) {
 var nodeFs = {
   existsSync: (file2) => existsSync3(file2),
   // 包一层而不是直接传引用：node 的 readFileSync 是重载，直接传会被 TS 判成 Buffer 那个签名。
-  readFileSync: (file2, encoding) => readFileSync6(file2, encoding),
-  writeFileSync: (file2, data, encoding) => writeFileSync3(file2, data, encoding),
+  readFileSync: (file2, encoding) => readFileSync8(file2, encoding),
+  writeFileSync: (file2, data, encoding) => writeFileSync5(file2, data, encoding),
   renameSync: (from, to) => renameSync2(from, to),
   unlinkSync: (file2) => unlinkSync2(file2)
 };
 function profilePackageFile(profileDir) {
-  return path18.join(profileDir, "package.json");
+  return path20.join(profileDir, "package.json");
 }
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -37940,7 +38336,7 @@ function dependenciesOf(doc) {
   return asRecord(doc.dependencies);
 }
 function installedPackageFile(profileDir, packageName) {
-  return path18.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
+  return path20.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
 }
 function readInstalledVersion(profileDir, spec, fs8) {
   const file2 = installedPackageFile(profileDir, spec.packageName);
@@ -38106,7 +38502,7 @@ function pnpmInstallArgs(pnpmScript) {
 }
 function resolveRuntimeDir(env = process.env, options = {}) {
   const exists = options.exists ?? existsSync3;
-  const hasPnpm = (dir) => exists(path18.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
+  const hasPnpm = (dir) => exists(path20.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
   const candidates = [];
   const explicit = (env.DSH_RUNTIME_DIR ?? "").trim();
   if (explicit !== "") candidates.push(explicit);
@@ -38114,17 +38510,17 @@ function resolveRuntimeDir(env = process.env, options = {}) {
   if (installDir !== "") {
     let current = installDir;
     for (let depth = 0; depth < 8; depth += 1) {
-      const parent = path18.dirname(current);
+      const parent = path20.dirname(current);
       if (parent === current) break;
       current = parent;
-      if (path18.basename(current).toLowerCase() === "resources") {
-        candidates.push(path18.join(current, "runtime", "primary-runtime"), path18.join(current, "runtime"));
+      if (path20.basename(current).toLowerCase() === "resources") {
+        candidates.push(path20.join(current, "runtime", "primary-runtime"), path20.join(current, "runtime"));
         break;
       }
     }
   }
   const resources = (options.resourcesPath ?? process.resourcesPath ?? "").trim();
-  if (resources !== "") candidates.push(path18.join(resources, "runtime", "primary-runtime"), path18.join(resources, "runtime"));
+  if (resources !== "") candidates.push(path20.join(resources, "runtime", "primary-runtime"), path20.join(resources, "runtime"));
   for (const dir of candidates) if (hasPnpm(dir)) return dir;
   return void 0;
 }
@@ -38142,8 +38538,8 @@ function runPnpmInstall(input2) {
   if (runtimeDir === void 0) {
     return Promise.resolve({ ok: false, message: "\u627E\u4E0D\u5230\u5BBF\u4E3B\u81EA\u5E26\u7684 pnpm\uFF08\u8FD0\u884C\u65F6\u76EE\u5F55\u672A\u5B9A\u4F4D\uFF09\uFF0C\u6CA1\u6CD5\u5B89\u88C5\uFF1B\u8BF7\u7528\u684C\u9762\u7248\u5B89\u88C5\u5668\u91CD\u88C5\u540E\u518D\u8BD5" });
   }
-  const pnpmScript = path18.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
-  const nodeExe = path18.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
+  const pnpmScript = path20.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
+  const nodeExe = path20.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
   const useBundledNode = existsSync3(nodeExe);
   const command = useBundledNode ? nodeExe : process.execPath;
   const env = useBundledNode ? { ...process.env } : { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
@@ -38278,7 +38674,7 @@ function resolveProfileDir(env = process.env, dshHome) {
   const explicit = (env.DSH_PROFILE_DIR ?? "").trim();
   if (explicit !== "") return explicit;
   const profile = (env.DSH_PROFILE ?? "").trim() || "desktop";
-  return path18.join(dshHome, "profiles", profile);
+  return path20.join(dshHome, "profiles", profile);
 }
 
 // src/extensions/routes.ts
@@ -38851,12 +39247,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync8, readdirSync as readdirSync4, readFileSync as readFileSync9, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync5 } from "node:fs";
-import path21 from "node:path";
+import { existsSync as existsSync6, mkdirSync as mkdirSync9, readdirSync as readdirSync5, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync7 } from "node:fs";
+import path23 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync4, readFileSync as readFileSync7 } from "node:fs";
-import path19 from "node:path";
+import { existsSync as existsSync4, readFileSync as readFileSync9 } from "node:fs";
+import path21 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -38868,26 +39264,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path19.join(dshHome, "dsh-backup-git");
+  return path21.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path19.join(backupDir(dshHome), "config.json");
+  return path21.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path19.join(backupDir(dshHome), "credential.json");
+  return path21.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path19.join(backupDir(dshHome), "status.json");
+  return path21.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path19.join(backupDir(dshHome), "work");
+  return path21.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
   if (!existsSync4(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync7(file2, "utf8"));
+    parsed = JSON.parse(readFileSync9(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -39002,7 +39398,7 @@ function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
   if (!existsSync4(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync7(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync9(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -39114,19 +39510,19 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync5, readdirSync as readdirSync3, readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync5, readdirSync as readdirSync4, readFileSync as readFileSync10, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path20 from "node:path";
+import path22 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path20.join(sessionsRoot, slug);
+    const slugDir = path22.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path20.join(slugDir, dirName);
+      const sessionDir = path22.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path20.join(sessionDir, fileName);
+        const file2 = path22.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync4(file2);
@@ -39138,7 +39534,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path20.posix.join(slug, dirName, fileName),
+          relPath: path22.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -39152,14 +39548,14 @@ function isSessionFile(fileName) {
 }
 function safeDirs(dir) {
   try {
-    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
 }
 function safeFiles(dir) {
   try {
-    return readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
@@ -39187,11 +39583,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path20.join(input2.stagingDir, "latest");
+  const staging = path22.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path20.join(staging, "sessions", entry.relPath);
+    const target = path22.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -39200,20 +39596,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path20.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path22.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path20.join(staging, "profiles", path20.basename(input2.profileDir));
+    const target = path22.join(staging, "profiles", path22.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path20.join(input2.profileDir, name2);
+      const source = path22.join(input2.profileDir, name2);
       if (!existsSync5(source)) continue;
-      await copyFileFresh(source, path20.join(target, name2));
+      await copyFileFresh(source, path22.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path20.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path22.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -39229,17 +39625,17 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path20.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path22.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path20.join(stagingDir, "archive");
+  const root = path22.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path20.join(root, entry.relPath);
+    const target = path22.join(root, entry.relPath);
     if (existsSync5(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
@@ -39285,7 +39681,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path20.join(dir, entry.name);
+    const full = path22.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -39296,7 +39692,7 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path20.dirname(target), { recursive: true });
+  await mkdir(path22.dirname(target), { recursive: true });
   if (existsSync5(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
@@ -39309,7 +39705,7 @@ async function copyFlat(sourceDir, targetDir) {
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path20.join(sourceDir, name2), path20.join(targetDir, name2));
+    await copyFileFresh(path22.join(sourceDir, name2), path22.join(targetDir, name2));
     names.push(name2);
   }
   return names;
@@ -39322,8 +39718,8 @@ async function copyTree(sourceDir, targetDir) {
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path20.join(sourceDir, entry.name);
-    const target = path20.join(targetDir, entry.name);
+    const source = path22.join(sourceDir, entry.name);
+    const target = path22.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -39358,11 +39754,11 @@ function findProfileDir(profilesRoot, packageNames) {
   if (!existsSync5(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path20.join(profilesRoot, name2);
-    const manifest = path20.join(dir, "package.json");
+    const dir = path22.join(profilesRoot, name2);
+    const manifest = path22.join(dir, "package.json");
     if (!existsSync5(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync8(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync10(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
       const mtimeMs = statSync4(manifest).mtimeMs;
@@ -39524,7 +39920,7 @@ var BackupService = class {
     this.status.running = true;
     try {
       const dirs = this.layout();
-      mkdirSync8(dirs.base, { recursive: true });
+      mkdirSync9(dirs.base, { recursive: true });
       const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
@@ -39611,13 +40007,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path21.join(base, "staging"),
-      hotRepo: path21.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path21.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path21.join(this.deps.dshHome, "sessions"),
-      storagesDir: path21.join(this.deps.dshHome, "storages"),
-      profilesRoot: path21.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path21.join(this.deps.dshHome, "attachments")
+      staging: path23.join(base, "staging"),
+      hotRepo: path23.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path23.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path23.join(this.deps.dshHome, "sessions"),
+      storagesDir: path23.join(this.deps.dshHome, "storages"),
+      profilesRoot: path23.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path23.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -39639,8 +40035,8 @@ var BackupService = class {
     return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
   async prepareRepo(repo) {
-    mkdirSync8(repo, { recursive: true });
-    if (!existsSync6(path21.join(repo, ".git"))) {
+    mkdirSync9(repo, { recursive: true });
+    if (!existsSync6(path23.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -39660,7 +40056,7 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path21.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    const source = path23.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
     if (!existsSync6(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
@@ -39704,15 +40100,15 @@ var BackupService = class {
   }
   askpassScript() {
     const base = backupDir(this.deps.dshHome);
-    mkdirSync8(base, { recursive: true });
+    mkdirSync9(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path21.join(base, "askpass.cmd");
-      if (!existsSync6(file3)) writeFileSync5(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path23.join(base, "askpass.cmd");
+      if (!existsSync6(file3)) writeFileSync7(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path21.join(base, "askpass.sh");
+    const file2 = path23.join(base, "askpass.sh");
     if (!existsSync6(file2)) {
-      writeFileSync5(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+      writeFileSync7(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
   }
@@ -39734,31 +40130,31 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path21.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path23.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path21.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path21.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path23.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path23.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path21.join(staging, "latest");
-      const restoredHot = existsSync6(path21.join(restoreLatest, "sessions")) ? countSessionFiles(path21.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path23.join(staging, "latest");
+      const restoredHot = existsSync6(path23.join(restoreLatest, "sessions")) ? countSessionFiles(path23.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path21.join(this.deps.dshHome, name2);
+        const target = path23.join(this.deps.dshHome, name2);
         if (existsSync6(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path21.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path21.join(restoreLatest, "storages"), path21.join(this.deps.dshHome, "storages"));
-      if (existsSync6(path21.join(restoreLatest, "attachments"))) {
-        await mergeTree(path21.join(restoreLatest, "attachments"), path21.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path23.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path23.join(restoreLatest, "storages"), path23.join(this.deps.dshHome, "storages"));
+      if (existsSync6(path23.join(restoreLatest, "attachments"))) {
+        await mergeTree(path23.join(restoreLatest, "attachments"), path23.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path21.join(staging, "archive"), sessionsRoot);
-      const profiles = path21.join(restoreLatest, "profiles");
+      await mergeTree(path23.join(staging, "archive"), sessionsRoot);
+      const profiles = path23.join(restoreLatest, "profiles");
       if (existsSync6(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
@@ -39793,38 +40189,38 @@ ${result2.stdout}`.toLowerCase();
   return /couldn't find remote ref|could not find remote ref|unknown revision|no such ref/.test(text);
 }
 function clearExceptGit(repo) {
-  for (const entry of readdirSync4(repo, { withFileTypes: true })) {
+  for (const entry of readdirSync5(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path21.join(repo, entry.name);
+    const target = path23.join(repo, entry.name);
     rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
   if (!existsSync6(source)) return;
-  for (const entry of readdirSync4(source, { withFileTypes: true })) {
-    const from = path21.join(source, entry.name);
-    const to = path21.join(target, entry.name);
+  for (const entry of readdirSync5(source, { withFileTypes: true })) {
+    const from = path23.join(source, entry.name);
+    const to = path23.join(target, entry.name);
     if (entry.isDirectory()) {
-      mkdirSync8(to, { recursive: true });
+      mkdirSync9(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
     if (existsSync6(to)) continue;
-    mkdirSync8(target, { recursive: true });
+    mkdirSync9(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
   if (!existsSync6(profilesRoot)) return;
-  for (const entry of readdirSync4(source, { withFileTypes: true })) {
+  for (const entry of readdirSync5(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path21.join(source, entry.name);
-    const to = path21.join(profilesRoot, entry.name);
+    const from = path23.join(source, entry.name);
+    const to = path23.join(profilesRoot, entry.name);
     if (!existsSync6(to)) continue;
-    for (const file2 of readdirSync4(from, { withFileTypes: true })) {
+    for (const file2 of readdirSync5(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path21.join(from, file2.name), path21.join(to, file2.name));
+      await copyFileFresh(path23.join(from, file2.name), path23.join(to, file2.name));
     }
   }
 }
@@ -39833,12 +40229,12 @@ function countSessionFiles(root) {
   const walk2 = (dir) => {
     let entries;
     try {
-      entries = readdirSync4(dir, { withFileTypes: true });
+      entries = readdirSync5(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
-      const full = path21.join(dir, entry.name);
+      const full = path23.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
@@ -39853,8 +40249,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync10 } from "node:fs";
-import path22 from "node:path";
+import { readFileSync as readFileSync12 } from "node:fs";
+import path24 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -39884,14 +40280,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path22.dirname(statusFile2) : dataDir();
-  return path22.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path24.dirname(statusFile2) : dataDir();
+  return path24.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync10(file2, "utf8");
+    raw = readFileSync12(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -39899,12 +40295,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path22.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path24.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path22.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path24.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -39943,7 +40339,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path22.dirname(file2));
+    ensureSecureDir(path24.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -40126,7 +40522,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path23.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path25.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -40149,7 +40545,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path23.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path25.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -40698,7 +41094,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path23.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path25.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -40885,7 +41281,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path23.dirname(path23.dirname(config2.statusFile)) : path23.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path25.dirname(path25.dirname(config2.statusFile)) : path25.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
