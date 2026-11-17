@@ -38291,6 +38291,129 @@ function dependencyOf(spec) {
   return `git+${spec.gitUrl}#${spec.commit}`;
 }
 
+// src/compat/index.ts
+function parseVersion(input2) {
+  if (typeof input2 !== "string") return void 0;
+  const text = input2.trim().replace(/^v/i, "");
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([A-Za-z]+)\.?(\d+)?)?/.exec(text);
+  if (match === null) return void 0;
+  const parsed = {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3])
+  };
+  if (match[4] !== void 0) parsed.prerelease = { tag: match[4], num: match[5] === void 0 ? 0 : Number(match[5]) };
+  return parsed;
+}
+function compareVersions(a, b) {
+  const left = parseVersion(a);
+  const right = parseVersion(b);
+  if (left === void 0 && right === void 0) return 0;
+  if (left === void 0) return -1;
+  if (right === void 0) return 1;
+  for (const key of ["major", "minor", "patch"]) {
+    if (left[key] !== right[key]) return left[key] < right[key] ? -1 : 1;
+  }
+  if (left.prerelease === void 0 && right.prerelease === void 0) return 0;
+  if (left.prerelease === void 0) return 1;
+  if (right.prerelease === void 0) return -1;
+  if (left.prerelease.tag !== right.prerelease.tag) return left.prerelease.tag < right.prerelease.tag ? -1 : 1;
+  if (left.prerelease.num === right.prerelease.num) return 0;
+  return left.prerelease.num < right.prerelease.num ? -1 : 1;
+}
+var COMPAT = [
+  { packageName: "dsh-remote-dafeiyu", label: "\u672C\u4F53", minHost: "0.2.1", testedHost: "0.2.2-rc.3" },
+  { packageName: "dsh-avatar-dafeiyu", label: "\u5F62\u8C61", minHost: "0.2.1", testedHost: "0.2.2-rc.3" },
+  { packageName: "dsh-vision-dafeiyu", label: "\u8BC6\u56FE / \u5C0F\u4E91\u96C0", minHost: "0.2.1", testedHost: "0.2.2-rc.3" },
+  { packageName: "dsh-dev-kit-dafeiyu", label: "\u5E8F\u5217\u5E27", minHost: "0.2.1", testedHost: "0.2.2-rc.3" },
+  { packageName: "dsh-selfloop", label: "\u80A5\u9C7C\u81EA\u6CBB", minHost: "0.2.1", testedHost: "0.2.2-rc.3" }
+];
+var ROOM_PACKAGES = {
+  avatar: "dsh-avatar-dafeiyu",
+  vision: "dsh-vision-dafeiyu",
+  xyq: "dsh-vision-dafeiyu",
+  sprite: "dsh-dev-kit-dafeiyu"
+};
+function entryOf(packageName) {
+  return COMPAT.find((entry) => entry.packageName === packageName);
+}
+function verdictFor(host, entry) {
+  if (entry === void 0) return { level: "warn", message: "\u8FD9\u4E2A\u5305\u4E0D\u5728\u517C\u5BB9\u8868\u91CC\uFF1A\u6CA1\u9A8C\u8BC1\u8FC7\uFF0C\u80FD\u7528\u4F46\u522B\u5F53\u6210\u6709\u4FDD\u969C\u3002" };
+  if (parseVersion(host) === void 0) {
+    return { level: "warn", message: "\u8BFB\u4E0D\u5230\u5BBF\u4E3B\u7248\u672C\uFF0C\u65E0\u6CD5\u5224\u65AD\u517C\u5BB9\u6027\uFF08\u6309\u672A\u9A8C\u8BC1\u5904\u7406\uFF09\u3002" };
+  }
+  if (compareVersions(host, entry.minHost) < 0) {
+    return {
+      level: "block",
+      message: entry.label + " \u8981\u6C42\u5BBF\u4E3B \u2265 " + entry.minHost + "\uFF0C\u5F53\u524D\u662F " + String(host) + "\uFF1A\u88C5\u4E0A\u4E5F\u8DD1\u4E0D\u8D77\u6765\uFF0C\u5148\u5347\u5BBF\u4E3B\u3002"
+    };
+  }
+  if (compareVersions(host, entry.testedHost) > 0) {
+    return {
+      level: "warn",
+      message: entry.label + " \u53EA\u5728 " + entry.testedHost + " \u53CA\u4EE5\u4E0B\u9A8C\u8BC1\u8FC7\uFF0C\u5F53\u524D\u5BBF\u4E3B " + String(host) + " \u66F4\u65B0\uFF1A\u80FD\u7528\uFF0C\u4F46\u9047\u5230\u602A\u95EE\u9898\u5148\u6000\u7591\u7248\u672C\u9519\u4F4D\u3002"
+    };
+  }
+  return { level: "ok", message: "" };
+}
+function detectHostVersion(profileDir, fs8) {
+  const roots = ["dsh-app-boot", "dsh-official-bundles", "dsh-base"];
+  for (const name2 of roots) {
+    const file2 = [profileDir, "node_modules", "@deepseek-ai", name2, "package.json"].join("\\");
+    const version2 = readPackageVersion(file2, fs8);
+    if (version2 !== void 0) return version2;
+  }
+  const scopeDir = [profileDir, "node_modules", "@deepseek-ai"].join("\\");
+  if (typeof fs8.readdirSync !== "function") return void 0;
+  let names = [];
+  try {
+    names = fs8.readdirSync(scopeDir);
+  } catch {
+    return void 0;
+  }
+  const counts = /* @__PURE__ */ new Map();
+  for (const name2 of names) {
+    if (!name2.startsWith("dsh-")) continue;
+    const version2 = readPackageVersion([scopeDir, name2, "package.json"].join("\\"), fs8);
+    if (version2 === void 0) continue;
+    counts.set(version2, (counts.get(version2) ?? 0) + 1);
+  }
+  let best;
+  let bestCount = 0;
+  for (const [version2, count] of counts) {
+    if (count > bestCount) {
+      best = version2;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+function readPackageVersion(file2, fs8) {
+  try {
+    if (!fs8.existsSync(file2)) return void 0;
+    const parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
+    return typeof parsed?.version === "string" && parsed.version.trim() !== "" ? parsed.version.trim() : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function buildCompatReport(profileDir, fs8) {
+  const host = detectHostVersion(profileDir, fs8);
+  const packages = COMPAT.map((entry) => {
+    const verdict = verdictFor(host, entry);
+    return { packageName: entry.packageName, label: entry.label, level: verdict.level, message: verdict.message };
+  });
+  const levelOf = (packageName) => packages.find((row) => row.packageName === packageName)?.level ?? "warn";
+  const blockedRooms = [];
+  const warnRooms = [];
+  for (const [room, packageName] of Object.entries(ROOM_PACKAGES)) {
+    const level = levelOf(packageName);
+    if (level === "block") blockedRooms.push(room);
+    else if (level === "warn") warnRooms.push(room);
+  }
+  return { host, packages, blockedRooms, warnRooms };
+}
+
 // src/extensions/service.ts
 var EXTENSION_ACTIONS = ["install", "enable", "disable", "uninstall"];
 function isExtensionAction(value) {
@@ -38368,6 +38491,12 @@ function readExtensionStatus(profileDir, spec, options = {}) {
   const version2 = installed ? readInstalledVersion(profileDir, spec, fs8) : void 0;
   if (version2 !== void 0) status.version = version2;
   if (options.pendingRestart?.has(spec.id) === true) status.needsRestart = true;
+  try {
+    const report = buildCompatReport(profileDir, fs8);
+    status.compat = verdictFor(report.host, entryOf(spec.packageName));
+  } catch {
+    status.compat = { level: "warn", message: "\u517C\u5BB9\u6027\u5224\u65AD\u5931\u8D25\uFF08\u5DF2\u5FFD\u7565\uFF0C\u6309\u672A\u9A8C\u8BC1\u5904\u7406\uFF09\u3002" };
+  }
   return status;
 }
 function readExtensions(profileDir, options = {}) {
@@ -38606,6 +38735,10 @@ async function applyAction(profileDir, spec, action, options = {}) {
     return { ok: false, changed: false, needsRestart: false, message: `profile \u7684 package.json \u8BFB\u4E0D\u51FA\u6765\uFF1A${read.message}\uFF08\u5148\u4FEE\u597D\u5B83\uFF0C\u8FD9\u91CC\u4E0D\u8986\u76D6\u574F\u6587\u4EF6\uFF09` };
   }
   const status = readExtensionStatus(profileDir, spec, { fs: fs8 });
+  if (action === "install" && status.compat?.level === "block") {
+    options.log?.("\u6269\u5C55\u5B89\u88C5\u88AB\u517C\u5BB9\u6027\u62E6\u4E0B", { id: spec.id, message: status.compat.message });
+    return { ok: false, changed: false, needsRestart: false, message: status.compat.message };
+  }
   let plan;
   try {
     plan = planAction(spec, action, status);
@@ -38642,7 +38775,8 @@ async function applyAction(profileDir, spec, action, options = {}) {
     ok: true,
     changed: true,
     needsRestart: true,
-    message: `${ACTION_VERB[action]}\u300C${spec.label}\u300D\uFF0C\u91CD\u542F DSH \u540E\u751F\u6548`,
+    message: `${ACTION_VERB[action]}\u300C${spec.label}\u300D\uFF0C\u91CD\u542F DSH \u540E\u751F\u6548` + (after.compat?.level === "warn" && after.compat.message !== "" ? `
+\u63D0\u9192\uFF1A${after.compat.message}` : ""),
     version: after.version
   };
 }
@@ -38682,6 +38816,7 @@ function resolveProfileDir(env = process.env, dshHome) {
 // src/extensions/routes.ts
 var EXTENSIONS_ROUTE = "/api/dsh-remote-control/extensions";
 var EXTENSIONS_ACTION_ROUTE = "/api/dsh-remote-control/extensions/action";
+var COMPAT_ROUTE = "/api/dsh-remote-dafeiyu/compat";
 function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -38733,6 +38868,28 @@ function extensionsListHandler(deps) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u6269\u5C55\u5217\u8868\u8BFB\u4E0D\u51FA\u6765", { message });
       json7(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
+    }
+  };
+}
+function compatHandler(deps) {
+  return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected3(request);
+    if (denied !== void 0) {
+      json7(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      return;
+    }
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      return;
+    }
+    try {
+      json7(response, 200, { ok: true, ...deps.report() });
+    } catch (error62) {
+      const message = String(error62?.message ?? error62).slice(0, 200);
+      deps.log("\u517C\u5BB9\u62A5\u544A\u7B97\u4E0D\u51FA\u6765", { message });
+      json7(response, 200, { ok: true, packages: [], blockedRooms: [], warnRooms: [], message });
     }
   };
 }
@@ -38819,6 +38976,16 @@ function startExtensions(ctx, deps) {
       disposers.push(web.register({ kind: "exact", path: EXTENSIONS_ROUTE, handler: extensionsListHandler(routeDeps) }));
       disposers.push(
         web.register({ kind: "exact", path: EXTENSIONS_ACTION_ROUTE, handler: extensionsActionHandler(routeDeps) })
+      );
+      disposers.push(
+        web.register({
+          kind: "exact",
+          path: COMPAT_ROUTE,
+          handler: compatHandler({
+            report: () => buildCompatReport(deps.profileDir, deps.fs ?? nodeFs),
+            log: deps.log
+          })
+        })
       );
       probe.routes = "registered";
     } catch (error62) {
