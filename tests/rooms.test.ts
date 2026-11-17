@@ -211,3 +211,30 @@ test('入口闸门：形象在时给 html 打属性、不在时摘掉，且样�
   syncAvatarEntryGate({ document: fakeDoc })
   assert.equal(attrs['data-dafeiyu-avatar'], undefined, '形象没了属性要摘掉')
 })
+
+test('房间表挂在 window 上：本体 client 装载两次时住客 tab 也不会消失（2026-11-17 真机 bug）', () => {
+  // 真机现象：打开设置页，形象 / 识图 / 小云雀的 tab 开头还在、几秒后消失，形象菜单里点它们也没反应。
+  // 成因：本体 client 被装载了不止一次；原来房间表是模块作用域常量，住客进的是第 1 份的表，
+  // 页面若由第 2 份实例渲染，它读自己那张空表 ⇒ 一个住客 tab 都不剩。
+  // 判据：状态必须在 window 上（两次装载共用一份），且第二次装载后 listRooms() 仍看得见住客。
+  resetRooms()
+  const fake: Record<string, unknown> = {
+    dispatchEvent: () => true,
+    CustomEvent: class {
+      type: string
+      constructor(type: string) {
+        this.type = type
+      }
+    },
+  }
+  assert.equal(installRoomHost({ window: fake }), true)
+  const host = fake.__dafeiyuRooms as { register: (r: DafeiyuRoom) => () => void }
+  const dispose = host.register(room({ id: 'vision', label: '肥鱼识图' }))
+  assert.ok(fake.__dafeiyuRoomsStore, '房间表必须挂在 window 上，模块作用域常量会在第二次装载时分裂成两张')
+  assert.equal(installRoomHost({ window: fake }), true)
+  assert.equal(fake.__dafeiyuRoomsInstalls, 2, '装载次数留证据，复现时才查得出「装了几次」')
+  assert.deepEqual(listRooms().map((r) => r.id), ['vision'], '第二次装载后页面仍要看得见住客')
+  assert.equal((fake.__dafeiyuRoomsStore as { entries: Map<string, unknown> }).entries.size, 1)
+  dispose()
+  assert.equal(listRooms().length, 0, '住客退房仍要摘掉')
+})

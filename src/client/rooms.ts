@@ -86,12 +86,52 @@ interface Entry {
   seq: number
 }
 
-const entries = new Map<string, Entry>()
-const listeners = new Set<() => void>()
-let seq = 0
+/**
+ * 房间表的**真正的状态**（2026-11-17 修：原来放在模块作用域，见文件头「为什么会分裂」）。
+ *
+ * 放进一个普通对象、挂到 window 上，是为了让**同一个页面的每一份本体 client 实例读到同一张表**。
+ * 模块作用域的 `const entries = new Map()` 在"模块被装载两次"时会各有一份：
+ * 住客注册进 A 的表，页面组件（如果由 B 渲染）读 B 的表 → tab 全没了。
+ */
+interface RoomStore {
+  entries: Map<string, Entry>
+  listeners: Set<() => void>
+  seq: number
+}
+
+const STORE_KEY = '__dafeiyuRoomsStore'
+const INSTALL_KEY = '__dafeiyuRoomsInstalls'
+
+/** 没有 window（node 测试）时用的那份。 */
+const localStore: RoomStore = { entries: new Map(), listeners: new Set(), seq: 0 }
+
+/**
+ * 当前生效的那份表。
+ *
+ * 由 `installRoomHost()` 指向 window 上那份；没装过 window 就退回 `localStore`。
+ * 关键是**不是每个模块实例自己 new 一个**——这也是两次装载不再分裂的原因。
+ */
+let activeStore: RoomStore = localStore
+
+function store(): RoomStore {
+  return activeStore
+}
+
+/** 取 window 上那份表；没有就建一份（同一窗口只建一次）。 */
+function storeOn(target: Record<string, unknown> & { [key: string]: unknown }): RoomStore {
+  const existing = target[STORE_KEY] as RoomStore | undefined
+  if (existing && existing.entries instanceof Map) return existing
+  const fresh: RoomStore = { entries: new Map(), listeners: new Set(), seq: 0 }
+  try {
+    target[STORE_KEY] = fresh
+  } catch {
+    return localStore
+  }
+  return fresh
+}
 
 function notify(): void {
-  for (const listener of [...listeners]) {
+  for (const listener of [...store().listeners]) {
     try {
       listener()
     } catch {
@@ -116,10 +156,11 @@ export function registerRoom(room: DafeiyuRoom): () => void {
   }
   if (typeof room.mount !== 'function') throw new Error(`房间 ${room.id} 缺 mount 函数`)
 
-  if (entries.has(room.id)) {
+  const table = store()
+  if (table.entries.has(room.id)) {
     warn(`房间 ${room.id} 被重复注册，后者覆盖前者`)
   }
-  entries.set(room.id, { room, seq: seq++ })
+  table.entries.set(room.id, { room, seq: table.seq++ })
   notify()
 
   let disposed = false
@@ -127,9 +168,9 @@ export function registerRoom(room: DafeiyuRoom): () => void {
     if (disposed) return
     disposed = true
     // 只有"还是这一间"时才移除：后来的覆盖者不应被前一个的 dispose 带走
-    const current = entries.get(room.id)
+    const current = store().entries.get(room.id)
     if (current && current.room === room) {
-      entries.delete(room.id)
+      store().entries.delete(room.id)
       notify()
     }
   }
@@ -137,7 +178,7 @@ export function registerRoom(room: DafeiyuRoom): () => void {
 
 /** 已登记的房间（按 `order` 升序，同序按注册顺序）。 */
 export function listRooms(): DafeiyuRoom[] {
-  return [...entries.values()]
+  return [...store().entries.values()]
     .sort((a, b) => {
       const ao = typeof a.room.order === 'number' ? a.room.order : Number.POSITIVE_INFINITY
       const bo = typeof b.room.order === 'number' ? b.room.order : Number.POSITIVE_INFINITY
@@ -149,9 +190,10 @@ export function listRooms(): DafeiyuRoom[] {
 
 /** 订阅房间表变化（注册 / 注销）。返回取消订阅。 */
 export function onRoomsChange(listener: () => void): () => void {
-  listeners.add(listener)
+  const table = store()
+  table.listeners.add(listener)
   return () => {
-    listeners.delete(listener)
+    table.listeners.delete(listener)
   }
 }
 
@@ -172,8 +214,29 @@ export function installRoomHost(scope?: { window?: unknown }): boolean {
       })
     | undefined
   if (!target) return false
+  /*
+   * 2026-11-17 真机 bug：设置页里「形象 / 识图 / 小云雀」几个 tab **开头还在、几秒后消失**，
+   * 形象菜单里点它们也没反应。
+   *
+   * 成因是**本体 client 被装载了不止一次**（插件清单变化 / 客户端模块重装载）。
+   * 原来房间表是模块作用域常量：住客注册进第 1 份实例的表，页面若由第 2 份实例渲染，
+   * 它读自己那张空表 → 住客 tab 全没；`has()` 同样各看各的，入口闸门也跟着飘。
+   *
+   * 修法：状态搬到 window 上的一个普通对象（`__dafeiyuRoomsStore`），每一份实例都把
+   * `activeStore` 指向**同一份表**。装载次数记在 `__dafeiyuRoomsInstalls` 上并 warn 一行，
+   * 只为下次复现时能一眼看出"装了几次"。
+   */
+  const table = storeOn(target as Record<string, unknown>)
+  activeStore = table
+  try {
+    const seen = typeof target[INSTALL_KEY] === 'number' ? target[INSTALL_KEY] : 0
+    target[INSTALL_KEY] = seen + 1
+    if (seen > 0) warn(`本体 client 被装载了 ${seen + 1} 次（房间表已合并，tab 不会再因此消失）`)
+  } catch {
+    /* 计数只作诊断，写不进去不影响注册表 */
+  }
   if (target.__dafeiyuRooms) return true
-  const host: RoomHost = { version: 1, register: registerRoom, has: (id: string) => entries.has(id) }
+  const host: RoomHost = { version: 1, register: registerRoom, has: (id: string) => table.entries.has(id) }
   target.__dafeiyuRooms = host
   try {
     if (typeof target.dispatchEvent === 'function' && typeof target.CustomEvent === 'function') {
@@ -225,7 +288,7 @@ export function syncAvatarEntryGate(scope?: { document?: unknown }): void {
   } catch {
     domPresent = false
   }
-  const present = entries.has('avatar') || domPresent
+  const present = store().entries.has('avatar') || domPresent
   try {
     if (present) doc.documentElement.setAttribute?.(AVATAR_ATTR, '1')
     else doc.documentElement.removeAttribute?.(AVATAR_ATTR)
@@ -312,9 +375,11 @@ export function startAvatarEntryGate(scope?: { document?: unknown }): () => void
 
 /** 仅供测试：清空注册表（模拟"插件卸载后重来"）。 */
 export function resetRooms(): void {
-  entries.clear()
-  listeners.clear()
-  seq = 0
+  for (const table of [activeStore, localStore]) {
+    table.entries.clear()
+    table.listeners.clear()
+    table.seq = 0
+  }
 }
 
 function warn(message: string): void {
