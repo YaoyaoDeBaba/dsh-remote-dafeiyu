@@ -249,6 +249,17 @@ export function guidancePushHandler(deps: SubagentRouteDeps) {
 /** `GET /subagents/stream`：SSE，子代理有变化就推一条（客户端不再定时轮询）。 */
 export function subagentsStreamHandler() {
   return (request: IncomingMessage, response: ServerResponse): void => {
+    /*
+     * 2026-11-17 真机修：这条 SSE 路由原来**没走 applyCors**。
+     *
+     * 桌面页在自定义 scheme（dsh-app://app）上，每个请求都是跨源；缺 Access-Control-Allow-Origin
+     * 时 EventSource 直接被浏览器挡掉（控制台一串 CORS 红字 + 不停重连），表现是派活助手的
+     * 实时刷新与徽标计数全静默退回 30 秒慢轮询——功能"还能用"，所以没人当成故障报。
+     *
+     * CORS 头必须在 writeHead 之前设（after writeHead 就写不进去了）。
+     */
+    applyCors(request, response)
+    if (preflight(request, response)) return
     const denied = rejected(request)
     if (denied) {
       json(response, 403, { ok: false, error: denied })
