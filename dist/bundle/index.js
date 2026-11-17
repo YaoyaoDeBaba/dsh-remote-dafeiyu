@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.113" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.114" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36374,6 +36374,8 @@ function guidancePushHandler(deps) {
 }
 function subagentsStreamHandler() {
   return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
     const denied = rejected(request);
     if (denied) {
       json5(response, 403, { ok: false, error: denied });
