@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.112" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.113" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38253,7 +38253,7 @@ var EXTENSIONS = [
     label: "\u5F62\u8C61",
     description: "\u5927\u80A5\u9C7C\u7684\u5F62\u8C61\u5305\uFF1A\u8BBE\u7F6E\u9875\u300C\u5F62\u8C61\u300D\u5206\u680F\uFF08\u7D20\u6750\u67E5\u770B\u5668\uFF09\u4E0E\u684C\u9762\u60AC\u6D6E\u5C0F\u9CB8\u9C7C\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-avatar",
-    commit: "bc988d95bb30b4e0b595f56fbb1c548c737289e2"
+    commit: "445ff99775db2f5c23f8b1e379a0e519084c104f"
   },
   {
     id: "selfloop",
