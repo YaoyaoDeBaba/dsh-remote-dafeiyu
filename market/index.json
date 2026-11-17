@@ -1572,7 +1572,7 @@
           "source": {
             "type": "git",
             "url": "https://github.com/YaoyaoDeBaba/dsh-remote-dafeiyu",
-            "commit": "919c24bbb31febef2c0e473d32c0e56a3ed3913d"
+            "commit": "8ccecf4f4721760c76b8516980f87b897d214cba"
           },
           "engines": {
             "dsh": ">=0.2.1"
