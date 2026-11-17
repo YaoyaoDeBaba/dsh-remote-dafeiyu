@@ -46,6 +46,8 @@ export interface ExtensionRow {
   enabled: boolean
   version?: string
   needsRestart?: boolean
+  /** 与宿主版本的兼容判级（2026-11-17）：非 ok 的那一行要显式说出来。 */
+  compat?: { level: 'ok' | 'warn' | 'block'; message: string }
 }
 
 /** 注入式 fetch：`body` 有值就是 POST（带 `x-drc-pair`），返回宿主那份 JSON。 */
@@ -78,6 +80,14 @@ export function readExtensionsResult(result: Record<string, unknown> | null | un
     }
     if (typeof item.version === 'string' && item.version !== '') row.version = item.version
     if (item.needsRestart === true) row.needsRestart = true
+    const compat = item.compat
+    if (compat !== null && typeof compat === 'object') {
+      const level = (compat as { level?: unknown }).level
+      const message = (compat as { message?: unknown }).message
+      if (level === 'ok' || level === 'warn' || level === 'block') {
+        row.compat = { level, message: typeof message === 'string' ? message : '' }
+      }
+    }
     rows.push(row)
   }
   return { kind: 'ready', rows }
@@ -100,7 +110,10 @@ export interface RowButton {
 /** 一行该有哪几个按钮。纯函数：状态机全在这里，判据不用起 DOM。 */
 export function buttonsOf(row: ExtensionRow): RowButton[] {
   const state = rowStateOf(row)
-  if (state === 'not-installed') return [{ action: 'install', label: '安装', busyLabel: '安装中…' }]
+  // 兼容性明确不达标时**不给安装按钮**：装了也起不来，按钮在那儿只会让人反复点（2026-11-17）
+  if (state === 'not-installed') {
+    return row.compat?.level === 'block' ? [] : [{ action: 'install', label: '安装', busyLabel: '安装中…' }]
+  }
   if (state === 'enabled') {
     return [
       { action: 'disable', label: '禁用', busyLabel: '禁用中…' },
@@ -317,6 +330,16 @@ export function buildExtensionsPanel(deps: {
                   ],
                 }),
                 row.description !== '' ? h('span', { style: descStyle, children: row.description }) : null,
+                row.compat !== undefined && row.compat.level !== 'ok' && row.compat.message !== ''
+                  ? h('span', {
+                      style: {
+                        ...descStyle,
+                        color: row.compat.level === 'block' ? '#b42318' : '#8a5a00',
+                        fontWeight: row.compat.level === 'block' ? '600' : '400',
+                      },
+                      children: (row.compat.level === 'block' ? '不兼容：' : '注意：') + row.compat.message,
+                    })
+                  : null,
                 note ? h('span', { style: note.kind === 'error' ? errorStyle : descStyle, children: note.text }) : null,
               ],
             }),

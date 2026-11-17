@@ -59,7 +59,7 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     label: '肥鱼自治（Selfloop）',
     description: '把「改参数 → 观测 → 判据 → 搜索」的闭环跑起来，产出可复验的证据包。',
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin',
-    commit: '3a3d61904698e554cafc9d3ab5b960de9d506238',
+    commit: 'f893dc26f1cc61a5b271808dc4a50e352a1bea96',
   },
   {
     id: 'vision',
