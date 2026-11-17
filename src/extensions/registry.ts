@@ -51,7 +51,7 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     label: '形象',
     description: '大肥鱼的形象包：设置页「形象」分栏（素材查看器）与桌面悬浮小鲸鱼。',
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-avatar',
-    commit: '27af39b8492ce7a02a3c9f3287cada0112fec62c',
+    commit: 'fb5335b9269797a3ff3509382c504c07287aefd3',
   },
   {
     id: 'selfloop',
@@ -59,7 +59,7 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     label: '肥鱼自治（Selfloop）',
     description: '把「改参数 → 观测 → 判据 → 搜索」的闭环跑起来，产出可复验的证据包。',
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin',
-    commit: '47ff78542269c41c8512580ca942b038d788cd85',
+    commit: '3a3d61904698e554cafc9d3ab5b960de9d506238',
   },
   {
     id: 'vision',
