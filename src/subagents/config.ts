@@ -23,9 +23,25 @@ export interface SubagentsConfig {
   idleWarnMs: number
   /** 派活风格：包工头（默认，积极派活）/ 亲力亲为（回退，自己动手）。 */
   mode: DispatchMode
+  /**
+   * 闲置子代理**自动归档**（默认关，2026-11-17）。
+   *
+   * 为什么要有它：真机上「派了一堆子代理不回收、DSH 越跑越卡」是常态——原来只有面板上那颗
+   * 「一键归档闲置」，得人自己点。打开这个开关后，监视器每 5 分钟替人收一次
+   * （只收闲置过头且不在跑的；归档可恢复，不是删除）。
+   * 默认关：收掉别人可能在等的子代理是要负责的，交给用户自己开。
+   */
+  autoArchive: boolean
 }
 
-const DEFAULT_CONFIG: SubagentsConfig = { version: 1, enabled: true, guidance: true, idleWarnMs: 2 * 60 * 60 * 1000, mode: 'foreman' }
+const DEFAULT_CONFIG: SubagentsConfig = {
+  version: 1,
+  enabled: true,
+  guidance: true,
+  idleWarnMs: 2 * 60 * 60 * 1000,
+  mode: 'foreman',
+  autoArchive: false,
+}
 const MIN_IDLE = 5 * 60 * 1000
 const MAX_IDLE = 7 * 24 * 60 * 60 * 1000
 
@@ -42,6 +58,7 @@ export function normalizeSubagentsConfig(raw: unknown): SubagentsConfig {
     enabled: typeof value.enabled === 'boolean' ? value.enabled : DEFAULT_CONFIG.enabled,
     guidance: typeof value.guidance === 'boolean' ? value.guidance : DEFAULT_CONFIG.guidance,
     mode: value.mode === 'hands-on' ? 'hands-on' : 'foreman',
+    autoArchive: typeof value.autoArchive === 'boolean' ? value.autoArchive : DEFAULT_CONFIG.autoArchive,
     idleWarnMs: Math.min(MAX_IDLE, Math.max(MIN_IDLE, Math.round(idle))),
   }
 }

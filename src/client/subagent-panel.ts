@@ -64,6 +64,8 @@ export interface SubagentMonitorDeps {
 /** 闲置多久开始提示清理（与手机端同一口径：2 小时）。 */
 const IDLE_WARN_MS = 2 * 60 * 60 * 1000
 const POLL_MS = 3_000
+/** 闲置自动归档的节拍：5 分钟一次，**只在开关打开时挂表**（2026-11-17）。 */
+const AUTO_ARCHIVE_MS = 5 * 60 * 1000
 
 export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   const doc = (globalThis as { document?: Document }).document
@@ -213,12 +215,30 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   notifyLabel.className = 'notify'
   notifyLabel.title = '撤销包工头时，是否往当前会话推一条变更通知（不勾则只改配置）'
   notifyLabel.append(notifyToggle, doc.createTextNode('推送通知'))
+  /*
+   * 闲置自动归档开关（2026-11-17）。
+   *
+   * 真机上「派了一堆子代理不回收、DSH 越跑越卡」是常态，而原来只有一颗手点的
+   * 「一键归档闲置」。这个开关默认关，打开后由监视器每 5 分钟替人收一次闲置的
+   * （归档可恢复，不是删除）。状态落宿主配置（subagents.json），刷新页面不会丢。
+   */
+  const autoArchiveToggle = doc.createElement('input')
+  autoArchiveToggle.type = 'checkbox'
+  autoArchiveToggle.title = '每 5 分钟把闲置超过阈值的子代理自动归档（可恢复）'
+  const autoArchiveLabel = doc.createElement('label')
+  autoArchiveLabel.className = 'notify'
+  autoArchiveLabel.title = autoArchiveToggle.title
+  autoArchiveLabel.append(autoArchiveToggle, doc.createTextNode('自动归档闲置'))
+  autoArchiveToggle.addEventListener('change', () => {
+    applyAutoArchive(autoArchiveToggle.checked)
+    void saveAutoArchive(autoArchiveToggle.checked)
+  })
   const refreshNow = doc.createElement('button')
   refreshNow.className = 'ghost'
   refreshNow.textContent = '刷新'
   const close = doc.createElement('button')
   close.textContent = '关闭 ✕'
-  tools.append(pushBtn, undoForeman, notifyLabel, restore, archiveIdle, refreshNow, close)
+  tools.append(pushBtn, undoForeman, notifyLabel, autoArchiveLabel, restore, archiveIdle, refreshNow, close)
   head.append(title, tools)
   const body = doc.createElement('div')
   const foot = doc.createElement('div')
@@ -237,6 +257,74 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   /** 刷新撞上"正在刷新"时记一笔，等那次跑完补跑（见 refresh）。 */
   let pendingRefresh = false
   let opened = false
+
+  /*
+   * ── 闲置自动归档 ────────────────────────────────────────────────
+   * 三条纪律，都是"别让维护性功能自己变成新的常驻开销"：
+   *   ① 开关关着时**一个定时器都不挂**（挂载只读一次配置）；
+   *   ② 页面在后台（document.hidden）不干活；
+   *   ③ 一拍最多两条请求（列表 + 归档），失败静默——这是后台维护，不该弹提示。
+   */
+  let autoArchiveTimer: ReturnType<typeof setInterval> | undefined
+  let autoArchiveOn = false
+
+  const autoArchiveTick = async (): Promise<void> => {
+    if (!autoArchiveOn) return
+    try {
+      if ((globalThis as { document?: { hidden?: boolean } }).document?.hidden === true) return
+    } catch {
+      /* 读不到可见性就当可见 */
+    }
+    const current = deps.getCurrentSession()
+    if (!current) return
+    try {
+      const response = await fetch(
+        resolveHostUrl('/api/dsh-remote-dafeiyu/subagents?sessionId=' + encodeURIComponent(current)),
+      )
+      const answer = (await response.json()) as {
+        ok?: boolean
+        items?: SubagentRow[]
+        config?: { idleWarnMs?: number }
+      }
+      if (answer.ok !== true || !Array.isArray(answer.items)) return
+      if (typeof answer.config?.idleWarnMs === 'number') idleWarnMs = answer.config.idleWarnMs
+      const ids = answer.items
+        .filter((row) => row.archived !== true && row.status !== 'running' && isStale(row, idleWarnMs))
+        .map((row) => String(row.id))
+        .filter((id) => id !== '')
+      if (ids.length === 0) return
+      await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/archive'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+        body: JSON.stringify({ sessionId: current, ids, archived: true }),
+      })
+    } catch {
+      /* 后台维护失败就等下一拍，不打扰用户 */
+    }
+  }
+
+  const applyAutoArchive = (on: boolean): void => {
+    autoArchiveOn = on
+    if (on && autoArchiveTimer === undefined) {
+      autoArchiveTimer = setInterval(() => void autoArchiveTick(), AUTO_ARCHIVE_MS)
+    } else if (!on && autoArchiveTimer !== undefined) {
+      clearInterval(autoArchiveTimer)
+      autoArchiveTimer = undefined
+    }
+  }
+
+  /** 把开关写进宿主配置（落盘）；失败只改界面的勾，不动定时器之外的东西。 */
+  const saveAutoArchive = async (on: boolean): Promise<void> => {
+    try {
+      await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/config'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
+        body: JSON.stringify({ autoArchive: on }),
+      })
+    } catch {
+      /* 写不进去也别把开关弹回去：下一拍还会按本地判断走 */
+    }
+  }
   let restoring = false
   let numbering = new Map<string, number>()
   let nextNumber = 1
@@ -850,8 +938,22 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     void refresh()
   })
   void refresh()
+  // 自动归档：只读一次配置决定挂不挂表（关着 = 零定时器）。
+  void (async () => {
+    try {
+      const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/config'))
+      const answer = (await response.json()) as { ok?: boolean; config?: { autoArchive?: boolean; idleWarnMs?: number } }
+      if (typeof answer.config?.idleWarnMs === 'number') idleWarnMs = answer.config.idleWarnMs
+      const on = answer.config?.autoArchive === true
+      autoArchiveToggle.checked = on
+      applyAutoArchive(on)
+    } catch {
+      /* 读不到配置就按「关」处理：宁可不收，也别乱收 */
+    }
+  })()
 
   return () => {
+    if (autoArchiveTimer !== undefined) clearInterval(autoArchiveTimer)
     if (fallbackTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(fallbackTimer as unknown as number)
     if (refreshTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(refreshTimer as unknown as number)
     try {

@@ -368,6 +368,7 @@ test('subagents config：阈值夹取、读写回环、坏 JSON 回落默认', (
     assert.equal(fallback.idleWarnMs, 2 * 60 * 60 * 1000, '缺文件时默认 2 小时')
     assert.equal(fallback.guidance, true)
     assert.equal(fallback.mode, 'foreman', '默认包工头模式')
+    assert.equal(fallback.autoArchive, false, '自动归档默认关：收掉别人可能在等的子代理是要负责的')
 
     const written = writeSubagentsConfig(file, { idleWarnMs: 1000, guidance: false })
     assert.equal(written.idleWarnMs, 5 * 60 * 1000, '阈值低于 5 分钟要夹到下限')
@@ -376,6 +377,13 @@ test('subagents config：阈值夹取、读写回环、坏 JSON 回落默认', (
 
     writeSubagentsConfig(file, { idleWarnMs: 999 * 60 * 60 * 1000 })
     assert.equal(readSubagentsConfig(file).idleWarnMs, 7 * 24 * 60 * 60 * 1000, '超过 7 天夹到上限')
+
+    // 自动归档开关：布尔照收，脏值（字符串/null）一律回落到默认——它决定"要不要替人收子代理"，不许猜
+    assert.equal(writeSubagentsConfig(file, { autoArchive: true }).autoArchive, true)
+    assert.equal(readSubagentsConfig(file).autoArchive, true, '开着的开关要读得回来')
+    // 脏值落到**默认（关）**而不是"保持开"：替人收子代理这件事，出问题时宁可停下
+    assert.equal(writeSubagentsConfig(file, { autoArchive: 'yes' }).autoArchive, false, '字符串脏值回落默认（关）')
+    assert.equal(writeSubagentsConfig(file, { autoArchive: null }).autoArchive, false, 'null 同理，别让"关不掉"')
 
     writeFileSync(file, '{oops', 'utf8')
     assert.equal(readSubagentsConfig(file).idleWarnMs, 2 * 60 * 60 * 1000, '坏 JSON 绝不能抛，回落默认')

@@ -25,6 +25,7 @@ const CONFIG: SubagentsConfig = {
   enabled: true,
   guidance: true,
   idleWarnMs: 2 * 60 * 60 * 1000,
+  autoArchive: false,
   mode: 'foreman',
 }
 const HEADERS = { host: '127.0.0.1:19387', 'x-drc-pair': '1' }
