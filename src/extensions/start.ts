@@ -19,7 +19,16 @@ import {
   type Log,
   type PnpmRunner,
 } from './service.js'
-import { EXTENSIONS_ACTION_ROUTE, EXTENSIONS_ROUTE, extensionsActionHandler, extensionsListHandler } from './routes.js'
+import {
+  COMPAT_ROUTE,
+  EXTENSIONS_ACTION_ROUTE,
+  EXTENSIONS_ROUTE,
+  compatHandler,
+  extensionsActionHandler,
+  extensionsListHandler,
+} from './routes.js'
+import { buildCompatReport, type CompatFs } from '../compat/index.js'
+import { nodeFs } from './service.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -71,6 +80,16 @@ export function startExtensions(
       disposers.push(web.register({ kind: 'exact', path: EXTENSIONS_ROUTE, handler: extensionsListHandler(routeDeps) }))
       disposers.push(
         web.register({ kind: 'exact', path: EXTENSIONS_ACTION_ROUTE, handler: extensionsActionHandler(routeDeps) }),
+      )
+      disposers.push(
+        web.register({
+          kind: 'exact',
+          path: COMPAT_ROUTE,
+          handler: compatHandler({
+            report: () => buildCompatReport(deps.profileDir, (deps.fs ?? nodeFs) as unknown as CompatFs),
+            log: deps.log,
+          }),
+        }),
       )
       probe.routes = 'registered'
     } catch (error) {

@@ -19,6 +19,14 @@ import type { ApplyResult, ExtensionStatus, Log } from './service.js'
 
 export const EXTENSIONS_ROUTE = '/api/dsh-remote-control/extensions'
 export const EXTENSIONS_ACTION_ROUTE = '/api/dsh-remote-control/extensions/action'
+/**
+ * 兼容报告（2026-11-17）：宿主版本 + 每个包的判级 + 哪些房间该被挡住/提示。
+ *
+ * 客户端在启动时拉一次，用它过滤设置页的住客 tabs（②「登记时挡」的落点）。
+ * 前缀用 `api/dsh-remote-dafeiyu`：客户端只在**打开这一页**时拉它（不在启动路径上），
+ * 所以不会污染「pill 挂载期间只走 /plugins 前缀」那几条判据。
+ */
+export const COMPAT_ROUTE = '/api/dsh-remote-dafeiyu/compat'
 
 export interface ExtensionsRouteDeps {
   list: () => ExtensionStatus[]
@@ -93,6 +101,30 @@ export function extensionsListHandler(deps: ExtensionsRouteDeps) {
  * 业务失败（不在白名单 / pnpm 失败 / profile 坏了）回 200 + `ok:false` + 中文 `message`：
  * 那些是"点了但没成"的正常结局，不是 HTTP 错误——面板要把原因显示在那一行里。
  */
+/** `GET /compat`：宿主版本 + 兼容判级。读不到版本也回 200（level=warn），不许 500。 */
+export function compatHandler(deps: { report: () => unknown; log: Log }) {
+  return (request: IncomingMessage, response: ServerResponse): void => {
+    applyCors(request, response)
+    if (preflight(request, response)) return
+    const denied = rejected(request)
+    if (denied !== undefined) {
+      json(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? '请求不可信' })
+      return
+    }
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      json(response, 405, { ok: false, message: '这边只支持 GET' })
+      return
+    }
+    try {
+      json(response, 200, { ok: true, ...(deps.report() as Record<string, unknown>) })
+    } catch (error) {
+      const message = String((error as Error)?.message ?? error).slice(0, 200)
+      deps.log('兼容报告算不出来', { message })
+      json(response, 200, { ok: true, packages: [], blockedRooms: [], warnRooms: [], message })
+    }
+  }
+}
+
 export function extensionsActionHandler(deps: ExtensionsRouteDeps) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
     applyCors(request, response)

@@ -78,6 +78,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
   } catch (error) {
     swallow('房间注册表挂载失败（已吞掉）', error)
   }
+
   // 有形象时收起独立入口：html 属性 + 全局 CSS（JS 设的 hidden 会被重建翻回去）
   let stopEntryGate: (() => void) | undefined
   try {

@@ -22,6 +22,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { dependencyOf, EXTENSIONS, findExtension, type ExtensionSpec } from './registry.js'
+import { buildCompatReport, entryOf, verdictFor, type CompatFs, type CompatLevel } from '../compat/index.js'
 
 export type Log = (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 
@@ -43,6 +44,8 @@ export interface ExtensionStatus {
   enabled: boolean
   version?: string
   needsRestart?: boolean
+  /** 与宿主版本的兼容判级（2026-11-17）：block 时安装按钮要禁用并说明原因。 */
+  compat?: { level: CompatLevel; message: string }
 }
 
 /** 动作对 profile 的改动（纯数据，`planAction` 的返回值）。 */
@@ -181,6 +184,13 @@ export function readExtensionStatus(
   const version = installed ? readInstalledVersion(profileDir, spec, fs) : undefined
   if (version !== undefined) status.version = version
   if (options.pendingRestart?.has(spec.id) === true) status.needsRestart = true
+  // 兼容判级：读不到宿主版本时按「未验证」处理，不许假装没问题
+  try {
+    const report = buildCompatReport(profileDir, fs as unknown as CompatFs)
+    status.compat = verdictFor(report.host, entryOf(spec.packageName))
+  } catch {
+    status.compat = { level: 'warn', message: '兼容性判断失败（已忽略，按未验证处理）。' }
+  }
   return status
 }
 
@@ -572,6 +582,15 @@ export async function applyAction(
     return { ok: false, changed: false, needsRestart: false, message: `profile 的 package.json 读不出来：${read.message}（先修好它，这里不覆盖坏文件）` }
   }
   const status = readExtensionStatus(profileDir, spec, { fs })
+  /*
+   * 装之前先看兼容（2026-11-17）：宿主版本连下限都不到时，装上就是白装——
+   * 轻则整个插件不激活，重则把宿主带崩。这里直接拒绝，并把原因说清楚。
+   * 注意只拦 `block`；`warn`（宿主比验证过的更新）照装，但回执里带一句提醒。
+   */
+  if (action === 'install' && status.compat?.level === 'block') {
+    options.log?.('扩展安装被兼容性拦下', { id: spec.id, message: status.compat.message })
+    return { ok: false, changed: false, needsRestart: false, message: status.compat.message }
+  }
   let plan: PlanResult
   try {
     plan = planAction(spec, action, status)
@@ -609,7 +628,9 @@ export async function applyAction(
     ok: true,
     changed: true,
     needsRestart: true,
-    message: `${ACTION_VERB[action]}「${spec.label}」，重启 DSH 后生效`,
+    message:
+      `${ACTION_VERB[action]}「${spec.label}」，重启 DSH 后生效` +
+      (after.compat?.level === 'warn' && after.compat.message !== '' ? `\n提醒：${after.compat.message}` : ''),
     version: after.version,
   }
 }

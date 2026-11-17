@@ -226,7 +226,92 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     if (typeof useEffect === 'function') {
       useEffect(() => onRoomsChange(() => setRoomsVersion(++bump)), [])
     }
-    const rooms = listRooms()
+    /*
+     * 兼容性过滤（2026-11-17）：宿主版本低于某个住客包的下限时不建 tab。
+     * 数据由 client/main.ts 在启动时拉一次 `/api/dsh-remote-dafeiyu/compat` 挂在 globalThis 上，
+     * 拉回来会派发 dafeiyu:compat —— 这里订阅一次重渲染（与房间表同一套写法）。
+     */
+    const [compatVersion, setCompatVersion] = useState<number>(0)
+    let compatBump = compatVersion
+    if (typeof useEffect === 'function') {
+      useEffect(() => {
+        const scope = globalThis as {
+          addEventListener?: (type: string, fn: () => void) => void
+          removeEventListener?: (type: string, fn: () => void) => void
+          dispatchEvent?: (event: unknown) => boolean
+          CustomEvent?: new (type: string, init?: { detail?: unknown }) => unknown
+          __dafeiyuCompat?: unknown
+        }
+        const onCompat = (): void => setCompatVersion(++compatBump)
+        try {
+          scope.addEventListener?.('dafeiyu:compat', onCompat)
+        } catch {
+          /* 没有 window 就算了 */
+        }
+        /*
+         * 报告**在这一页打开时才拉**（2026-11-17）：放到 apply 里会让"pill 挂载期间只走
+         * /plugins 前缀"那几条判据误报，而且没人打开设置页时这一发请求是白花的。
+         * 拉失败就保持原样（不过滤），下次打开再试。
+         */
+        if (scope.__dafeiyuCompat === undefined) {
+          void (async () => {
+            try {
+              const response = await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/compat'), {
+                signal:
+                  typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(3000) : undefined,
+              })
+              const answer = (await response.json()) as {
+                ok?: boolean
+                host?: unknown
+                blockedRooms?: unknown
+                warnRooms?: unknown
+              }
+              if (answer.ok !== true) return
+              const asStrings = (value: unknown): string[] =>
+                Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+              const compat = {
+                host: typeof answer.host === 'string' ? answer.host : undefined,
+                blocked: asStrings(answer.blockedRooms),
+                warn: asStrings(answer.warnRooms),
+              }
+              scope.__dafeiyuCompat = compat
+              try {
+                if (typeof scope.dispatchEvent === 'function' && typeof scope.CustomEvent === 'function') {
+                  scope.dispatchEvent(new scope.CustomEvent('dafeiyu:compat', { detail: compat }))
+                }
+              } catch {
+                setCompatVersion(++compatBump)
+              }
+            } catch {
+              /* 拉不到就不过滤：能用总比空白强 */
+            }
+          })()
+        }
+        return () => {
+          try {
+            scope.removeEventListener?.('dafeiyu:compat', onCompat)
+          } catch {
+            /* ignore */
+          }
+        }
+      }, [])
+    }
+    const compat = (globalThis as { __dafeiyuCompat?: { blocked?: string[]; warn?: string[]; host?: string } }).__dafeiyuCompat
+    const blockedRooms = new Set(Array.isArray(compat?.blocked) ? compat!.blocked! : [])
+    const allRooms = listRooms()
+    const rooms = allRooms.filter((room) => !blockedRooms.has(room.id))
+    const compatNotes: string[] = []
+    for (const room of allRooms) {
+      if (blockedRooms.has(room.id)) {
+        compatNotes.push(room.label + '：与当前宿主版本不兼容，已停用（升级宿主或换回验证过的版本）。')
+      }
+    }
+    const warnIds = new Set(Array.isArray(compat?.warn) ? compat!.warn! : [])
+    for (const room of allRooms) {
+      if (!blockedRooms.has(room.id) && warnIds.has(room.id)) {
+        compatNotes.push(room.label + '：当前宿主比验证过的版本新，能用但没验过。')
+      }
+    }
     const tabs: Array<[string, string]> = [...Object.entries(TAB_LABELS), ...rooms.map((room) => [room.id, room.label] as [string, string])]
     // 当前 tab 的住客被注销了（插件卸载）→ 回到远程控制，别停在一间不存在的房上
     if (!tabs.some(([id]) => id === tab)) {
@@ -321,9 +406,25 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
     } else {
       body = fallbackLine(createElement, '未实现的分栏。')
     }
+    const compatBanner =
+      compatNotes.length === 0
+        ? null
+        : createElement('div', {
+            style: {
+              padding: '8px 12px',
+              marginBottom: '10px',
+              borderRadius: '8px',
+              border: '1px solid #f0c36d',
+              background: '#fff8e6',
+              color: '#8a5a00',
+              fontSize: '12.5px',
+              lineHeight: '1.6',
+            },
+            children: ['兼容性提示：', ...compatNotes],
+          })
     return createElement('div', {
       style: columnStyle,
-      children: [tabBar, body],
+      children: compatBanner === null ? [tabBar, body] : [compatBanner, tabBar, body],
     })
   }
 
