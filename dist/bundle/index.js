@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.108" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.109" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37849,7 +37849,7 @@ var EXTENSIONS = [
     label: "\u5F62\u8C61",
     description: "\u5927\u80A5\u9C7C\u7684\u5F62\u8C61\u5305\uFF1A\u8BBE\u7F6E\u9875\u300C\u5F62\u8C61\u300D\u5206\u680F\uFF08\u7D20\u6750\u67E5\u770B\u5668\uFF09\u4E0E\u684C\u9762\u60AC\u6D6E\u5C0F\u9CB8\u9C7C\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-avatar",
-    commit: "27af39b8492ce7a02a3c9f3287cada0112fec62c"
+    commit: "fb5335b9269797a3ff3509382c504c07287aefd3"
   },
   {
     id: "selfloop",
@@ -37857,7 +37857,7 @@ var EXTENSIONS = [
     label: "\u80A5\u9C7C\u81EA\u6CBB\uFF08Selfloop\uFF09",
     description: "\u628A\u300C\u6539\u53C2\u6570 \u2192 \u89C2\u6D4B \u2192 \u5224\u636E \u2192 \u641C\u7D22\u300D\u7684\u95ED\u73AF\u8DD1\u8D77\u6765\uFF0C\u4EA7\u51FA\u53EF\u590D\u9A8C\u7684\u8BC1\u636E\u5305\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-harness-plugin",
-    commit: "47ff78542269c41c8512580ca942b038d788cd85"
+    commit: "3a3d61904698e554cafc9d3ab5b960de9d506238"
   },
   {
     id: "vision",
