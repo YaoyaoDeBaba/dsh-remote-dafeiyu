@@ -11,16 +11,26 @@
  * 为什么交接没成功就**绝不**建新会话：多出一条空会话比一次失败更难解释，
  * 而且用户会以为转生成功了、在新会话里接着聊，结果对面什么都没拿到。
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   HANDOFF_MARKER,
   buildFirstPrompt,
+  buildFixInstruction,
   buildInjection,
   handoffFileName,
   type HandoffKind,
   type HandoffPlan,
 } from './prompt.js'
+import { checkHandoffDoc } from './doc-check.js'
+
+/**
+ * 交接文档结构不合格时，最多"打回补写"几轮（2026-11-17）。
+ *
+ * 为什么是 2：一轮通常就能补掉漏的小节与含糊话；第二轮是给"上一轮没看懂"留的余量。
+ * 再往上堆只会把 180 秒的等待烧光，用户看到的反而是一次超时失败。
+ */
+const MAX_FIX_ROUNDS = 2
 
 export type HandoffStatus = 'waiting' | 'creating' | 'done' | 'failed'
 
@@ -195,6 +205,23 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       return
     }
     touch(job, { newSessionId: created.sessionId, ...(cwd ? { newSessionCwd: cwd } : {}) })
+    /*
+     * 记一条"来生 → 前世"的谱系（2026-11-17）。收件箱靠它找"该问谁"：
+     * 来生手里没有前世会话 id，也不该让它自己猜。
+     */
+    try {
+      const lineagePath = path.join(path.dirname(job.filePath), 'lineage.json')
+      let lineage: Record<string, string> = {}
+      try {
+        lineage = JSON.parse(readFileSync(lineagePath, 'utf8')) as Record<string, string>
+      } catch {
+        lineage = {}
+      }
+      lineage[created.sessionId] = job.sessionId
+      writeFileSync(lineagePath, JSON.stringify(lineage, null, 2) + '\n', 'utf8')
+    } catch {
+      /* 谱系写不进去：收件箱还能靠显式 to 参数工作，不拦流程 */
+    }
     // 首句失败也不回滚会话：会话在那儿，用户点进去手动发一句也能接上，
     // 但要把原因写进 status，不能让面板显示成"一切正常"。
     try {
@@ -213,12 +240,64 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
   const watch = (job: HandoffJob, plan: HandoffPlan): void => {
     const startedAt = now()
     let emptyHits = 0
+    /**
+     * 上一轮检查过的原文（用来分辨"内容又变了"）与已打回轮数。
+     *
+     * 结构判据（doc-check）不通过时把问题清单再注入一次，让**前世自己**补；
+     * 补完内容变了才重新判，避免同一份文件被反复判、反复发消息。
+     */
+    let lastChecked = ''
+    let fixRounds = 0
+    /** 已经打过补写指令、还在等文件变化：这时**不许**拿同一份内容继续走流程。 */
+    let awaitingFix = false
     const tick = (): void => {
       const timer = setTimeout(() => {
         timers.delete(timer)
         if (stopped) return
         const state = probeFile(job.filePath)
         if (state === 'ok') {
+          let text = ''
+          try {
+            text = readFileSync(job.filePath, 'utf8')
+          } catch {
+            text = ''
+          }
+          if (awaitingFix && text === lastChecked) {
+            // 补写指令发出去了，文件还没变：继续等，别拿旧内容建会话
+            tick()
+            return
+          }
+          if (text !== '' && text !== lastChecked) {
+            lastChecked = text
+            awaitingFix = false
+            const verdict = checkHandoffDoc(text, plan.kind)
+            if (!verdict.ok) {
+              if (fixRounds < MAX_FIX_ROUNDS) {
+                fixRounds += 1
+                touch(job, {
+                  message: `交接文档有 ${verdict.problems.length} 处不合格，已要求补写（第 ${fixRounds}/${MAX_FIX_ROUNDS} 轮）`,
+                })
+                deps.log('交接文档结构不合格，打回补写', {
+                  jobId: job.id,
+                  round: fixRounds,
+                  problems: verdict.problems.length,
+                })
+                awaitingFix = true
+                void deps.inject(job.sessionId, buildFixInstruction(plan, verdict.problems, fixRounds))
+                tick()
+                return
+              }
+              // 补到上限还是不合格：**不要再拖**。把问题带进首句，让来生知道哪里得自己补。
+              plan.knownGaps = verdict.problems.slice(0, 6)
+              touch(job, {
+                message: `交接文档仍有 ${verdict.problems.length} 处不合格，已带进首句交给来生自查`,
+              })
+              deps.log('交接文档补到上限仍不合格，带缺口建新会话', {
+                jobId: job.id,
+                problems: verdict.problems.length,
+              })
+            }
+          }
           void spawnHeir(job, plan)
           return
         }
@@ -264,6 +343,7 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       const plan: HandoffPlan = {
         kind,
         filePath,
+        parentSessionId: id,
         ...(trimmedNote ? { note: trimmedNote } : {}),
         ...(String(boundary ?? '').trim() ? { boundary: String(boundary ?? '').trim() } : {}),
       }

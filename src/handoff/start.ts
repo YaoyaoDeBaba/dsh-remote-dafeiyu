@@ -16,6 +16,7 @@ import {
 } from './routes.js'
 import { buildHandoffTools } from './tools.js'
 import { createHandoffService, type HandoffService } from './service.js'
+import { createInbox } from './inbox.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
@@ -64,6 +65,15 @@ export function startHandoff(
     newSession: input.newSession,
     sendPrompt: input.sendPrompt,
     sessionCwd: input.sessionCwd,
+  })
+  /*
+   * 收件箱（2026-11-17）：前世 ↔ 来生的电话线。
+   * deliver 直接用宿主的 sendPrompt —— 转生投递首句走的就是它，能到任意会话。
+   */
+  const inbox = createInbox({
+    dir: `${input.handoffDir ?? resolveHandoffDir()}\\inbox`,
+    deliver: async (sessionId, text) => input.sendPrompt(sessionId, text),
+    log: input.log,
   })
   const deps: HandoffRouteDeps = {
     start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary),
@@ -127,6 +137,8 @@ const acceptTools = (value: unknown, via: string): boolean => {
   try {
     const definitions = buildHandoffTools({
       service: { start: (kind, sessionId, note, boundary) => service.start(kind, sessionId, note, boundary) },
+      inbox: { ask: (askInput) => inbox.ask(askInput), answer: (answerInput) => inbox.answer(answerInput) },
+      handoffDir: input.handoffDir ?? resolveHandoffDir(),
       log: input.log,
     })
     for (const definition of definitions) tools.register(definition)

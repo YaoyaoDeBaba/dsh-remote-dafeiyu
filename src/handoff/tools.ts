@@ -21,11 +21,20 @@
  * 所以：**先试 `exec.agent` 上几种常见形状**，试不出来就要求调用方显式给 `sessionId`，
  * 并把"怎么找到它"写进错误里。宁可要一次显式参数，也不要猜错了把上下文转生到别的会话去。
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import type { HandoffKind } from './prompt.js'
 import type { HandoffService } from './service.js'
 
 export interface HandoffToolDeps {
   service: Pick<HandoffService, 'start'>
+  /** 收件箱（前世 ↔ 来生）：本工具只做参数解析与话术，存取全在 inbox.ts。 */
+  inbox: {
+    ask: (input: { from: string; to: string; question: string }) => Promise<{ ok: boolean; thread?: { id: string; to: string }; message?: string }>
+    answer: (input: { id: string; answer: string }) => Promise<{ ok: boolean; thread?: { id: string; from: string; status: string }; message?: string }>
+  }
+  /** 交接目录：读 lineage.json（来生 → 前世 的谱系），让 handoff_ask 不用人肉传 id。 */
+  handoffDir: string
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }
 
@@ -153,5 +162,92 @@ export function buildHandoffTools(deps: HandoffToolDeps): Array<Record<string, u
     },
   })
 
-  return [make('rebirth'), make('branch')]
+  /**
+   * 收件箱的两个工具（2026-11-17）。
+   *
+   * 内核没有「顶层会话互相发消息」的 API，但插件有 sendPrompt——转生本来就是靠它投递的。
+   * 这两个工具就是那根电话线的两头：来生问（handoff_ask）、前世答（handoff_answer）。
+   * 送不到时**不许静默**：返回值里直接说「去问用户」，别让来生一直等一个不会来的回答。
+   */
+  const makeAsk = (): Record<string, unknown> => ({
+    name: 'handoff_ask',
+    description:
+      '问「前世」会话一个交接文档没写清的问题（它是把你这条活交接出来的那条会话）。\n' +
+      '**先用它、再问用户**：文档缺口里「当时为什么这么定 / 被否方案的原因 / 在等谁拍板」这类，前世都答得上。\n' +
+      'to 通常不用传（按 lineage.json 自动找前世）；question 要写清「你缺什么、要解决什么问题」。\n' +
+      '回答会作为新消息送回来；返回 ok:false 说明前世不在线——那就直接问用户，别等。',
+    parameters: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: '缺什么：一个问题一条，别把一堆问题塞进一段。' },
+        to: { type: 'string', description: '前世会话 id（选填；不传就按谱系自动找）。' },
+      },
+      required: ['question'],
+    },
+    output: OUT,
+    timeoutMs: 20_000,
+    async execute(args: unknown, exec?: unknown): Promise<string> {
+      const input = (args ?? {}) as { question?: unknown; to?: unknown }
+      const from = resolveSessionId(exec)
+      if (from === undefined) {
+        return JSON.stringify({ ok: false, error: '拿不到当前会话 id：收件箱要先知道你是谁，才能把回答送回来。' })
+      }
+      const explicit = typeof input.to === 'string' ? input.to.trim() : ''
+      const to = explicit !== '' ? explicit : parentOf(deps.handoffDir, from) ?? ''
+      if (to === '') {
+        return JSON.stringify({
+          ok: false,
+          error: '找不到前世会话（lineage.json 里没有你）：把前世会话 id 传给 to，或者直接问用户。',
+        })
+      }
+      const result = await deps.inbox.ask({ from, to, question: String(input.question ?? '') })
+      deps.log('agent 用收件箱问前世', { ok: String(result.ok), to })
+      return JSON.stringify(result)
+    },
+  })
+
+  const makeAnswer = (): Record<string, unknown> => ({
+    name: 'handoff_answer',
+    description:
+      '回收件箱里「来生」的提问（转生/分身后接手那条会话）。\n' +
+      '回答要能直接照做：改哪个文件、跑什么命令、当时为什么这么定。\n' +
+      '返回 ok:true 且不带 message 表示回答已送回给提问的会话；带 message 说明存档了但没送进去（对面可能已归档）。',
+    parameters: {
+      type: 'object',
+      properties: {
+        inboxId: { type: 'string', description: '提问里给的那串线程 id。' },
+        answer: { type: 'string', description: '回答正文。' },
+      },
+      required: ['inboxId', 'answer'],
+    },
+    output: OUT,
+    timeoutMs: 20_000,
+    async execute(args: unknown): Promise<string> {
+      const input = (args ?? {}) as { inboxId?: unknown; answer?: unknown }
+      const id = typeof input.inboxId === 'string' ? input.inboxId.trim() : ''
+      if (id === '') return JSON.stringify({ ok: false, error: '缺少 inboxId（提问里那串线程 id）。' })
+      const result = await deps.inbox.answer({ id, answer: String(input.answer ?? '') })
+      deps.log('agent 回收件箱回答', { ok: String(result.ok) })
+      return JSON.stringify(result)
+    },
+  })
+
+  return [make('rebirth'), make('branch'), makeAsk(), makeAnswer()]
+}
+
+/**
+ * 从谱系里找「我的前世是谁」。
+ *
+ * 谱系是 service 在 spawnHeir 时写的（来生 → 前世），读失败就当没有——
+ * 这时候靠 to 显式传，或退回问用户。
+ */
+export function parentOf(handoffDir: string, sessionId: string): string | undefined {
+  try {
+    const raw = readFileSync(path.join(handoffDir, 'lineage.json'), 'utf8')
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const parent = parsed[sessionId]
+    return typeof parent === 'string' && parent.trim() !== '' ? parent.trim() : undefined
+  } catch {
+    return undefined
+  }
 }

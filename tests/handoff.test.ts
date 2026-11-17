@@ -98,6 +98,8 @@ function fakeDeps(over: Partial<HandoffDeps> = {}) {
   return { deps, calls }
 }
 
+const GOOD_DOC = "# 交接\n\n## 目标\n把交接文档写全。\n## 现状（做到哪一步）\n判据已过。\n## 已完成（不要重做）\n- 交接指令重写：src/handoff/prompt.ts:120\n## 未完成 / 下一步\n- 打开 src/handoff/service.ts 跑 node --test dist/tests/handoff.test.js，全绿算完成\n## 等用户拍板\n无\n## 后台在跑\n无\n## 边界（不要碰的东西）\n无\n## 长期记忆要点\n- 2026-11-17 交接文档在 D:/handoff/x.md\n## 关键决定与理由\n补写用打回，而不是重发整份指令。\n## 坑与教训（踩过的坑、被否掉的方案）\n无\n## 工作区与版本\n分支 release-main，脏文件 0。\n## 相关文件\nC:/work/proj/src/handoff/prompt.ts\n\nDAFEIYU_HANDOFF_OK: D:/handoff/x.md"
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 test('注入指令：点名文件路径与固定标记，转生强调「已完成不要重做」', () => {
@@ -192,7 +194,9 @@ test('作业：交接文档落盘后才建会话，并把首句发进去', async
     assert.equal(job0.status, 'waiting')
     assert.equal(calls.created.length, 0, '交接还没写就建会话 = 多一条空会话')
 
-    writeFileSync(job0.filePath, `## 目标\n做完了不少事\n\n${HANDOFF_MARKER}: ${job0.filePath}\n`, 'utf8')
+    // 2026-11-17：交接文档现在要过结构判据（doc-check），不合格会被打回补写——
+    // 这几条测的是「落盘之后怎么建会话」，所以直接给一份合格文档。
+    writeFileSync(job0.filePath, GOOD_DOC, 'utf8')
     await wait(120)
     const job = service.status(jobId)!
     assert.equal(job.status, 'done', String(job.message ?? ''))
@@ -254,7 +258,7 @@ test('作业：首句发不出去时，状态要说明"会话已建但首句没�
     const service = createHandoffService(deps)
     const started = await service.start('rebirth', 'session-abc')
     const job0 = service.status(started.jobId!)!
-    writeFileSync(job0.filePath, `# 交接\n${HANDOFF_MARKER}\n`, 'utf8')
+    writeFileSync(job0.filePath, GOOD_DOC, 'utf8')
     await wait(120)
     const job = service.status(started.jobId!)!
     assert.equal(job.status, 'failed')
@@ -347,4 +351,84 @@ test('路由：self 回自检数据；status 没 jobId 时回最近列表', asyn
   const { res: res3, reply: reply3 } = response()
   await handoffSelfHandler(routeDeps())(request('GET', { host: 'evil.example.com' }, `${HANDOFF_SELF_ROUTE}?sessionId=s1`), res3)
   assert.equal(reply3().status, 403)
+})
+
+
+test('结构判据：小节齐全、下一步有入口、没有含糊话才算过', async () => {
+  const { checkHandoffDoc } = await import('../src/handoff/doc-check.js')
+  const good = checkHandoffDoc(GOOD_DOC, 'rebirth')
+  assert.equal(good.ok, true, '合格文档不该被打回：' + good.problems.join(' / '))
+  const missing = checkHandoffDoc('## 目标\n做点事\n', 'rebirth')
+  assert.equal(missing.ok, false)
+  assert.ok(missing.problems.some((p) => p.includes('缺这些小节')), '缺小节要点名')
+  const vague = checkHandoffDoc(GOOD_DOC.replace('补写用打回，而不是重发整份指令。', '细节见之前对话。'), 'rebirth')
+  assert.equal(vague.ok, false, '含糊话必须打回')
+  const naked = checkHandoffDoc(
+    GOOD_DOC.replace('- 打开 src/handoff/service.ts 跑 node --test dist/tests/handoff.test.js，全绿算完成', '- 把剩下的收尾工作做完'),
+    'rebirth',
+  )
+  assert.equal(naked.ok, false, '下一步没给入口（文件/命令）要打回')
+  assert.ok(naked.problems.some((p) => p.includes('没给入口')))
+})
+
+test('交接作业：文档结构不合格时打回补写，补好了才建新会话', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-fix-'))
+  try {
+    const { deps, calls } = fakeDeps({ handoffDir: dir, timeoutMs: 5_000 })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    assert.equal(started.ok, true)
+    const jobId = started.jobId!
+    const job = service.status(jobId)!
+    // 第一版：有标记、也够长，但小节缺一大堆 → 必须被打回，不许直接建会话
+    writeFileSync(job.filePath, '## 目标\n做点事\n\nDAFEIYU_HANDOFF_OK: ' + job.filePath + '\n', 'utf8')
+    await wait(60)
+    assert.equal(calls.created.length, 0, '结构不合格时绝不建新会话')
+    assert.equal(calls.injected.length, 2, '除了最初那次，还该有一次补写指令')
+    assert.ok(calls.injected[1]!.text.includes('待补写'), '补写指令要说明是补写，不是重发整份')
+    assert.ok(calls.injected[1]!.text.includes('缺这些小节'), '补写指令要列出缺哪几处')
+    assert.equal(service.status(jobId)!.status, 'waiting', '还在等补写，不是失败')
+    // 第二版：合格 → 放行
+    writeFileSync(job.filePath, GOOD_DOC, 'utf8')
+    await wait(150)
+    assert.equal(calls.created.length, 1, '补好了就该建新会话')
+    assert.equal(service.status(jobId)!.status, 'done')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('收件箱：来生问 → 送进前世；前世答 → 送回给来生；送不到要明说', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-inbox-'))
+  try {
+    const { createInbox } = await import('../src/handoff/inbox.js')
+    const sent: Array<{ sessionId: string; text: string }> = []
+    const inbox = createInbox({
+      dir,
+      deliver: async (sessionId, text) => {
+        sent.push({ sessionId, text })
+        return { ok: true }
+      },
+      log: () => {},
+    })
+    const asked = await inbox.ask({ from: 'session-heir', to: 'session-parent', question: '当初为什么否掉 link: 依赖？' })
+    assert.equal(asked.ok, true)
+    assert.equal(sent.length, 1, '问题要送进前世会话')
+    assert.equal(sent[0]!.sessionId, 'session-parent')
+    assert.ok(sent[0]!.text.includes('handoff_answer'), '要告诉前世怎么回答')
+    const id = asked.thread!.id
+    const answered = await inbox.answer({ id, answer: '因为 sha 会漂，装到的东西不可复现。' })
+    assert.equal(answered.ok, true)
+    assert.equal(sent.length, 2)
+    assert.equal(sent[1]!.sessionId, 'session-heir', '回答要送回给来生')
+    assert.ok(sent[1]!.text.includes('因为 sha 会漂'), '回答原文要送到')
+    // 前世不在线：不许假装问了
+    const offline = createInbox({ dir, deliver: async () => ({ ok: false, message: '会话不在线' }), log: () => {} })
+    const failed = await offline.ask({ from: 'session-x', to: 'session-dead', question: '在吗' })
+    assert.equal(failed.ok, false)
+    assert.ok(String(failed.message ?? '').includes('不在线'), '要说清送不到，去问用户')
+    assert.equal(failed.thread!.status, 'undeliverable')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
