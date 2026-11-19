@@ -206,6 +206,15 @@ test('投递正文口径：群名 + 群 id + 发送方短号 + 回复方式', ()
   assert.ok(text.includes('group_read'))
 })
 
+
+test('投递正文：协作对象里不许出现收件人自己（真机 2026-11-19 报过）', () => {
+  const group = { version: 2 as const, id: 'g-x', name: '群', members: [], createdAt: 0, updatedAt: 0 }
+  const text = deliveryText(group, 'user', '测试', ['session-aaaa1111', 'session-bbbb2222'], undefined, 'session-aaaa1111')
+  assert.ok(text.includes('bbbb2222'), '另一个成员要出现')
+  const peerLine = text.split('\n').find((line) => line.startsWith('本轮协作对象')) ?? ''
+  assert.ok(!peerLine.includes('aaaa1111'), '收件人自己不该被列成协作对象')
+  assert.ok(peerLine.includes('bbbb2222'))
+})
 test('工具形状：十个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {

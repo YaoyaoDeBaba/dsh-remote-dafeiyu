@@ -157,9 +157,11 @@ export function deliveryText(
   text: string,
   others: string[],
   titleOf?: (sessionId: string) => string | undefined,
+  /** 这条是投给谁的：协作对象要把它排除掉（不能把自己列成自己的协作对象）。 */
+  recipient?: string,
 ): string {
   const peers = others
-    .filter((sessionId) => sessionId !== from)
+    .filter((sessionId) => sessionId !== from && sessionId !== recipient)
     .map((sessionId) => titleOf?.(sessionId)?.trim() || shortId(sessionId))
   return [
     '【群 ' + group.name + ' · ' + group.id + ' · 来自 ' + (from === 'user' ? '用户' : shortId(from)) + '】',
@@ -167,8 +169,9 @@ export function deliveryText(
     '',
     '群成员：' + rosterLine(group, titleOf),
     peers.length > 0 ? '本轮协作对象：' + peers.join('、') : '本轮只有你。',
-    '你看不到群里的整段记录（插件只投给你被 @ 的部分）。要说点什么就调 group_post：groupId=' + group.id,
-    'text 写正文；要直接找某个成员，把 to 填成对方的短号或会话 id。',
+    '你看不到群里的整段记录（插件只投给你被 @ 的部分）。要说点什么就调 group_post：groupId=' +
+      group.id +
+      '，text 写正文；要直接找某个成员，把 to 填成对方的短号或会话 id。',
     group.ownerSessionId === undefined
       ? '想看最近记录用 group_read(groupId=' + group.id + ')。'
       : '汇报对象：群主 ' + (titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)) +
@@ -242,7 +245,6 @@ export function createGroups(deps: GroupsDeps) {
     text: string,
     targets: string[],
   ): Promise<DeliveryResult[]> => {
-    const body = deliveryText(group, from, text, targets, titleOf)
     const out: DeliveryResult[] = []
     for (const target of targets) {
       if (target === from) continue
@@ -255,6 +257,8 @@ export function createGroups(deps: GroupsDeps) {
         continue
       }
       lastDeliveryAt.set(key, now())
+      // 每个收件人一份正文：协作对象里不能出现他自己。
+      const body = deliveryText(group, from, text, targets, titleOf, target)
       const result = await deps.deliver(target, body).catch((error: unknown) => ({
         ok: false,
         message: String((error as Error)?.message ?? error),
