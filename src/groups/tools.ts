@@ -56,6 +56,11 @@ export function buildGroupTools(deps: {
           ...(input.includeMe === false ? { includeMe: false } : {}),
         })
         deps.log('agent 建群', { ok: String(created.ok) })
+        // 建完就唤醒成员（否则他们不知道自己进了群，要用户手动喊一声）
+        if (created.ok && created.group !== undefined) {
+          const announced = await deps.groups.announce({ id: created.group.id, ...(me === undefined ? {} : { except: me }) })
+          return JSON.stringify({ ...created, announced })
+        }
         return JSON.stringify(created)
       },
     },

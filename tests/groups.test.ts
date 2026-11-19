@@ -269,6 +269,37 @@ test('静默注入：第一次带完整用法，第二次起只带极短头', as
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('建群后主动唤醒：成员收到入群通知（含摘要格式），发起方不收', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-groups-announce-'))
+  const sent: Array<{ sessionId: string; text: string }> = []
+  const groups = createGroups({
+    dir,
+    deliver: async (sessionId, text) => {
+      sent.push({ sessionId, text })
+      return { ok: true }
+    },
+    cooldownMs: 0,
+    log: () => {},
+  })
+  try {
+    const created = groups.create({ name: '联调', me: 'session-lead', members: ['session-a', 'session-b'] })
+    const id = created.group!.id
+    const announced = await groups.announce({ id, except: 'session-lead' })
+    assert.equal(announced.ok, true)
+    assert.equal(sent.length, 2, '两个成员各收到一条唤醒')
+    assert.ok(sent.every((row) => row.sessionId !== 'session-lead'), '发起方不该被自己吵醒')
+    assert.ok(sent[0]!.text.includes('入群通知'))
+    assert.ok(sent[0]!.text.includes('摘要：'), '唤醒那条要带摘要格式约定，用户就不用再介绍一遍')
+    assert.ok(sent[0]!.text.includes('group_post'))
+    // 唤醒之后，第一条用户消息走极短版
+    sent.length = 0
+    await groups.post({ id, from: 'user', text: '开工', targets: ['session-a'], kind: 'user' })
+    assert.ok(!sent[0]!.text.includes('group_read'), '已告知过的成员不再收完整说明')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('工具形状：十个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {

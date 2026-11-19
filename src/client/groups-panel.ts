@@ -87,7 +87,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   panel.style.cssText =
     'position:fixed;right:24px;bottom:80px;width:min(780px,95vw);height:min(560px,76vh);display:none;' +
     'flex-direction:column;background:#fff;color:#1d3f8f;border:1px solid #c7d9f7;border-radius:14px;' +
-    'box-shadow:0 18px 50px rgba(20,50,120,.24);z-index:2147483003;font-size:13px;overflow:hidden;'
+    'box-shadow:0 18px 50px rgba(20,50,120,.24);z-index:2147483003;font-size:13px;overflow:hidden;box-sizing:border-box;'
 
   const bar = doc.createElement('div')
   bar.style.cssText =
@@ -111,7 +111,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
 
   /* 左栏 */
   const left = doc.createElement('div')
-  left.style.cssText = 'width:186px;border-right:1px solid #dbe6fb;display:flex;flex-direction:column;background:#f8fbff;flex:0 0 auto;'
+  left.style.cssText = 'flex:0 0 186px;width:186px;min-width:0;overflow:hidden;border-right:1px solid #dbe6fb;display:flex;flex-direction:column;background:#f8fbff;box-sizing:border-box;'
   const leftHead = doc.createElement('div')
   leftHead.style.cssText = 'padding:8px 10px;display:flex;gap:6px;'
   const newGroupBtn = doc.createElement('button')
@@ -125,7 +125,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
 
   /* 中栏 */
   const mid = doc.createElement('div')
-  mid.style.cssText = 'flex:1 1 auto;display:flex;flex-direction:column;min-width:0;'
+  mid.style.cssText = 'flex:1 1 0;display:flex;flex-direction:column;min-width:0;overflow:hidden;'
   const midHead = doc.createElement('div')
   midHead.style.cssText = 'padding:8px 14px;border-bottom:1px solid #dbe6fb;display:flex;justify-content:space-between;align-items:center;'
   const midName = doc.createElement('span')
@@ -134,7 +134,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   midMeta.style.cssText = 'font-size:11.5px;color:#5b7bb5;'
   midHead.append(midName, midMeta)
   const msgs = doc.createElement('div')
-  msgs.style.cssText = 'flex:1 1 auto;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:9px;background:#fbfdff;'
+  msgs.style.cssText = 'flex:1 1 0;min-height:0;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:9px;background:#fbfdff;min-width:0;'
   const composer = doc.createElement('div')
   composer.style.cssText = 'position:relative;border-top:1px solid #dbe6fb;padding:8px 12px;background:#fff;flex:0 0 auto;'
   const chips = doc.createElement('div')
@@ -142,8 +142,8 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   const input = doc.createElement('textarea')
   input.placeholder = '说点什么：输入 @ 选择要通知的会话（多选即分工）'
   input.style.cssText =
-    'width:100%;min-height:56px;max-height:110px;resize:vertical;padding:8px 10px;border:1px solid #c7d9f7;' +
-    'border-radius:9px;font:inherit;color:#1d3f8f;'
+    'width:100%;box-sizing:border-box;min-height:56px;max-height:110px;resize:vertical;padding:8px 10px;' +
+    'border:1px solid #c7d9f7;border-radius:9px;font:inherit;color:#1d3f8f;'
   const atMenu = doc.createElement('div')
   atMenu.style.cssText =
     'position:absolute;left:12px;bottom:112px;width:240px;max-height:190px;overflow:auto;background:#fff;' +
@@ -163,7 +163,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
 
   /* 右栏 */
   const right = doc.createElement('div')
-  right.style.cssText = 'width:196px;border-left:1px solid #dbe6fb;display:flex;flex-direction:column;background:#f8fbff;flex:0 0 auto;'
+  right.style.cssText = 'flex:0 0 196px;width:196px;min-width:0;overflow:hidden;border-left:1px solid #dbe6fb;display:flex;flex-direction:column;background:#f8fbff;box-sizing:border-box;'
   const rightHead = doc.createElement('div')
   rightHead.style.cssText =
     'padding:9px 10px;border-bottom:1px solid #dbe6fb;font-weight:600;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;'
@@ -372,7 +372,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
     for (const row of rows) {
       const isUser = row.kind === 'user'
       const isSystem = row.kind === 'system'
-      const wrap = el('div', 'max-width:82%;' + (isUser ? 'margin-left:auto;' : ''))
+      const wrap = el('div', 'max-width:82%;min-width:0;' + (isUser ? 'margin-left:auto;' : ''))
       const who = el('div', 'font-size:11px;color:#5b7bb5;margin-bottom:2px;display:flex;gap:6px;align-items:center;' + (isUser ? 'justify-content:flex-end;' : ''))
       const whoName = isSystem ? '系统' : isUser ? '我' : memberName(group, row.from)
       who.append(el('span', '', whoName))
@@ -382,7 +382,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
       for (const target of row.targets ?? []) {
         who.append(el('span', 'color:#93a9cf;', '→ @' + memberName(group, target)))
       }
-      const bubble = el('div', 'padding:7px 10px;border-radius:10px;white-space:pre-wrap;word-break:break-word;' +
+      const bubble = el('div', 'padding:7px 10px;border-radius:10px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;max-width:100%;box-sizing:border-box;' +
         (isUser ? 'background:#e8f0ff;' : isSystem ? 'background:#fff8e6;color:#8a5a00;font-size:12px;' : 'background:#f3f6fb;'))
       bubble.textContent = row.kind === 'agent' && typeof row.summary === 'string' && row.summary !== ''
         ? row.summary
@@ -390,7 +390,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
       wrap.append(who, bubble)
       if (row.kind === 'agent' && typeof row.summary === 'string' && row.summary !== '' && row.text !== row.summary) {
         const toggle = el('div', 'margin-top:4px;font-size:11.5px;color:#1d4ed8;cursor:pointer;', '展开全文')
-        const full = el('div', 'display:none;margin-top:6px;padding-top:6px;border-top:1px dashed #dbe6fb;color:#365a96;font-size:12.5px;white-space:pre-wrap;', row.text)
+        const full = el('div', 'display:none;margin-top:6px;padding-top:6px;border-top:1px dashed #dbe6fb;color:#365a96;font-size:12.5px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;', row.text)
         toggle.addEventListener('click', () => {
           const open = full.style.display !== 'none'
           full.style.display = open ? 'none' : 'block'

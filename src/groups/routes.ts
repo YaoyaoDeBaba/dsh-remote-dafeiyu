@@ -189,15 +189,22 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
     },
     {
       path: GROUPS_CREATE_ROUTE,
-      handler: writeRoute((body) =>
-        deps.groups.create({
+      handler: writeRoute(async (body) => {
+        const created = deps.groups.create({
           name: String(body.name ?? ''),
           members: Array.isArray(body.sessionIds) ? body.sessionIds.map((id) => String(id)) : [],
           ...(typeof body.me === 'string' && body.me.trim() !== '' ? { me: body.me.trim() } : {}),
           // 面板传「第一个被勾选的会话」当群主
           ...(typeof body.owner === 'string' && body.owner.trim() !== '' ? { owner: body.owner.trim() } : {}),
-        }),
-      ),
+        })
+        // 建群后立刻推入群通知（唤醒成员）；发起方（me）不推
+        if (created.ok && created.group !== undefined) {
+          const except = typeof body.me === 'string' ? body.me.trim() : ''
+          const announced = await deps.groups.announce({ id: created.group.id, ...(except === '' ? {} : { except }) })
+          return { ...created, announced }
+        }
+        return created
+      }),
     },
     {
       path: GROUPS_INVITE_ROUTE,

@@ -222,13 +222,19 @@ export function deliveryText(
 }
 
 function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string | undefined): string {
+  const owner = group.ownerSessionId === undefined ? '' : titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)
   return [
     '【入群通知 · ' + group.name + ' · ' + group.id + '】',
-    '你被拉进这个群了。群成员：' + rosterLine(group, titleOf) + '。',
-    '用法（详见 skill dafeiyu-groups，或调 groups_guide）：',
-    '· 群里有人 @ 你时，你会收到一条独立消息（带本轮协作对象）——你**看不到**群里的其他消息；',
-    '· 要把结论同步给群里，调 group_post(groupId=' + group.id + ', text=...)，需要点名就带 to；',
-    '· 想看最近记录调 group_read(groupId=' + group.id + ')。',
+    '你被拉进这个群了（这是一次唤醒：不用等用户再喊你）。',
+    '群成员：' + rosterLine(group, titleOf) + (owner === '' ? '' : '｜群主 ' + owner + '（用户 @ 多人时由群主分工）'),
+    '',
+    '用法（之后的消息只带极短头部，这份说明不再重复；忘了可以调 groups_guide）：',
+    '· 有人 @ 你时你会收到一条独立消息，带「本轮协作对象」——你看不到群里的其他消息；',
+    '· 回复用 group_post(groupId=' + group.id + ', text=...)，**首行写「摘要：一句话」**（群里只显示摘要，全文点开才看）；',
+    '· 不带 to 时默认回给群主（汇报对象）；to 可以填对方短号或会话 id；',
+    '· 想看最近记录用 group_read(groupId=' + group.id + ')。',
+    '',
+    '如果你现在正忙，先把这条记下；有空再回。知道有这个群、知道怎么回就够了。',
   ].join('\n')
 }
 
@@ -488,6 +494,37 @@ export function createGroups(deps: GroupsDeps) {
         append(group.id, { at: now(), kind: 'system', from: 'system', text: shortId(input.sessionId) + ' 退出了群' })
       }
       return before === group.members.length ? { ok: true, message: '本来就不在群里。' } : { ok: true }
+    },
+
+    /**
+     * 主动唤醒成员（2026-11-19）：建群之后要把「你进群了」推给每个成员。
+     *
+     * 为什么不能等用户的第一条群消息：agent 空闲时不会自己去看什么——
+     * 用户不说一句，它就不知道自己被拉进群了。所以建群/加人之后立刻推一次入群通知
+     * （带用法），并把成员标成已告知，之后的消息走极短版。
+     */
+    async announce(input: { id: string; except?: string }): Promise<{ ok: boolean; notified?: DeliveryResult[]; message?: string }> {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      const notified: DeliveryResult[] = []
+      for (const member of group.members) {
+        if (member.sessionId === input.except) continue
+        const result = await deps.deliver(member.sessionId, joinNotice(group, titleOf)).catch((error: unknown) => ({
+          ok: false,
+          message: String((error as Error)?.message ?? error),
+        }))
+        notified.push({
+          sessionId: member.sessionId,
+          ok: result.ok === true,
+          ...(result.ok === true || result.message === undefined ? {} : { message: String(result.message).slice(0, 160) }),
+        })
+        if (result.ok === true) {
+          group.briefed = { ...(group.briefed ?? {}), [member.sessionId]: now() }
+          save(group)
+        }
+      }
+      return { ok: notified.every((row) => row.ok), notified }
     },
 
     /** 设置某个成员的身份（只在用户侧改；agent 只能读）。 */

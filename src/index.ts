@@ -1633,7 +1633,38 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
           return []
         }
       },
+      /*
+       * 投递要能**唤醒**空闲会话（2026-11-19 真机）：只 sendPrompt 时，空闲的 agent 不会开新一轮，
+       * 入群通知就一直躺着——表现是"agent 不知道自己进群了，得用户喊一声"。
+       * 与转生/收件箱同一套：正在跑 → agent.inject 排队；空闲/冷 → sendPrompt 等于替用户按下发送。
+       */
       deliver: async (sessionId, text) => {
+        let service: unknown
+        try {
+          service = ctx.get?.('agents', true)
+        } catch {
+          service = undefined
+        }
+        const list = service && typeof (service as { list?: unknown }).list === 'function'
+          ? ((service as { list: () => unknown[] }).list() ?? [])
+          : []
+        const agent = (Array.isArray(list) ? list : []).find(
+          (row) => !!row && typeof (row as { id?: unknown }).id === 'string' && (row as { id: string }).id === sessionId,
+        ) as { inject?: (input: unknown) => unknown; status?: unknown } | undefined
+        if (agent && typeof agent.inject === 'function' && agent.status === 'running') {
+          try {
+            agent.inject({
+              id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
+                ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+              role: 'user',
+              content: [{ type: 'text', text }],
+              source: { kind: 'user' },
+            })
+            return { ok: true }
+          } catch (error) {
+            return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+          }
+        }
         const port = kernel
         const send = port?.sendPrompt
         if (!port || !send) return { ok: false, message: '主机这一代不支持发消息（没有 sendPrompt）' }
