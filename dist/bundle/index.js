@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path25 from "node:path";
+import path27 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path26) {
-  if (!path26)
+function getElementAtPath(obj, path28) {
+  if (!path28)
     return obj;
-  return path26.reduce((acc, key) => acc?.[key], obj);
+  return path28.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path26, issues) {
+function prefixIssues(path28, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path26);
+    iss.path.unshift(path28);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path26 = []) => {
+  const processError = (error63, path28 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path26, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path28, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else {
-        const fullpath = [...path26, ...issue2.path];
+        const fullpath = [...path28, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path26 = []) => {
+  const processError = (error63, path28 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path26, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path28, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path26, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
       } else {
-        const fullpath = [...path26, ...issue2.path];
+        const fullpath = [...path28, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path26 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path26) {
+  const path28 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path28) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path26 = ref.slice(1).split("/").filter(Boolean);
-  if (path26.length === 0) {
+  const path28 = ref.slice(1).split("/").filter(Boolean);
+  if (path28.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path26[0] === defsKey) {
-    const key = path26[1] === void 0 ? void 0 : decodeJSONPointerSegment(path26[1]);
+  if (path28[0] === defsKey) {
+    const key = path28[1] === void 0 ? void 0 : decodeJSONPointerSegment(path28[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.121" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.122" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34879,12 +34879,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path26 = __require("node:path");
+        const path28 = __require("node:path");
         const fs8 = __require("node:fs");
-        const dir = path26.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path28.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs8.mkdirSync(dir, { recursive: true, mode: 448 });
         fs8.writeFileSync(
-          path26.join(dir, "client-report.json"),
+          path28.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -38211,19 +38211,438 @@ function startHandoff(ctx, input2) {
   };
 }
 
-// src/skills/install.ts
-import { cpSync, existsSync as existsSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, rmSync, statSync as statSync3, writeFileSync as writeFileSync4 } from "node:fs";
+// src/groups/start.ts
+import path20 from "node:path";
+
+// src/groups/service.ts
+import { existsSync as existsSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, writeFileSync as writeFileSync4, appendFileSync } from "node:fs";
 import path19 from "node:path";
+var MAX_MEMBERS = 12;
+var MAX_MESSAGE_CHARS = 4e3;
+function ensureDir2(dir) {
+  try {
+    mkdirSync7(dir, { recursive: true });
+  } catch {
+  }
+}
+function safeId(id) {
+  return String(id).replace(/[^A-Za-z0-9_-]/g, "_");
+}
+function groupPath(dir, id) {
+  return path19.join(dir, safeId(id) + ".json");
+}
+function logPath(dir, id) {
+  return path19.join(dir, safeId(id) + ".jsonl");
+}
+function shortId2(sessionId) {
+  return String(sessionId).replace(/^session-/, "").slice(0, 8);
+}
+function readGroup(dir, id) {
+  try {
+    const parsed = JSON.parse(readFileSync7(groupPath(dir, id), "utf8"));
+    if (typeof parsed?.id !== "string" || typeof parsed.name !== "string" || !Array.isArray(parsed.members)) {
+      return void 0;
+    }
+    return parsed;
+  } catch {
+    return void 0;
+  }
+}
+function listGroups(dir) {
+  try {
+    const out = [];
+    for (const file2 of readdirSync3(dir)) {
+      if (!file2.endsWith(".json")) continue;
+      const group = readGroup(dir, file2.replace(/\.json$/, ""));
+      if (group !== void 0) out.push(group);
+    }
+    return out.sort((a, b) => b.updatedAt - a.updatedAt);
+  } catch {
+    return [];
+  }
+}
+function deliveryText(group, from, text) {
+  return [
+    "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + " \xB7 \u6765\u81EA " + shortId2(from) + "\u3011",
+    text.trim(),
+    "",
+    "\u56DE\u590D\u7528 group_send\uFF1AgroupId=" + group.id + "\uFF0Cmessage \u5199\u4F60\u8981\u8BF4\u7684\u8BDD\uFF1B\u53EA\u53D1\u7ED9\u7FA4\u91CC\u5176\u4ED6\u4EBA\uFF0C\u522B\u56DE\u7ED9\u53D1\u9001\u65B9\u81EA\u5DF1\u3002",
+    "\u8981\u770B\u524D\u6587\u7528 group_read\u3002\u4E0D\u786E\u5B9A\u8981\u4E0D\u8981\u8BF4\u5C31\u522B\u8BF4\u2014\u2014\u7FA4\u91CC\u6BCF\u53E5\u8BDD\u90FD\u4F1A\u5360\u522B\u4EBA\u7684\u4E0A\u4E0B\u6587\u3002"
+  ].join("\n");
+}
+function createGroups(deps) {
+  const now = deps.now ?? (() => Date.now());
+  const save = (group) => {
+    ensureDir2(deps.dir);
+    try {
+      writeFileSync4(groupPath(deps.dir, group.id), JSON.stringify(group, null, 2) + "\n", "utf8");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const append = (id, message) => {
+    try {
+      ensureDir2(deps.dir);
+      appendFileSync(logPath(deps.dir, id), JSON.stringify(message) + "\n", "utf8");
+    } catch {
+    }
+  };
+  const newId2 = (at) => {
+    const uuid3 = globalThis.crypto?.randomUUID?.();
+    return "g-" + (uuid3 ?? String(at) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 10);
+  };
+  const deliverTo = async (group, sender, text) => {
+    const body = deliveryText(group, sender, text);
+    const out = [];
+    for (const member of group.members) {
+      if (member.sessionId === sender) continue;
+      const result2 = await deps.deliver(member.sessionId, body).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      out.push({
+        sessionId: member.sessionId,
+        ok: result2.ok === true,
+        ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
+      });
+    }
+    return out;
+  };
+  return {
+    /** 建群：发起方自动入群（除非 me:false），可顺手带几个成员。 */
+    create(input2) {
+      const name2 = String(input2.name ?? "").trim().slice(0, 40);
+      if (name2 === "") return { ok: false, message: "\u7FA4\u8981\u6709\u4E2A\u540D\u5B57\uFF08name\uFF09\u3002" };
+      const at = now();
+      const ids = [];
+      const push = (id) => {
+        const trimmed = String(id ?? "").trim();
+        if (trimmed !== "" && !ids.includes(trimmed)) ids.push(trimmed);
+      };
+      if (typeof input2.me === "string" && input2.me.trim() !== "") push(input2.me);
+      for (const id of input2.members ?? []) push(id);
+      if (ids.length === 0) return { ok: false, message: "\u7FA4\u91CC\u81F3\u5C11\u8981\u6709\u4E00\u4E2A\u4EBA\uFF08\u53D1\u8D77\u65B9\uFF09\u3002" };
+      if (ids.length > MAX_MEMBERS) return { ok: false, message: "\u4E00\u4E2A\u7FA4\u6700\u591A " + MAX_MEMBERS + " \u4E2A\u4F1A\u8BDD\u3002" };
+      const group = {
+        version: 1,
+        id: newId2(at),
+        name: name2,
+        members: ids.map((sessionId) => ({ sessionId, joinedAt: at })),
+        createdAt: at,
+        updatedAt: at
+      };
+      if (!save(group)) return { ok: false, message: "\u7FA4\u6CA1\u843D\u76D8\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      deps.log("\u5EFA\u7FA4", { id: group.id, members: group.members.length });
+      return { ok: true, group };
+    },
+    /** 拉人进群：只加成员，不额外发消息。 */
+    invite(input2) {
+      const group = readGroup(deps.dir, String(input2.id ?? "").trim());
+      if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08id \u53EF\u80FD\u4E0D\u5BF9\uFF09\u3002" };
+      const added = [];
+      for (const raw of input2.members ?? []) {
+        const id = String(raw ?? "").trim();
+        if (id === "" || group.members.some((member) => member.sessionId === id)) continue;
+        if (group.members.length >= MAX_MEMBERS) break;
+        group.members.push({ sessionId: id, joinedAt: now() });
+        added.push(id);
+      }
+      group.updatedAt = now();
+      if (!save(group)) return { ok: false, message: "\u6210\u5458\u6CA1\u5199\u8FDB\u53BB\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      return { ok: true, group, added };
+    },
+    /** 退群（自己走，或被移出）。 */
+    leave(input2) {
+      const group = readGroup(deps.dir, String(input2.id ?? "").trim());
+      if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" };
+      const before = group.members.length;
+      group.members = group.members.filter((member) => member.sessionId !== input2.sessionId);
+      group.updatedAt = now();
+      if (!save(group)) return { ok: false, message: "\u6CA1\u4FDD\u5B58\u6210\u529F\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      return before === group.members.length ? { ok: true, message: "\u672C\u6765\u5C31\u4E0D\u5728\u7FA4\u91CC\u3002" } : { ok: true };
+    },
+    /** 发一条：先落盘，再逐成员投递；送不到的逐条带回。 */
+    async send(input2) {
+      const group = readGroup(deps.dir, String(input2.id ?? "").trim());
+      if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08\u5148 group_create\uFF09\u3002" };
+      const text = String(input2.text ?? "").trim();
+      if (text === "") return { ok: false, message: "\u6D88\u606F\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
+      if (text.length > MAX_MESSAGE_CHARS) return { ok: false, message: "\u5355\u6761\u6700\u591A " + MAX_MESSAGE_CHARS + " \u5B57\uFF0C\u62C6\u5F00\u53D1\u3002" };
+      if (!group.members.some((member) => member.sessionId === input2.from)) {
+        return { ok: false, message: "\u4F60\u4E0D\u5728\u8FD9\u4E2A\u7FA4\u91CC\uFF08\u5148 group_invite \u628A\u81EA\u5DF1\u52A0\u8FDB\u53BB\uFF09\u3002" };
+      }
+      append(group.id, { at: now(), from: input2.from, text });
+      group.updatedAt = now();
+      save(group);
+      const results = await deliverTo(group, input2.from, text);
+      const failed = results.filter((row) => !row.ok);
+      deps.log("\u7FA4\u53D1", { id: group.id, delivered: results.length - failed.length, failed: failed.length });
+      return {
+        ok: failed.length === 0,
+        delivered: results.filter((row) => row.ok),
+        failed,
+        ...failed.length === 0 ? {} : { message: "\u6709 " + failed.length + " \u4E2A\u6210\u5458\u6CA1\u9001\u5230\uFF08\u53EF\u80FD\u5DF2\u5F52\u6863\u6216\u5BBF\u4E3B\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF09\uFF0C\u6E05\u5355\u5728 failed \u91CC\u3002" }
+      };
+    },
+    /** 读最近 N 条（默认 20）。 */
+    read(input2) {
+      const group = readGroup(deps.dir, String(input2.id ?? "").trim());
+      if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" };
+      const limit = Math.min(100, Math.max(1, Math.round(Number(input2.limit ?? 20) || 20)));
+      const file2 = logPath(deps.dir, group.id);
+      if (!existsSync2(file2)) return { ok: true, messages: [] };
+      try {
+        const lines = readFileSync7(file2, "utf8").split("\n").filter((line) => line.trim() !== "");
+        const messages = [];
+        for (const line of lines.slice(-limit)) {
+          try {
+            const parsed = JSON.parse(line);
+            if (typeof parsed?.text === "string" && typeof parsed.from === "string") messages.push(parsed);
+          } catch {
+          }
+        }
+        return { ok: true, messages };
+      } catch {
+        return { ok: false, message: "\u65E5\u5FD7\u8BFB\u4E0D\u51FA\u6765\u3002" };
+      }
+    },
+    list: () => listGroups(deps.dir),
+    get: (id) => readGroup(deps.dir, id)
+  };
+}
+
+// src/groups/tools.ts
+var OUT3 = {
+  schema: { type: "string" },
+  render: (_args, value) => [
+    { type: "text", text: typeof value === "string" ? value : JSON.stringify(value) }
+  ]
+};
+function asString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+function asStringList(value) {
+  return Array.isArray(value) ? value.map((item) => asString(item)).filter((item) => item !== "") : [];
+}
+function buildGroupTools(deps) {
+  return [
+    {
+      name: "group_create",
+      description: "\u62C9\u4E00\u4E2A\u7FA4\uFF0C\u628A\u6307\u5B9A\u7684\u9876\u5C42\u4F1A\u8BDD\u653E\u8FDB\u53BB\uFF0C\u4E4B\u540E\u7528 group_send \u4E92\u76F8\u8BF4\u8BDD\uFF08\u5178\u578B\u7528\u9014\uFF1A\u524D\u540E\u7AEF\u8054\u8C03\u65F6\u4E24\u4E2A\u4F1A\u8BDD\u540C\u6B65\u63A5\u53E3/\u5B57\u6BB5\u7ED3\u8BBA\uFF09\u3002\n\u9ED8\u8BA4\u628A\u81EA\u5DF1\u4E5F\u7B97\u8FDB\u7FA4\uFF1BsessionIds \u4F20\u522B\u7684\u9876\u5C42\u4F1A\u8BDD id\u3002\u5EFA\u5B8C\u8FD4\u56DE groupId\uFF0C\u540E\u9762\u90FD\u7528\u5B83\u3002\n\u7FA4\u6D88\u606F\u4F1A\u9010\u6761\u9001\u8FDB\u6BCF\u4E2A\u6210\u5458\u7684\u4F1A\u8BDD\uFF08\u5360\u7528\u5B83\u4EEC\u5404\u81EA\u7684\u4E0A\u4E0B\u6587\uFF09\uFF0C\u6240\u4EE5\u53EA\u8BF4\u5FC5\u987B\u8BA9\u5BF9\u65B9\u77E5\u9053\u7684\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "\u7FA4\u540D\uFF0C\u4F8B\u5982\u300C\u524D\u540E\u7AEF\u8054\u8C03\u300D\u3002" },
+          sessionIds: { type: "array", items: { type: "string" }, description: "\u8981\u62C9\u8FDB\u6765\u7684\u5176\u4ED6\u4F1A\u8BDD id\uFF08\u53EF\u591A\u4E2A\uFF09\u3002" },
+          includeMe: { type: "boolean", description: "\u8981\u4E0D\u8981\u628A\u81EA\u5DF1\u4E5F\u653E\u8FDB\u53BB\uFF0C\u9ED8\u8BA4 true\u3002" }
+        },
+        required: ["name"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args, exec) {
+        const input2 = args ?? {};
+        const me = resolveSessionId(exec);
+        const created = deps.groups.create({
+          name: asString(input2.name),
+          members: asStringList(input2.sessionIds),
+          ...input2.includeMe === false || me === void 0 ? {} : { me }
+        });
+        deps.log("agent \u5EFA\u7FA4", { ok: String(created.ok) });
+        return JSON.stringify(created);
+      }
+    },
+    {
+      name: "group_invite",
+      description: "\u5F80\u5DF2\u6709\u7684\u7FA4\u91CC\u52A0\u6210\u5458\uFF08\u4E0D\u989D\u5916\u53D1\u6D88\u606F\uFF09\u3002\u6210\u5458\u4E0A\u9650 12\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\uFF08group_create \u8FD4\u56DE\u7684\u90A3\u4E2A\uFF09\u3002" },
+          sessionIds: { type: "array", items: { type: "string" }, description: "\u8981\u62C9\u7684\u4F1A\u8BDD id\u3002" }
+        },
+        required: ["groupId", "sessionIds"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args) {
+        const input2 = args ?? {};
+        return JSON.stringify(
+          deps.groups.invite({ id: asString(input2.groupId), members: asStringList(input2.sessionIds) })
+        );
+      }
+    },
+    {
+      name: "group_leave",
+      description: "\u8BA9\u81EA\u5DF1\u9000\u51FA\u67D0\u4E2A\u7FA4\uFF08\u4E0D\u518D\u6536\u5230\u5B83\u7684\u6D88\u606F\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: { groupId: { type: "string", description: "\u7FA4 id\u3002" } },
+        required: ["groupId"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args, exec) {
+        const input2 = args ?? {};
+        const me = resolveSessionId(exec);
+        if (me === void 0) return JSON.stringify({ ok: false, message: "\u62FF\u4E0D\u5230\u5F53\u524D\u4F1A\u8BDD id\uFF0C\u9000\u4E0D\u4E86\u7FA4\u3002" });
+        return JSON.stringify(deps.groups.leave({ id: asString(input2.groupId), sessionId: me }));
+      }
+    },
+    {
+      name: "group_list",
+      description: "\u5217\u51FA\u8FD9\u53F0\u673A\u5668\u4E0A\u6240\u6709\u7684\u7FA4\uFF08\u540D\u5B57\u3001id\u3001\u6210\u5458\uFF09\u3002\u627E groupId \u65F6\u7528\u3002",
+      parameters: { type: "object", properties: {} },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute() {
+        const groups = deps.groups.list().map((group) => ({
+          id: group.id,
+          name: group.name,
+          members: group.members.map((member) => member.sessionId),
+          updatedAt: group.updatedAt
+        }));
+        return JSON.stringify({ ok: true, groups });
+      }
+    },
+    {
+      name: "group_send",
+      description: "\u5F80\u7FA4\u91CC\u53D1\u4E00\u6761\uFF1A\u9010\u6761\u9001\u8FDB\u5176\u4ED6\u6210\u5458\u7684\u4F1A\u8BDD\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\u3002\u53D1\u9001\u524D\u5148\u843D\u76D8\uFF0C\u9001\u4E0D\u5230\u7684\u4F1A\u5217\u5728 failed \u91CC\u3002\n\u53EA\u8BF4\u5BF9\u65B9\u5FC5\u987B\u77E5\u9053\u7684\u4E8B\uFF08\u63A5\u53E3\u53D8\u4E86\u3001\u5B57\u6BB5\u6539\u540D\u3001\u8C01\u5728\u7B49\u8C01\uFF09\uFF1B\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          message: { type: "string", description: "\u8981\u8BF4\u7684\u8BDD\u3002" }
+        },
+        required: ["groupId", "message"]
+      },
+      output: OUT3,
+      timeoutMs: 3e4,
+      async execute(args, exec) {
+        const input2 = args ?? {};
+        const me = resolveSessionId(exec);
+        if (me === void 0) return JSON.stringify({ ok: false, message: "\u62FF\u4E0D\u5230\u5F53\u524D\u4F1A\u8BDD id\uFF0C\u53D1\u4E0D\u51FA\u53BB\u3002" });
+        const sent = await deps.groups.send({ id: asString(input2.groupId), from: me, text: String(input2.message ?? "") });
+        deps.log("agent \u7FA4\u53D1", { ok: String(sent.ok) });
+        return JSON.stringify(sent);
+      }
+    },
+    {
+      name: "group_read",
+      description: "\u8BFB\u7FA4\u91CC\u7684\u6700\u8FD1\u6D88\u606F\uFF08\u9ED8\u8BA4 20 \u6761\uFF0C\u6700\u591A 100\uFF09\u3002\u8865\u4E0A\u4E0B\u6587\u7528\uFF0C\u522B\u6BCF\u8F6E\u90FD\u8BFB\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          limit: { type: "integer", minimum: 1, maximum: 100, description: "\u53D6\u6700\u8FD1\u51E0\u6761\uFF0C\u9ED8\u8BA4 20\u3002" }
+        },
+        required: ["groupId"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args) {
+        const input2 = args ?? {};
+        const read = deps.groups.read({
+          id: asString(input2.groupId),
+          ...typeof input2.limit === "number" ? { limit: input2.limit } : {}
+        });
+        return JSON.stringify(read);
+      }
+    }
+  ];
+}
+
+// src/groups/start.ts
+function startGroups(ctx, input2) {
+  const probe = {};
+  const groups = createGroups({
+    dir: path20.join(input2.dshHome, "storages", "dsh-remote-dafeiyu", "groups"),
+    deliver: async (sessionId, text) => input2.deliver(sessionId, text),
+    log: input2.log
+  });
+  let registered = false;
+  let stopped = false;
+  let timer;
+  const accept = (value, via) => {
+    if (registered) return true;
+    if (!value || typeof value !== "object") return false;
+    const tools = value;
+    if (typeof tools.register !== "function") {
+      probe.tool = "object without register()";
+      return false;
+    }
+    try {
+      const definitions = buildGroupTools({ groups, log: input2.log });
+      for (const definition of definitions) tools.register(definition);
+      registered = true;
+      probe.tool = via + ":" + definitions.length;
+      return true;
+    } catch (error62) {
+      probe.tool = "register threw: " + String(error62?.message ?? error62).slice(0, 80);
+      return false;
+    }
+  };
+  const tryOnce = (via) => {
+    let value;
+    try {
+      value = ctx.get?.("tools", true);
+    } catch (error62) {
+      probe.tool = "get threw: " + String(error62?.message ?? error62).slice(0, 80);
+      return false;
+    }
+    return accept(value, via);
+  };
+  tryOnce("via get");
+  if (!registered) {
+    let attempts = 0;
+    try {
+      timer = setInterval(() => {
+        attempts += 1;
+        if (stopped || registered) {
+          if (timer !== void 0) clearInterval(timer);
+          return;
+        }
+        if (tryOnce("via poll")) {
+          if (timer !== void 0) clearInterval(timer);
+          return;
+        }
+        if (attempts >= 60) {
+          if (timer !== void 0) clearInterval(timer);
+          probe.tool = (probe.tool ?? "none") + " (poll gave up after " + attempts + ")";
+          input2.log("\u62C9\u7FA4\u5DE5\u5177\u6CA1\u6302\u4E0A\uFF1A\u7B49\u4E86 30 \u79D2\u6CA1\u7B49\u5230 tools\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09");
+        }
+      }, 500);
+    } catch (error62) {
+      probe.tool = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
+    }
+  }
+  return {
+    probe,
+    service: groups,
+    stop() {
+      stopped = true;
+      try {
+        if (timer !== void 0) clearInterval(timer);
+      } catch {
+      }
+    }
+  };
+}
+
+// src/skills/install.ts
+import { cpSync, existsSync as existsSync3, mkdirSync as mkdirSync8, readFileSync as readFileSync8, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
+import path21 from "node:path";
 import { fileURLToPath } from "node:url";
 var SKILL_VERSION_FILE = ".dafeiyu-skill-version";
 function packageRoot() {
   try {
-    let candidate = path19.dirname(fileURLToPath(import.meta.url));
+    let candidate = path21.dirname(fileURLToPath(import.meta.url));
     for (let depth = 0; depth < 5; depth += 1) {
-      if (existsSync2(path19.join(candidate, "package.json")) && existsSync2(path19.join(candidate, "assets", "skills"))) {
+      if (existsSync3(path21.join(candidate, "package.json")) && existsSync3(path21.join(candidate, "assets", "skills"))) {
         return candidate;
       }
-      const parent = path19.dirname(candidate);
+      const parent = path21.dirname(candidate);
       if (parent === candidate) break;
       candidate = parent;
     }
@@ -38233,7 +38652,7 @@ function packageRoot() {
 }
 function packageVersion() {
   try {
-    const raw = readFileSync7(path19.join(packageRoot(), "package.json"), "utf8");
+    const raw = readFileSync8(path21.join(packageRoot(), "package.json"), "utf8");
     const parsed = JSON.parse(raw);
     return typeof parsed.version === "string" ? parsed.version : "unknown";
   } catch {
@@ -38244,7 +38663,7 @@ function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync3(path19.join(base, rel), { withFileTypes: true });
+      entries = readdirSync4(path21.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -38254,7 +38673,7 @@ function fingerprint(dir) {
       if (entry.isDirectory()) out.push(...walk2(base, childRel));
       else {
         try {
-          out.push(`${childRel}:${statSync3(path19.join(base, childRel)).size}`);
+          out.push(`${childRel}:${statSync3(path21.join(base, childRel)).size}`);
         } catch {
           out.push(`${childRel}:?`);
         }
@@ -38267,21 +38686,21 @@ function fingerprint(dir) {
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync3(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path19.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync2(path19.join(entry.dir, "SKILL.md")));
+    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path21.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync3(path21.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
   if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
   const installed = [];
   for (const entry of entries) {
-    const target = path19.join(deps.dshHome, "skills", entry.name);
-    const stamp = path19.join(target, SKILL_VERSION_FILE);
+    const target = path21.join(deps.dshHome, "skills", entry.name);
+    const stamp = path21.join(target, SKILL_VERSION_FILE);
     try {
-      if (existsSync2(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
-      mkdirSync7(path19.dirname(target), { recursive: true });
-      if (existsSync2(target)) rmSync(target, { recursive: true, force: true });
+      if (existsSync3(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
+      mkdirSync8(path21.dirname(target), { recursive: true });
+      if (existsSync3(target)) rmSync(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
-      writeFileSync4(stamp, `${deps.version}
+      writeFileSync5(stamp, `${deps.version}
 `, "utf8");
       installed.push(entry.name);
     } catch (error62) {
@@ -38299,7 +38718,7 @@ function installPackagedSkills(deps) {
   try {
     return installBundledSkills({
       dshHome: deps.dshHome,
-      assetsRoot: path19.join(packageRoot(), "assets", "skills"),
+      assetsRoot: path21.join(packageRoot(), "assets", "skills"),
       version: packageVersion(),
       log: deps.log
     });
@@ -38310,8 +38729,8 @@ function installPackagedSkills(deps) {
 
 // src/extensions/service.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync3, readFileSync as readFileSync8, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync5 } from "node:fs";
-import path20 from "node:path";
+import { existsSync as existsSync4, readFileSync as readFileSync9, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync6 } from "node:fs";
+import path22 from "node:path";
 
 // src/extensions/registry.ts
 var EXTENSIONS = [
@@ -38486,15 +38905,15 @@ function isExtensionAction(value) {
   return typeof value === "string" && EXTENSION_ACTIONS.includes(value);
 }
 var nodeFs = {
-  existsSync: (file2) => existsSync3(file2),
+  existsSync: (file2) => existsSync4(file2),
   // 包一层而不是直接传引用：node 的 readFileSync 是重载，直接传会被 TS 判成 Buffer 那个签名。
-  readFileSync: (file2, encoding) => readFileSync8(file2, encoding),
-  writeFileSync: (file2, data, encoding) => writeFileSync5(file2, data, encoding),
+  readFileSync: (file2, encoding) => readFileSync9(file2, encoding),
+  writeFileSync: (file2, data, encoding) => writeFileSync6(file2, data, encoding),
   renameSync: (from, to) => renameSync2(from, to),
   unlinkSync: (file2) => unlinkSync2(file2)
 };
 function profilePackageFile(profileDir) {
-  return path20.join(profileDir, "package.json");
+  return path22.join(profileDir, "package.json");
 }
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -38527,7 +38946,7 @@ function dependenciesOf(doc) {
   return asRecord(doc.dependencies);
 }
 function installedPackageFile(profileDir, packageName) {
-  return path20.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
+  return path22.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
 }
 function readInstalledVersion(profileDir, spec, fs8) {
   const file2 = installedPackageFile(profileDir, spec.packageName);
@@ -38698,8 +39117,8 @@ function pnpmInstallArgs(pnpmScript) {
   return [pnpmScript, "install"];
 }
 function resolveRuntimeDir(env = process.env, options = {}) {
-  const exists = options.exists ?? existsSync3;
-  const hasPnpm = (dir) => exists(path20.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
+  const exists = options.exists ?? existsSync4;
+  const hasPnpm = (dir) => exists(path22.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
   const candidates = [];
   const explicit = (env.DSH_RUNTIME_DIR ?? "").trim();
   if (explicit !== "") candidates.push(explicit);
@@ -38707,17 +39126,17 @@ function resolveRuntimeDir(env = process.env, options = {}) {
   if (installDir !== "") {
     let current = installDir;
     for (let depth = 0; depth < 8; depth += 1) {
-      const parent = path20.dirname(current);
+      const parent = path22.dirname(current);
       if (parent === current) break;
       current = parent;
-      if (path20.basename(current).toLowerCase() === "resources") {
-        candidates.push(path20.join(current, "runtime", "primary-runtime"), path20.join(current, "runtime"));
+      if (path22.basename(current).toLowerCase() === "resources") {
+        candidates.push(path22.join(current, "runtime", "primary-runtime"), path22.join(current, "runtime"));
         break;
       }
     }
   }
   const resources = (options.resourcesPath ?? process.resourcesPath ?? "").trim();
-  if (resources !== "") candidates.push(path20.join(resources, "runtime", "primary-runtime"), path20.join(resources, "runtime"));
+  if (resources !== "") candidates.push(path22.join(resources, "runtime", "primary-runtime"), path22.join(resources, "runtime"));
   for (const dir of candidates) if (hasPnpm(dir)) return dir;
   return void 0;
 }
@@ -38735,9 +39154,9 @@ function runPnpmInstall(input2) {
   if (runtimeDir === void 0) {
     return Promise.resolve({ ok: false, message: "\u627E\u4E0D\u5230\u5BBF\u4E3B\u81EA\u5E26\u7684 pnpm\uFF08\u8FD0\u884C\u65F6\u76EE\u5F55\u672A\u5B9A\u4F4D\uFF09\uFF0C\u6CA1\u6CD5\u5B89\u88C5\uFF1B\u8BF7\u7528\u684C\u9762\u7248\u5B89\u88C5\u5668\u91CD\u88C5\u540E\u518D\u8BD5" });
   }
-  const pnpmScript = path20.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
-  const nodeExe = path20.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
-  const useBundledNode = existsSync3(nodeExe);
+  const pnpmScript = path22.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
+  const nodeExe = path22.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
+  const useBundledNode = existsSync4(nodeExe);
   const command = useBundledNode ? nodeExe : process.execPath;
   const env = useBundledNode ? { ...process.env } : { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
   return new Promise((resolve) => {
@@ -38876,7 +39295,7 @@ function resolveProfileDir(env = process.env, dshHome) {
   const explicit = (env.DSH_PROFILE_DIR ?? "").trim();
   if (explicit !== "") return explicit;
   const profile = (env.DSH_PROFILE ?? "").trim() || "desktop";
-  return path20.join(dshHome, "profiles", profile);
+  return path22.join(dshHome, "profiles", profile);
 }
 
 // src/extensions/routes.ts
@@ -39482,12 +39901,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync9, readdirSync as readdirSync5, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync7 } from "node:fs";
-import path23 from "node:path";
+import { existsSync as existsSync7, mkdirSync as mkdirSync10, readdirSync as readdirSync6, readFileSync as readFileSync12, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync8 } from "node:fs";
+import path25 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync4, readFileSync as readFileSync9 } from "node:fs";
-import path21 from "node:path";
+import { existsSync as existsSync5, readFileSync as readFileSync10 } from "node:fs";
+import path23 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -39499,26 +39918,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path21.join(dshHome, "dsh-backup-git");
+  return path23.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path21.join(backupDir(dshHome), "config.json");
+  return path23.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path21.join(backupDir(dshHome), "credential.json");
+  return path23.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path21.join(backupDir(dshHome), "status.json");
+  return path23.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path21.join(backupDir(dshHome), "work");
+  return path23.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync4(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync5(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync9(file2, "utf8"));
+    parsed = JSON.parse(readFileSync10(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -39631,9 +40050,9 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync4(file2)) return "";
+  if (!existsSync5(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync9(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync10(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -39745,19 +40164,19 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync5, readdirSync as readdirSync4, readFileSync as readFileSync10, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync6, readdirSync as readdirSync5, readFileSync as readFileSync11, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path22 from "node:path";
+import path24 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path22.join(sessionsRoot, slug);
+    const slugDir = path24.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path22.join(slugDir, dirName);
+      const sessionDir = path24.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path22.join(sessionDir, fileName);
+        const file2 = path24.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync4(file2);
@@ -39769,7 +40188,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path22.posix.join(slug, dirName, fileName),
+          relPath: path24.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -39783,14 +40202,14 @@ function isSessionFile(fileName) {
 }
 function safeDirs(dir) {
   try {
-    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    return readdirSync5(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
 }
 function safeFiles(dir) {
   try {
-    return readdirSync4(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+    return readdirSync5(dir, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
   } catch {
     return [];
   }
@@ -39818,11 +40237,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path22.join(input2.stagingDir, "latest");
+  const staging = path24.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path22.join(staging, "sessions", entry.relPath);
+    const target = path24.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -39831,20 +40250,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path22.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path24.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path22.join(staging, "profiles", path22.basename(input2.profileDir));
+    const target = path24.join(staging, "profiles", path24.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path22.join(input2.profileDir, name2);
-      if (!existsSync5(source)) continue;
-      await copyFileFresh(source, path22.join(target, name2));
+      const source = path24.join(input2.profileDir, name2);
+      if (!existsSync6(source)) continue;
+      await copyFileFresh(source, path24.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path22.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path24.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -39860,18 +40279,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path22.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path24.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path22.join(stagingDir, "archive");
+  const root = path24.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path22.join(root, entry.relPath);
-    if (existsSync5(target)) continue;
+    const target = path24.join(root, entry.relPath);
+    if (existsSync6(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -39884,7 +40303,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync5(dir)) return;
+  if (!existsSync6(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -39916,7 +40335,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path22.join(dir, entry.name);
+    const full = path24.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -39927,8 +40346,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path22.dirname(target), { recursive: true });
-  if (existsSync5(target)) {
+  await mkdir(path24.dirname(target), { recursive: true });
+  if (existsSync6(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -39936,25 +40355,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync5(sourceDir)) return [];
+  if (!existsSync6(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path22.join(sourceDir, name2), path22.join(targetDir, name2));
+    await copyFileFresh(path24.join(sourceDir, name2), path24.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync5(sourceDir)) return total;
+  if (!existsSync6(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path22.join(sourceDir, entry.name);
-    const target = path22.join(targetDir, entry.name);
+    const source = path24.join(sourceDir, entry.name);
+    const target = path24.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -39986,14 +40405,14 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync5(profilesRoot)) return "";
+  if (!existsSync6(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path22.join(profilesRoot, name2);
-    const manifest = path22.join(dir, "package.json");
-    if (!existsSync5(manifest)) continue;
+    const dir = path24.join(profilesRoot, name2);
+    const manifest = path24.join(dir, "package.json");
+    if (!existsSync6(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync10(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync11(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
       const mtimeMs = statSync4(manifest).mtimeMs;
@@ -40155,7 +40574,7 @@ var BackupService = class {
     this.status.running = true;
     try {
       const dirs = this.layout();
-      mkdirSync9(dirs.base, { recursive: true });
+      mkdirSync10(dirs.base, { recursive: true });
       const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
@@ -40242,13 +40661,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path23.join(base, "staging"),
-      hotRepo: path23.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path23.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path23.join(this.deps.dshHome, "sessions"),
-      storagesDir: path23.join(this.deps.dshHome, "storages"),
-      profilesRoot: path23.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path23.join(this.deps.dshHome, "attachments")
+      staging: path25.join(base, "staging"),
+      hotRepo: path25.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path25.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path25.join(this.deps.dshHome, "sessions"),
+      storagesDir: path25.join(this.deps.dshHome, "storages"),
+      profilesRoot: path25.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path25.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -40270,8 +40689,8 @@ var BackupService = class {
     return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
   async prepareRepo(repo) {
-    mkdirSync9(repo, { recursive: true });
-    if (!existsSync6(path23.join(repo, ".git"))) {
+    mkdirSync10(repo, { recursive: true });
+    if (!existsSync7(path25.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -40291,8 +40710,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path23.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync6(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path25.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync7(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -40335,15 +40754,15 @@ var BackupService = class {
   }
   askpassScript() {
     const base = backupDir(this.deps.dshHome);
-    mkdirSync9(base, { recursive: true });
+    mkdirSync10(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path23.join(base, "askpass.cmd");
-      if (!existsSync6(file3)) writeFileSync7(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path25.join(base, "askpass.cmd");
+      if (!existsSync7(file3)) writeFileSync8(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path23.join(base, "askpass.sh");
-    if (!existsSync6(file2)) {
-      writeFileSync7(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+    const file2 = path25.join(base, "askpass.sh");
+    if (!existsSync7(file2)) {
+      writeFileSync8(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
   }
@@ -40365,32 +40784,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path23.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path25.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path23.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path23.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path25.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path25.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path23.join(staging, "latest");
-      const restoredHot = existsSync6(path23.join(restoreLatest, "sessions")) ? countSessionFiles(path23.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path25.join(staging, "latest");
+      const restoredHot = existsSync7(path25.join(restoreLatest, "sessions")) ? countSessionFiles(path25.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path23.join(this.deps.dshHome, name2);
-        if (existsSync6(target)) {
+        const target = path25.join(this.deps.dshHome, name2);
+        if (existsSync7(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path23.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path23.join(restoreLatest, "storages"), path23.join(this.deps.dshHome, "storages"));
-      if (existsSync6(path23.join(restoreLatest, "attachments"))) {
-        await mergeTree(path23.join(restoreLatest, "attachments"), path23.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path25.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path25.join(restoreLatest, "storages"), path25.join(this.deps.dshHome, "storages"));
+      if (existsSync7(path25.join(restoreLatest, "attachments"))) {
+        await mergeTree(path25.join(restoreLatest, "attachments"), path25.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path23.join(staging, "archive"), sessionsRoot);
-      const profiles = path23.join(restoreLatest, "profiles");
-      if (existsSync6(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path25.join(staging, "archive"), sessionsRoot);
+      const profiles = path25.join(restoreLatest, "profiles");
+      if (existsSync7(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -40424,38 +40843,38 @@ ${result2.stdout}`.toLowerCase();
   return /couldn't find remote ref|could not find remote ref|unknown revision|no such ref/.test(text);
 }
 function clearExceptGit(repo) {
-  for (const entry of readdirSync5(repo, { withFileTypes: true })) {
+  for (const entry of readdirSync6(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path23.join(repo, entry.name);
+    const target = path25.join(repo, entry.name);
     rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync6(source)) return;
-  for (const entry of readdirSync5(source, { withFileTypes: true })) {
-    const from = path23.join(source, entry.name);
-    const to = path23.join(target, entry.name);
+  if (!existsSync7(source)) return;
+  for (const entry of readdirSync6(source, { withFileTypes: true })) {
+    const from = path25.join(source, entry.name);
+    const to = path25.join(target, entry.name);
     if (entry.isDirectory()) {
-      mkdirSync9(to, { recursive: true });
+      mkdirSync10(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync6(to)) continue;
-    mkdirSync9(target, { recursive: true });
+    if (existsSync7(to)) continue;
+    mkdirSync10(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync6(profilesRoot)) return;
-  for (const entry of readdirSync5(source, { withFileTypes: true })) {
+  if (!existsSync7(profilesRoot)) return;
+  for (const entry of readdirSync6(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path23.join(source, entry.name);
-    const to = path23.join(profilesRoot, entry.name);
-    if (!existsSync6(to)) continue;
-    for (const file2 of readdirSync5(from, { withFileTypes: true })) {
+    const from = path25.join(source, entry.name);
+    const to = path25.join(profilesRoot, entry.name);
+    if (!existsSync7(to)) continue;
+    for (const file2 of readdirSync6(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path23.join(from, file2.name), path23.join(to, file2.name));
+      await copyFileFresh(path25.join(from, file2.name), path25.join(to, file2.name));
     }
   }
 }
@@ -40464,17 +40883,17 @@ function countSessionFiles(root) {
   const walk2 = (dir) => {
     let entries;
     try {
-      entries = readdirSync5(dir, { withFileTypes: true });
+      entries = readdirSync6(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
-      const full = path23.join(dir, entry.name);
+      const full = path25.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync6(root)) walk2(root);
+  if (existsSync7(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -40484,8 +40903,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync12 } from "node:fs";
-import path24 from "node:path";
+import { readFileSync as readFileSync13 } from "node:fs";
+import path26 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -40515,14 +40934,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path24.dirname(statusFile2) : dataDir();
-  return path24.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path26.dirname(statusFile2) : dataDir();
+  return path26.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync12(file2, "utf8");
+    raw = readFileSync13(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -40530,12 +40949,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path24.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path26.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path24.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path26.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -40574,7 +40993,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path24.dirname(file2));
+    ensureSecureDir(path26.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -40757,7 +41176,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path25.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path27.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -40780,7 +41199,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path25.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path27.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -41329,7 +41748,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path25.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path27.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -41346,6 +41765,7 @@ function applyInner(ctx, injected, clock) {
       // 面板能开（走 HTTP 路由）不代表工具注册上了（走 tools 服务）。
       handoff: softProbe.handoff ?? { started: "no" },
       subagents: softProbe.subagents ?? { started: "no" },
+      groups: softProbe.groups ?? { started: "no" },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: void 0,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -41516,7 +41936,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path25.dirname(path25.dirname(config2.statusFile)) : path25.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path27.dirname(path27.dirname(config2.statusFile)) : path27.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -41641,6 +42061,30 @@ function applyInner(ctx, injected, clock) {
     });
   }
   softProbe.handoff = handoffHandle?.probe;
+  let groupsHandle;
+  try {
+    groupsHandle = startGroups(ctx, {
+      dshHome: resolveDshHome(process.env),
+      log,
+      deliver: async (sessionId, text) => {
+        const port = kernel;
+        const send = port?.sendPrompt;
+        if (!port || !send) return { ok: false, message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF08\u6CA1\u6709 sendPrompt\uFF09" };
+        try {
+          const sent = await send.call(port, sessionId, text);
+          return sent.ok ? { ok: true } : { ok: false, message: sent.message ?? "\u8FD9\u4E2A\u4F1A\u8BDD\u73B0\u5728\u63A5\u4E0D\u4E86\u6D88\u606F" };
+        } catch (error62) {
+          return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+        }
+      }
+    });
+  } catch (error62) {
+    groupsHandle = void 0;
+    log("\u62C9\u7FA4\u8D77\u4E0D\u6765\uFF08\u8FDC\u63A7/\u8F6C\u751F/\u8BC6\u56FE\u4E0D\u53D7\u5F71\u54CD\uFF09", {
+      message: String(error62?.message ?? error62).slice(0, 200)
+    });
+  }
+  softProbe.groups = groupsHandle?.probe;
   try {
     const skillsInstalled = installPackagedSkills({ dshHome, log });
     if (!skillsInstalled.ok && skillsInstalled.reason !== void 0) {
@@ -41727,6 +42171,10 @@ function applyInner(ctx, injected, clock) {
       }
       try {
         handoffHandle?.stop();
+      } catch {
+      }
+      try {
+        groupsHandle?.stop();
       } catch {
       }
       try {
