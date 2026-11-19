@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.125" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.126" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31850,9 +31850,14 @@ function createServicesKernel(services, options) {
     };
   }
   const iso = isoOfTime;
+  let titleDebug = { state: "not-called" };
   async function loadTitles(ids) {
     const read = fn(services.sessionQuery, "readTitleSnapshots");
-    if (!read || ids.length === 0) return;
+    if (!read) {
+      titleDebug = { state: "no-readTitleSnapshots", keys: Object.keys(services.sessionQuery ?? {}).slice(0, 8).join(",") };
+      return;
+    }
+    if (ids.length === 0) return;
     const batch = options.titleBatch ?? MAX_TITLE_BATCH_DEFAULT;
     for (let at = 0; at < ids.length; at += batch) {
       const slice = ids.slice(at, at + batch);
@@ -31869,7 +31874,16 @@ function createServicesKernel(services, options) {
             titleCache.set(String(row.sessionId), { title, at: options.clock.now() });
           }
         }
+        titleDebug = {
+          state: "ok",
+          asked: String(ids.length),
+          rows: String((rows ?? []).length),
+          sampleStatus: String((rows ?? [])[0]?.status ?? "none"),
+          sampleValueKeys: Object.keys((rows ?? [])[0]?.value ?? {}).slice(0, 6).join(","),
+          cached: String(titleCache.size)
+        };
       } catch (error62) {
+        titleDebug = { state: "threw", message: messageOf(error62).slice(0, 160) };
         log("title lookup failed", { message: messageOf(error62) });
       }
     }
@@ -33227,6 +33241,7 @@ function createServicesKernel(services, options) {
     avatarSheet,
     listSubagents,
     lastCatalogDebug: () => catalogDebug,
+    lastTitleDebug: () => titleDebug,
     subagentCounts,
     newSession,
     subscribe,
@@ -42478,7 +42493,7 @@ function applyInner(ctx, injected, clock) {
       },
       debug: () => {
         const port = kernel;
-        return port?.lastCatalogDebug?.();
+        return { catalog: port?.lastCatalogDebug?.(), titles: port?.lastTitleDebug?.() };
       },
       archive: async (sessionId, archived) => {
         const port = kernel;
