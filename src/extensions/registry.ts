@@ -67,7 +67,7 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     label: '肥鱼识图 / 小云雀',
     description: '识图（外挂视觉模型）与小云雀（生图/生视频 CLI）：两个设置分栏 + 悬浮快捷入口。',
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-vision',
-    commit: '296d18c9558d4dcf2c9b5db76772c4a20f27b60b',
+    commit: 'e3954156f798032f05c6bcfb1dace31496231eb9',
   },
   {
     id: 'dev-kit',
