@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.118" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.119" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31741,6 +31741,7 @@ function createServicesKernel(services, options) {
   const CATALOG_TTL_MS = 2e3;
   const CATALOG_FAIL_TTL_MS = 3e5;
   const catalogCache = /* @__PURE__ */ new Map();
+  let catalogDebug;
   function noteSubagentKnown(id, parent, invalidateCatalog = false) {
     subagentParentOf.set(id, parent);
     if (knownSubagentIds.has(id)) return;
@@ -32034,16 +32035,16 @@ function createServicesKernel(services, options) {
   async function readSubagentCatalog(parentSessionId, descendants) {
     const out = /* @__PURE__ */ new Map();
     const service = services.subagents;
-    if (!service) return { entries: out, trusted: false };
+    if (!service) {
+      catalogDebug = { source: "none", trusted: false, count: 0, error: "\u6CA1\u6709 subagents \u670D\u52A1" };
+      return { entries: out, trusted: false };
+    }
     const call = (name2) => fn(service, name2);
-    const read = async (name2, directOnly = false) => {
-      const list = call(name2);
-      if (!list) return false;
-      const rows = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4e3);
-      for (const row of rows ?? []) {
+    const ingest = (rows, directOnly = false) => {
+      for (const row of rows) {
         if (typeof row?.id !== "string" || row.id === "") continue;
         if (directOnly && row.depth !== void 0 && Number(row.depth) !== 1) continue;
-        const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : void 0;
+        const label = typeof row.label === "string" && row.label.trim() !== "" ? row.label.trim() : typeof row.name === "string" && row.name.trim() !== "" ? row.name.trim() : void 0;
         const activity = typeof row.activity === "string" && row.activity.trim() !== "" ? row.activity.trim() : void 0;
         const mode = typeof row.mode === "string" && row.mode.trim() !== "" ? row.mode.trim() : void 0;
         const depth = typeof row.depth === "number" && Number.isFinite(row.depth) ? row.depth : void 0;
@@ -32057,23 +32058,86 @@ function createServicesKernel(services, options) {
           ...hasChildren === void 0 ? {} : { hasChildren }
         });
       }
-      return Array.isArray(rows);
+    };
+    const asRows = (value) => {
+      if (Array.isArray(value)) return value;
+      if (value === null || typeof value !== "object") return void 0;
+      const record2 = value;
+      for (const key of ["children", "entries", "items"]) {
+        const candidate = record2[key];
+        if (Array.isArray(candidate)) return candidate;
+      }
+      const projections = record2.projections;
+      const catalog = projections?.values?.subagentCatalog;
+      if (Array.isArray(catalog)) return catalog;
+      return void 0;
+    };
+    const readViaProjection = async (sessionId) => {
+      const query = services.sessionQuery;
+      const observe = fn(query, "observeSession");
+      if (!observe) return void 0;
+      const handle = await withTimeout(Promise.resolve(observe.call(query, sessionId)), 4e3);
+      try {
+        return asRows(handle);
+      } finally {
+        try {
+          const dispose = handle?.[Symbol.dispose];
+          if (typeof dispose === "function") dispose.call(handle);
+        } catch {
+        }
+      }
     };
     let trusted = false;
+    let source = "none";
+    let lastError;
     try {
-      if (descendants) {
-        if (await read("listDescendants")) trusted = true;
-        if (out.size > 0) return { entries: out, trusted };
-      }
-      if (await read("listChildren")) {
+      const projected = await readViaProjection(parentSessionId);
+      if (projected !== void 0) {
+        ingest(projected);
         trusted = true;
-      } else if (await read("listDescendants", true)) {
-        trusted = true;
+        source = "projection";
       }
     } catch (error62) {
-      log("subagent catalog unavailable", { message: messageOf(error62).slice(0, 120) });
-      return { entries: out, trusted: out.size > 0 };
+      lastError = messageOf(error62).slice(0, 120);
     }
+    const read = async (name2, directOnly = false) => {
+      const list = call(name2);
+      if (!list) {
+        lastError = lastError ?? `${name2} \u4E0D\u5728 subagents \u670D\u52A1\u4E0A`;
+        return false;
+      }
+      const raw = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4e3);
+      const rows = asRows(raw);
+      if (rows === void 0) {
+        lastError = lastError ?? `${name2} \u8FD4\u56DE\u7684\u5F62\u72B6\u4E0D\u8BA4\u8BC6\uFF1A${Object.keys(raw ?? {}).slice(0, 8).join(",") || typeof raw}`;
+        return false;
+      }
+      ingest(rows, directOnly);
+      return true;
+    };
+    if (!trusted) {
+      try {
+        if (descendants) {
+          if (await read("listDescendants")) {
+            trusted = true;
+            source = "service.listDescendants";
+          }
+        }
+        if (!trusted && await read("listChildren")) {
+          trusted = true;
+          source = "service.listChildren";
+        } else if (!trusted && await read("listDescendants", true)) {
+          trusted = true;
+          source = "service.listDescendants(depth=1)";
+        }
+      } catch (error62) {
+        lastError = messageOf(error62).slice(0, 120);
+      }
+    }
+    if (!trusted) {
+      log("subagent catalog unavailable", { message: (lastError ?? "\u672A\u77E5").slice(0, 120) });
+    }
+    catalogDebug = { source, trusted, count: out.size, ...lastError === void 0 ? {} : { error: lastError } };
     return { entries: out, trusted };
   }
   async function subagentLabels(parentSessionId, descendants) {
@@ -33160,6 +33224,7 @@ function createServicesKernel(services, options) {
     avatarManifest,
     avatarSheet,
     listSubagents,
+    lastCatalogDebug: () => catalogDebug,
     subagentCounts,
     newSession,
     subscribe,
@@ -36221,7 +36286,8 @@ function subagentsHandler(deps) {
     const includeArchived = url2.searchParams.get("includeArchived") === "1";
     try {
       const items = await deps.list(sessionId, { descendants, includeArchived });
-      json5(response, 200, { ok: true, items, config: deps.config.read() });
+      const debug = deps.debug?.();
+      json5(response, 200, { ok: true, items, config: deps.config.read(), ...debug === void 0 ? {} : { debug } });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u5B50\u4EE3\u7406\u5217\u8868\u8BFB\u53D6\u5931\u8D25", { message });
@@ -41475,6 +41541,10 @@ function applyInner(ctx, injected, clock) {
         const list = port?.listSubagents;
         if (!port || !list) throw new Error("\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u5B50\u4EE3\u7406\u5217\u8868\uFF08\u6CA1\u6709 listSubagents\uFF09");
         return list.call(port, sessionId, options);
+      },
+      debug: () => {
+        const port = kernel;
+        return port?.lastCatalogDebug?.();
       },
       archive: async (sessionId, archived) => {
         const port = kernel;
