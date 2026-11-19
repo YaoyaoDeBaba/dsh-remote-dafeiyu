@@ -1502,7 +1502,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       },
       debug: () => {
         const port = kernel
-        return port?.lastCatalogDebug?.()
+        return { catalog: port?.lastCatalogDebug?.(), titles: port?.lastTitleDebug?.() }
       },
       archive: async (sessionId, archived) => {
         const port = kernel

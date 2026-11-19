@@ -688,9 +688,21 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   /** 见模块级的 `iso`。留一层转调，是为了让下面几十处调用点不必改名字。 */
   const iso = isoOfTime
 
+  /**
+   * 标题读取的取证（2026-11-19）：读不到会话标题时，唯一能看见"卡在哪一步"的地方。
+   *
+   * 症状是"列表里全是 id"，代码里一条异常都不冒（catch 里只 log）。
+   * 记：有没有这个方法、调用抛没抛、回了几行、第一行什么形状、成功存了几条。
+   */
+  let titleDebug: Record<string, string> = { state: 'not-called' }
+
   async function loadTitles(ids: string[]): Promise<void> {
     const read = fn(services.sessionQuery, 'readTitleSnapshots')
-    if (!read || ids.length === 0) return
+    if (!read) {
+      titleDebug = { state: 'no-readTitleSnapshots', keys: Object.keys((services.sessionQuery ?? {}) as object).slice(0, 8).join(',') }
+      return
+    }
+    if (ids.length === 0) return
     const batch = options.titleBatch ?? MAX_TITLE_BATCH_DEFAULT
     for (let at = 0; at < ids.length; at += batch) {
       const slice = ids.slice(at, at + batch)
@@ -713,8 +725,17 @@ export function createServicesKernel(services: ServicesBundle, options: Services
             titleCache.set(String(row.sessionId), { title, at: options.clock.now() })
           }
         }
+        titleDebug = {
+          state: 'ok',
+          asked: String(ids.length),
+          rows: String((rows ?? []).length),
+          sampleStatus: String((rows ?? [])[0]?.status ?? 'none'),
+          sampleValueKeys: Object.keys(((rows ?? [])[0]?.value ?? {}) as object).slice(0, 6).join(','),
+          cached: String(titleCache.size),
+        }
       } catch (error) {
         // 标题读失败不影响列表：宁可无标题，也不要一整屏空白。
+        titleDebug = { state: 'threw', message: messageOf(error).slice(0, 160) }
         log('title lookup failed', { message: messageOf(error) })
       }
     }
@@ -2914,6 +2935,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     avatarSheet,
     listSubagents,
     lastCatalogDebug: () => catalogDebug,
+    lastTitleDebug: () => titleDebug,
     subagentCounts,
     newSession,
     subscribe,

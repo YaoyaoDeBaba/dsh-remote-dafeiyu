@@ -412,6 +412,8 @@ export interface KernelPort {
    * 把这个带出来，下次再变就不用靠猜。
    */
   lastCatalogDebug?(): { source: string; trusted: boolean; count: number; error?: string } | undefined
+  /** 会话标题读取的取证（2026-11-19）：读不到标题时看它停在哪个坎上。 */
+  lastTitleDebug?(): Record<string, string> | undefined
   /**
    * 只要「几个 / 几个在跑」，**纯内存、零 I/O**。
    *
