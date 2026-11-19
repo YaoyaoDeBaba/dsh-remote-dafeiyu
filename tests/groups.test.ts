@@ -135,13 +135,23 @@ test('投递正文口径：群名 + 群 id + 发送方短号 + 回复方式', ()
   assert.ok(text.includes('group_read'))
 })
 
-test('工具形状：六个工具、六键齐、output 是 {schema:{type:string},render}', () => {
+test('工具形状：九个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {
     const tools = buildGroupTools({ groups, guideBody: () => '# guide', log: () => {} })
     assert.deepEqual(
       tools.map((tool) => tool.name),
-      ['group_create', 'group_invite', 'group_leave', 'group_list', 'group_post', 'group_read', 'groups_guide'],
+      [
+        'group_create',
+        'group_invite',
+        'group_leave',
+        'group_list',
+        'group_post',
+        'group_remove',
+        'group_dissolve',
+        'group_read',
+        'groups_guide',
+      ],
     )
     for (const tool of tools) {
       for (const key of ['name', 'description', 'parameters', 'output', 'timeoutMs', 'execute']) {

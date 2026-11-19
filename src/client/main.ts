@@ -189,7 +189,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
    * 跨包不能 import，所以只共享**一个事件名**：形象包派发 `dafeiyu:action`，
    * 本体在这里分发。这样菜单只有一份（跟着形象走），能力也各归各。
    *
-   * `detail.id` 取值：`vision` / `subagents` / `rebirth` / `branch` / `xyq` / `sprite`。
+   * `detail.id` 取值：`vision` / `subagents` / `rebirth` / `branch` / `xyq` / `sprite` / `groups`。
    *
    * ⚠️ 2026-11-16 之后 **`vision` 与 `xyq` 是空转**：那两个功能（识图鲸鱼按钮、
    * 小云雀快捷面板）随 `dsh-vision-dafeiyu` 走了，挂着的是**那个包自己的**菜单处理器。
@@ -206,6 +206,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
       if (id === 'subagents') openSubagents?.()
       else if (id === 'rebirth') handoffPanel?.open('rebirth')
       else if (id === 'branch') handoffPanel?.open('branch')
+      else if (id === 'groups') groupsPanel?.open()
       else if (id === 'sprite') {
         // 序列帧工具页现在由 `dsh-dev-kit-dafeiyu` 托管（路由还是这条），跳转动作留在本体：
         // 这样菜单的 id 不比别的东西更依赖"装了哪个包"。

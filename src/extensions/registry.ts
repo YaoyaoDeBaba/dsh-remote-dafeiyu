@@ -51,7 +51,7 @@ export const EXTENSIONS: readonly ExtensionSpec[] = [
     label: '形象',
     description: '大肥鱼的形象包：设置页「形象」分栏（素材查看器）与桌面悬浮小鲸鱼。',
     gitUrl: 'https://github.com/YaoyaoDeBaba/dafeiyu-avatar',
-    commit: '445ff99775db2f5c23f8b1e379a0e519084c104f',
+    commit: '91def4e0df15a4c00c2ee09f8a5ad3a85c0b5308',
   },
   {
     id: 'selfloop',

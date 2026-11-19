@@ -15,7 +15,8 @@ type Hooks = {
 interface GroupView {
   id: string
   name: string
-  members: Array<{ sessionId: string; label?: string }>
+  dissolved?: boolean
+  members: Array<{ sessionId: string; name?: string }>
 }
 
 interface SessionView {
@@ -141,6 +142,12 @@ export function buildGroupsTab(options: {
       await reload()
     }
 
+    const dissolve = async (groupId: string): Promise<void> => {
+      const answer = await call('/api/dsh-remote-dafeiyu/groups/dissolve', { groupId })
+      setNote(answer.ok === true ? '已解散，全体成员都收到了「本群不再可用」' : '解散失败：' + String(answer.message ?? '未知原因'))
+      await reload()
+    }
+
     const sessionLabel = (session: SessionView): string => {
       const title = session.title?.trim()
       return (title === undefined || title === '' ? shortId(session.id) : title) + '（' + shortId(session.id) + '）'
@@ -237,11 +244,22 @@ export function buildGroupsTab(options: {
                               style: { fontWeight: '600' },
                               children: group.name + '（' + group.members.length + ' 人）',
                             }),
-                            createElement('button', {
-                              type: 'button',
-                              style: { ...btnStyle, background: '#e8f0ff', color: '#1d4ed8' },
-                              onClick: () => void inviteTo(group.id),
-                              children: '把勾选的人加进来',
+                            createElement('div', {
+                              style: { display: 'flex', gap: '6px' },
+                              children: [
+                                createElement('button', {
+                                  type: 'button',
+                                  style: { ...btnStyle, background: '#e8f0ff', color: '#1d4ed8' },
+                                  onClick: () => void inviteTo(group.id),
+                                  children: '把勾选的人加进来',
+                                }),
+                                createElement('button', {
+                                  type: 'button',
+                                  style: { ...btnStyle, background: 'transparent', color: '#b42318', border: '1px solid #f3b6ae' },
+                                  onClick: () => void dissolve(group.id),
+                                  children: '解散',
+                                }),
+                              ],
                             }),
                           ],
                         }),
@@ -249,7 +267,7 @@ export function buildGroupsTab(options: {
                           style: hintStyle,
                           children:
                             group.members
-                              .map((member) => member.label ?? shortId(member.sessionId))
+                              .map((member) => member.name ?? shortId(member.sessionId))
                               .join('、') + '　id: ' + group.id,
                         }),
                       ],

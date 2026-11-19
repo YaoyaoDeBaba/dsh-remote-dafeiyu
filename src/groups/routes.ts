@@ -14,6 +14,8 @@ export const GROUPS_INVITE_ROUTE = '/api/dsh-remote-dafeiyu/groups/invite'
 export const GROUPS_POST_ROUTE = '/api/dsh-remote-dafeiyu/groups/post'
 export const GROUPS_MESSAGES_ROUTE = '/api/dsh-remote-dafeiyu/groups/messages'
 export const GROUPS_LEAVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/leave'
+export const GROUPS_REMOVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/remove'
+export const GROUPS_DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 
 export interface GroupsRouteDeps {
@@ -125,14 +127,32 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
   return [
     {
       path: GROUPS_LIST_ROUTE,
-      handler: readRoute(() => ({
-        groups: deps.groups.list().map((group) => ({
-          id: group.id,
-          name: group.name,
-          members: group.members,
-          updatedAt: group.updatedAt,
-        })),
-      })),
+      handler: async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
+        applyCors(request, response)
+        if (preflight(request, response)) return
+        const denied = rejected(request)
+        if (denied !== undefined) {
+          json(response, 403, { ok: false, error: denied })
+          return
+        }
+        const rows = (await (deps.listSessions?.() ?? Promise.resolve([])).catch(() => [])) as Array<{ id: string; title?: string }>
+        const titles = new Map(rows.map((row) => [row.id, row.title]))
+        const short = (id: string): string => String(id).replace(/^session-/, '').slice(0, 8)
+        json(response, 200, {
+          ok: true,
+          groups: deps.groups.list().map((group) => ({
+            id: group.id,
+            name: group.name,
+            dissolved: group.dissolvedAt !== undefined,
+            updatedAt: group.updatedAt,
+            members: group.members.map((member) => ({
+              sessionId: member.sessionId,
+              // 名字优先级：成员自带的 label → 会话标题 → 短号（对用户显示的是名字，不是 id）
+              name: member.label?.trim() || titles.get(member.sessionId)?.trim() || short(member.sessionId),
+            })),
+          })),
+        })
+      },
     },
     {
       path: GROUPS_MESSAGES_ROUTE,
@@ -187,6 +207,16 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
           targets: Array.isArray(body.targets) ? body.targets.map((id) => String(id)) : [],
         }),
       ),
+    },
+    {
+      path: GROUPS_REMOVE_ROUTE,
+      handler: writeRoute((body) =>
+        deps.groups.remove({ id: String(body.groupId ?? ''), sessionId: String(body.sessionId ?? '') }),
+      ),
+    },
+    {
+      path: GROUPS_DISSOLVE_ROUTE,
+      handler: writeRoute((body) => deps.groups.dissolve({ id: String(body.groupId ?? '') })),
     },
     {
       path: GROUPS_LEAVE_ROUTE,

@@ -36,6 +36,8 @@ export interface GroupRecord {
   members: GroupMember[]
   createdAt: number
   updatedAt: number
+  /** 解散时刻（2026-11-19）：解散后群对成员不可用，记录保留给用户看。 */
+  dissolvedAt?: number
 }
 
 export type EntryKind = 'user' | 'agent' | 'system'
@@ -108,6 +110,7 @@ export function readGroup(dir: string, id: string): GroupRecord | undefined {
       members: parsed.members,
       createdAt: Number(parsed.createdAt ?? 0),
       updatedAt: Number(parsed.updatedAt ?? 0),
+      ...(Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}),
     }
   } catch {
     return undefined
@@ -172,6 +175,27 @@ function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string 
   ].join('\n')
 }
 
+/** 成员变动通知（发给**全体**）：谁进来了 / 谁走了。 */
+export function memberNotice(group: GroupRecord, subject: string, action: '加入' | '离开', titleOf?: (sessionId: string) => string | undefined): string {
+  const who = titleOf?.(subject)?.trim() || shortId(subject)
+  return [
+    '【群 ' + group.name + ' · ' + group.id + '】',
+    who + action + '了本群。',
+    '现在的成员：' + rosterLine(group, titleOf),
+  ].join('\n')
+}
+
+/** 群不可用（解散 / 被移出）时给受影响会话的告知。 */
+export function unavailableNotice(group: GroupRecord, reason: 'dissolved' | 'removed'): string {
+  return [
+    '【群 ' + group.name + ' · ' + group.id + '】',
+    reason === 'dissolved'
+      ? '这个群已经解散，**对你不再可用**：别再往这里发消息，也不需要再等群里的其他通知。'
+      : '你已经被移出这个群，**本群对你不再可用**：别再往这里发消息，后续别再引用这里的结论。',
+    '如果你还有没同步完的事情，直接问用户。',
+  ].join('\n')
+}
+
 export function createGroups(deps: GroupsDeps) {
   const now = deps.now ?? (() => Date.now())
   const titleOf = deps.titleOf
@@ -222,6 +246,32 @@ export function createGroups(deps: GroupsDeps) {
       })
     }
     return out
+  }
+
+  /** 取群并判"还活着"。解散后的群对写入一律拒。 */
+  const live = (id: string): { group?: GroupRecord; message?: string } => {
+    const group = readGroup(deps.dir, String(id ?? '').trim())
+    if (group === undefined) return { message: '没有这个群（id 可能不对）。' }
+    if (group.dissolvedAt !== undefined) return { message: '这个群已经解散了，用不了。' }
+    return { group }
+  }
+
+  /** 给全体成员发一段话（送给不到的记进结果）。 */
+  const notifyAll = async (group: GroupRecord, subject: string, text: string): Promise<DeliveryResult[]> => {
+    const results: DeliveryResult[] = []
+    for (const member of group.members) {
+      if (member.sessionId === subject) continue
+      const result = await deps.deliver(member.sessionId, text).catch((error: unknown) => ({
+        ok: false,
+        message: String((error as Error)?.message ?? error),
+      }))
+      results.push({
+        sessionId: member.sessionId,
+        ok: result.ok === true,
+        ...(result.ok === true || result.message === undefined ? {} : { message: String(result.message).slice(0, 160) }),
+      })
+    }
+    return results
   }
 
   return {
@@ -282,18 +332,21 @@ export function createGroups(deps: GroupsDeps) {
       group.updatedAt = now()
       if (!save(group)) return { ok: false, message: '成员没写进去（目录不可写）。' }
       if (added.length === 0) return { ok: true, group, added }
-      append(group.id, { at: now(), kind: 'system', from: 'system', targets: added, text: '拉进群：' + added.map((id) => shortId(id)).join('、') })
       const notified: DeliveryResult[] = []
       for (const id of added) {
-        const result = await deps.deliver(id, joinNotice(group, titleOf)).catch((error: unknown) => ({
+        // 新成员收到入群须知（名单 + 用法）；**其余全体**收到一条「XX 加入了本群」。
+        const joined = await deps.deliver(id, joinNotice(group, titleOf)).catch((error: unknown) => ({
           ok: false,
           message: String((error as Error)?.message ?? error),
         }))
         notified.push({
           sessionId: id,
-          ok: result.ok === true,
-          ...(result.ok === true || result.message === undefined ? {} : { message: String(result.message).slice(0, 160) }),
+          ok: joined.ok === true,
+          ...(joined.ok === true || joined.message === undefined ? {} : { message: String(joined.message).slice(0, 160) }),
         })
+        const others = await notifyAll(group, id, memberNotice(group, id, '加入', titleOf))
+        notified.push(...others)
+        append(group.id, { at: now(), kind: 'system', from: 'system', text: shortId(id) + ' 加入了本群' })
       }
       return { ok: true, group, added, notified }
     },
@@ -312,6 +365,64 @@ export function createGroups(deps: GroupsDeps) {
       return before === group.members.length ? { ok: true, message: '本来就不在群里。' } : { ok: true }
     },
 
+    /** 把某个成员移出群：通知他本人「不再可用」，通知剩下的人「XX 离开了本群」。 */
+    async remove(input: { id: string; sessionId: string }): Promise<{
+      ok: boolean
+      group?: GroupRecord
+      notified?: DeliveryResult[]
+      message?: string
+    }> {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      const subject = String(input.sessionId ?? '').trim()
+      if (!group.members.some((member) => member.sessionId === subject)) {
+        return { ok: false, message: '这个会话不在群里。' }
+      }
+      group.members = group.members.filter((member) => member.sessionId !== subject)
+      group.updatedAt = now()
+      save(group)
+      append(group.id, { at: now(), kind: 'system', from: 'system', text: shortId(subject) + ' 被移出了本群' })
+      const notified: DeliveryResult[] = []
+      const kicked = await deps.deliver(subject, unavailableNotice(group, 'removed')).catch((error: unknown) => ({
+        ok: false,
+        message: String((error as Error)?.message ?? error),
+      }))
+      notified.push({ sessionId: subject, ok: kicked.ok === true, ...(kicked.message === undefined ? {} : { message: kicked.message }) })
+      const others = await notifyAll(group, subject, memberNotice(group, subject, '离开', titleOf))
+      notified.push(...others)
+      return { ok: true, group, notified }
+    },
+
+    /** 解散群：通知全体「本群已解散、不再可用」，记录保留给用户看。 */
+    async dissolve(input: { id: string }): Promise<{
+      ok: boolean
+      group?: GroupRecord
+      notified?: DeliveryResult[]
+      message?: string
+    }> {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      group.dissolvedAt = now()
+      group.updatedAt = group.dissolvedAt
+      save(group)
+      append(group.id, { at: group.dissolvedAt, kind: 'system', from: 'system', text: '群已解散' })
+      const notified: DeliveryResult[] = []
+      for (const member of group.members) {
+        const result = await deps.deliver(member.sessionId, unavailableNotice(group, 'dissolved')).catch((error: unknown) => ({
+          ok: false,
+          message: String((error as Error)?.message ?? error),
+        }))
+        notified.push({
+          sessionId: member.sessionId,
+          ok: result.ok === true,
+          ...(result.ok === true || result.message === undefined ? {} : { message: String(result.message).slice(0, 160) }),
+        })
+      }
+      return { ok: true, group, notified }
+    },
+
     /**
      * 一条群消息：`kind:'user'` 是用户在界面上发的（targets = 他 @ 的人），
      * `kind:'agent'` 是某个成员用 group_post 发的。**只投给 targets**。
@@ -323,8 +434,9 @@ export function createGroups(deps: GroupsDeps) {
       failed?: DeliveryResult[]
       message?: string
     }> {
-      const group = readGroup(deps.dir, String(input.id ?? '').trim())
-      if (group === undefined) return { ok: false, message: '没有这个群（先 group_create）。' }
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message ?? '没有这个群（先 group_create）。' }
+      const group = alive.group
       const text = String(input.text ?? '').trim()
       if (text === '') return { ok: false, message: '消息不能是空的。' }
       if (text.length > MAX_MESSAGE_CHARS) return { ok: false, message: '单条最多 ' + MAX_MESSAGE_CHARS + ' 字，拆开发。' }

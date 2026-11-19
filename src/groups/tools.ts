@@ -155,6 +155,45 @@ export function buildGroupTools(deps: {
       },
     },
     {
+      name: 'group_remove',
+      description: '把某个成员移出群：他本人会收到「本群对你不再可用」，其余成员收到「XX 离开了本群」。',
+      parameters: {
+        type: 'object',
+        properties: {
+          groupId: { type: 'string', description: '群 id。' },
+          sessionId: { type: 'string', description: '要移出的会话 id 或短号。' },
+        },
+        required: ['groupId', 'sessionId'],
+      },
+      output: OUT,
+      timeoutMs: 30_000,
+      async execute(args: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown; sessionId?: unknown }
+        const group = deps.groups.get(asString(input.groupId))
+        let target = asString(input.sessionId)
+        if (group !== undefined && !group.members.some((member) => member.sessionId === target)) {
+          const hit = group.members.find((member) => shortId(member.sessionId) === target)
+          if (hit !== undefined) target = hit.sessionId
+        }
+        return JSON.stringify(await deps.groups.remove({ id: asString(input.groupId), sessionId: target }))
+      },
+    },
+    {
+      name: 'group_dissolve',
+      description: '解散群：全体成员都会收到「群已解散、本群对你不再可用」，记录保留给用户看。',
+      parameters: {
+        type: 'object',
+        properties: { groupId: { type: 'string', description: '群 id。' } },
+        required: ['groupId'],
+      },
+      output: OUT,
+      timeoutMs: 30_000,
+      async execute(args: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown }
+        return JSON.stringify(await deps.groups.dissolve({ id: asString(input.groupId) }))
+      },
+    },
+    {
       name: 'group_read',
       description: '读群里的最近记录（默认 20 条，最多 100）。补上下文用，别每轮都读。',
       parameters: {
