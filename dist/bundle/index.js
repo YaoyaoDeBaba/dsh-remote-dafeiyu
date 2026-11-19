@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path27 from "node:path";
+import path28 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path28) {
-  if (!path28)
+function getElementAtPath(obj, path29) {
+  if (!path29)
     return obj;
-  return path28.reduce((acc, key) => acc?.[key], obj);
+  return path29.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path28, issues) {
+function prefixIssues(path29, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path28);
+    iss.path.unshift(path29);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path28 = []) => {
+  const processError = (error63, path29 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path28, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path29, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
       } else {
-        const fullpath = [...path28, ...issue2.path];
+        const fullpath = [...path29, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path28 = []) => {
+  const processError = (error63, path29 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path28, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path29, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path28, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
       } else {
-        const fullpath = [...path28, ...issue2.path];
+        const fullpath = [...path29, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path28 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path28) {
+  const path29 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path29) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -22058,13 +22058,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json9, params, message) {
+function handleUnrepresentable(schema, ctx, json10, params, message) {
   const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result2 === "any")
     return false;
   if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json9, result2);
+  Object.assign(json10, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -22300,12 +22300,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json9) {
-  const allOf = json9.allOf;
+function foldIntersection(json10) {
+  const allOf = json10.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json9)
+    if (key in json10)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -22324,8 +22324,8 @@ function foldIntersection(json9) {
   }
   if (!folded)
     return;
-  delete json9.allOf;
-  assignProps(json9, folded);
+  delete json10.allOf;
+  assignProps(json10, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -22407,20 +22407,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json9 of [seen.schema, seen.def]) {
-          const allOf = json9?.allOf;
+        for (const json10 of [seen.schema, seen.def]) {
+          const allOf = json10?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json9);
+            existing.push(json10);
           else
-            carriers.set(allOf, [json9]);
+            carriers.set(allOf, [json10]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json9 of carriers.get(allOf) ?? [])
-          foldIntersection(json9);
+        for (const json10 of carriers.get(allOf) ?? [])
+          foldIntersection(json10);
       }
     }
   }
@@ -22655,29 +22655,29 @@ var exactPatterns = /* @__PURE__ */ new Map([
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
 var stringProcessor = (schema, ctx, _json, _params) => {
-  const json9 = _json;
-  json9.type = "string";
+  const json10 = _json;
+  json10.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json9.minLength = minimum;
+    json10.minLength = minimum;
   if (typeof maximum === "number")
-    json9.maxLength = maximum;
+    json10.maxLength = maximum;
   if (format) {
-    json9.format = formatMap[format] ?? format;
-    if (json9.format === "")
-      delete json9.format;
+    json10.format = formatMap[format] ?? format;
+    if (json10.format === "")
+      delete json10.format;
     if (format === "time" || laxFormat) {
-      delete json9.format;
+      delete json10.format;
     }
   }
   if (contentEncoding)
-    json9.contentEncoding = contentEncoding;
+    json10.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const patternList = [...patterns].map(exactPattern);
     if (patternList.length === 1)
-      json9.pattern = patternList[0].source;
+      json10.pattern = patternList[0].source;
     else if (patternList.length > 1) {
-      json9.allOf = [
+      json10.allOf = [
         ...patternList.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -22687,31 +22687,31 @@ var stringProcessor = (schema, ctx, _json, _params) => {
   }
 };
 var numberProcessor = (schema, ctx, _json, params) => {
-  const json9 = _json;
+  const json10 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-  json9.type = isInt ? "integer" : "number";
+  json10.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json9.minimum = exclusiveMinimum;
-      json9.exclusiveMinimum = true;
+      json10.minimum = exclusiveMinimum;
+      json10.exclusiveMinimum = true;
     } else {
-      json9.exclusiveMinimum = exclusiveMinimum;
+      json10.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json9.minimum = minimum;
+    json10.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json9.maximum = exclusiveMaximum;
-      json9.exclusiveMaximum = true;
+      json10.maximum = exclusiveMaximum;
+      json10.exclusiveMaximum = true;
     } else {
-      json9.exclusiveMaximum = exclusiveMaximum;
+      json10.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json9.maximum = maximum;
+    json10.maximum = maximum;
   }
   if (multipleOf) {
     const divisors = /* @__PURE__ */ new Set();
@@ -22719,75 +22719,75 @@ var numberProcessor = (schema, ctx, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema, ctx, json9, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema, ctx, json10, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
-      json9.multipleOf = first;
+      json10.multipleOf = first;
     if (rest.length)
-      json9.allOf = [...json9.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+      json10.allOf = [...json10.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
   }
 };
-var booleanProcessor = (_schema, _ctx, json9, _params) => {
-  json9.type = "boolean";
+var booleanProcessor = (_schema, _ctx, json10, _params) => {
+  json10.type = "boolean";
 };
-var bigintProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx, json9, _params) => {
+var nullProcessor = (_schema, ctx, json10, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json9.type = "string";
-    json9.nullable = true;
-    json9.enum = [null];
+    json10.type = "string";
+    json10.nullable = true;
+    json10.enum = [null];
   } else {
-    json9.type = "null";
+    json10.type = "null";
   }
 };
-var undefinedProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Void cannot be represented in JSON Schema");
 };
-var neverProcessor = (_schema, _ctx, json9, _params) => {
-  json9.not = {};
+var neverProcessor = (_schema, _ctx, json10, _params) => {
+  json10.not = {};
 };
 var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Date cannot be represented in JSON Schema");
 };
-var enumProcessor = (schema, _ctx, json9, _params) => {
+var enumProcessor = (schema, _ctx, json10, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.length === 0) {
-    json9.not = {};
+    json10.not = {};
     return;
   }
   if (values.every((v) => typeof v === "number"))
-    json9.type = "number";
+    json10.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json9.type = "string";
-  json9.enum = values;
+    json10.type = "string";
+  json10.enum = values;
 };
-var literalProcessor = (schema, ctx, json9, params) => {
+var literalProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   if (def.values.length === 0) {
-    json9.not = {};
+    json10.not = {};
     return;
   }
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema, ctx, json9, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json10, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema, ctx, json9, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json10, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -22797,37 +22797,37 @@ var literalProcessor = (schema, ctx, json9, params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json9.type = val === null ? "null" : typeof val;
+    json10.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json9.enum = [val];
+      json10.enum = [val];
     } else {
-      json9.const = val;
+      json10.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json9.type = "number";
+      json10.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json9.type = "string";
+      json10.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json9.type = "boolean";
+      json10.type = "boolean";
     if (vals.every((v) => v === null))
-      json9.type = "null";
-    json9.enum = vals;
+      json10.type = "null";
+    json10.enum = vals;
   }
 };
-var nanProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "NaN cannot be represented in JSON Schema");
 };
-var templateLiteralProcessor = (schema, _ctx, json9, _params) => {
-  const _json = json9;
+var templateLiteralProcessor = (schema, _ctx, json10, _params) => {
+  const _json = json10;
   const pattern = schema._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json9, _params) => {
-  const _json = json9;
+var fileProcessor = (schema, _ctx, json10, _params) => {
+  const _json = json10;
   _json.type = "string";
   _json.format = "binary";
   _json.contentEncoding = "binary";
@@ -22845,34 +22845,34 @@ var fileProcessor = (schema, _ctx, json9, _params) => {
   else
     _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
 };
-var successProcessor = (_schema, _ctx, json9, _params) => {
-  json9.type = "boolean";
+var successProcessor = (_schema, _ctx, json10, _params) => {
+  json10.type = "boolean";
 };
-var customProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema, ctx, json9, params) => {
-  handleUnrepresentable(schema, ctx, json9, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema, ctx, json10, params) => {
+  handleUnrepresentable(schema, ctx, json10, params, "Set cannot be represented in JSON Schema");
 };
 var arrayProcessor = (schema, ctx, _json, params) => {
-  const json9 = _json;
+  const json10 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json9.minItems = minimum;
+    json10.minItems = minimum;
   if (typeof maximum === "number")
-    json9.maxItems = maximum;
-  json9.type = "array";
-  json9.items = processSchema(def.element, ctx, {
+    json10.maxItems = maximum;
+  json10.type = "array";
+  json10.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -22888,17 +22888,17 @@ function inputOptin(schema) {
   return schema._zod.optin;
 }
 var objectProcessor = (schema, ctx, _json, params) => {
-  const json9 = _json;
+  const json10 = _json;
   const def = schema._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json9, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json10, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
-  json9.type = "object";
-  json9.properties = {};
+  json10.type = "object";
+  json10.properties = {};
   for (const key in shape) {
-    assignProp(json9.properties, key, processSchema(shape[key], ctx, {
+    assignProp(json10.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -22911,21 +22911,21 @@ var objectProcessor = (schema, ctx, _json, params) => {
     }
   }
   if (requiredKeys.length > 0) {
-    json9.required = requiredKeys;
+    json10.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
-    json9.additionalProperties = false;
+    json10.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json9.additionalProperties = false;
+      json10.additionalProperties = false;
   } else if (def.catchall) {
-    json9.additionalProperties = processSchema(def.catchall, ctx, {
+    json10.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema, ctx, json9, params) => {
+var unionProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -22933,12 +22933,12 @@ var unionProcessor = (schema, ctx, json9, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json9.oneOf = options;
+    json10.oneOf = options;
   } else {
-    json9.anyOf = options;
+    json10.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json9, params) => {
+var intersectionProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   const a = processSchema(def.left, ctx, {
     ...params,
@@ -22953,13 +22953,13 @@ var intersectionProcessor = (schema, ctx, json9, params) => {
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json9.allOf = allOf;
+  json10.allOf = allOf;
   ctx.intersections.push(allOf);
 };
 var tupleProcessor = (schema, ctx, _json, params) => {
-  const json9 = _json;
+  const json10 = _json;
   const def = schema._zod.def;
-  json9.type = "array";
+  json10.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
   const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -22981,70 +22981,70 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   const maxItems = def.items.length;
   const isClosed = !def.rest;
   if (ctx.target === "draft-2020-12") {
-    json9.prefixItems = prefixItems;
+    json10.prefixItems = prefixItems;
     if (isClosed) {
-      json9.items = false;
+      json10.items = false;
     } else if (rest) {
-      json9.items = rest;
+      json10.items = rest;
     }
     if (minItems > 0)
-      json9.minItems = minItems;
+      json10.minItems = minItems;
     if (isClosed)
-      json9.maxItems = maxItems;
+      json10.maxItems = maxItems;
   } else if (ctx.target === "openapi-3.0") {
-    json9.items = {
+    json10.items = {
       anyOf: prefixItems
     };
     if (rest) {
-      json9.items.anyOf.push(rest);
+      json10.items.anyOf.push(rest);
     }
     if (minItems > 0)
-      json9.minItems = minItems;
+      json10.minItems = minItems;
     if (isClosed)
-      json9.maxItems = maxItems;
+      json10.maxItems = maxItems;
   } else {
-    json9.items = prefixItems;
+    json10.items = prefixItems;
     if (isClosed) {
-      json9.additionalItems = false;
+      json10.additionalItems = false;
     } else if (rest) {
-      json9.additionalItems = rest;
+      json10.additionalItems = rest;
     }
     if (minItems > 0)
-      json9.minItems = minItems;
+      json10.minItems = minItems;
     if (isClosed)
-      json9.maxItems = maxItems;
+      json10.maxItems = maxItems;
   }
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json9.minItems = minimum;
+    json10.minItems = minimum;
   if (typeof maximum === "number")
-    json9.maxItems = maximum;
+    json10.maxItems = maximum;
 };
-function stringifyKeyNames(bySchema, json9, visited) {
-  if (json9.$ref) {
-    if (visited.has(json9))
-      return json9;
-    visited.add(json9);
-    const def = bySchema.get(json9)?.def;
+function stringifyKeyNames(bySchema, json10, visited) {
+  if (json10.$ref) {
+    if (visited.has(json10))
+      return json10;
+    visited.add(json10);
+    const def = bySchema.get(json10)?.def;
     if (!def)
-      return json9;
+      return json10;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json9 : inlined;
+    return inlined === def ? json10 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json9[keyword];
+    const branches = json10[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json9 = { ...json9, [keyword]: mapped };
+      json10 = { ...json10, [keyword]: mapped };
   }
-  const types = Array.isArray(json9.type) ? json9.type : [json9.type];
+  const types = Array.isArray(json10.type) ? json10.type : [json10.type];
   const numericType = !types.includes("string") && types.some((t) => t === "number" || t === "integer");
-  const values = json9.enum ?? (json9.const !== void 0 ? [json9.const] : void 0);
+  const values = json10.enum ?? (json10.const !== void 0 ? [json10.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json9;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json9;
+    return json10;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json10;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23084,9 +23084,9 @@ function rewriteKeyNames(ctx) {
   }
 }
 var recordProcessor = (schema, ctx, _json, params) => {
-  const json9 = _json;
+  const json10 = _json;
   const def = schema._zod.def;
-  json9.type = "object";
+  json10.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -23094,13 +23094,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json9.patternProperties = {};
+    json10.patternProperties = {};
     for (const pattern of patterns) {
-      assignProp(json9.patternProperties, exactPattern(pattern).source, valueSchema);
+      assignProp(json10.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json9.propertyNames = processSchema(def.keyType, ctx, {
+      json10.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
@@ -23112,7 +23112,7 @@ var recordProcessor = (schema, ctx, _json, params) => {
       }
       pending2.push(schema);
     }
-    json9.additionalProperties = processSchema(def.valueType, ctx, {
+    json10.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -23122,19 +23122,19 @@ var recordProcessor = (schema, ctx, _json, params) => {
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json9.required = validKeyValues.map(String);
+      json10.required = validKeyValues.map(String);
     }
   }
 };
-var nullableProcessor = (schema, ctx, json9, params) => {
+var nullableProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   const inner = processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json9.nullable = true;
+    json10.nullable = true;
   } else {
-    json9.anyOf = [inner, { type: "null" }];
+    json10.anyOf = [inner, { type: "null" }];
   }
 };
 var nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -23144,7 +23144,7 @@ var nonoptionalProcessor = (schema, ctx, _json, params) => {
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
-function serializeDefaultValue(value, schema, ctx, json9, params) {
+function serializeDefaultValue(value, schema, ctx, json10, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23154,30 +23154,30 @@ function serializeDefaultValue(value, schema, ctx, json9, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema, ctx, json9, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json10, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema, ctx, json9, params) => {
+var defaultProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json9, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json10, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json9.default = value;
+    json10.default = value;
 };
-var prefaultProcessor = (schema, ctx, json9, params) => {
+var prefaultProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json9, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json10, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json9._prefault = value;
+    json10._prefault = value;
 };
-var catchProcessor = (schema, ctx, json9, params) => {
+var catchProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -23186,10 +23186,10 @@ var catchProcessor = (schema, ctx, json9, params) => {
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema, ctx, json9, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema, ctx, json10, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
-  json9.default = catchValue;
+  json10.default = catchValue;
 };
 var pipeProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23199,12 +23199,12 @@ var pipeProcessor = (schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json9, params) => {
+var readonlyProcessor = (schema, ctx, json10, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json9.readOnly = true;
+  json10.readOnly = true;
 };
 var promiseProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23846,7 +23846,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json9, params) => stringProcessor(inst, ctx, json9, params);
+    inst._zod.processJSONSchema = (ctx, json10, params) => stringProcessor(inst, ctx, json10, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -24205,7 +24205,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json9, params) => numberProcessor(inst, ctx, json9, params);
+    inst._zod.processJSONSchema = (ctx, json10, params) => numberProcessor(inst, ctx, json10, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -24295,7 +24295,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => booleanProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => booleanProcessor(inst, ctx, json10, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -24305,7 +24305,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json9, params) => bigintProcessor(inst, ctx, json9, params);
+    inst._zod.processJSONSchema = (ctx, json10, params) => bigintProcessor(inst, ctx, json10, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -24363,7 +24363,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => symbolProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => symbolProcessor(inst, ctx, json10, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -24371,7 +24371,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => undefinedProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => undefinedProcessor(inst, ctx, json10, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -24379,7 +24379,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => nullProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => nullProcessor(inst, ctx, json10, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -24387,7 +24387,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => anyProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => anyProcessor(inst, ctx, json10, params);
 });
 function any() {
   return _any(ZodAny);
@@ -24395,7 +24395,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => unknownProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => unknownProcessor(inst, ctx, json10, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -24403,7 +24403,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => neverProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => neverProcessor(inst, ctx, json10, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -24411,7 +24411,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => voidProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => voidProcessor(inst, ctx, json10, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -24421,7 +24421,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json9, params) => dateProcessor(inst, ctx, json9, params);
+    inst._zod.processJSONSchema = (ctx, json10, params) => dateProcessor(inst, ctx, json10, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -24443,7 +24443,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => arrayProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => arrayProcessor(inst, ctx, json10, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -24473,7 +24473,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => objectProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => objectProcessor(inst, ctx, json10, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -24546,7 +24546,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => unionProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => unionProcessor(inst, ctx, json10, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -24559,7 +24559,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => unionProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => unionProcessor(inst, ctx, json10, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -24585,7 +24585,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => intersectionProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => intersectionProcessor(inst, ctx, json10, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -24598,7 +24598,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => tupleProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => tupleProcessor(inst, ctx, json10, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -24631,7 +24631,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => recordProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => recordProcessor(inst, ctx, json10, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -24673,7 +24673,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => mapProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => mapProcessor(inst, ctx, json10, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -24693,7 +24693,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => setProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => setProcessor(inst, ctx, json10, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -24709,7 +24709,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => enumProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => enumProcessor(inst, ctx, json10, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -24762,7 +24762,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => literalProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => literalProcessor(inst, ctx, json10, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -24783,7 +24783,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => fileProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => fileProcessor(inst, ctx, json10, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -24795,7 +24795,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => transformProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => transformProcessor(inst, ctx, json10, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -24834,7 +24834,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => optionalProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => optionalProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -24846,7 +24846,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => optionalProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => optionalProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -24858,7 +24858,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => nullableProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => nullableProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -24873,7 +24873,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => defaultProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => defaultProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -24889,7 +24889,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => prefaultProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => prefaultProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -24904,7 +24904,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => nonoptionalProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => nonoptionalProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -24917,7 +24917,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => successProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => successProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -24929,7 +24929,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => catchProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => catchProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -24943,7 +24943,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => nanProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => nanProcessor(inst, ctx, json10, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -24951,7 +24951,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => pipeProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => pipeProcessor(inst, ctx, json10, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -24993,7 +24993,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => readonlyProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => readonlyProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -25005,7 +25005,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => templateLiteralProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => templateLiteralProcessor(inst, ctx, json10, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -25017,7 +25017,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => lazyProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => lazyProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -25029,7 +25029,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => promiseProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => promiseProcessor(inst, ctx, json10, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -25041,7 +25041,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => functionProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => functionProcessor(inst, ctx, json10, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -25053,7 +25053,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json9, params) => customProcessor(inst, ctx, json9, params);
+  inst._zod.processJSONSchema = (ctx, json10, params) => customProcessor(inst, ctx, json10, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path28 = ref.slice(1).split("/").filter(Boolean);
-  if (path28.length === 0) {
+  const path29 = ref.slice(1).split("/").filter(Boolean);
+  if (path29.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path28[0] === defsKey) {
-    const key = path28[1] === void 0 ? void 0 : decodeJSONPointerSegment(path28[1]);
+  if (path29[0] === defsKey) {
+    const key = path29[1] === void 0 ? void 0 : decodeJSONPointerSegment(path29[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -34879,12 +34879,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path28 = __require("node:path");
+        const path29 = __require("node:path");
         const fs8 = __require("node:fs");
-        const dir = path28.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path29.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs8.mkdirSync(dir, { recursive: true, mode: 448 });
         fs8.writeFileSync(
-          path28.join(dir, "client-report.json"),
+          path29.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -38212,10 +38212,10 @@ function startHandoff(ctx, input2) {
 }
 
 // src/groups/start.ts
-import path20 from "node:path";
+import path21 from "node:path";
 
 // src/groups/service.ts
-import { existsSync as existsSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, writeFileSync as writeFileSync4, appendFileSync } from "node:fs";
+import { appendFileSync, existsSync as existsSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync3, writeFileSync as writeFileSync4 } from "node:fs";
 import path19 from "node:path";
 var MAX_MEMBERS = 12;
 var MAX_MESSAGE_CHARS = 4e3;
@@ -38243,7 +38243,14 @@ function readGroup(dir, id) {
     if (typeof parsed?.id !== "string" || typeof parsed.name !== "string" || !Array.isArray(parsed.members)) {
       return void 0;
     }
-    return parsed;
+    return {
+      version: 2,
+      id: parsed.id,
+      name: parsed.name,
+      members: parsed.members,
+      createdAt: Number(parsed.createdAt ?? 0),
+      updatedAt: Number(parsed.updatedAt ?? 0)
+    };
   } catch {
     return void 0;
   }
@@ -38261,17 +38268,38 @@ function listGroups(dir) {
     return [];
   }
 }
-function deliveryText(group, from, text) {
+function rosterLine(group, titleOf) {
+  return group.members.map((member) => {
+    const title = member.label ?? titleOf?.(member.sessionId)?.trim();
+    return title !== void 0 && title !== "" ? title + "(" + shortId2(member.sessionId) + ")" : shortId2(member.sessionId);
+  }).join("\u3001");
+}
+function deliveryText(group, from, text, others, titleOf) {
+  const peers = others.filter((sessionId) => sessionId !== from).map((sessionId) => titleOf?.(sessionId)?.trim() || shortId2(sessionId));
   return [
-    "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + " \xB7 \u6765\u81EA " + shortId2(from) + "\u3011",
+    "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
     text.trim(),
     "",
-    "\u56DE\u590D\u7528 group_send\uFF1AgroupId=" + group.id + "\uFF0Cmessage \u5199\u4F60\u8981\u8BF4\u7684\u8BDD\uFF1B\u53EA\u53D1\u7ED9\u7FA4\u91CC\u5176\u4ED6\u4EBA\uFF0C\u522B\u56DE\u7ED9\u53D1\u9001\u65B9\u81EA\u5DF1\u3002",
-    "\u8981\u770B\u524D\u6587\u7528 group_read\u3002\u4E0D\u786E\u5B9A\u8981\u4E0D\u8981\u8BF4\u5C31\u522B\u8BF4\u2014\u2014\u7FA4\u91CC\u6BCF\u53E5\u8BDD\u90FD\u4F1A\u5360\u522B\u4EBA\u7684\u4E0A\u4E0B\u6587\u3002"
+    "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf),
+    peers.length > 0 ? "\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF1A" + peers.join("\u3001") : "\u672C\u8F6E\u53EA\u6709\u4F60\u3002",
+    "\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u8BB0\u5F55\uFF08\u63D2\u4EF6\u53EA\u6295\u7ED9\u4F60\u88AB @ \u7684\u90E8\u5206\uFF09\u3002\u8981\u8BF4\u70B9\u4EC0\u4E48\u5C31\u8C03 group_post\uFF1AgroupId=" + group.id,
+    "text \u5199\u6B63\u6587\uFF1B\u8981\u76F4\u63A5\u627E\u67D0\u4E2A\u6210\u5458\uFF0C\u628A to \u586B\u6210\u5BF9\u65B9\u7684\u77ED\u53F7\u6216\u4F1A\u8BDD id\u3002",
+    "\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002"
+  ].join("\n");
+}
+function joinNotice(group, titleOf) {
+  return [
+    "\u3010\u5165\u7FA4\u901A\u77E5 \xB7 " + group.name + " \xB7 " + group.id + "\u3011",
+    "\u4F60\u88AB\u62C9\u8FDB\u8FD9\u4E2A\u7FA4\u4E86\u3002\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + "\u3002",
+    "\u7528\u6CD5\uFF08\u8BE6\u89C1 skill dafeiyu-groups\uFF0C\u6216\u8C03 groups_guide\uFF09\uFF1A",
+    "\xB7 \u7FA4\u91CC\u6709\u4EBA @ \u4F60\u65F6\uFF0C\u4F60\u4F1A\u6536\u5230\u4E00\u6761\u72EC\u7ACB\u6D88\u606F\uFF08\u5E26\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF09\u2014\u2014\u4F60**\u770B\u4E0D\u5230**\u7FA4\u91CC\u7684\u5176\u4ED6\u6D88\u606F\uFF1B",
+    "\xB7 \u8981\u628A\u7ED3\u8BBA\u540C\u6B65\u7ED9\u7FA4\u91CC\uFF0C\u8C03 group_post(groupId=" + group.id + ", text=...)\uFF0C\u9700\u8981\u70B9\u540D\u5C31\u5E26 to\uFF1B",
+    "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u8C03 group_read(groupId=" + group.id + ")\u3002"
   ].join("\n");
 }
 function createGroups(deps) {
   const now = deps.now ?? (() => Date.now());
+  const titleOf = deps.titleOf;
   const save = (group) => {
     ensureDir2(deps.dir);
     try {
@@ -38281,10 +38309,10 @@ function createGroups(deps) {
       return false;
     }
   };
-  const append = (id, message) => {
+  const append = (id, entry) => {
     try {
       ensureDir2(deps.dir);
-      appendFileSync(logPath(deps.dir, id), JSON.stringify(message) + "\n", "utf8");
+      appendFileSync(logPath(deps.dir, id), JSON.stringify(entry) + "\n", "utf8");
     } catch {
     }
   };
@@ -38292,17 +38320,18 @@ function createGroups(deps) {
     const uuid3 = globalThis.crypto?.randomUUID?.();
     return "g-" + (uuid3 ?? String(at) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 10);
   };
-  const deliverTo = async (group, sender, text) => {
-    const body = deliveryText(group, sender, text);
+  const deliverEach = async (group, from, text, targets) => {
+    const body = deliveryText(group, from, text, targets, titleOf);
     const out = [];
-    for (const member of group.members) {
-      if (member.sessionId === sender) continue;
-      const result2 = await deps.deliver(member.sessionId, body).catch((error62) => ({
+    for (const target of targets) {
+      if (target === from) continue;
+      if (!group.members.some((member) => member.sessionId === target)) continue;
+      const result2 = await deps.deliver(target, body).catch((error62) => ({
         ok: false,
         message: String(error62?.message ?? error62)
       }));
       out.push({
-        sessionId: member.sessionId,
+        sessionId: target,
         ok: result2.ok === true,
         ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
       });
@@ -38310,7 +38339,7 @@ function createGroups(deps) {
     return out;
   };
   return {
-    /** 建群：发起方自动入群（除非 me:false），可顺手带几个成员。 */
+    /** 建群：发起方自动入群（除非给了 includeMe:false），可顺手带几个成员。 */
     create(input2) {
       const name2 = String(input2.name ?? "").trim().slice(0, 40);
       if (name2 === "") return { ok: false, message: "\u7FA4\u8981\u6709\u4E2A\u540D\u5B57\uFF08name\uFF09\u3002" };
@@ -38320,24 +38349,28 @@ function createGroups(deps) {
         const trimmed = String(id ?? "").trim();
         if (trimmed !== "" && !ids.includes(trimmed)) ids.push(trimmed);
       };
-      if (typeof input2.me === "string" && input2.me.trim() !== "") push(input2.me);
+      if (input2.includeMe !== false && typeof input2.me === "string" && input2.me.trim() !== "") push(input2.me);
       for (const id of input2.members ?? []) push(id);
       if (ids.length === 0) return { ok: false, message: "\u7FA4\u91CC\u81F3\u5C11\u8981\u6709\u4E00\u4E2A\u4EBA\uFF08\u53D1\u8D77\u65B9\uFF09\u3002" };
       if (ids.length > MAX_MEMBERS) return { ok: false, message: "\u4E00\u4E2A\u7FA4\u6700\u591A " + MAX_MEMBERS + " \u4E2A\u4F1A\u8BDD\u3002" };
       const group = {
-        version: 1,
+        version: 2,
         id: newId2(at),
         name: name2,
-        members: ids.map((sessionId) => ({ sessionId, joinedAt: at })),
+        members: ids.map((sessionId) => {
+          const label = titleOf?.(sessionId)?.trim();
+          return { sessionId, joinedAt: at, ...label ? { label } : {} };
+        }),
         createdAt: at,
         updatedAt: at
       };
       if (!save(group)) return { ok: false, message: "\u7FA4\u6CA1\u843D\u76D8\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      append(group.id, { at, kind: "system", from: "system", text: "\u5EFA\u7FA4\uFF1A" + group.name + "\uFF08" + group.members.length + " \u4EBA\uFF09" });
       deps.log("\u5EFA\u7FA4", { id: group.id, members: group.members.length });
       return { ok: true, group };
     },
-    /** 拉人进群：只加成员，不额外发消息。 */
-    invite(input2) {
+    /** 拉人进群：加成员 + 给每个新成员发入群通知（带名单与用法）。 */
+    async invite(input2) {
       const group = readGroup(deps.dir, String(input2.id ?? "").trim());
       if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08id \u53EF\u80FD\u4E0D\u5BF9\uFF09\u3002" };
       const added = [];
@@ -38345,14 +38378,29 @@ function createGroups(deps) {
         const id = String(raw ?? "").trim();
         if (id === "" || group.members.some((member) => member.sessionId === id)) continue;
         if (group.members.length >= MAX_MEMBERS) break;
-        group.members.push({ sessionId: id, joinedAt: now() });
+        const label = titleOf?.(id)?.trim();
+        group.members.push({ sessionId: id, joinedAt: now(), ...label ? { label } : {} });
         added.push(id);
       }
       group.updatedAt = now();
       if (!save(group)) return { ok: false, message: "\u6210\u5458\u6CA1\u5199\u8FDB\u53BB\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
-      return { ok: true, group, added };
+      if (added.length === 0) return { ok: true, group, added };
+      append(group.id, { at: now(), kind: "system", from: "system", targets: added, text: "\u62C9\u8FDB\u7FA4\uFF1A" + added.map((id) => shortId2(id)).join("\u3001") });
+      const notified = [];
+      for (const id of added) {
+        const result2 = await deps.deliver(id, joinNotice(group, titleOf)).catch((error62) => ({
+          ok: false,
+          message: String(error62?.message ?? error62)
+        }));
+        notified.push({
+          sessionId: id,
+          ok: result2.ok === true,
+          ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
+        });
+      }
+      return { ok: true, group, added, notified };
     },
-    /** 退群（自己走，或被移出）。 */
+    /** 退群。 */
     leave(input2) {
       const group = readGroup(deps.dir, String(input2.id ?? "").trim());
       if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" };
@@ -38360,32 +38408,51 @@ function createGroups(deps) {
       group.members = group.members.filter((member) => member.sessionId !== input2.sessionId);
       group.updatedAt = now();
       if (!save(group)) return { ok: false, message: "\u6CA1\u4FDD\u5B58\u6210\u529F\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      if (before !== group.members.length) {
+        append(group.id, { at: now(), kind: "system", from: "system", text: shortId2(input2.sessionId) + " \u9000\u51FA\u4E86\u7FA4" });
+      }
       return before === group.members.length ? { ok: true, message: "\u672C\u6765\u5C31\u4E0D\u5728\u7FA4\u91CC\u3002" } : { ok: true };
     },
-    /** 发一条：先落盘，再逐成员投递；送不到的逐条带回。 */
-    async send(input2) {
+    /**
+     * 一条群消息：`kind:'user'` 是用户在界面上发的（targets = 他 @ 的人），
+     * `kind:'agent'` 是某个成员用 group_post 发的。**只投给 targets**。
+     */
+    async post(input2) {
       const group = readGroup(deps.dir, String(input2.id ?? "").trim());
       if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08\u5148 group_create\uFF09\u3002" };
       const text = String(input2.text ?? "").trim();
       if (text === "") return { ok: false, message: "\u6D88\u606F\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
       if (text.length > MAX_MESSAGE_CHARS) return { ok: false, message: "\u5355\u6761\u6700\u591A " + MAX_MESSAGE_CHARS + " \u5B57\uFF0C\u62C6\u5F00\u53D1\u3002" };
-      if (!group.members.some((member) => member.sessionId === input2.from)) {
+      const kind = input2.kind === "user" ? "user" : input2.kind === "system" ? "system" : "agent";
+      const from = String(input2.from ?? "").trim();
+      if (kind === "agent" && !group.members.some((member) => member.sessionId === from)) {
         return { ok: false, message: "\u4F60\u4E0D\u5728\u8FD9\u4E2A\u7FA4\u91CC\uFF08\u5148 group_invite \u628A\u81EA\u5DF1\u52A0\u8FDB\u53BB\uFF09\u3002" };
       }
-      append(group.id, { at: now(), from: input2.from, text });
+      const targets = (input2.targets ?? []).map((id) => String(id ?? "").trim()).filter((id) => id !== "" && group.members.some((member) => member.sessionId === id));
+      const entry = { at: now(), kind, from, ...targets.length > 0 ? { targets } : {}, text };
+      append(group.id, entry);
       group.updatedAt = now();
       save(group);
-      const results = await deliverTo(group, input2.from, text);
+      if (targets.length === 0) return { ok: true, entry };
+      const results = await deliverEach(group, kind === "user" ? "user" : from, text, targets);
       const failed = results.filter((row) => !row.ok);
-      deps.log("\u7FA4\u53D1", { id: group.id, delivered: results.length - failed.length, failed: failed.length });
+      deps.log("\u7FA4\u6295\u9012", { id: group.id, targets: targets.length, failed: failed.length });
       return {
         ok: failed.length === 0,
+        entry,
         delivered: results.filter((row) => row.ok),
         failed,
         ...failed.length === 0 ? {} : { message: "\u6709 " + failed.length + " \u4E2A\u6210\u5458\u6CA1\u9001\u5230\uFF08\u53EF\u80FD\u5DF2\u5F52\u6863\u6216\u5BBF\u4E3B\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF09\uFF0C\u6E05\u5355\u5728 failed \u91CC\u3002" }
       };
     },
-    /** 读最近 N 条（默认 20）。 */
+    /** 兼容旧调用：发一条给群里其他所有人（等价于 post 且 targets = 全部其他人）。 */
+    async send(input2) {
+      const group = readGroup(deps.dir, String(input2.id ?? "").trim());
+      if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08\u5148 group_create\uFF09\u3002" };
+      const targets = group.members.map((member) => member.sessionId).filter((id) => id !== input2.from);
+      return this.post({ id: input2.id, from: input2.from, text: input2.text, targets, kind: "agent" });
+    },
+    /** 读最近的记录（默认 20，上限 100）。 */
     read(input2) {
       const group = readGroup(deps.dir, String(input2.id ?? "").trim());
       if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" };
@@ -38429,12 +38496,12 @@ function buildGroupTools(deps) {
   return [
     {
       name: "group_create",
-      description: "\u62C9\u4E00\u4E2A\u7FA4\uFF0C\u628A\u6307\u5B9A\u7684\u9876\u5C42\u4F1A\u8BDD\u653E\u8FDB\u53BB\uFF0C\u4E4B\u540E\u7528 group_send \u4E92\u76F8\u8BF4\u8BDD\uFF08\u5178\u578B\u7528\u9014\uFF1A\u524D\u540E\u7AEF\u8054\u8C03\u65F6\u4E24\u4E2A\u4F1A\u8BDD\u540C\u6B65\u63A5\u53E3/\u5B57\u6BB5\u7ED3\u8BBA\uFF09\u3002\n\u9ED8\u8BA4\u628A\u81EA\u5DF1\u4E5F\u7B97\u8FDB\u7FA4\uFF1BsessionIds \u4F20\u522B\u7684\u9876\u5C42\u4F1A\u8BDD id\u3002\u5EFA\u5B8C\u8FD4\u56DE groupId\uFF0C\u540E\u9762\u90FD\u7528\u5B83\u3002\n\u7FA4\u6D88\u606F\u4F1A\u9010\u6761\u9001\u8FDB\u6BCF\u4E2A\u6210\u5458\u7684\u4F1A\u8BDD\uFF08\u5360\u7528\u5B83\u4EEC\u5404\u81EA\u7684\u4E0A\u4E0B\u6587\uFF09\uFF0C\u6240\u4EE5\u53EA\u8BF4\u5FC5\u987B\u8BA9\u5BF9\u65B9\u77E5\u9053\u7684\u3002",
+      description: "\u62C9\u4E00\u4E2A\u7FA4\uFF0C\u628A\u6307\u5B9A\u7684\u9876\u5C42\u4F1A\u8BDD\u653E\u8FDB\u53BB\uFF08\u5178\u578B\u7528\u9014\uFF1A\u524D\u540E\u7AEF\u8054\u8C03\u65F6\u4E24\u4E2A\u4F1A\u8BDD\u540C\u6B65\u63A5\u53E3/\u5B57\u6BB5\u7ED3\u8BBA\uFF09\u3002\n\u9ED8\u8BA4\u628A\u81EA\u5DF1\u4E5F\u7B97\u8FDB\u7FA4\uFF1B\u88AB\u62C9\u8FDB\u6765\u7684\u4EBA\u4F1A\u6536\u5230\u4E00\u6761\u5165\u7FA4\u901A\u77E5\uFF08\u542B\u540D\u5355\u4E0E\u7528\u6CD5\uFF09\u3002\u8FD4\u56DE groupId\u3002",
       parameters: {
         type: "object",
         properties: {
           name: { type: "string", description: "\u7FA4\u540D\uFF0C\u4F8B\u5982\u300C\u524D\u540E\u7AEF\u8054\u8C03\u300D\u3002" },
-          sessionIds: { type: "array", items: { type: "string" }, description: "\u8981\u62C9\u8FDB\u6765\u7684\u5176\u4ED6\u4F1A\u8BDD id\uFF08\u53EF\u591A\u4E2A\uFF09\u3002" },
+          sessionIds: { type: "array", items: { type: "string" }, description: "\u8981\u62C9\u8FDB\u6765\u7684\u5176\u4ED6\u4F1A\u8BDD id\u3002" },
           includeMe: { type: "boolean", description: "\u8981\u4E0D\u8981\u628A\u81EA\u5DF1\u4E5F\u653E\u8FDB\u53BB\uFF0C\u9ED8\u8BA4 true\u3002" }
         },
         required: ["name"]
@@ -38447,7 +38514,8 @@ function buildGroupTools(deps) {
         const created = deps.groups.create({
           name: asString(input2.name),
           members: asStringList(input2.sessionIds),
-          ...input2.includeMe === false || me === void 0 ? {} : { me }
+          ...me === void 0 ? {} : { me },
+          ...input2.includeMe === false ? { includeMe: false } : {}
         });
         deps.log("agent \u5EFA\u7FA4", { ok: String(created.ok) });
         return JSON.stringify(created);
@@ -38455,22 +38523,24 @@ function buildGroupTools(deps) {
     },
     {
       name: "group_invite",
-      description: "\u5F80\u5DF2\u6709\u7684\u7FA4\u91CC\u52A0\u6210\u5458\uFF08\u4E0D\u989D\u5916\u53D1\u6D88\u606F\uFF09\u3002\u6210\u5458\u4E0A\u9650 12\u3002",
+      description: "\u5F80\u5DF2\u6709\u7684\u7FA4\u91CC\u52A0\u6210\u5458\uFF0C\u5E76\u7ED9\u6BCF\u4E2A\u65B0\u6210\u5458\u53D1\u5165\u7FA4\u901A\u77E5\uFF08\u540D\u5355 + \u7528\u6CD5\uFF09\u3002\u6210\u5458\u4E0A\u9650 12\u3002",
       parameters: {
         type: "object",
         properties: {
-          groupId: { type: "string", description: "\u7FA4 id\uFF08group_create \u8FD4\u56DE\u7684\u90A3\u4E2A\uFF09\u3002" },
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
           sessionIds: { type: "array", items: { type: "string" }, description: "\u8981\u62C9\u7684\u4F1A\u8BDD id\u3002" }
         },
         required: ["groupId", "sessionIds"]
       },
       output: OUT3,
-      timeoutMs: 15e3,
+      timeoutMs: 3e4,
       async execute(args) {
         const input2 = args ?? {};
-        return JSON.stringify(
-          deps.groups.invite({ id: asString(input2.groupId), members: asStringList(input2.sessionIds) })
-        );
+        const result2 = await deps.groups.invite({
+          id: asString(input2.groupId),
+          members: asStringList(input2.sessionIds)
+        });
+        return JSON.stringify(result2);
       }
     },
     {
@@ -38492,7 +38562,7 @@ function buildGroupTools(deps) {
     },
     {
       name: "group_list",
-      description: "\u5217\u51FA\u8FD9\u53F0\u673A\u5668\u4E0A\u6240\u6709\u7684\u7FA4\uFF08\u540D\u5B57\u3001id\u3001\u6210\u5458\uFF09\u3002\u627E groupId \u65F6\u7528\u3002",
+      description: "\u5217\u51FA\u8FD9\u53F0\u673A\u5668\u4E0A\u6240\u6709\u7684\u7FA4\uFF08\u540D\u5B57\u3001id\u3001\u6210\u5458\u77ED\u53F7\uFF09\u3002\u627E groupId \u65F6\u7528\u3002",
       parameters: { type: "object", properties: {} },
       output: OUT3,
       timeoutMs: 15e3,
@@ -38500,22 +38570,23 @@ function buildGroupTools(deps) {
         const groups = deps.groups.list().map((group) => ({
           id: group.id,
           name: group.name,
-          members: group.members.map((member) => member.sessionId),
+          members: group.members.map((member) => ({ sessionId: member.sessionId, label: member.label })),
           updatedAt: group.updatedAt
         }));
         return JSON.stringify({ ok: true, groups });
       }
     },
     {
-      name: "group_send",
-      description: "\u5F80\u7FA4\u91CC\u53D1\u4E00\u6761\uFF1A\u9010\u6761\u9001\u8FDB\u5176\u4ED6\u6210\u5458\u7684\u4F1A\u8BDD\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\u3002\u53D1\u9001\u524D\u5148\u843D\u76D8\uFF0C\u9001\u4E0D\u5230\u7684\u4F1A\u5217\u5728 failed \u91CC\u3002\n\u53EA\u8BF4\u5BF9\u65B9\u5FC5\u987B\u77E5\u9053\u7684\u4E8B\uFF08\u63A5\u53E3\u53D8\u4E86\u3001\u5B57\u6BB5\u6539\u540D\u3001\u8C01\u5728\u7B49\u8C01\uFF09\uFF1B\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002",
+      name: "group_post",
+      description: "\u5F80\u7FA4\u91CC\u8BF4\u4E00\u53E5\uFF08\u8BB0\u7ED9\u7528\u6237\u770B\uFF09\u3002\u5E26 to \u5C31\u628A\u8FD9\u53E5\u8BDD**\u5355\u72EC\u6295\u7ED9\u90A3\u51E0\u4E2A\u4EBA**\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\uFF1B\u4E0D\u5E26 to \u53EA\u5165\u8BB0\u5F55\u3001\u4E0D\u6253\u6270\u4EBA\u3002\n\u7FA4\u91CC\u5176\u4ED6\u4EBA\u770B\u4E0D\u5230\u6574\u6BB5\u7FA4\u804A\u2014\u2014\u53EA\u6709\u4F60 @ \u7684\u4EBA\u4F1A\u6536\u5230\u8FD9\u6761\u3002\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002",
       parameters: {
         type: "object",
         properties: {
           groupId: { type: "string", description: "\u7FA4 id\u3002" },
-          message: { type: "string", description: "\u8981\u8BF4\u7684\u8BDD\u3002" }
+          text: { type: "string", description: "\u8981\u8BF4\u7684\u8BDD\u3002" },
+          to: { type: "array", items: { type: "string" }, description: "\u8981\u6295\u7ED9\u8C01\uFF08\u4F1A\u8BDD id \u6216\u77ED\u53F7\uFF09\uFF0C\u4E0D\u586B\u5C31\u53EA\u5165\u8BB0\u5F55\u3002" }
         },
-        required: ["groupId", "message"]
+        required: ["groupId", "text"]
       },
       output: OUT3,
       timeoutMs: 3e4,
@@ -38523,14 +38594,28 @@ function buildGroupTools(deps) {
         const input2 = args ?? {};
         const me = resolveSessionId(exec);
         if (me === void 0) return JSON.stringify({ ok: false, message: "\u62FF\u4E0D\u5230\u5F53\u524D\u4F1A\u8BDD id\uFF0C\u53D1\u4E0D\u51FA\u53BB\u3002" });
-        const sent = await deps.groups.send({ id: asString(input2.groupId), from: me, text: String(input2.message ?? "") });
-        deps.log("agent \u7FA4\u53D1", { ok: String(sent.ok) });
-        return JSON.stringify(sent);
+        const raw = asStringList(input2.to);
+        const group = deps.groups.get(asString(input2.groupId));
+        const targets = raw.map((item) => {
+          if (group === void 0) return item;
+          if (group.members.some((member) => member.sessionId === item)) return item;
+          const hit = group.members.find((member) => shortId2(member.sessionId) === item);
+          return hit === void 0 ? item : hit.sessionId;
+        });
+        const posted = await deps.groups.post({
+          id: asString(input2.groupId),
+          from: me,
+          text: String(input2.text ?? ""),
+          targets,
+          kind: "agent"
+        });
+        deps.log("agent \u7FA4\u53D1", { ok: String(posted.ok) });
+        return JSON.stringify(posted);
       }
     },
     {
       name: "group_read",
-      description: "\u8BFB\u7FA4\u91CC\u7684\u6700\u8FD1\u6D88\u606F\uFF08\u9ED8\u8BA4 20 \u6761\uFF0C\u6700\u591A 100\uFF09\u3002\u8865\u4E0A\u4E0B\u6587\u7528\uFF0C\u522B\u6BCF\u8F6E\u90FD\u8BFB\u3002",
+      description: "\u8BFB\u7FA4\u91CC\u7684\u6700\u8FD1\u8BB0\u5F55\uFF08\u9ED8\u8BA4 20 \u6761\uFF0C\u6700\u591A 100\uFF09\u3002\u8865\u4E0A\u4E0B\u6587\u7528\uFF0C\u522B\u6BCF\u8F6E\u90FD\u8BFB\u3002",
       parameters: {
         type: "object",
         properties: {
@@ -38549,73 +38634,338 @@ function buildGroupTools(deps) {
         });
         return JSON.stringify(read);
       }
+    },
+    {
+      name: "groups_guide",
+      description: "\u8FD4\u56DE\u300C\u80A5\u9C7C\u62C9\u7FA4\u300D\u7684\u5B8C\u6574\u7528\u6CD5\uFF08\u4E0E skill dafeiyu-groups \u540C\u4E00\u4EFD\u6B63\u6587\uFF09\u3002\u4E0A\u4E0B\u6587\u91CC\u6CA1\u6709\u90A3\u4E2A skill \u65F6\u7528\u5B83\u515C\u5E95\u3002",
+      parameters: { type: "object", properties: {} },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute() {
+        return deps.guideBody();
+      }
     }
   ];
+}
+
+// src/groups/routes.ts
+var GROUPS_LIST_ROUTE = "/api/dsh-remote-dafeiyu/groups";
+var GROUPS_CREATE_ROUTE = "/api/dsh-remote-dafeiyu/groups/create";
+var GROUPS_INVITE_ROUTE = "/api/dsh-remote-dafeiyu/groups/invite";
+var GROUPS_POST_ROUTE = "/api/dsh-remote-dafeiyu/groups/post";
+var GROUPS_MESSAGES_ROUTE = "/api/dsh-remote-dafeiyu/groups/messages";
+var GROUPS_LEAVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/leave";
+var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
+function json7(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function rejected3(request) {
+  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
+  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
+  return void 0;
+}
+function readBody3(request) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk) => {
+      size += chunk.byteLength;
+      if (size > 64 * 1024) {
+        reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    request.on("error", reject);
+  });
+}
+function readRoute(handler) {
+  return (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected3(request);
+    if (denied !== void 0) {
+      json7(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      return;
+    }
+    try {
+      json7(response, 200, { ok: true, ...handler(new URL(request.url ?? "/", "http://localhost")) });
+    } catch (error62) {
+      json7(response, 500, { ok: false, message: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+function writeRoute(handler) {
+  return async (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected3(request);
+    if (denied !== void 0) {
+      json7(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method !== "POST") {
+      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
+      return;
+    }
+    if (String(request.headers["x-drc-pair"] ?? "") === "") {
+      json7(response, 403, { ok: false, error: "missing x-drc-pair" });
+      return;
+    }
+    let body;
+    try {
+      const text = await readBody3(request);
+      const parsed = JSON.parse(text === "" ? "{}" : text);
+      body = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch (error62) {
+      json7(response, 400, { ok: false, message: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON\uFF1A" + String(error62?.message ?? error62).slice(0, 120) });
+      return;
+    }
+    try {
+      json7(response, 200, { ok: true, ...await handler(body) });
+    } catch (error62) {
+      depsLogFallback("\u7FA4\u8DEF\u7531\u5904\u7406\u5931\u8D25", error62);
+      json7(response, 500, { ok: false, message: String(error62?.message ?? error62).slice(0, 200) });
+    }
+  };
+}
+var logHook = () => void 0;
+function depsLogFallback(message, error62) {
+  try {
+    logHook(message, { message: String(error62?.message ?? error62).slice(0, 160) });
+  } catch {
+  }
+}
+function groupsHandlers(deps) {
+  logHook = deps.log;
+  return [
+    {
+      path: GROUPS_LIST_ROUTE,
+      handler: readRoute(() => ({
+        groups: deps.groups.list().map((group) => ({
+          id: group.id,
+          name: group.name,
+          members: group.members,
+          updatedAt: group.updatedAt
+        }))
+      }))
+    },
+    {
+      path: GROUPS_MESSAGES_ROUTE,
+      handler: readRoute(
+        (url2) => deps.groups.read({
+          id: url2.searchParams.get("groupId") ?? "",
+          limit: Number(url2.searchParams.get("limit") ?? "") || void 0
+        })
+      )
+    },
+    {
+      path: GROUPS_SESSIONS_ROUTE,
+      handler: async (request, response) => {
+        applyCors(request, response);
+        if (preflight(request, response)) return;
+        const denied = rejected3(request);
+        if (denied !== void 0) {
+          json7(response, 403, { ok: false, error: denied });
+          return;
+        }
+        const sessions = await (deps.listSessions?.() ?? Promise.resolve([])).catch(() => []);
+        json7(response, 200, { ok: true, sessions });
+      }
+    },
+    {
+      path: GROUPS_CREATE_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.create({
+          name: String(body.name ?? ""),
+          members: Array.isArray(body.sessionIds) ? body.sessionIds.map((id) => String(id)) : [],
+          ...typeof body.me === "string" && body.me.trim() !== "" ? { me: body.me.trim() } : {}
+        })
+      )
+    },
+    {
+      path: GROUPS_INVITE_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.invite({
+          id: String(body.groupId ?? ""),
+          members: Array.isArray(body.sessionIds) ? body.sessionIds.map((id) => String(id)) : []
+        })
+      )
+    },
+    {
+      path: GROUPS_POST_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.post({
+          id: String(body.groupId ?? ""),
+          from: "user",
+          kind: "user",
+          text: String(body.text ?? ""),
+          targets: Array.isArray(body.targets) ? body.targets.map((id) => String(id)) : []
+        })
+      )
+    },
+    {
+      path: GROUPS_LEAVE_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.leave({ id: String(body.groupId ?? ""), sessionId: String(body.sessionId ?? "") })
+      )
+    }
+  ];
+}
+
+// src/groups/skill.ts
+import { existsSync as existsSync3, readFileSync as readFileSync8 } from "node:fs";
+import path20 from "node:path";
+function readGroupsSkillBody(skillDir) {
+  try {
+    const file2 = path20.join(skillDir, "SKILL.md");
+    if (existsSync3(file2)) {
+      const text = readFileSync8(file2, "utf8");
+      if (text.trim() !== "") return text;
+    }
+  } catch {
+  }
+  return [
+    "# \u80A5\u9C7C\u62C9\u7FA4\uFF08\u515C\u5E95\u8BF4\u660E\uFF09",
+    "",
+    "\u7FA4\u662F\u7ED9\u7528\u6237\u770B\u7684\u8BB0\u5F55\uFF1B\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u6D88\u606F\uFF0C\u53EA\u6536\u5230\u88AB @ \u7684\u90A3\u6761\u3002",
+    "\u540C\u6B65\u7ED3\u8BBA\u7528 group_post(groupId, text)\uFF0C\u70B9\u540D\u7528 to\uFF1B\u8865\u4E0A\u4E0B\u6587\u7528 group_read\u3002"
+  ].join("\n");
 }
 
 // src/groups/start.ts
 function startGroups(ctx, input2) {
   const probe = {};
+  const skillDir = path21.join(input2.packageRoot, "assets", "skills", "dafeiyu-groups");
   const groups = createGroups({
-    dir: path20.join(input2.dshHome, "storages", "dsh-remote-dafeiyu", "groups"),
+    dir: path21.join(input2.dshHome, "storages", "dsh-remote-dafeiyu", "groups"),
     deliver: async (sessionId, text) => input2.deliver(sessionId, text),
+    ...input2.titleOf === void 0 ? {} : { titleOf: input2.titleOf },
     log: input2.log
   });
-  let registered = false;
+  let toolsRegistered = false;
   let stopped = false;
-  let timer;
-  const accept = (value, via) => {
-    if (registered) return true;
+  let toolTimer;
+  const disposers = [];
+  const acceptTools = (value, via) => {
+    if (toolsRegistered) return true;
     if (!value || typeof value !== "object") return false;
-    const tools = value;
-    if (typeof tools.register !== "function") {
-      probe.tool = "object without register()";
+    const host = value;
+    if (typeof host.register !== "function") {
+      probe.tools = "object without register()";
       return false;
     }
     try {
-      const definitions = buildGroupTools({ groups, log: input2.log });
-      for (const definition of definitions) tools.register(definition);
-      registered = true;
-      probe.tool = via + ":" + definitions.length;
+      const definitions = buildGroupTools({
+        groups,
+        guideBody: () => readGroupsSkillBody(skillDir),
+        log: input2.log
+      });
+      for (const definition of definitions) host.register(definition);
+      toolsRegistered = true;
+      probe.tools = via + ":" + definitions.length;
       return true;
     } catch (error62) {
-      probe.tool = "register threw: " + String(error62?.message ?? error62).slice(0, 80);
+      probe.tools = "register threw: " + String(error62?.message ?? error62).slice(0, 80);
       return false;
     }
   };
-  const tryOnce = (via) => {
+  const tryToolsOnce = (via) => {
     let value;
     try {
       value = ctx.get?.("tools", true);
     } catch (error62) {
-      probe.tool = "get threw: " + String(error62?.message ?? error62).slice(0, 80);
+      probe.tools = "get threw: " + String(error62?.message ?? error62).slice(0, 80);
       return false;
     }
-    return accept(value, via);
+    return acceptTools(value, via);
   };
-  tryOnce("via get");
-  if (!registered) {
+  tryToolsOnce("via get");
+  if (!toolsRegistered) {
     let attempts = 0;
     try {
-      timer = setInterval(() => {
+      toolTimer = setInterval(() => {
         attempts += 1;
-        if (stopped || registered) {
-          if (timer !== void 0) clearInterval(timer);
+        if (stopped || toolsRegistered) {
+          if (toolTimer !== void 0) clearInterval(toolTimer);
           return;
         }
-        if (tryOnce("via poll")) {
-          if (timer !== void 0) clearInterval(timer);
+        if (tryToolsOnce("via poll")) {
+          if (toolTimer !== void 0) clearInterval(toolTimer);
           return;
         }
         if (attempts >= 60) {
-          if (timer !== void 0) clearInterval(timer);
-          probe.tool = (probe.tool ?? "none") + " (poll gave up after " + attempts + ")";
+          if (toolTimer !== void 0) clearInterval(toolTimer);
+          probe.tools = (probe.tools ?? "none") + " (poll gave up after " + attempts + ")";
           input2.log("\u62C9\u7FA4\u5DE5\u5177\u6CA1\u6302\u4E0A\uFF1A\u7B49\u4E86 30 \u79D2\u6CA1\u7B49\u5230 tools\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09");
         }
       }, 500);
     } catch (error62) {
-      probe.tool = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
+      probe.tools = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
     }
+  }
+  let web;
+  let routesOn = false;
+  const routeDeps = {
+    groups,
+    ...input2.listSessions === void 0 ? {} : { listSessions: input2.listSessions },
+    log: input2.log
+  };
+  const tryRoutes = () => {
+    if (routesOn || stopped || !web) return;
+    routesOn = true;
+    try {
+      for (const route of groupsHandlers(routeDeps)) {
+        disposers.push(web.register({ kind: "exact", path: route.path, handler: route.handler }));
+      }
+      probe.routes = "registered";
+    } catch (error62) {
+      probe.routes = "register threw: " + String(error62?.message ?? error62).slice(0, 80);
+      routesOn = false;
+      input2.log("\u62C9\u7FA4\u8DEF\u7531\u6302\u4E0D\u4E0A\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09", { message: probe.routes });
+    }
+  };
+  const acceptWeb = (value, via) => {
+    if (!value || typeof value !== "object") return;
+    if (typeof value.register !== "function") {
+      probe.webServer = "object without register()";
+      return;
+    }
+    web = value;
+    probe.webServer = via;
+    tryRoutes();
+  };
+  try {
+    const found = ctx.get?.("webServer", true);
+    if (found) acceptWeb(found, "via get");
+    else probe.webServer = "none";
+  } catch (error62) {
+    probe.webServer = "get threw: " + String(error62?.message ?? error62).slice(0, 80);
+  }
+  try {
+    ctx.inject?.(["webServer"], ((...args) => {
+      try {
+        for (const candidate of [...args, ctx]) {
+          const fromGet = candidate?.get?.("webServer", true);
+          if (fromGet) {
+            acceptWeb(fromGet, "via inject");
+            if (routesOn) return;
+          }
+          acceptWeb(candidate, "via inject");
+          if (routesOn) return;
+        }
+      } catch {
+      }
+    }));
+  } catch {
   }
   return {
     probe,
@@ -38623,26 +38973,32 @@ function startGroups(ctx, input2) {
     stop() {
       stopped = true;
       try {
-        if (timer !== void 0) clearInterval(timer);
+        if (toolTimer !== void 0) clearInterval(toolTimer);
       } catch {
+      }
+      for (const dispose of disposers.splice(0)) {
+        try {
+          dispose();
+        } catch {
+        }
       }
     }
   };
 }
 
 // src/skills/install.ts
-import { cpSync, existsSync as existsSync3, mkdirSync as mkdirSync8, readFileSync as readFileSync8, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
-import path21 from "node:path";
+import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync8, readFileSync as readFileSync9, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
+import path22 from "node:path";
 import { fileURLToPath } from "node:url";
 var SKILL_VERSION_FILE = ".dafeiyu-skill-version";
 function packageRoot() {
   try {
-    let candidate = path21.dirname(fileURLToPath(import.meta.url));
+    let candidate = path22.dirname(fileURLToPath(import.meta.url));
     for (let depth = 0; depth < 5; depth += 1) {
-      if (existsSync3(path21.join(candidate, "package.json")) && existsSync3(path21.join(candidate, "assets", "skills"))) {
+      if (existsSync4(path22.join(candidate, "package.json")) && existsSync4(path22.join(candidate, "assets", "skills"))) {
         return candidate;
       }
-      const parent = path21.dirname(candidate);
+      const parent = path22.dirname(candidate);
       if (parent === candidate) break;
       candidate = parent;
     }
@@ -38652,7 +39008,7 @@ function packageRoot() {
 }
 function packageVersion() {
   try {
-    const raw = readFileSync8(path21.join(packageRoot(), "package.json"), "utf8");
+    const raw = readFileSync9(path22.join(packageRoot(), "package.json"), "utf8");
     const parsed = JSON.parse(raw);
     return typeof parsed.version === "string" ? parsed.version : "unknown";
   } catch {
@@ -38663,7 +39019,7 @@ function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync4(path21.join(base, rel), { withFileTypes: true });
+      entries = readdirSync4(path22.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -38673,7 +39029,7 @@ function fingerprint(dir) {
       if (entry.isDirectory()) out.push(...walk2(base, childRel));
       else {
         try {
-          out.push(`${childRel}:${statSync3(path21.join(base, childRel)).size}`);
+          out.push(`${childRel}:${statSync3(path22.join(base, childRel)).size}`);
         } catch {
           out.push(`${childRel}:?`);
         }
@@ -38686,19 +39042,19 @@ function fingerprint(dir) {
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path21.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync3(path21.join(entry.dir, "SKILL.md")));
+    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path22.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync4(path22.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
   if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
   const installed = [];
   for (const entry of entries) {
-    const target = path21.join(deps.dshHome, "skills", entry.name);
-    const stamp = path21.join(target, SKILL_VERSION_FILE);
+    const target = path22.join(deps.dshHome, "skills", entry.name);
+    const stamp = path22.join(target, SKILL_VERSION_FILE);
     try {
-      if (existsSync3(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
-      mkdirSync8(path21.dirname(target), { recursive: true });
-      if (existsSync3(target)) rmSync(target, { recursive: true, force: true });
+      if (existsSync4(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
+      mkdirSync8(path22.dirname(target), { recursive: true });
+      if (existsSync4(target)) rmSync(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
       writeFileSync5(stamp, `${deps.version}
 `, "utf8");
@@ -38718,7 +39074,7 @@ function installPackagedSkills(deps) {
   try {
     return installBundledSkills({
       dshHome: deps.dshHome,
-      assetsRoot: path21.join(packageRoot(), "assets", "skills"),
+      assetsRoot: path22.join(packageRoot(), "assets", "skills"),
       version: packageVersion(),
       log: deps.log
     });
@@ -38729,8 +39085,8 @@ function installPackagedSkills(deps) {
 
 // src/extensions/service.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync4, readFileSync as readFileSync9, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync6 } from "node:fs";
-import path22 from "node:path";
+import { existsSync as existsSync5, readFileSync as readFileSync10, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync6 } from "node:fs";
+import path23 from "node:path";
 
 // src/extensions/registry.ts
 var EXTENSIONS = [
@@ -38905,15 +39261,15 @@ function isExtensionAction(value) {
   return typeof value === "string" && EXTENSION_ACTIONS.includes(value);
 }
 var nodeFs = {
-  existsSync: (file2) => existsSync4(file2),
+  existsSync: (file2) => existsSync5(file2),
   // 包一层而不是直接传引用：node 的 readFileSync 是重载，直接传会被 TS 判成 Buffer 那个签名。
-  readFileSync: (file2, encoding) => readFileSync9(file2, encoding),
+  readFileSync: (file2, encoding) => readFileSync10(file2, encoding),
   writeFileSync: (file2, data, encoding) => writeFileSync6(file2, data, encoding),
   renameSync: (from, to) => renameSync2(from, to),
   unlinkSync: (file2) => unlinkSync2(file2)
 };
 function profilePackageFile(profileDir) {
-  return path22.join(profileDir, "package.json");
+  return path23.join(profileDir, "package.json");
 }
 function asRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -38946,7 +39302,7 @@ function dependenciesOf(doc) {
   return asRecord(doc.dependencies);
 }
 function installedPackageFile(profileDir, packageName) {
-  return path22.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
+  return path23.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
 }
 function readInstalledVersion(profileDir, spec, fs8) {
   const file2 = installedPackageFile(profileDir, spec.packageName);
@@ -39117,8 +39473,8 @@ function pnpmInstallArgs(pnpmScript) {
   return [pnpmScript, "install"];
 }
 function resolveRuntimeDir(env = process.env, options = {}) {
-  const exists = options.exists ?? existsSync4;
-  const hasPnpm = (dir) => exists(path22.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
+  const exists = options.exists ?? existsSync5;
+  const hasPnpm = (dir) => exists(path23.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
   const candidates = [];
   const explicit = (env.DSH_RUNTIME_DIR ?? "").trim();
   if (explicit !== "") candidates.push(explicit);
@@ -39126,17 +39482,17 @@ function resolveRuntimeDir(env = process.env, options = {}) {
   if (installDir !== "") {
     let current = installDir;
     for (let depth = 0; depth < 8; depth += 1) {
-      const parent = path22.dirname(current);
+      const parent = path23.dirname(current);
       if (parent === current) break;
       current = parent;
-      if (path22.basename(current).toLowerCase() === "resources") {
-        candidates.push(path22.join(current, "runtime", "primary-runtime"), path22.join(current, "runtime"));
+      if (path23.basename(current).toLowerCase() === "resources") {
+        candidates.push(path23.join(current, "runtime", "primary-runtime"), path23.join(current, "runtime"));
         break;
       }
     }
   }
   const resources = (options.resourcesPath ?? process.resourcesPath ?? "").trim();
-  if (resources !== "") candidates.push(path22.join(resources, "runtime", "primary-runtime"), path22.join(resources, "runtime"));
+  if (resources !== "") candidates.push(path23.join(resources, "runtime", "primary-runtime"), path23.join(resources, "runtime"));
   for (const dir of candidates) if (hasPnpm(dir)) return dir;
   return void 0;
 }
@@ -39154,9 +39510,9 @@ function runPnpmInstall(input2) {
   if (runtimeDir === void 0) {
     return Promise.resolve({ ok: false, message: "\u627E\u4E0D\u5230\u5BBF\u4E3B\u81EA\u5E26\u7684 pnpm\uFF08\u8FD0\u884C\u65F6\u76EE\u5F55\u672A\u5B9A\u4F4D\uFF09\uFF0C\u6CA1\u6CD5\u5B89\u88C5\uFF1B\u8BF7\u7528\u684C\u9762\u7248\u5B89\u88C5\u5668\u91CD\u88C5\u540E\u518D\u8BD5" });
   }
-  const pnpmScript = path22.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
-  const nodeExe = path22.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
-  const useBundledNode = existsSync4(nodeExe);
+  const pnpmScript = path23.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
+  const nodeExe = path23.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
+  const useBundledNode = existsSync5(nodeExe);
   const command = useBundledNode ? nodeExe : process.execPath;
   const env = useBundledNode ? { ...process.env } : { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
   return new Promise((resolve) => {
@@ -39295,19 +39651,19 @@ function resolveProfileDir(env = process.env, dshHome) {
   const explicit = (env.DSH_PROFILE_DIR ?? "").trim();
   if (explicit !== "") return explicit;
   const profile = (env.DSH_PROFILE ?? "").trim() || "desktop";
-  return path22.join(dshHome, "profiles", profile);
+  return path23.join(dshHome, "profiles", profile);
 }
 
 // src/extensions/routes.ts
 var EXTENSIONS_ROUTE = "/api/dsh-remote-control/extensions";
 var EXTENSIONS_ACTION_ROUTE = "/api/dsh-remote-control/extensions/action";
 var COMPAT_ROUTE = "/api/dsh-remote-dafeiyu/compat";
-function json7(response, status, body) {
+function json8(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected3(request) {
+function rejected4(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -39316,7 +39672,7 @@ var GUARD_MESSAGE = {
   "host-not-loopback": "\u53EA\u63A5\u53D7\u672C\u673A\u56DE\u73AF\u8BF7\u6C42",
   "origin-not-trusted": "\u8BF7\u6C42\u6765\u6E90\u4E0D\u53EF\u4FE1\uFF08\u53EA\u8BA4\u5BBF\u4E3B\u81EA\u5DF1\uFF09"
 };
-function readBody3(request) {
+function readBody4(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
@@ -39337,22 +39693,22 @@ function extensionsListHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected4(request);
     if (denied !== void 0) {
       deps.log("\u6269\u5C55\u5217\u8868\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard: denied });
-      json7(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json8(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
-      json7(response, 200, { ok: true, extensions: deps.list() });
+      json8(response, 200, { ok: true, extensions: deps.list() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u6269\u5C55\u5217\u8868\u8BFB\u4E0D\u51FA\u6765", { message });
-      json7(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
+      json8(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
     }
   };
 }
@@ -39360,21 +39716,21 @@ function compatHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected4(request);
     if (denied !== void 0) {
-      json7(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json8(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
-      json7(response, 200, { ok: true, ...deps.report() });
+      json8(response, 200, { ok: true, ...deps.report() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u517C\u5BB9\u62A5\u544A\u7B97\u4E0D\u51FA\u6765", { message });
-      json7(response, 200, { ok: true, packages: [], blockedRooms: [], warnRooms: [], message });
+      json8(response, 200, { ok: true, packages: [], blockedRooms: [], warnRooms: [], message });
     }
   };
 }
@@ -39382,30 +39738,30 @@ function extensionsActionHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected3(request);
+    const denied = rejected4(request);
     if (denied !== void 0) {
       deps.log("\u6269\u5C55\u52A8\u4F5C\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard: denied });
-      json7(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json8(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "POST") {
-      json7(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
+      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json7(response, 403, { ok: false, error: "missing x-drc-pair", message: "\u7F3A\u5C11 x-drc-pair \u5934\uFF08\u53EA\u6709\u672C\u673A\u9875\u9762\u80FD\u6539\u6269\u5C55\uFF09" });
+      json8(response, 403, { ok: false, error: "missing x-drc-pair", message: "\u7F3A\u5C11 x-drc-pair \u5934\uFF08\u53EA\u6709\u672C\u673A\u9875\u9762\u80FD\u6539\u6269\u5C55\uFF09" });
       return;
     }
     let body;
     try {
-      const text = await readBody3(request);
+      const text = await readBody4(request);
       const parsed = JSON.parse(text === "" ? "{}" : text);
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("\u8BF7\u6C42\u4F53\u4E0D\u662F JSON \u5BF9\u8C61");
       body = parsed;
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 160);
       deps.log("\u6269\u5C55\u52A8\u4F5C\u7684\u8BF7\u6C42\u4F53\u8BFB\u4E0D\u51FA\u6765", { message });
-      json7(response, 400, { ok: false, message: `\u8BF7\u6C42\u4F53\u4E0D\u5BF9\uFF1A${message}` });
+      json8(response, 400, { ok: false, message: `\u8BF7\u6C42\u4F53\u4E0D\u5BF9\uFF1A${message}` });
       return;
     }
     const id = typeof body.id === "string" ? body.id : "";
@@ -39423,7 +39779,7 @@ function extensionsActionHandler(deps) {
     } catch (error62) {
       deps.log("\u6269\u5C55\u52A8\u4F5C\u540E\u5217\u8868\u5237\u65B0\u5931\u8D25", { message: String(error62?.message ?? error62).slice(0, 160) });
     }
-    json7(response, 200, {
+    json8(response, 200, {
       ok: result2.ok === true,
       changed: result2.changed === true,
       needsRestart: result2.needsRestart === true,
@@ -39559,17 +39915,17 @@ function startExtensions(ctx, deps) {
 
 // src/memory/routes.ts
 var MEMORY_ROUTE = "/api/dsh-remote-dafeiyu/memory";
-function json8(response, status, body) {
+function json9(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected4(request) {
+function rejected5(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
 }
-function readBody4(request) {
+function readBody5(request) {
   return new Promise((resolve) => {
     const chunks = [];
     let size = 0;
@@ -39603,39 +39959,39 @@ function personaOf(request) {
 }
 function memoryHandler(deps) {
   return async (request, response) => {
-    const denied = rejected4(request);
+    const denied = rejected5(request);
     if (denied) {
-      json8(response, 403, { ok: false, error: denied });
+      json9(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
       const persona2 = personaOf(request);
       if (persona2 === "") {
-        json8(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
+        json9(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
         return;
       }
-      json8(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
+      json9(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
       return;
     }
     if (request.method !== "POST") {
-      json8(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
-    const body = await readBody4(request);
+    const body = await readBody5(request);
     if (!body.ok) {
-      json8(response, body.status, { ok: false, error: body.error });
+      json9(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json8(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json9(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const persona = typeof parsed.persona === "string" ? parsed.persona.trim() : "";
     if (persona === "") {
-      json8(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
+      json9(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
       return;
     }
     const action = typeof parsed.action === "string" ? parsed.action : "add";
@@ -39643,39 +39999,39 @@ function memoryHandler(deps) {
       const text = typeof parsed.text === "string" ? parsed.text : "";
       const result2 = deps.service.add(persona, text, { importance: parsed.importance, source: "manual" });
       if (!result2.ok) {
-        json8(response, 400, { ok: false, error: result2.error });
+        json9(response, 400, { ok: false, error: result2.error });
         return;
       }
-      json8(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json9(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "remove") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.remove(persona, id)) {
-        json8(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json9(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json8(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json9(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "update") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.update(persona, id, { text: parsed.text, importance: parsed.importance })) {
-        json8(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json9(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json8(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json9(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "clear") {
       if (!deps.service.clear(persona)) {
-        json8(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
+        json9(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
         return;
       }
-      json8(response, 200, { ok: true, entries: [] });
+      json9(response, 200, { ok: true, entries: [] });
       return;
     }
-    json8(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
+    json9(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
   };
 }
 function registerMemoryRoutes(webServer, deps) {
@@ -39901,12 +40257,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync7, mkdirSync as mkdirSync10, readdirSync as readdirSync6, readFileSync as readFileSync12, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync8 } from "node:fs";
-import path25 from "node:path";
+import { existsSync as existsSync8, mkdirSync as mkdirSync10, readdirSync as readdirSync6, readFileSync as readFileSync13, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync8 } from "node:fs";
+import path26 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync5, readFileSync as readFileSync10 } from "node:fs";
-import path23 from "node:path";
+import { existsSync as existsSync6, readFileSync as readFileSync11 } from "node:fs";
+import path24 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -39918,26 +40274,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path23.join(dshHome, "dsh-backup-git");
+  return path24.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path23.join(backupDir(dshHome), "config.json");
+  return path24.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path23.join(backupDir(dshHome), "credential.json");
+  return path24.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path23.join(backupDir(dshHome), "status.json");
+  return path24.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path23.join(backupDir(dshHome), "work");
+  return path24.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync5(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync6(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync10(file2, "utf8"));
+    parsed = JSON.parse(readFileSync11(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -40050,9 +40406,9 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync5(file2)) return "";
+  if (!existsSync6(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync10(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync11(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -40164,19 +40520,19 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync6, readdirSync as readdirSync5, readFileSync as readFileSync11, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync7, readdirSync as readdirSync5, readFileSync as readFileSync12, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path24 from "node:path";
+import path25 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path24.join(sessionsRoot, slug);
+    const slugDir = path25.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path24.join(slugDir, dirName);
+      const sessionDir = path25.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path24.join(sessionDir, fileName);
+        const file2 = path25.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync4(file2);
@@ -40188,7 +40544,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path24.posix.join(slug, dirName, fileName),
+          relPath: path25.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -40237,11 +40593,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path24.join(input2.stagingDir, "latest");
+  const staging = path25.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path24.join(staging, "sessions", entry.relPath);
+    const target = path25.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -40250,20 +40606,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path24.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path25.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path24.join(staging, "profiles", path24.basename(input2.profileDir));
+    const target = path25.join(staging, "profiles", path25.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path24.join(input2.profileDir, name2);
-      if (!existsSync6(source)) continue;
-      await copyFileFresh(source, path24.join(target, name2));
+      const source = path25.join(input2.profileDir, name2);
+      if (!existsSync7(source)) continue;
+      await copyFileFresh(source, path25.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path24.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path25.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -40279,18 +40635,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path24.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path25.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path24.join(stagingDir, "archive");
+  const root = path25.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path24.join(root, entry.relPath);
-    if (existsSync6(target)) continue;
+    const target = path25.join(root, entry.relPath);
+    if (existsSync7(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -40303,7 +40659,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync6(dir)) return;
+  if (!existsSync7(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -40335,7 +40691,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path24.join(dir, entry.name);
+    const full = path25.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -40346,8 +40702,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path24.dirname(target), { recursive: true });
-  if (existsSync6(target)) {
+  await mkdir(path25.dirname(target), { recursive: true });
+  if (existsSync7(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -40355,25 +40711,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync6(sourceDir)) return [];
+  if (!existsSync7(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path24.join(sourceDir, name2), path24.join(targetDir, name2));
+    await copyFileFresh(path25.join(sourceDir, name2), path25.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync6(sourceDir)) return total;
+  if (!existsSync7(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path24.join(sourceDir, entry.name);
-    const target = path24.join(targetDir, entry.name);
+    const source = path25.join(sourceDir, entry.name);
+    const target = path25.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -40405,14 +40761,14 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync6(profilesRoot)) return "";
+  if (!existsSync7(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path24.join(profilesRoot, name2);
-    const manifest = path24.join(dir, "package.json");
-    if (!existsSync6(manifest)) continue;
+    const dir = path25.join(profilesRoot, name2);
+    const manifest = path25.join(dir, "package.json");
+    if (!existsSync7(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync11(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync12(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
       const mtimeMs = statSync4(manifest).mtimeMs;
@@ -40661,13 +41017,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path25.join(base, "staging"),
-      hotRepo: path25.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path25.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path25.join(this.deps.dshHome, "sessions"),
-      storagesDir: path25.join(this.deps.dshHome, "storages"),
-      profilesRoot: path25.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path25.join(this.deps.dshHome, "attachments")
+      staging: path26.join(base, "staging"),
+      hotRepo: path26.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path26.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path26.join(this.deps.dshHome, "sessions"),
+      storagesDir: path26.join(this.deps.dshHome, "storages"),
+      profilesRoot: path26.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path26.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -40690,7 +41046,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync10(repo, { recursive: true });
-    if (!existsSync7(path25.join(repo, ".git"))) {
+    if (!existsSync8(path26.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -40710,8 +41066,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path25.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync7(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path26.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync8(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -40756,12 +41112,12 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync10(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path25.join(base, "askpass.cmd");
-      if (!existsSync7(file3)) writeFileSync8(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path26.join(base, "askpass.cmd");
+      if (!existsSync8(file3)) writeFileSync8(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path25.join(base, "askpass.sh");
-    if (!existsSync7(file2)) {
+    const file2 = path26.join(base, "askpass.sh");
+    if (!existsSync8(file2)) {
       writeFileSync8(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
@@ -40784,32 +41140,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path25.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path26.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path25.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path25.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path26.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path26.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path25.join(staging, "latest");
-      const restoredHot = existsSync7(path25.join(restoreLatest, "sessions")) ? countSessionFiles(path25.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path26.join(staging, "latest");
+      const restoredHot = existsSync8(path26.join(restoreLatest, "sessions")) ? countSessionFiles(path26.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path25.join(this.deps.dshHome, name2);
-        if (existsSync7(target)) {
+        const target = path26.join(this.deps.dshHome, name2);
+        if (existsSync8(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path25.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path25.join(restoreLatest, "storages"), path25.join(this.deps.dshHome, "storages"));
-      if (existsSync7(path25.join(restoreLatest, "attachments"))) {
-        await mergeTree(path25.join(restoreLatest, "attachments"), path25.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path26.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path26.join(restoreLatest, "storages"), path26.join(this.deps.dshHome, "storages"));
+      if (existsSync8(path26.join(restoreLatest, "attachments"))) {
+        await mergeTree(path26.join(restoreLatest, "attachments"), path26.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path25.join(staging, "archive"), sessionsRoot);
-      const profiles = path25.join(restoreLatest, "profiles");
-      if (existsSync7(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path26.join(staging, "archive"), sessionsRoot);
+      const profiles = path26.join(restoreLatest, "profiles");
+      if (existsSync8(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -40845,36 +41201,36 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync6(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path25.join(repo, entry.name);
+    const target = path26.join(repo, entry.name);
     rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync7(source)) return;
+  if (!existsSync8(source)) return;
   for (const entry of readdirSync6(source, { withFileTypes: true })) {
-    const from = path25.join(source, entry.name);
-    const to = path25.join(target, entry.name);
+    const from = path26.join(source, entry.name);
+    const to = path26.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync10(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync7(to)) continue;
+    if (existsSync8(to)) continue;
     mkdirSync10(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync7(profilesRoot)) return;
+  if (!existsSync8(profilesRoot)) return;
   for (const entry of readdirSync6(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path25.join(source, entry.name);
-    const to = path25.join(profilesRoot, entry.name);
-    if (!existsSync7(to)) continue;
+    const from = path26.join(source, entry.name);
+    const to = path26.join(profilesRoot, entry.name);
+    if (!existsSync8(to)) continue;
     for (const file2 of readdirSync6(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path25.join(from, file2.name), path25.join(to, file2.name));
+      await copyFileFresh(path26.join(from, file2.name), path26.join(to, file2.name));
     }
   }
 }
@@ -40888,12 +41244,12 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path25.join(dir, entry.name);
+      const full = path26.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync7(root)) walk2(root);
+  if (existsSync8(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -40903,8 +41259,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync13 } from "node:fs";
-import path26 from "node:path";
+import { readFileSync as readFileSync14 } from "node:fs";
+import path27 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -40934,14 +41290,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path26.dirname(statusFile2) : dataDir();
-  return path26.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path27.dirname(statusFile2) : dataDir();
+  return path27.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync13(file2, "utf8");
+    raw = readFileSync14(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -40949,12 +41305,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path26.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path27.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path26.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path27.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -40993,7 +41349,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path26.dirname(file2));
+    ensureSecureDir(path27.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -41176,7 +41532,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path27.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path28.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -41199,7 +41555,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path27.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path28.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -41748,7 +42104,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path27.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path28.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -41936,7 +42292,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path27.dirname(path27.dirname(config2.statusFile)) : path27.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path28.dirname(path28.dirname(config2.statusFile)) : path28.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -42066,6 +42422,22 @@ function applyInner(ctx, injected, clock) {
     groupsHandle = startGroups(ctx, {
       dshHome: resolveDshHome(process.env),
       log,
+      packageRoot: packageRoot(),
+      listSessions: async () => {
+        const port = kernel;
+        const list = port?.listSessions;
+        if (!port || !list) return [];
+        try {
+          const rows = await list.call(port, 50);
+          return rows.map((row) => ({
+            id: String(row?.summary?.id ?? ""),
+            ...typeof row?.summary?.title === "string" ? { title: row.summary.title } : {},
+            ...typeof row?.summary?.updatedAt === "string" ? { updatedAt: row.summary.updatedAt } : {}
+          })).filter((row) => row.id !== "");
+        } catch {
+          return [];
+        }
+      },
       deliver: async (sessionId, text) => {
         const port = kernel;
         const send = port?.sendPrompt;
