@@ -698,10 +698,18 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         const rows = (await withTimeout(
           Promise.resolve(read.call(services.sessionQuery, slice)),
           options.titleTimeoutMs ?? TITLE_TIMEOUT_DEFAULT,
-        )) as Array<{ sessionId?: string; status?: string; value?: { title?: { title?: string; updatedAt?: string } } }>
+        )) as Array<{ sessionId?: string; status?: string; value?: { title?: unknown } }>
         for (const row of rows ?? []) {
-          const title = row?.value?.title?.title
-          if (row?.status === 'fulfilled' && typeof title === 'string' && title) {
+          /*
+           * 标题快照的形状**两代都认**（2026-11-19 真机）：
+           * - 老内核：value.title.title（包了一层）；
+           * - 新内核（11-18 那版 app）：value.title 直接就是字符串。
+           * 只认一层的结果是「列表里全是 id、没有名字」——不报错、不崩，就是看着像没标题。
+           */
+          const raw = row?.value?.title
+          const nested = raw !== null && typeof raw === 'object' ? (raw as { title?: unknown }).title : undefined
+          const title = typeof raw === 'string' ? raw : typeof nested === 'string' ? nested : ''
+          if (row?.status === 'fulfilled' && title !== '') {
             titleCache.set(String(row.sessionId), { title, at: options.clock.now() })
           }
         }

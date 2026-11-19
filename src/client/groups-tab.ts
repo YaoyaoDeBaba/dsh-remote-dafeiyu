@@ -150,7 +150,8 @@ export function buildGroupsTab(options: {
 
     const sessionLabel = (session: SessionView): string => {
       const title = session.title?.trim()
-      return (title === undefined || title === '' ? shortId(session.id) : title) + '（' + shortId(session.id) + '）'
+      // 没有标题时别再显示「9355d3c9（9355d3c9）」那种重复：说清楚它是未命名，短号只留一处。
+      return title === undefined || title === '' ? '未命名会话（' + shortId(session.id) + '）' : title + '（' + shortId(session.id) + '）'
     }
 
     const sessionPicker = createElement('div', {
