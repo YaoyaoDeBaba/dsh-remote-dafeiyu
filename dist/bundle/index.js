@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.129" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.130" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38270,6 +38270,7 @@ function readGroup(dir, id) {
       createdAt: Number(parsed.createdAt ?? 0),
       updatedAt: Number(parsed.updatedAt ?? 0),
       ...typeof parsed.ownerSessionId === "string" && parsed.ownerSessionId.trim() !== "" ? { ownerSessionId: parsed.ownerSessionId.trim() } : {},
+      ...parsed.briefed !== null && typeof parsed.briefed === "object" ? { briefed: parsed.briefed } : {},
       ...Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}
     };
   } catch {
@@ -38292,16 +38293,38 @@ function listGroups(dir) {
 function rosterLine(group, titleOf) {
   return group.members.map((member) => {
     const title = member.label ?? titleOf?.(member.sessionId)?.trim();
-    return title !== void 0 && title !== "" ? title + "(" + shortId2(member.sessionId) + ")" : shortId2(member.sessionId);
+    const name2 = title !== void 0 && title !== "" ? title : shortId2(member.sessionId);
+    const crown = group.ownerSessionId === member.sessionId ? "\u{1F451}" : "";
+    const role = typeof member.role === "string" && member.role.trim() !== "" ? "\uFF08" + member.role.trim() + "\uFF09" : "";
+    return crown + name2 + role;
   }).join("\u3001");
 }
-function deliveryText(group, from, text, others, titleOf, recipient) {
+function summarize(text) {
+  const raw = String(text ?? "");
+  const firstLine = raw.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== "") ?? "";
+  const matched = /^(?:摘要|summary)\s*[:：]\s*(.+)$/i.exec(firstLine);
+  if (matched !== null) {
+    const summary2 = matched[1].trim();
+    if (summary2 !== "") return summary2.slice(0, 120);
+  }
+  const flat = raw.replace(/\s+/g, " ").trim();
+  return flat.slice(0, 25);
+}
+function deliveryText(group, from, text, others, titleOf, recipient, brief) {
   const peers = others.filter((sessionId) => sessionId !== from && sessionId !== recipient).map((sessionId) => titleOf?.(sessionId)?.trim() || shortId2(sessionId));
+  const ownerLabel = group.ownerSessionId === void 0 ? "" : titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId);
+  if (brief === true) {
+    return [
+      "\u3010\u7FA4 " + group.name + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
+      text.trim(),
+      "\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel)
+    ].join("\n");
+  }
   return [
     "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
     text.trim(),
     "",
-    "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf),
+    "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel),
     peers.length > 0 ? "\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF1A" + peers.join("\u3001") : "\u672C\u8F6E\u53EA\u6709\u4F60\u3002",
     "\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u8BB0\u5F55\uFF08\u63D2\u4EF6\u53EA\u6295\u7ED9\u4F60\u88AB @ \u7684\u90E8\u5206\uFF09\u3002\u8981\u8BF4\u70B9\u4EC0\u4E48\u5C31\u8C03 group_post\uFF1AgroupId=" + group.id + "\uFF0Ctext \u5199\u6B63\u6587\uFF1B\u8981\u76F4\u63A5\u627E\u67D0\u4E2A\u6210\u5458\uFF0C\u628A to \u586B\u6210\u5BF9\u65B9\u7684\u77ED\u53F7\u6216\u4F1A\u8BDD id\u3002",
     group.ownerSessionId === void 0 ? "\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002" : "\u6C47\u62A5\u5BF9\u8C61\uFF1A\u7FA4\u4E3B " + (titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId)) + "\uFF08\u4F60\u7684 group_post \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF09\uFF1B\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002"
@@ -38367,7 +38390,8 @@ function createGroups(deps) {
         continue;
       }
       lastDeliveryAt.set(key, now());
-      const body = deliveryText(group, from, text, targets, titleOf, target);
+      const brief = group.briefed?.[target] !== void 0;
+      const body = deliveryText(group, from, text, targets, titleOf, target, brief);
       const result2 = await deps.deliver(target, body).catch((error62) => ({
         ok: false,
         message: String(error62?.message ?? error62)
@@ -38377,6 +38401,10 @@ function createGroups(deps) {
         ok: result2.ok === true,
         ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
       });
+      if (result2.ok === true) {
+        group.briefed = { ...group.briefed ?? {}, [target]: now() };
+        save(group);
+      }
     }
     return out;
   };
@@ -38521,6 +38549,26 @@ function createGroups(deps) {
       }
       return before === group.members.length ? { ok: true, message: "\u672C\u6765\u5C31\u4E0D\u5728\u7FA4\u91CC\u3002" } : { ok: true };
     },
+    /** 设置某个成员的身份（只在用户侧改；agent 只能读）。 */
+    setMemberRole(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message };
+      const group = alive.group;
+      const member = group.members.find((row) => row.sessionId === input2.sessionId) ?? group.members.find((row) => shortId2(row.sessionId) === String(input2.sessionId ?? "").trim());
+      if (member === void 0) return { ok: false, message: "\u8FD9\u4E2A\u4EBA\u4E0D\u5728\u7FA4\u91CC\u3002" };
+      const role = String(input2.role ?? "").trim().slice(0, 20);
+      if (role === "") delete member.role;
+      else member.role = role;
+      group.updatedAt = now();
+      save(group);
+      append(group.id, {
+        at: now(),
+        kind: "system",
+        from: "system",
+        text: shortId2(member.sessionId) + (role === "" ? " \u7684\u8EAB\u4EFD\u5DF2\u6E05\u7A7A" : " \u7684\u8EAB\u4EFD\u8BBE\u4E3A\u300C" + role + "\u300D")
+      });
+      return { ok: true, group };
+    },
     /** 指定 / 更换群主（必须是群成员）。 */
     setOwner(input2) {
       const alive = live(input2.id);
@@ -38608,7 +38656,14 @@ function createGroups(deps) {
       if (kind === "agent" && from === owner && targets.length > MAX_DISPATCH_TARGETS) {
         return { ok: false, message: "\u7FA4\u4E3B\u4E00\u6B21\u6700\u591A\u6D3E " + MAX_DISPATCH_TARGETS + " \u4E2A\u6D3B\uFF1A\u62C6\u6210\u51E0\u8F6E\u3002" };
       }
-      const entry = { at: now(), kind, from, ...targets.length > 0 ? { targets } : {}, text };
+      const entry = {
+        at: now(),
+        kind,
+        from,
+        ...targets.length > 0 ? { targets } : {},
+        text,
+        ...kind === "agent" ? { summary: summarize(text) } : {}
+      };
       append(group.id, entry);
       group.updatedAt = now();
       save(group);
@@ -38897,6 +38952,7 @@ var GROUPS_MESSAGES_ROUTE = "/api/dsh-remote-dafeiyu/groups/messages";
 var GROUPS_LEAVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/leave";
 var GROUPS_REMOVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/remove";
 var GROUPS_OWNER_ROUTE = "/api/dsh-remote-dafeiyu/groups/owner";
+var GROUPS_ROLE_ROUTE = "/api/dsh-remote-dafeiyu/groups/role";
 var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
 function json7(response, status, body) {
@@ -39014,6 +39070,7 @@ function groupsHandlers(deps) {
             updatedAt: group.updatedAt,
             members: group.members.map((member) => ({
               sessionId: member.sessionId,
+              role: member.role,
               // 名字优先级：成员自带的 label → 会话标题 → 短号（对用户显示的是名字，不是 id）
               name: member.label?.trim() || titles.get(member.sessionId)?.trim() || short(member.sessionId)
             }))
@@ -39050,7 +39107,9 @@ function groupsHandlers(deps) {
         (body) => deps.groups.create({
           name: String(body.name ?? ""),
           members: Array.isArray(body.sessionIds) ? body.sessionIds.map((id) => String(id)) : [],
-          ...typeof body.me === "string" && body.me.trim() !== "" ? { me: body.me.trim() } : {}
+          ...typeof body.me === "string" && body.me.trim() !== "" ? { me: body.me.trim() } : {},
+          // 面板传「第一个被勾选的会话」当群主
+          ...typeof body.owner === "string" && body.owner.trim() !== "" ? { owner: body.owner.trim() } : {}
         })
       )
     },
@@ -39085,6 +39144,16 @@ function groupsHandlers(deps) {
       path: GROUPS_OWNER_ROUTE,
       handler: writeRoute(
         (body) => deps.groups.setOwner({ id: String(body.groupId ?? ""), sessionId: String(body.sessionId ?? "") })
+      )
+    },
+    {
+      path: GROUPS_ROLE_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.setMemberRole({
+          id: String(body.groupId ?? ""),
+          sessionId: String(body.sessionId ?? ""),
+          role: String(body.role ?? "")
+        })
       )
     },
     {
