@@ -93,11 +93,21 @@ export function buildGroupsTab(options: {
 
     if (typeof useEffect === 'function') {
       useEffect(() => {
+        /*
+         * 会话名字是宿主**在后台按批折叠**的（一条 40MB 的日志要几秒），所以这里多拉几拍：
+         * 第一次先出短号，标题缓存热了以后这一栏会自己更新。
+         */
+        const loadSessions = async (): Promise<void> => {
+          const rows = await call(SESSIONS_ROUTE)
+          if (Array.isArray(rows.sessions)) setSessions(rows.sessions as SessionView[])
+        }
         void (async () => {
           const listed = await call(LIST_ROUTE)
           setGroups(Array.isArray(listed.groups) ? (listed.groups as GroupView[]) : [])
-          const rows = await call(SESSIONS_ROUTE)
-          setSessions(Array.isArray(rows.sessions) ? (rows.sessions as SessionView[]) : [])
+          await loadSessions()
+          for (let round = 0; round < 10; round += 1) {
+            setTimeout(() => void loadSessions(), 3_000 * (round + 1))
+          }
         })()
       }, [])
     }
@@ -221,7 +231,12 @@ export function buildGroupsTab(options: {
                 }),
               ],
             }),
-            createElement('div', { style: hintStyle, children: '勾要拉进来的会话（你自己会自动进群）：' }),
+            createElement('div', {
+              style: hintStyle,
+              children:
+                '勾要拉进来的会话（你自己会自动进群）。名字是宿主在后台从会话日志里读的，' +
+                '大日志要等几十秒，这一栏会自己刷新。',
+            }),
             sessionPicker,
           ],
         }),

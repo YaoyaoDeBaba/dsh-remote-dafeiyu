@@ -703,13 +703,15 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       return
     }
     if (ids.length === 0) return
-    const batch = options.titleBatch ?? MAX_TITLE_BATCH_DEFAULT
+    // 2026-11-19：一次只喂 4 个。真机上单条会话日志能到 40MB（1200+ 个 zstd 帧），
+    // 标题要整篇折叠，一批 8 个就会撞上超时——表现是「标题一条都没读到」。
+    const batch = Math.min(options.titleBatch ?? MAX_TITLE_BATCH_DEFAULT, 4)
     for (let at = 0; at < ids.length; at += batch) {
       const slice = ids.slice(at, at + batch)
       try {
         const rows = (await withTimeout(
           Promise.resolve(read.call(services.sessionQuery, slice)),
-          options.titleTimeoutMs ?? TITLE_TIMEOUT_DEFAULT,
+          options.titleTimeoutMs ?? Math.max(TITLE_TIMEOUT_DEFAULT, 8_000),
         )) as Array<{ sessionId?: string; status?: string; value?: { title?: unknown } }>
         for (const row of rows ?? []) {
           /*
@@ -811,7 +813,13 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       if (cwd) cwdBySession.set(row.id, cwd)
     }
     const page = records.slice(0, cap)
-    await loadTitles(page.map((row) => row.id).filter((id) => !titleCache.has(id)))
+    /*
+     * 标题读取有预算（2026-11-19）：大日志一条就要几秒，等满 23 条会把列表拖成超时。
+     * 所以最多等 1.5 秒；剩下的在后台继续读，读完进 titleCache，下一次查询就能带上名字。
+     * 列表本身先返回（没标题也照样能用），这正是"宁可无标题，不要一整屏空白"的同一条取舍。
+     */
+    const pendingTitles = loadTitles(page.map((row) => row.id).filter((id) => !titleCache.has(id)))
+    await Promise.race([pendingTitles.catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 1_500))])
     return page.map((row) => ({
       summary: toSummary(row, archived),
       live: agentStatus(row.id) === 'running',
