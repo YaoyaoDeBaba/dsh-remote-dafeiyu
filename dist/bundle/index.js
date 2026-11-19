@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.128" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.129" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38295,16 +38295,15 @@ function rosterLine(group, titleOf) {
     return title !== void 0 && title !== "" ? title + "(" + shortId2(member.sessionId) + ")" : shortId2(member.sessionId);
   }).join("\u3001");
 }
-function deliveryText(group, from, text, others, titleOf) {
-  const peers = others.filter((sessionId) => sessionId !== from).map((sessionId) => titleOf?.(sessionId)?.trim() || shortId2(sessionId));
+function deliveryText(group, from, text, others, titleOf, recipient) {
+  const peers = others.filter((sessionId) => sessionId !== from && sessionId !== recipient).map((sessionId) => titleOf?.(sessionId)?.trim() || shortId2(sessionId));
   return [
     "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
     text.trim(),
     "",
     "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf),
     peers.length > 0 ? "\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF1A" + peers.join("\u3001") : "\u672C\u8F6E\u53EA\u6709\u4F60\u3002",
-    "\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u8BB0\u5F55\uFF08\u63D2\u4EF6\u53EA\u6295\u7ED9\u4F60\u88AB @ \u7684\u90E8\u5206\uFF09\u3002\u8981\u8BF4\u70B9\u4EC0\u4E48\u5C31\u8C03 group_post\uFF1AgroupId=" + group.id,
-    "text \u5199\u6B63\u6587\uFF1B\u8981\u76F4\u63A5\u627E\u67D0\u4E2A\u6210\u5458\uFF0C\u628A to \u586B\u6210\u5BF9\u65B9\u7684\u77ED\u53F7\u6216\u4F1A\u8BDD id\u3002",
+    "\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u8BB0\u5F55\uFF08\u63D2\u4EF6\u53EA\u6295\u7ED9\u4F60\u88AB @ \u7684\u90E8\u5206\uFF09\u3002\u8981\u8BF4\u70B9\u4EC0\u4E48\u5C31\u8C03 group_post\uFF1AgroupId=" + group.id + "\uFF0Ctext \u5199\u6B63\u6587\uFF1B\u8981\u76F4\u63A5\u627E\u67D0\u4E2A\u6210\u5458\uFF0C\u628A to \u586B\u6210\u5BF9\u65B9\u7684\u77ED\u53F7\u6216\u4F1A\u8BDD id\u3002",
     group.ownerSessionId === void 0 ? "\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002" : "\u6C47\u62A5\u5BF9\u8C61\uFF1A\u7FA4\u4E3B " + (titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId)) + "\uFF08\u4F60\u7684 group_post \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF09\uFF1B\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002"
   ].join("\n");
 }
@@ -38357,7 +38356,6 @@ function createGroups(deps) {
     return "g-" + (uuid3 ?? String(at) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 10);
   };
   const deliverEach = async (group, from, text, targets) => {
-    const body = deliveryText(group, from, text, targets, titleOf);
     const out = [];
     for (const target of targets) {
       if (target === from) continue;
@@ -38369,6 +38367,7 @@ function createGroups(deps) {
         continue;
       }
       lastDeliveryAt.set(key, now());
+      const body = deliveryText(group, from, text, targets, titleOf, target);
       const result2 = await deps.deliver(target, body).catch((error62) => ({
         ok: false,
         message: String(error62?.message ?? error62)
