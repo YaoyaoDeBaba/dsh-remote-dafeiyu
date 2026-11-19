@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.119" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.120" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38337,7 +38337,7 @@ var EXTENSIONS = [
     label: "\u80A5\u9C7C\u8BC6\u56FE / \u5C0F\u4E91\u96C0",
     description: "\u8BC6\u56FE\uFF08\u5916\u6302\u89C6\u89C9\u6A21\u578B\uFF09\u4E0E\u5C0F\u4E91\u96C0\uFF08\u751F\u56FE/\u751F\u89C6\u9891 CLI\uFF09\uFF1A\u4E24\u4E2A\u8BBE\u7F6E\u5206\u680F + \u60AC\u6D6E\u5FEB\u6377\u5165\u53E3\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-vision",
-    commit: "296d18c9558d4dcf2c9b5db76772c4a20f27b60b"
+    commit: "e3954156f798032f05c6bcfb1dace31496231eb9"
   },
   {
     id: "dev-kit",
