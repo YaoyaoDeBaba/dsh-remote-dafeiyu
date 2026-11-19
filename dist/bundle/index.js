@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.126" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.127" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31858,13 +31858,13 @@ function createServicesKernel(services, options) {
       return;
     }
     if (ids.length === 0) return;
-    const batch = options.titleBatch ?? MAX_TITLE_BATCH_DEFAULT;
+    const batch = Math.min(options.titleBatch ?? MAX_TITLE_BATCH_DEFAULT, 4);
     for (let at = 0; at < ids.length; at += batch) {
       const slice = ids.slice(at, at + batch);
       try {
         const rows = await withTimeout(
           Promise.resolve(read.call(services.sessionQuery, slice)),
-          options.titleTimeoutMs ?? TITLE_TIMEOUT_DEFAULT
+          options.titleTimeoutMs ?? Math.max(TITLE_TIMEOUT_DEFAULT, 8e3)
         );
         for (const row of rows ?? []) {
           const raw = row?.value?.title;
@@ -31939,7 +31939,8 @@ function createServicesKernel(services, options) {
       if (cwd) cwdBySession.set(row.id, cwd);
     }
     const page = records.slice(0, cap);
-    await loadTitles(page.map((row) => row.id).filter((id) => !titleCache.has(id)));
+    const pendingTitles = loadTitles(page.map((row) => row.id).filter((id) => !titleCache.has(id)));
+    await Promise.race([pendingTitles.catch(() => void 0), new Promise((resolve) => setTimeout(resolve, 1500))]);
     return page.map((row) => ({
       summary: toSummary(row, archived),
       live: agentStatus(row.id) === "running",
