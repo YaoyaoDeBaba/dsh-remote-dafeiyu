@@ -15,6 +15,7 @@ export const GROUPS_POST_ROUTE = '/api/dsh-remote-dafeiyu/groups/post'
 export const GROUPS_MESSAGES_ROUTE = '/api/dsh-remote-dafeiyu/groups/messages'
 export const GROUPS_LEAVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/leave'
 export const GROUPS_REMOVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/remove'
+export const GROUPS_OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 export const GROUPS_DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 
@@ -144,6 +145,13 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
             id: group.id,
             name: group.name,
             dissolved: group.dissolvedAt !== undefined,
+            owner: group.ownerSessionId,
+            ownerName:
+              group.ownerSessionId === undefined
+                ? undefined
+                : group.members.find((member) => member.sessionId === group.ownerSessionId)?.label?.trim() ||
+                  titles.get(group.ownerSessionId)?.trim() ||
+                  short(group.ownerSessionId),
             updatedAt: group.updatedAt,
             members: group.members.map((member) => ({
               sessionId: member.sessionId,
@@ -212,6 +220,12 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
       path: GROUPS_REMOVE_ROUTE,
       handler: writeRoute((body) =>
         deps.groups.remove({ id: String(body.groupId ?? ''), sessionId: String(body.sessionId ?? '') }),
+      ),
+    },
+    {
+      path: GROUPS_OWNER_ROUTE,
+      handler: writeRoute((body) =>
+        deps.groups.setOwner({ id: String(body.groupId ?? ''), sessionId: String(body.sessionId ?? '') }),
       ),
     },
     {

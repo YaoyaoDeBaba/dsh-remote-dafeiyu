@@ -36,6 +36,8 @@ export interface GroupRecord {
   members: GroupMember[]
   createdAt: number
   updatedAt: number
+  /** 群主（2026-11-19）：用户 @ 多个 agent 时由它分工；未设则按 @ 顺序直投。 */
+  ownerSessionId?: string
   /** 解散时刻（2026-11-19）：解散后群对成员不可用，记录保留给用户看。 */
   dissolvedAt?: number
 }
@@ -55,6 +57,10 @@ export interface GroupEntry {
 export interface GroupsDeps {
   /** 群目录（`<dshHome>/storages/dsh-remote-dafeiyu/groups`）。 */
   dir: string
+  /** 群主分工的等待上限（毫秒，默认 90 秒）：超时降级为直投被 @ 的人。 */
+  dispatchTimeoutMs?: number
+  /** 同一对会话之间的投递冷却（毫秒，默认 60 秒）：防来回刷屏。 */
+  cooldownMs?: number
   /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
   deliver: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
   /** 会话标题（可注入；用于名单里显示名字，拿不到就用短号）。 */
@@ -71,6 +77,8 @@ export interface DeliveryResult {
 
 export const MAX_MEMBERS = 12
 export const MAX_MESSAGE_CHARS = 4_000
+/** 群主一轮最多派几个活（防它一次把整群人点一遍）。 */
+export const MAX_DISPATCH_TARGETS = 5
 
 function ensureDir(dir: string): void {
   try {
@@ -110,6 +118,7 @@ export function readGroup(dir: string, id: string): GroupRecord | undefined {
       members: parsed.members,
       createdAt: Number(parsed.createdAt ?? 0),
       updatedAt: Number(parsed.updatedAt ?? 0),
+      ...(typeof parsed.ownerSessionId === 'string' && parsed.ownerSessionId.trim() !== '' ? { ownerSessionId: parsed.ownerSessionId.trim() } : {}),
       ...(Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}),
     }
   } catch {
@@ -160,7 +169,10 @@ export function deliveryText(
     peers.length > 0 ? '本轮协作对象：' + peers.join('、') : '本轮只有你。',
     '你看不到群里的整段记录（插件只投给你被 @ 的部分）。要说点什么就调 group_post：groupId=' + group.id,
     'text 写正文；要直接找某个成员，把 to 填成对方的短号或会话 id。',
-    '想看最近记录用 group_read(groupId=' + group.id + ')。',
+    group.ownerSessionId === undefined
+      ? '想看最近记录用 group_read(groupId=' + group.id + ')。'
+      : '汇报对象：群主 ' + (titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)) +
+        '（你的 group_post 不带 to 时默认回给群主）；想看最近记录用 group_read(groupId=' + group.id + ')。',
   ].join('\n')
 }
 
@@ -235,6 +247,14 @@ export function createGroups(deps: GroupsDeps) {
     for (const target of targets) {
       if (target === from) continue
       if (!group.members.some((member) => member.sessionId === target)) continue
+      // 冷却：同一对（from → target）60 秒内只投一次，防来回刷屏
+      const key = group.id + '|' + from + '|' + target
+      const last = lastDeliveryAt.get(key)
+      if (last !== undefined && now() - last < cooldownMs) {
+        out.push({ sessionId: target, ok: true, message: '冷却中（' + Math.round(cooldownMs / 1000) + ' 秒内已投过一次），本次跳过' })
+        continue
+      }
+      lastDeliveryAt.set(key, now())
       const result = await deps.deliver(target, body).catch((error: unknown) => ({
         ok: false,
         message: String((error as Error)?.message ?? error),
@@ -254,6 +274,53 @@ export function createGroups(deps: GroupsDeps) {
     if (group === undefined) return { message: '没有这个群（id 可能不对）。' }
     if (group.dissolvedAt !== undefined) return { message: '这个群已经解散了，用不了。' }
     return { group }
+  }
+
+  /*
+   * 群主分工的降级计时器 & 投递冷却（2026-11-19）。
+   *
+   * - 降级：用户 @ 多人后只投给群主；群主 90 秒没派活就直投被 @ 的人，并记一笔
+   *   「群主未分工，本轮并行处理」——不能让整轮挂在群主身上；
+   * - 冷却：同一对会话 60 秒内只投一次，防 A↔B 来回刷。
+   */
+  const dispatchTimeoutMs = deps.dispatchTimeoutMs ?? 90_000
+  const cooldownMs = deps.cooldownMs ?? 60_000
+  const pendingDispatch = new Map<string, ReturnType<typeof setTimeout>>()
+  const lastDeliveryAt = new Map<string, number>()
+
+  const cancelDispatch = (id: string): void => {
+    const timer = pendingDispatch.get(id)
+    if (timer === undefined) return
+    try {
+      clearTimeout(timer)
+    } catch {
+      /* 清不掉也不影响 */
+    }
+    pendingDispatch.delete(id)
+  }
+
+  const armDispatch = (group: GroupRecord, targets: string[], text: string): void => {
+    cancelDispatch(group.id)
+    const timer = setTimeout(() => {
+      pendingDispatch.delete(group.id)
+      void (async () => {
+        const fresh = readGroup(deps.dir, group.id)
+        if (fresh === undefined || fresh.dissolvedAt !== undefined) return
+        append(fresh.id, { at: now(), kind: 'system', from: 'system', text: '群主未分工，本轮并行处理' })
+        const results = await deliverEach(fresh, 'user', text, targets)
+        deps.log('群主未分工，降级直投', {
+          id: fresh.id,
+          targets: targets.length,
+          failed: results.filter((row) => !row.ok).length,
+        })
+      })()
+    }, dispatchTimeoutMs)
+    try {
+      ;(timer as { unref?: () => void }).unref?.()
+    } catch {
+      /* 环境没有 unref 就算了 */
+    }
+    pendingDispatch.set(group.id, timer)
   }
 
   /** 给全体成员发一段话（送给不到的记进结果）。 */
@@ -276,7 +343,7 @@ export function createGroups(deps: GroupsDeps) {
 
   return {
     /** 建群：发起方自动入群（除非给了 includeMe:false），可顺手带几个成员。 */
-    create(input: { name: string; members?: string[]; me?: string; includeMe?: boolean }): {
+    create(input: { name: string; members?: string[]; me?: string; includeMe?: boolean; owner?: string }): {
       ok: boolean
       group?: GroupRecord
       message?: string
@@ -303,6 +370,12 @@ export function createGroups(deps: GroupsDeps) {
         }),
         createdAt: at,
         updatedAt: at,
+        // 群主：显式指定的优先，否则发起方（或群里第一个人）当群主。
+        ...((): { ownerSessionId?: string } => {
+          const want = String(input.owner ?? '').trim()
+          if (want !== '' && ids.includes(want)) return { ownerSessionId: want }
+          return ids.length > 0 ? { ownerSessionId: ids[0]! } : {}
+        })(),
       }
       if (!save(group)) return { ok: false, message: '群没落盘（目录不可写）。' }
       append(group.id, { at, kind: 'system', from: 'system', text: '建群：' + group.name + '（' + group.members.length + ' 人）' })
@@ -363,6 +436,22 @@ export function createGroups(deps: GroupsDeps) {
         append(group.id, { at: now(), kind: 'system', from: 'system', text: shortId(input.sessionId) + ' 退出了群' })
       }
       return before === group.members.length ? { ok: true, message: '本来就不在群里。' } : { ok: true }
+    },
+
+    /** 指定 / 更换群主（必须是群成员）。 */
+    setOwner(input: { id: string; sessionId: string }): { ok: boolean; group?: GroupRecord; message?: string } {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      const target = String(input.sessionId ?? '').trim()
+      const member = group.members.find((row) => row.sessionId === target) ??
+        group.members.find((row) => shortId(row.sessionId) === target)
+      if (member === undefined) return { ok: false, message: '群主必须是群成员。' }
+      group.ownerSessionId = member.sessionId
+      group.updatedAt = now()
+      save(group)
+      append(group.id, { at: now(), kind: 'system', from: 'system', text: shortId(member.sessionId) + ' 成为群主' })
+      return { ok: true, group }
     },
 
     /** 把某个成员移出群：通知他本人「不再可用」，通知剩下的人「XX 离开了本群」。 */
@@ -445,13 +534,41 @@ export function createGroups(deps: GroupsDeps) {
       if (kind === 'agent' && !group.members.some((member) => member.sessionId === from)) {
         return { ok: false, message: '你不在这个群里（先 group_invite 把自己加进去）。' }
       }
-      const targets = (input.targets ?? [])
+      const asked = (input.targets ?? [])
         .map((id) => String(id ?? '').trim())
         .filter((id) => id !== '' && group.members.some((member) => member.sessionId === id))
+      const owner = group.ownerSessionId
+
+      /*
+       * 群主分工（2026-11-19）：
+       * 用户一次 @ 多个人时，**不直接撒给所有人**，而是只投给群主 + 一句「你来分工」；
+       * 群主用 group_post(to=[...]) 派活。超时没派活就降级为直投被 @ 的人。
+       *
+       * agent 侧：不带 to 时默认回给群主（汇报对象），这样一轮里消息路径是
+       * 「群主 → 成员」与「成员 → 群主」，不会 A↔B 来回刷。
+       */
+      let targets = asked
+      if (kind === 'user' && owner !== undefined && asked.length >= 2) {
+        targets = [owner]
+      } else if (kind === 'agent' && asked.length === 0 && owner !== undefined && owner !== from) {
+        targets = [owner]
+      }
+      if (kind === 'agent' && from === owner && targets.length > MAX_DISPATCH_TARGETS) {
+        return { ok: false, message: '群主一次最多派 ' + MAX_DISPATCH_TARGETS + ' 个活：拆成几轮。' }
+      }
+
       const entry: GroupEntry = { at: now(), kind, from, ...(targets.length > 0 ? { targets } : {}), text }
       append(group.id, entry)
       group.updatedAt = now()
       save(group)
+
+      // 群主派了活 ⇒ 取消这一轮的降级计时器
+      if (kind === 'agent' && from === owner && targets.length > 0) cancelDispatch(group.id)
+      // 用户 @ 多人 ⇒ 起一个降级计时器（超时直投被 @ 的人）
+      if (kind === 'user' && owner !== undefined && asked.length >= 2) {
+        armDispatch(group, asked, text)
+      }
+
       if (targets.length === 0) return { ok: true, entry }
       const results = await deliverEach(group, kind === 'user' ? 'user' : from, text, targets)
       const failed = results.filter((row) => !row.ok)

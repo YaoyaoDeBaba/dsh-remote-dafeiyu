@@ -16,6 +16,8 @@ interface GroupView {
   id: string
   name: string
   dissolved?: boolean
+  owner?: string
+  ownerName?: string
   members: Array<{ sessionId: string; name?: string }>
 }
 
@@ -152,6 +154,16 @@ export function buildGroupsTab(options: {
       await reload()
     }
 
+    const setOwner = async (groupId: string): Promise<void> => {
+      if (picked.length === 0) {
+        setNote('先在下面的会话列表里勾一个成员，再设群主')
+        return
+      }
+      const answer = await call('/api/dsh-remote-dafeiyu/groups/owner', { groupId, sessionId: picked[0] })
+      setNote(answer.ok === true ? '已设群主：之后你 @ 多个人时由它分工' : '设置失败：' + String(answer.message ?? '未知原因'))
+      await reload()
+    }
+
     const dissolve = async (groupId: string): Promise<void> => {
       const answer = await call('/api/dsh-remote-dafeiyu/groups/dissolve', { groupId })
       setNote(answer.ok === true ? '已解散，全体成员都收到了「本群不再可用」' : '解散失败：' + String(answer.message ?? '未知原因'))
@@ -282,9 +294,16 @@ export function buildGroupsTab(options: {
                         createElement('div', {
                           style: hintStyle,
                           children:
-                            group.members
-                              .map((member) => member.name ?? shortId(member.sessionId))
-                              .join('、') + '　id: ' + group.id,
+                            (group.ownerName === undefined ? '群主：未设' : '群主：' + group.ownerName) +
+                            '　成员：' +
+                            group.members.map((member) => member.name ?? shortId(member.sessionId)).join('、') +
+                            '　id: ' + group.id,
+                        }),
+                        createElement('button', {
+                          type: 'button',
+                          style: { ...btnStyle, background: '#fff8e6', color: '#8a5a00', alignSelf: 'flex-start' },
+                          onClick: () => void setOwner(group.id),
+                          children: '把勾选的第一个设成群主',
                         }),
                       ],
                     }),

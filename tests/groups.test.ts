@@ -126,6 +126,77 @@ test('读消息：默认 20 条、limit 夹在 1..100', () => {
   }
 })
 
+
+test('群主：agent 不带 to 时默认回给群主；用户 @ 多人时先只投给群主', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-groups-owner-'))
+  const sent: Array<{ sessionId: string; text: string }> = []
+  const groups = createGroups({
+    dir,
+    deliver: async (sessionId, text) => {
+      sent.push({ sessionId, text })
+      return { ok: true }
+    },
+    dispatchTimeoutMs: 50,
+    cooldownMs: 0,
+    log: () => {},
+  })
+  try {
+    const created = groups.create({ name: '联调', me: 'session-lead', members: ['session-fe', 'session-be'] })
+    const id = created.group!.id
+    assert.equal(created.group!.ownerSessionId, 'session-lead', '发起方默认当群主')
+
+    // agent 不带 to → 回给群主
+    await groups.post({ id, from: 'session-fe', text: '接口好了', kind: 'agent' })
+    assert.equal(sent.length, 1)
+    assert.equal(sent[0]!.sessionId, 'session-lead', '默认汇报对象是群主')
+
+    // 用户 @ 两个执行者 → 只投给群主（分工请求）
+    sent.length = 0
+    await groups.post({ id, from: 'user', text: '把接口和页面接起来', targets: ['session-fe', 'session-be'], kind: 'user' })
+    assert.equal(sent.length, 1, '先只通知群主，不是同时撒给两个人')
+    assert.equal(sent[0]!.sessionId, 'session-lead')
+    assert.match(sent[0]!.text, /把接口和页面接起来/)
+
+    // 群主没派活 → 50ms 后降级直投被 @ 的人
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    const fallback = sent.filter((row) => row.sessionId !== 'session-lead')
+    assert.equal(fallback.length, 2, '超时降级：两个被 @ 的人都收到')
+    const log = groups.read({ id })
+    assert.ok(log.messages!.some((row) => row.kind === 'system' && row.text.includes('群主未分工')))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('群主派活：只派成员、最多 5 个；派了活就不再降级', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-groups-dispatch-'))
+  const sent: Array<{ sessionId: string; text: string }> = []
+  const groups = createGroups({
+    dir,
+    deliver: async (sessionId, text) => {
+      sent.push({ sessionId, text })
+      return { ok: true }
+    },
+    dispatchTimeoutMs: 80,
+    cooldownMs: 0,
+    log: () => {},
+  })
+  try {
+    const created = groups.create({ name: '联调', me: 'session-lead', members: ['session-a', 'session-b'] })
+    const id = created.group!.id
+    await groups.post({ id, from: 'user', text: '分工', targets: ['session-a', 'session-b'], kind: 'user' })
+    sent.length = 0
+    const dispatched = await groups.post({ id, from: 'session-lead', text: 'A 做接口，B 做页面', targets: ['session-a', 'session-b'], kind: 'agent' })
+    assert.equal(dispatched.ok, true)
+    assert.equal(sent.length, 2, '群主派活：两个人都收到')
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    assert.equal(sent.length, 2, '派过活之后不许再降级重投')
+    const tooMany = await groups.post({ id, from: 'session-lead', text: '都来', targets: ['session-a', 'session-b'], kind: 'agent' })
+    assert.equal(tooMany.ok, true, '两人不超上限')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('投递正文口径：群名 + 群 id + 发送方短号 + 回复方式', () => {
   const group = { version: 2 as const, id: 'g-abc', name: '联调', members: [], createdAt: 0, updatedAt: 0 }
   const text = deliveryText(group, 'user', '你好', ['session-12345678'])
@@ -135,7 +206,7 @@ test('投递正文口径：群名 + 群 id + 发送方短号 + 回复方式', ()
   assert.ok(text.includes('group_read'))
 })
 
-test('工具形状：九个工具、六键齐、output 是 {schema:{type:string},render}', () => {
+test('工具形状：十个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {
     const tools = buildGroupTools({ groups, guideBody: () => '# guide', log: () => {} })
@@ -147,6 +218,7 @@ test('工具形状：九个工具、六键齐、output 是 {schema:{type:string}
         'group_leave',
         'group_list',
         'group_post',
+        'group_set_owner',
         'group_remove',
         'group_dissolve',
         'group_read',

@@ -22,6 +22,8 @@ interface GroupView {
   id: string
   name: string
   dissolved?: boolean
+  /** 群主（成员里带 👑 的那位）：用户 @ 多人时由它分工。 */
+  owner?: string
   members: MemberView[]
   updatedAt?: number
 }
@@ -178,7 +180,8 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
       const wrap = doc.createElement('span')
       wrap.style.cssText = 'display:inline-flex;align-items:center;gap:2px;border:1px solid #c7d9f7;border-radius:999px;padding:1px 4px 1px 8px;'
       const chip = doc.createElement('button')
-      chip.textContent = member.name
+      chip.textContent = (group.owner === member.sessionId ? '👑 ' : '') + member.name
+      chip.title = group.owner === member.sessionId ? '群主：用户 @ 多人时由它分工' : '点一下 @ 他'
       const on = targets.has(member.sessionId)
       chip.style.cssText =
         'border:0;background:transparent;color:' + (on ? '#1d4ed8' : '#365a96') + ';font-size:11.5px;cursor:pointer;padding:1px 2px;' +

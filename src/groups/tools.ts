@@ -155,6 +155,25 @@ export function buildGroupTools(deps: {
       },
     },
     {
+      name: 'group_set_owner',
+      description:
+        '指定 / 更换群主（必须是群成员）。用户 @ 多个 agent 时由群主分工；成员用 group_post 不带 to 时默认回给群主。',
+      parameters: {
+        type: 'object',
+        properties: {
+          groupId: { type: 'string', description: '群 id。' },
+          sessionId: { type: 'string', description: '群主的会话 id 或短号。' },
+        },
+        required: ['groupId', 'sessionId'],
+      },
+      output: OUT,
+      timeoutMs: 15_000,
+      async execute(args: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown; sessionId?: unknown }
+        return JSON.stringify(deps.groups.setOwner({ id: asString(input.groupId), sessionId: asString(input.sessionId) }))
+      },
+    },
+    {
       name: 'group_remove',
       description: '把某个成员移出群：他本人会收到「本群对你不再可用」，其余成员收到「XX 离开了本群」。',
       parameters: {

@@ -345,14 +345,14 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     // 30 → 19（2026-11-16）：识图 3 条 + 小云雀 8 条随 `dsh-vision-dafeiyu` 迁出，
     // 由那个包在它自己的 ctx 上挂。本仓剩下的域一条不少：子代理 5 + 转生/分身 3 +
     // 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 2 = 19。
-    assert.equal(late.registerCalls.length, 29, '二十条一起挂（子代理 5 + 转生/分身 3 + 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 3；形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包搬走）')
+    assert.equal(late.registerCalls.length, 30, '二十条一起挂（子代理 5 + 转生/分身 3 + 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 3；形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包搬走）')
     assert.equal(
       pillProblem(state),
       undefined,
       `routes 已 registered 却还报 warn:pill = 启动快照的假警报：${JSON.stringify(state.problems)}`,
     )
     late.dispose()
-    assert.equal(late.unregistered(), 29, '晚到挂上的路由（子代理/转生分身/记忆/扩展列表/配对），停机时同样要注销干净')
+    assert.equal(late.unregistered(), 30, '晚到挂上的路由（子代理/转生分身/记忆/扩展列表/配对），停机时同样要注销干净')
   } finally {
     late.dispose()
   }
@@ -434,7 +434,7 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     withWeb.dispose()
     // 30 → 19（2026-11-16）：识图 3 条 + 小云雀 8 条随 `dsh-vision-dafeiyu` 迁出；
     // 本仓这 19 条一条都不能漏注销（漏了换宿主就撞"路由名已占用"，表现是 pill 再也不出现）。
-    assert.equal(withWeb.unregistered(), 29, '八条配对路由 + 五条子代理 + 三条转生/分身 + 一条记忆 + 两条扩展列表都要注销（形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包）')
+    assert.equal(withWeb.unregistered(), 30, '八条配对路由 + 五条子代理 + 三条转生/分身 + 一条记忆 + 两条扩展列表都要注销（形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包）')
   } finally {
     without.dispose()
     withWeb.dispose()
