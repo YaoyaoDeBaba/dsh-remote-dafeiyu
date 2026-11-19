@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.124" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.125" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31862,8 +31862,10 @@ function createServicesKernel(services, options) {
           options.titleTimeoutMs ?? TITLE_TIMEOUT_DEFAULT
         );
         for (const row of rows ?? []) {
-          const title = row?.value?.title?.title;
-          if (row?.status === "fulfilled" && typeof title === "string" && title) {
+          const raw = row?.value?.title;
+          const nested = raw !== null && typeof raw === "object" ? raw.title : void 0;
+          const title = typeof raw === "string" ? raw : typeof nested === "string" ? nested : "";
+          if (row?.status === "fulfilled" && title !== "") {
             titleCache.set(String(row.sessionId), { title, at: options.clock.now() });
           }
         }
