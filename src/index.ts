@@ -59,6 +59,7 @@ import { mountPersona } from './persona/mount.js'
 import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 一键转生 / 一键分身（0.9.0.53）：三条回环路由 + 一个作业管理器。
 import { startHandoff, type HandoffHandle } from './handoff/start.js'
+import { startGroups, type GroupsHandle } from './groups/start.js'
 // 序列帧精灵图（0.9.0.55 → 2026-11-16 搬去独立包 `dsh-dev-kit-dafeiyu`）：20 个工具、
 // 工具页 `/plugins/dafeiyu-sprite/`、skill 安装器全在那边；它自己领房间 `sprite`（order60）。
 // 本体只保留"铺内置 skill"这一件事（见下面 `installPackagedSkills`）：那个批量安装器
@@ -1152,6 +1153,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     // 面板能开（走 HTTP 路由）不代表工具注册上了（走 tools 服务）。
     handoff: softProbe.handoff ?? { started: 'no' },
     subagents: softProbe.subagents ?? { started: 'no' },
+    groups: softProbe.groups ?? { started: 'no' },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: undefined,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -1372,6 +1374,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   const softProbe: {
     handoff?: Record<string, string>
     subagents?: Record<string, string>
+    groups?: Record<string, string>
   } = {}
 
   const carrier = createCarrierProbe({
@@ -1602,6 +1605,37 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   softProbe.handoff = handoffHandle?.probe
 
   /**
+   * 肥鱼拉群（2026-11-19）：把一个群里几个**顶层会话**用 sendPrompt 串起来。
+   *
+   * 内核没有顶层互发的 API，所以这条线只能走插件自己的投递口——和「前世↔来生收件箱」同一套。
+   * 投递用 sendPrompt（空闲会话会被唤醒），失败原样回给发起方，不静默。
+   */
+  let groupsHandle: GroupsHandle | undefined
+  try {
+    groupsHandle = startGroups(ctx as never, {
+      dshHome: resolveDshHome(process.env),
+      log,
+      deliver: async (sessionId, text) => {
+        const port = kernel
+        const send = port?.sendPrompt
+        if (!port || !send) return { ok: false, message: '主机这一代不支持发消息（没有 sendPrompt）' }
+        try {
+          const sent = await send.call(port, sessionId, text)
+          return sent.ok ? { ok: true } : { ok: false, message: sent.message ?? '这个会话现在接不了消息' }
+        } catch (error) {
+          return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+        }
+      },
+    })
+  } catch (error) {
+    groupsHandle = undefined
+    log('拉群起不来（远控/转生/识图不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+  softProbe.groups = groupsHandle?.probe
+
+  /**
    * 内置 skill 落成 DSH skill（2026-11-16 从 `startSprite` 里搬出来）。
    *
    * 装的是 `assets/skills/` 下的**全部** skill（现在只剩 `dafeiyu-plugin-dev`）：
@@ -1718,6 +1752,11 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         handoffHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      try {
+        groupsHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }
