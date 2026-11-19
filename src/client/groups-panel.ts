@@ -250,6 +250,40 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   panel.append(bar, body, overlay, roleBox)
   doc.body.appendChild(panel)
   doc.body.appendChild(ctxMenu)
+
+  /*
+   * 去重（2026-11-19 真机）：打开时同时冒出「新版三栏」和「旧版窄条」两个面板。
+   *
+   * 成因是**同一个页面上存在两份群面板实现**（客户端被重载/多份实例，其中一份是旧代码，
+   * 它不认 globalThis 单例）。旧实例会自己挂一个 #dafeiyu-groups-panel 并自己监听菜单动作，
+   * 所以光靠单例挡不住它。
+   *
+   * 做法：把自己以外、同 id 的面板节点**直接摘掉**；再挂一个观察者，只要有人后挂进来也摘。
+   * 旧实例的 open() 拿到的是已经脱离文档的节点，怎么改 display 都看不见。
+   */
+  const PANEL_ID = 'dafeiyu-groups-panel'
+  panel.id = PANEL_ID
+  const removeStrays = (): void => {
+    try {
+      for (const node of Array.from(doc.querySelectorAll('#' + PANEL_ID))) {
+        if (node !== panel) node.remove()
+      }
+    } catch {
+      /* 摘不掉也不影响自己的面板 */
+    }
+  }
+  removeStrays()
+  let strays: { disconnect?: () => void } | undefined
+  try {
+    const MO = (globalThis as { MutationObserver?: new (cb: () => void) => { observe: (n: unknown, o: unknown) => void; disconnect: () => void } }).MutationObserver
+    if (MO && doc.body) {
+      const observer = new MO(() => removeStrays())
+      observer.observe(doc.body, { childList: true, subtree: true })
+      strays = observer
+    }
+  } catch {
+    /* 没有 MutationObserver 就只靠挂载时那一次 */
+  }
   try {
     makeDraggable(panel, bar, 'groups')
   } catch {
@@ -675,6 +709,7 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
 
   return {
     open(): void {
+      removeStrays()
       if (opened) return
       opened = true
       panel.style.display = 'flex'
@@ -688,6 +723,12 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
     destroy(): void {
       opened = false
       if (pollTimer !== undefined) clearTimeout(pollTimer)
+      try {
+        strays?.disconnect?.()
+      } catch {
+        /* 断开观察者不许抛 */
+      }
+      strays = undefined
       panel.remove()
       ctxMenu.remove()
     },
