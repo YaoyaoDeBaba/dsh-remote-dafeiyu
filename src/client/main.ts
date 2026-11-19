@@ -30,6 +30,7 @@ import { installRoomHost, listRooms, startAvatarEntryGate } from './rooms.js'
 // `dsh-vision-dafeiyu` 走了：那颗 FAB、那个快捷面板连同它们的路由都由那个包自己挂。
 import { mountSubagentMonitor } from './subagent-panel.js'
 import { mountHandoffPanel } from './handoff-panel.js'
+import { mountGroupsPanel } from './groups-panel.js'
 // 人设那一半的界面（0.8.0 起合包）。它是**生成物**：人设仓库里那份 client.js 已裹好
 // loader 外壳，`scripts/unwrap-persona-client.mjs` 把外壳剥成这个工厂函数。
 import personaClientFactory from '../persona/client-factory.js'
@@ -149,6 +150,17 @@ export function apply(ctx: ClientContext): (() => void) | void {
   let subagentsCleanup: (() => void) | undefined
   let openSubagents: (() => void) | undefined
   let handoffPanel: ReturnType<typeof mountHandoffPanel> | undefined
+  /*
+   * 肥鱼拉群（2026-11-19）：悬浮群面板。设置页「群」那一栏只管建群/加人，
+   * 聊天面就是这个悬浮窗；入口挂到 globalThis，面板与设置页都能叫它。
+   */
+  let groupsPanel: ReturnType<typeof mountGroupsPanel> | undefined
+  try {
+    groupsPanel = mountGroupsPanel({ getCurrentSession: resolveCurrentSession(ctx) })
+    ;(globalThis as { __dafeiyuGroupsOpen?: () => void }).__dafeiyuGroupsOpen = () => groupsPanel?.open()
+  } catch (error) {
+    swallow('群面板挂载抛错（已吞掉）', error)
+  }
   try {
     subagentsCleanup = mountSubagentMonitor({
       getCurrentSession: resolveCurrentSession(ctx),
@@ -302,6 +314,7 @@ export function apply(ctx: ClientContext): (() => void) | void {
     }
     try {
       handoffPanel?.destroy()
+    groupsPanel?.destroy()
     } catch {
       /* 卸载动作不许拖住卸载 */
     }

@@ -53,10 +53,11 @@ test('发消息：先落盘、只发给别人、自己那份不重发', async ()
     assert.equal(sent.length, 1, '只投给对方，不回给自己')
     assert.equal(sent[0]!.sessionId, 'session-back')
     assert.ok(sent[0]!.text.includes(id), '投递正文要带群 id（对面回复要靠它）')
-    assert.ok(sent[0]!.text.includes('group_send'), '要告诉对面怎么回复')
+    assert.ok(sent[0]!.text.includes('group_post'), '要告诉对面怎么回复')
     const read = groups.read({ id })
-    assert.equal(read.messages!.length, 1, '日志里要留一条（送失败也还能补发）')
-    assert.equal(read.messages![0]!.from, 'session-front')
+    const chat = read.messages!.filter((row) => row.kind !== 'system')
+    assert.equal(chat.length, 1, '日志里要留一条（送失败也还能补发）')
+    assert.equal(chat[0]!.from, 'session-front')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -93,15 +94,15 @@ test('非成员不许发；退群后立刻发不动', async () => {
   }
 })
 
-test('拉人：已在不重复加，未知群直接拒', () => {
+test('拉人：已在不重复加，未知群直接拒', async () => {
   const { dir, groups } = makeDeps()
   try {
     const created = groups.create({ name: '联调', me: 'session-a' })
     const id = created.group!.id
-    const added = groups.invite({ id, members: ['session-b', 'session-b'] })
+    const added = await groups.invite({ id, members: ['session-b', 'session-b'] })
     assert.deepEqual(added.added, ['session-b'])
     assert.equal(groups.get(id)!.members.length, 2)
-    assert.equal(groups.invite({ id: 'g-nope', members: ['x'] }).ok, false)
+    assert.equal((await groups.invite({ id: 'g-nope', members: ['x'] })).ok, false)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -126,21 +127,21 @@ test('读消息：默认 20 条、limit 夹在 1..100', () => {
 })
 
 test('投递正文口径：群名 + 群 id + 发送方短号 + 回复方式', () => {
-  const group = { version: 1 as const, id: 'g-abc', name: '联调', members: [], createdAt: 0, updatedAt: 0 }
-  const text = deliveryText(group, 'session-12345678', '你好')
+  const group = { version: 2 as const, id: 'g-abc', name: '联调', members: [], createdAt: 0, updatedAt: 0 }
+  const text = deliveryText(group, 'user', '你好', ['session-12345678'])
   assert.ok(text.includes('联调'))
   assert.ok(text.includes('g-abc'))
-  assert.ok(text.includes('12345678'))
+  assert.ok(text.includes('群成员'))
   assert.ok(text.includes('group_read'))
 })
 
 test('工具形状：六个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {
-    const tools = buildGroupTools({ groups, log: () => {} })
+    const tools = buildGroupTools({ groups, guideBody: () => '# guide', log: () => {} })
     assert.deepEqual(
       tools.map((tool) => tool.name),
-      ['group_create', 'group_invite', 'group_leave', 'group_list', 'group_send', 'group_read'],
+      ['group_create', 'group_invite', 'group_leave', 'group_list', 'group_post', 'group_read', 'groups_guide'],
     )
     for (const tool of tools) {
       for (const key of ['name', 'description', 'parameters', 'output', 'timeoutMs', 'execute']) {

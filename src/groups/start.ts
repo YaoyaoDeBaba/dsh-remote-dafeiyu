@@ -1,18 +1,27 @@
 /**
- * groups/start —— 宿主接线：软探测 tools，把「拉群」六个工具挂上去（2026-11-19）。
+ * groups/start —— 拉群的接线（2026-11-19 v2）：软探测 tools 与 webServer。
  *
- * 与转生/识图同一条纪律：
- * 1. 不写 inject 闸门——这一半挂不上，远控/人设一行都不受影响；
- * 2. tools 是**晚到服务**：apply 期间 ctx.get 可能还是 undefined，所以先试一次，
- *    再按 500ms × 60 拍轮询（30 秒收手），失败写进 probe + 一行中文日志；
- * 3. stop() 幂等。
+ * 两块各自独立失败：工具挂不上 = agent 侧没有 group_*；路由挂不上 = 面板打不开。
+ * 两个都只写 probe + 一行中文日志，不影响远控主链路。
  */
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
 import { createGroups, type Groups } from './service.js'
 import { buildGroupTools } from './tools.js'
+import { groupsHandlers, type GroupsRouteDeps } from './routes.js'
+import { readGroupsSkillBody } from './skill.js'
 
 interface LooseContext {
   get?<T>(name: string, optional: true): T | undefined
+  inject?(names: string[], callback: (scoped: unknown) => void): unknown
+}
+
+interface Registerable {
+  register(route: {
+    kind: 'exact'
+    path: string
+    handler: (request: IncomingMessage, response: ServerResponse) => unknown
+  }): () => void
 }
 
 export interface GroupsHandle {
@@ -26,73 +35,151 @@ export interface GroupsStartInput {
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
   /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
   deliver: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
+  /** 会话标题（名单里显示名字用，可选）。 */
+  titleOf?: (sessionId: string) => string | undefined
+  /** 候选会话（面板拉人用，可选）。 */
+  listSessions?: () => Promise<Array<{ id: string; title?: string; updatedAt?: string }>>
+  /** 包根目录（读 assets/skills/dafeiyu-groups/SKILL.md）。 */
+  packageRoot: string
 }
 
 export function startGroups(ctx: LooseContext, input: GroupsStartInput): GroupsHandle {
   const probe: Record<string, string> = {}
+  const skillDir = path.join(input.packageRoot, 'assets', 'skills', 'dafeiyu-groups')
   const groups = createGroups({
     dir: path.join(input.dshHome, 'storages', 'dsh-remote-dafeiyu', 'groups'),
     deliver: async (sessionId, text) => input.deliver(sessionId, text),
+    ...(input.titleOf === undefined ? {} : { titleOf: input.titleOf }),
     log: input.log,
   })
-  let registered = false
-  let stopped = false
-  let timer: ReturnType<typeof setInterval> | undefined
 
-  const accept = (value: unknown, via: string): boolean => {
-    if (registered) return true
+  let toolsRegistered = false
+  let stopped = false
+  let toolTimer: ReturnType<typeof setInterval> | undefined
+  const disposers: Array<() => void> = []
+
+  const acceptTools = (value: unknown, via: string): boolean => {
+    if (toolsRegistered) return true
     if (!value || typeof value !== 'object') return false
-    const tools = value as { register?: (definition: Record<string, unknown>) => unknown }
-    if (typeof tools.register !== 'function') {
-      probe.tool = 'object without register()'
+    const host = value as { register?: (definition: Record<string, unknown>) => unknown }
+    if (typeof host.register !== 'function') {
+      probe.tools = 'object without register()'
       return false
     }
     try {
-      const definitions = buildGroupTools({ groups, log: input.log })
-      for (const definition of definitions) tools.register(definition)
-      registered = true
-      probe.tool = via + ':' + definitions.length
+      const definitions = buildGroupTools({
+        groups,
+        guideBody: () => readGroupsSkillBody(skillDir),
+        log: input.log,
+      })
+      for (const definition of definitions) host.register(definition)
+      toolsRegistered = true
+      probe.tools = via + ':' + definitions.length
       return true
     } catch (error) {
-      probe.tool = 'register threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
+      probe.tools = 'register threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
       return false
     }
   }
 
-  const tryOnce = (via: string): boolean => {
+  // tools 是晚到服务：先试一次，再 500ms × 60 拍
+  const tryToolsOnce = (via: string): boolean => {
     let value: unknown
     try {
       value = ctx.get?.('tools', true)
     } catch (error) {
-      probe.tool = 'get threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
+      probe.tools = 'get threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
       return false
     }
-    return accept(value, via)
+    return acceptTools(value, via)
   }
-
-  tryOnce('via get')
-  if (!registered) {
+  tryToolsOnce('via get')
+  if (!toolsRegistered) {
     let attempts = 0
     try {
-      timer = setInterval(() => {
+      toolTimer = setInterval(() => {
         attempts += 1
-        if (stopped || registered) {
-          if (timer !== undefined) clearInterval(timer)
+        if (stopped || toolsRegistered) {
+          if (toolTimer !== undefined) clearInterval(toolTimer)
           return
         }
-        if (tryOnce('via poll')) {
-          if (timer !== undefined) clearInterval(timer)
+        if (tryToolsOnce('via poll')) {
+          if (toolTimer !== undefined) clearInterval(toolTimer)
           return
         }
         if (attempts >= 60) {
-          if (timer !== undefined) clearInterval(timer)
-          probe.tool = (probe.tool ?? 'none') + ' (poll gave up after ' + attempts + ')'
+          if (toolTimer !== undefined) clearInterval(toolTimer)
+          probe.tools = (probe.tools ?? 'none') + ' (poll gave up after ' + attempts + ')'
           input.log('拉群工具没挂上：等了 30 秒没等到 tools（远控不受影响）')
         }
       }, 500)
     } catch (error) {
-      probe.tool = 'poll threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
+      probe.tools = 'poll threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
     }
+  }
+
+  // webServer：面板路由（软探测 + inject 等它）
+  let web: Registerable | undefined
+  let routesOn = false
+  const routeDeps: GroupsRouteDeps = {
+    groups,
+    ...(input.listSessions === undefined ? {} : { listSessions: input.listSessions }),
+    log: input.log,
+  }
+  const tryRoutes = (): void => {
+    if (routesOn || stopped || !web) return
+    routesOn = true
+    try {
+      for (const route of groupsHandlers(routeDeps)) {
+        disposers.push(web.register({ kind: 'exact', path: route.path, handler: route.handler }))
+      }
+      probe.routes = 'registered'
+    } catch (error) {
+      probe.routes = 'register threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
+      routesOn = false
+      input.log('拉群路由挂不上（远控不受影响）', { message: probe.routes })
+    }
+  }
+  const acceptWeb = (value: unknown, via: string): void => {
+    if (!value || typeof value !== 'object') return
+    if (typeof (value as Registerable).register !== 'function') {
+      probe.webServer = 'object without register()'
+      return
+    }
+    web = value as Registerable
+    probe.webServer = via
+    tryRoutes()
+  }
+  try {
+    const found = ctx.get?.('webServer', true)
+    if (found) acceptWeb(found, 'via get')
+    else probe.webServer = 'none'
+  } catch (error) {
+    probe.webServer = 'get threw: ' + String((error as Error)?.message ?? error).slice(0, 80)
+  }
+  try {
+    ctx.inject?.(['webServer'], ((...args: unknown[]) => {
+      /*
+       * 回调给的东西**不保证是服务本身**（有的宿主把 ctx 传回来，有的一个参数都不给）。
+       * 所以逐个候选试：显式参数 → 参数里的 ctx → 我们自己手里的 ctx。
+       * 2026-11-19：漏了这条候选，`webServer` 晚到的场景下群面板一条路由都挂不上。
+       */
+      try {
+        for (const candidate of [...args, ctx]) {
+          const fromGet = (candidate as { get?: (name: string, optional: true) => unknown })?.get?.('webServer', true)
+          if (fromGet) {
+            acceptWeb(fromGet, 'via inject')
+            if (routesOn) return
+          }
+          acceptWeb(candidate, 'via inject')
+          if (routesOn) return
+        }
+      } catch {
+        /* inject 回调里的异常不许冒 */
+      }
+    }) as never)
+  } catch {
+    /* 没有 inject 就算了：probe 里已经有 webServer 的状态 */
   }
 
   return {
@@ -101,9 +188,16 @@ export function startGroups(ctx: LooseContext, input: GroupsStartInput): GroupsH
     stop(): void {
       stopped = true
       try {
-        if (timer !== undefined) clearInterval(timer)
+        if (toolTimer !== undefined) clearInterval(toolTimer)
       } catch {
         /* 停机不许抛 */
+      }
+      for (const dispose of disposers.splice(0)) {
+        try {
+          dispose()
+        } catch {
+          /* 注销不许抛 */
+        }
       }
     },
   }

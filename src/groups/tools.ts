@@ -1,14 +1,12 @@
 /**
- * groups/tools —— 给 agent 的「拉群」六个工具（2026-11-19）。
+ * groups/tools —— 给 agent 的拉群工具（2026-11-19 v2）。
  *
- * 场景：前后端联调——两个（或多个）**顶层会话**各自干各自的，需要互相把结论同步过去。
- * 内核没有顶层互发的 API，插件用 sendPrompt 当邮差，所以这里只管「谁在群里、说了什么」。
- *
- * 形态照插件契约（§2）：六键齐、output.schema.type === 'string'、execute 返回字符串、
- * 出错抛中文原因。
+ * 语义（用户 2026-11-19 定的）：群是**给用户看的记录**；agent 之间看不到群里的整段消息，
+ * 只收到自己被 @ 的那条（带本轮协作对象）。所以这里没有「发给全群」的广播工具，
+ * 只有 post（可以带 to 点名）。
  */
 import { resolveSessionId } from '../handoff/tools.js'
-import type { Groups } from './service.js'
+import { shortId, type Groups } from './service.js'
 
 const OUT = {
   schema: { type: 'string' },
@@ -27,20 +25,21 @@ function asStringList(value: unknown): string[] {
 
 export function buildGroupTools(deps: {
   groups: Groups
+  /** skill 正文（单一真源，别在这里复制文案）。 */
+  guideBody: () => string
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }): Array<Record<string, unknown>> {
   return [
     {
       name: 'group_create',
       description:
-        '拉一个群，把指定的顶层会话放进去，之后用 group_send 互相说话（典型用途：前后端联调时两个会话同步接口/字段结论）。\n' +
-        '默认把自己也算进群；sessionIds 传别的顶层会话 id。建完返回 groupId，后面都用它。\n' +
-        '群消息会逐条送进每个成员的会话（占用它们各自的上下文），所以只说必须让对方知道的。',
+        '拉一个群，把指定的顶层会话放进去（典型用途：前后端联调时两个会话同步接口/字段结论）。\n' +
+        '默认把自己也算进群；被拉进来的人会收到一条入群通知（含名单与用法）。返回 groupId。',
       parameters: {
         type: 'object',
         properties: {
           name: { type: 'string', description: '群名，例如「前后端联调」。' },
-          sessionIds: { type: 'array', items: { type: 'string' }, description: '要拉进来的其他会话 id（可多个）。' },
+          sessionIds: { type: 'array', items: { type: 'string' }, description: '要拉进来的其他会话 id。' },
           includeMe: { type: 'boolean', description: '要不要把自己也放进去，默认 true。' },
         },
         required: ['name'],
@@ -53,7 +52,8 @@ export function buildGroupTools(deps: {
         const created = deps.groups.create({
           name: asString(input.name),
           members: asStringList(input.sessionIds),
-          ...(input.includeMe === false || me === undefined ? {} : { me }),
+          ...(me === undefined ? {} : { me }),
+          ...(input.includeMe === false ? { includeMe: false } : {}),
         })
         deps.log('agent 建群', { ok: String(created.ok) })
         return JSON.stringify(created)
@@ -61,22 +61,24 @@ export function buildGroupTools(deps: {
     },
     {
       name: 'group_invite',
-      description: '往已有的群里加成员（不额外发消息）。成员上限 12。',
+      description: '往已有的群里加成员，并给每个新成员发入群通知（名单 + 用法）。成员上限 12。',
       parameters: {
         type: 'object',
         properties: {
-          groupId: { type: 'string', description: '群 id（group_create 返回的那个）。' },
+          groupId: { type: 'string', description: '群 id。' },
           sessionIds: { type: 'array', items: { type: 'string' }, description: '要拉的会话 id。' },
         },
         required: ['groupId', 'sessionIds'],
       },
       output: OUT,
-      timeoutMs: 15_000,
+      timeoutMs: 30_000,
       async execute(args: unknown): Promise<string> {
         const input = (args ?? {}) as { groupId?: unknown; sessionIds?: unknown }
-        return JSON.stringify(
-          deps.groups.invite({ id: asString(input.groupId), members: asStringList(input.sessionIds) }),
-        )
+        const result = await deps.groups.invite({
+          id: asString(input.groupId),
+          members: asStringList(input.sessionIds),
+        })
+        return JSON.stringify(result)
       },
     },
     {
@@ -98,7 +100,7 @@ export function buildGroupTools(deps: {
     },
     {
       name: 'group_list',
-      description: '列出这台机器上所有的群（名字、id、成员）。找 groupId 时用。',
+      description: '列出这台机器上所有的群（名字、id、成员短号）。找 groupId 时用。',
       parameters: { type: 'object', properties: {} },
       output: OUT,
       timeoutMs: 15_000,
@@ -106,39 +108,55 @@ export function buildGroupTools(deps: {
         const groups = deps.groups.list().map((group) => ({
           id: group.id,
           name: group.name,
-          members: group.members.map((member) => member.sessionId),
+          members: group.members.map((member) => ({ sessionId: member.sessionId, label: member.label })),
           updatedAt: group.updatedAt,
         }))
         return JSON.stringify({ ok: true, groups })
       },
     },
     {
-      name: 'group_send',
+      name: 'group_post',
       description:
-        '往群里发一条：逐条送进其他成员的会话（自己那份不重发）。发送前先落盘，送不到的会列在 failed 里。\n' +
-        '只说对方必须知道的事（接口变了、字段改名、谁在等谁）；单条上限 4000 字。',
+        '往群里说一句（记给用户看）。带 to 就把这句话**单独投给那几个人**（自己那份不重发）；不带 to 只入记录、不打扰人。\n' +
+        '群里其他人看不到整段群聊——只有你 @ 的人会收到这条。单条上限 4000 字。',
       parameters: {
         type: 'object',
         properties: {
           groupId: { type: 'string', description: '群 id。' },
-          message: { type: 'string', description: '要说的话。' },
+          text: { type: 'string', description: '要说的话。' },
+          to: { type: 'array', items: { type: 'string' }, description: '要投给谁（会话 id 或短号），不填就只入记录。' },
         },
-        required: ['groupId', 'message'],
+        required: ['groupId', 'text'],
       },
       output: OUT,
       timeoutMs: 30_000,
       async execute(args: unknown, exec?: unknown): Promise<string> {
-        const input = (args ?? {}) as { groupId?: unknown; message?: unknown }
+        const input = (args ?? {}) as { groupId?: unknown; text?: unknown; to?: unknown }
         const me = resolveSessionId(exec)
         if (me === undefined) return JSON.stringify({ ok: false, message: '拿不到当前会话 id，发不出去。' })
-        const sent = await deps.groups.send({ id: asString(input.groupId), from: me, text: String(input.message ?? '') })
-        deps.log('agent 群发', { ok: String(sent.ok) })
-        return JSON.stringify(sent)
+        // to 允许写短号：群里记的就是短号，模型手上不一定有全 id
+        const raw = asStringList(input.to)
+        const group = deps.groups.get(asString(input.groupId))
+        const targets = raw.map((item) => {
+          if (group === undefined) return item
+          if (group.members.some((member) => member.sessionId === item)) return item
+          const hit = group.members.find((member) => shortId(member.sessionId) === item)
+          return hit === undefined ? item : hit.sessionId
+        })
+        const posted = await deps.groups.post({
+          id: asString(input.groupId),
+          from: me,
+          text: String(input.text ?? ''),
+          targets,
+          kind: 'agent',
+        })
+        deps.log('agent 群发', { ok: String(posted.ok) })
+        return JSON.stringify(posted)
       },
     },
     {
       name: 'group_read',
-      description: '读群里的最近消息（默认 20 条，最多 100）。补上下文用，别每轮都读。',
+      description: '读群里的最近记录（默认 20 条，最多 100）。补上下文用，别每轮都读。',
       parameters: {
         type: 'object',
         properties: {
@@ -156,6 +174,16 @@ export function buildGroupTools(deps: {
           ...(typeof input.limit === 'number' ? { limit: input.limit } : {}),
         })
         return JSON.stringify(read)
+      },
+    },
+    {
+      name: 'groups_guide',
+      description: '返回「肥鱼拉群」的完整用法（与 skill dafeiyu-groups 同一份正文）。上下文里没有那个 skill 时用它兜底。',
+      parameters: { type: 'object', properties: {} },
+      output: OUT,
+      timeoutMs: 15_000,
+      async execute(): Promise<string> {
+        return deps.guideBody()
       },
     },
   ]

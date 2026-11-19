@@ -43,6 +43,7 @@ import { resolveHostUrl } from './host-url.js'
 import { buildMemoryPanel } from './memory-panel.js'
 import { buildExtensionsPanel } from './extensions-panel.js'
 import { buildAgentTeamTab, type AgentTeamHandoffKind } from './agent-team-tab.js'
+import { buildGroupsTab } from './groups-tab.js'
 import { card, columnStyle, hintStyle } from './panel-kit.js'
 import { listRooms, onRoomsChange, type DafeiyuRoom } from './rooms.js'
 
@@ -58,11 +59,14 @@ export const DAFEIYU_TAB_PERSONA = 'persona'
  * 跟着标签走比留一个旧名字更好读。
  */
 export const DAFEIYU_TAB_TEAM = 'team'
+/** 「群」那一栏（2026-11-19）：建群、加人、打开悬浮群面板。 */
+export const DAFEIYU_TAB_GROUPS = 'groups'
 
 const TAB_LABELS: Record<string, string> = {
   [DAFEIYU_TAB_REMOTE]: '远程控制',
   [DAFEIYU_TAB_PERSONA]: '人设',
   [DAFEIYU_TAB_TEAM]: 'Agent 团队',
+  [DAFEIYU_TAB_GROUPS]: '群',
   // ⚠️ 2026-11-16 起这个表里**只剩本体自带的三栏**，其余全是住客：
   //   · 「形象」→ `dsh-avatar-dafeiyu`（order10）
   //   · 「肥鱼识图」→ `dsh-vision-dafeiyu` 的 `vision` 房间（order40）
@@ -120,6 +124,8 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const memoryPanel = buildMemoryPanel({ createElement, hooks: reactHooks })
   // 「Agent 团队」整栏（派活助手设置 + 转生/分身入口 + 调用入口表）。
   const agentTeamTab = buildAgentTeamTab({ createElement, hooks: reactHooks, openHandoff: deps.openHandoff })
+  // 「群」那一栏（2026-11-19）：建群/加人；聊天面在悬浮窗（`__dafeiyuGroupsOpen`）。
+  const groupsTab = buildGroupsTab({ createElement, hooks: reactHooks })
   // 扩展列表（2026-11-16）：「远程控制」分栏里、配对码那块**下面**。
   const extensionsPanel = buildExtensionsPanel({ createElement, hooks: reactHooks })
 
@@ -395,6 +401,10 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
         style: columnStyle,
         children: personaChildren,
       })
+    } else if (activeTab === DAFEIYU_TAB_GROUPS) {
+      body = groupsTab
+        ? createElement(groupsTab, {})
+        : fallbackLine(createElement, '群面板起不来（宿主没给 react hooks）。')
     } else if (activeTab === DAFEIYU_TAB_TEAM) {
       body = agentTeamTab
         ? createElement(agentTeamTab, {})

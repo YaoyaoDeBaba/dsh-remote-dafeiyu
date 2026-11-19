@@ -3973,14 +3973,14 @@ test('分栏①：本体自带三栏（远程控制 → 人设 → Agent 团队�
   const bare = load({ react: FAKE_REACT as never, slots: true })
   assert.deepEqual(
     dafeiyuTabLabels(bare),
-    ['远程控制', '人设', 'Agent 团队'],
-    '本体自带的分栏只有这三栏：远程控制 → 人设 → Agent 团队（肥鱼识图/小云雀/序列帧/形象都由住客注册）',
+    ['远程控制', '人设', 'Agent 团队', '群'],
+    '本体自带的四栏：远程控制 → 人设 → Agent 团队 → 群（肥鱼识图/小云雀/序列帧/形象都由住客注册）',
   )
   // 有住客：房间排在**本体三栏之后**，栏名字由住客自己定
   const withRoom = load({ react: FAKE_REACT as never, slots: true, rooms: [{ id: 'avatar', label: '形象', order: 10 }] })
   assert.deepEqual(
     dafeiyuTabLabels(withRoom),
-    ['远程控制', '人设', 'Agent 团队', '形象'],
+    ['远程控制', '人设', 'Agent 团队', '群', '形象'],
     '住客的房间必须排在本体写死的分栏**之后**（本体不许被住客插到中间）',
   )
   // 三个已迁出的包（识图+小云雀同一个包、序列帧另一个包）：order 生效，且都不插队
@@ -3995,7 +3995,7 @@ test('分栏①：本体自带三栏（远程控制 → 人设 → Agent 团队�
   })
   assert.deepEqual(
     dafeiyuTabLabels(full),
-    ['远程控制', '人设', 'Agent 团队', '肥鱼识图', '小云雀', '序列帧'],
+    ['远程控制', '人设', 'Agent 团队', '群', '肥鱼识图', '小云雀', '序列帧'],
     '住客之间按 order 升序（vision40 → xyq50 → sprite60），且整组都在本体三栏之后',
   )
 })

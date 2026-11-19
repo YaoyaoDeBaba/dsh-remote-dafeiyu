@@ -65,7 +65,7 @@ import { startGroups, type GroupsHandle } from './groups/start.js'
 // 本体只保留"铺内置 skill"这一件事（见下面 `installPackagedSkills`）：那个批量安装器
 // 原本躺在 `sprite/skill.ts` 里，但它装的是 `assets/skills/` 下的**全部** skill，包括
 // 仍留在本包的 `dafeiyu-plugin-dev`——整块删掉会让那份 skill 静默停更。
-import { installPackagedSkills } from './skills/install.js'
+import { installPackagedSkills, packageRoot } from './skills/install.js'
 // 扩展列表（2026-11-16）：设置页「远程控制」里那半张表，装/启用/禁用/卸载**白名单**里的扩展。
 import { startExtensions, type ExtensionsHandle } from './extensions/start.js'
 import { resolveProfileDir } from './extensions/service.js'
@@ -1615,6 +1615,24 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     groupsHandle = startGroups(ctx as never, {
       dshHome: resolveDshHome(process.env),
       log,
+      packageRoot: packageRoot(),
+      listSessions: async () => {
+        const port = kernel
+        const list = port?.listSessions
+        if (!port || !list) return []
+        try {
+          const rows = await list.call(port, 50)
+          return rows
+            .map((row) => ({
+              id: String(row?.summary?.id ?? ''),
+              ...(typeof row?.summary?.title === 'string' ? { title: row.summary.title } : {}),
+              ...(typeof row?.summary?.updatedAt === 'string' ? { updatedAt: row.summary.updatedAt } : {}),
+            }))
+            .filter((row) => row.id !== '')
+        } catch {
+          return []
+        }
+      },
       deliver: async (sessionId, text) => {
         const port = kernel
         const send = port?.sendPrompt
