@@ -16,6 +16,7 @@ export const GROUPS_MESSAGES_ROUTE = '/api/dsh-remote-dafeiyu/groups/messages'
 export const GROUPS_LEAVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/leave'
 export const GROUPS_REMOVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/remove'
 export const GROUPS_OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
+export const GROUPS_ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
 export const GROUPS_DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 
@@ -155,6 +156,7 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
             updatedAt: group.updatedAt,
             members: group.members.map((member) => ({
               sessionId: member.sessionId,
+              role: member.role,
               // 名字优先级：成员自带的 label → 会话标题 → 短号（对用户显示的是名字，不是 id）
               name: member.label?.trim() || titles.get(member.sessionId)?.trim() || short(member.sessionId),
             })),
@@ -192,6 +194,8 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
           name: String(body.name ?? ''),
           members: Array.isArray(body.sessionIds) ? body.sessionIds.map((id) => String(id)) : [],
           ...(typeof body.me === 'string' && body.me.trim() !== '' ? { me: body.me.trim() } : {}),
+          // 面板传「第一个被勾选的会话」当群主
+          ...(typeof body.owner === 'string' && body.owner.trim() !== '' ? { owner: body.owner.trim() } : {}),
         }),
       ),
     },
@@ -226,6 +230,16 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
       path: GROUPS_OWNER_ROUTE,
       handler: writeRoute((body) =>
         deps.groups.setOwner({ id: String(body.groupId ?? ''), sessionId: String(body.sessionId ?? '') }),
+      ),
+    },
+    {
+      path: GROUPS_ROLE_ROUTE,
+      handler: writeRoute((body) =>
+        deps.groups.setMemberRole({
+          id: String(body.groupId ?? ''),
+          sessionId: String(body.sessionId ?? ''),
+          role: String(body.role ?? ''),
+        }),
       ),
     },
     {

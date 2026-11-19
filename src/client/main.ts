@@ -154,10 +154,22 @@ export function apply(ctx: ClientContext): (() => void) | void {
    * 肥鱼拉群（2026-11-19）：悬浮群面板。设置页「群」那一栏只管建群/加人，
    * 聊天面就是这个悬浮窗；入口挂到 globalThis，面板与设置页都能叫它。
    */
-  let groupsPanel: ReturnType<typeof mountGroupsPanel> | undefined
+  /*
+   * 群面板是**全页单例**（2026-11-19 真机）：本体 client 被装载多次时，每份实例都会挂一个
+   * 自己的面板、也各自监听 dafeiyu:action —— 形象菜单派发一次，N 份实例同时 open()，
+   * 于是一次弹出 N 个面板。所以这里用 globalThis 兜住：只挂第一个，其余实例复用它。
+   */
+  const panelScope = globalThis as {
+    __dafeiyuGroupsPanel?: ReturnType<typeof mountGroupsPanel>
+    __dafeiyuGroupsOpen?: () => void
+  }
+  let groupsPanel: ReturnType<typeof mountGroupsPanel> | undefined = panelScope.__dafeiyuGroupsPanel
   try {
-    groupsPanel = mountGroupsPanel({ getCurrentSession: resolveCurrentSession(ctx) })
-    ;(globalThis as { __dafeiyuGroupsOpen?: () => void }).__dafeiyuGroupsOpen = () => groupsPanel?.open()
+    if (groupsPanel === undefined) {
+      groupsPanel = mountGroupsPanel({ getCurrentSession: resolveCurrentSession(ctx) })
+      panelScope.__dafeiyuGroupsPanel = groupsPanel
+    }
+    panelScope.__dafeiyuGroupsOpen = () => panelScope.__dafeiyuGroupsPanel?.open()
   } catch (error) {
     swallow('群面板挂载抛错（已吞掉）', error)
   }
@@ -315,7 +327,11 @@ export function apply(ctx: ClientContext): (() => void) | void {
     }
     try {
       handoffPanel?.destroy()
-    groupsPanel?.destroy()
+    // 单例面板由最后一个卸载者收：清引用前先确认还是自己挂的那份
+    if (panelScope.__dafeiyuGroupsPanel === groupsPanel) {
+      groupsPanel?.destroy()
+      panelScope.__dafeiyuGroupsPanel = undefined
+    }
     } catch {
       /* 卸载动作不许拖住卸载 */
     }

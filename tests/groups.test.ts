@@ -215,6 +215,60 @@ test('投递正文：协作对象里不许出现收件人自己（真机 2026-11
   assert.ok(!peerLine.includes('aaaa1111'), '收件人自己不该被列成协作对象')
   assert.ok(peerLine.includes('bbbb2222'))
 })
+
+test('摘要：首行「摘要：…」优先，解析不到取前 25 字（给用户扫一眼的那条）', async () => {
+  const { summarize } = await import('../src/groups/service.js')
+  assert.equal(summarize('摘要：接口改成 v2，字段 orderId\n\n正文随便写'), '接口改成 v2，字段 orderId')
+  assert.equal(summarize('Summary: schema updated'), 'schema updated', '英文 summary 也认')
+  const fallback = summarize('这是一段很长的正文，没有写摘要行的。后面的内容都不该进气泡。')
+  assert.equal(fallback.length, 25, '兜底取前 25 字')
+  assert.ok('这是一段很长的正文，没有写摘要行的。后面的内容都不该进气泡。'.startsWith(fallback))
+})
+
+test('身份：用户设置后写进记录，成员名单里带上（agent 靠它认职责）', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-groups-role-'))
+  const groups = createGroups({ dir, deliver: async () => ({ ok: true }), log: () => {} })
+  try {
+    const created = groups.create({ name: '联调', me: 'session-a', members: ['session-b'] })
+    const id = created.group!.id
+    const set = groups.setMemberRole({ id, sessionId: 'session-b', role: '后端主程' })
+    assert.equal(set.ok, true)
+    assert.equal(groups.get(id)!.members.find((m) => m.sessionId === 'session-b')!.role, '后端主程')
+    assert.equal(groups.setMemberRole({ id, sessionId: 'session-nope', role: 'x' }).ok, false, '不在群里要拒')
+    const cleared = groups.setMemberRole({ id, sessionId: 'session-b', role: '   ' })
+    assert.equal(cleared.ok, true)
+    assert.equal(groups.get(id)!.members.find((m) => m.sessionId === 'session-b')!.role, undefined, '空身份要清掉')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('静默注入：第一次带完整用法，第二次起只带极短头', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-groups-brief-'))
+  const sent: string[] = []
+  const groups = createGroups({
+    dir,
+    deliver: async (_id, text) => {
+      sent.push(text)
+      return { ok: true }
+    },
+    cooldownMs: 0,
+    log: () => {},
+  })
+  try {
+    const created = groups.create({ name: '联调', me: 'session-lead', members: ['session-b'] })
+    const id = created.group!.id
+    await groups.post({ id, from: 'session-lead', text: '第一条', targets: ['session-b'], kind: 'agent' })
+    await groups.post({ id, from: 'session-lead', text: '第二条', targets: ['session-b'], kind: 'agent' })
+    assert.equal(sent.length, 2)
+    assert.ok(sent[0]!.includes('group_read'), '第一次要带完整用法（含 group_read 提示）')
+    assert.ok(!sent[1]!.includes('group_read'), '第二次起不再复述用法')
+    assert.ok(sent[1]!.includes('第二条'))
+    assert.ok(sent[1]!.includes('成员：'), '极短版仍带名单')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('工具形状：十个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {

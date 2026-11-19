@@ -26,6 +26,8 @@ export interface GroupMember {
   sessionId: string
   /** 界面上显示用的名字（可选；面板拿会话标题填）。 */
   label?: string
+  /** 用户给的身份（2026-11-19）：前端主程 / 后端主程 / 总经理……群内 agent 也读得到。 */
+  role?: string
   joinedAt: number
 }
 
@@ -38,6 +40,12 @@ export interface GroupRecord {
   updatedAt: number
   /** 群主（2026-11-19）：用户 @ 多个 agent 时由它分工；未设则按 @ 顺序直投。 */
   ownerSessionId?: string
+  /**
+   * 已经收到过「完整用法」的成员（sessionId → 时刻）。
+   *
+   * 2026-11-19：投递不再每条都灌一遍说明书——第一次完整，之后只带极短的头部。
+   */
+  briefed?: Record<string, number>
   /** 解散时刻（2026-11-19）：解散后群对成员不可用，记录保留给用户看。 */
   dissolvedAt?: number
 }
@@ -52,6 +60,8 @@ export interface GroupEntry {
   /** 这条 @ 了谁（空 = 只说给用户看，不投递）。 */
   targets?: string[]
   text: string
+  /** 给用户看的摘要（agent 回复才有）：首行「摘要：…」，解析不到取前 25 字。 */
+  summary?: string
 }
 
 export interface GroupsDeps {
@@ -119,6 +129,7 @@ export function readGroup(dir: string, id: string): GroupRecord | undefined {
       createdAt: Number(parsed.createdAt ?? 0),
       updatedAt: Number(parsed.updatedAt ?? 0),
       ...(typeof parsed.ownerSessionId === 'string' && parsed.ownerSessionId.trim() !== '' ? { ownerSessionId: parsed.ownerSessionId.trim() } : {}),
+      ...(parsed.briefed !== null && typeof parsed.briefed === 'object' ? { briefed: parsed.briefed as Record<string, number> } : {}),
       ...(Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}),
     }
   } catch {
@@ -140,14 +151,35 @@ export function listGroups(dir: string): GroupRecord[] {
   }
 }
 
-/** 名单一行：`名字(短号)`，界面上也是这么显示。 */
+/** 名单一行：`名字(身份)`，agent 靠它猜出各人职责。 */
 export function rosterLine(group: GroupRecord, titleOf?: (sessionId: string) => string | undefined): string {
   return group.members
     .map((member) => {
       const title = member.label ?? titleOf?.(member.sessionId)?.trim()
-      return title !== undefined && title !== '' ? title + '(' + shortId(member.sessionId) + ')' : shortId(member.sessionId)
+      const name = title !== undefined && title !== '' ? title : shortId(member.sessionId)
+      const crown = group.ownerSessionId === member.sessionId ? '👑' : ''
+      const role = typeof member.role === 'string' && member.role.trim() !== '' ? '（' + member.role.trim() + '）' : ''
+      return crown + name + role
     })
     .join('、')
+}
+
+/**
+ * 从一段回复里取摘要（2026-11-19）。
+ *
+ * 约定写在 skill 里：回复首行写 `摘要：一句话`。解析不到就取正文前 25 个字兜底——
+ * 群里那条气泡是给用户扫一眼的，全文仍然留在记录里（点开能看）。
+ */
+export function summarize(text: string): string {
+  const raw = String(text ?? '')
+  const firstLine = raw.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== '') ?? ''
+  const matched = /^(?:摘要|summary)\s*[:：]\s*(.+)$/i.exec(firstLine)
+  if (matched !== null) {
+    const summary = matched[1]!.trim()
+    if (summary !== '') return summary.slice(0, 120)
+  }
+  const flat = raw.replace(/\s+/g, ' ').trim()
+  return flat.slice(0, 25)
 }
 
 /** 投递给被 @ 的成员的那段话：只带他需要知道的（看不到整段群聊）。 */
@@ -159,15 +191,25 @@ export function deliveryText(
   titleOf?: (sessionId: string) => string | undefined,
   /** 这条是投给谁的：协作对象要把它排除掉（不能把自己列成自己的协作对象）。 */
   recipient?: string,
+  /** 第二次及以后：只带极短头部，不再复述工具用法（2026-11-19）。 */
+  brief?: boolean,
 ): string {
   const peers = others
     .filter((sessionId) => sessionId !== from && sessionId !== recipient)
     .map((sessionId) => titleOf?.(sessionId)?.trim() || shortId(sessionId))
+  const ownerLabel = group.ownerSessionId === undefined ? '' : titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)
+  if (brief === true) {
+    return [
+      '【群 ' + group.name + ' · 来自 ' + (from === 'user' ? '用户' : shortId(from)) + '】',
+      text.trim(),
+      '成员：' + rosterLine(group, titleOf) + (ownerLabel === '' ? '' : '｜群主 ' + ownerLabel),
+    ].join('\n')
+  }
   return [
     '【群 ' + group.name + ' · ' + group.id + ' · 来自 ' + (from === 'user' ? '用户' : shortId(from)) + '】',
     text.trim(),
     '',
-    '群成员：' + rosterLine(group, titleOf),
+    '群成员：' + rosterLine(group, titleOf) + (ownerLabel === '' ? '' : '｜群主 ' + ownerLabel),
     peers.length > 0 ? '本轮协作对象：' + peers.join('、') : '本轮只有你。',
     '你看不到群里的整段记录（插件只投给你被 @ 的部分）。要说点什么就调 group_post：groupId=' +
       group.id +
@@ -257,8 +299,9 @@ export function createGroups(deps: GroupsDeps) {
         continue
       }
       lastDeliveryAt.set(key, now())
-      // 每个收件人一份正文：协作对象里不能出现他自己。
-      const body = deliveryText(group, from, text, targets, titleOf, target)
+      // 每个收件人一份正文：协作对象里不能出现他自己；第二次起只带极短头部。
+      const brief = group.briefed?.[target] !== undefined
+      const body = deliveryText(group, from, text, targets, titleOf, target, brief)
       const result = await deps.deliver(target, body).catch((error: unknown) => ({
         ok: false,
         message: String((error as Error)?.message ?? error),
@@ -268,6 +311,11 @@ export function createGroups(deps: GroupsDeps) {
         ok: result.ok === true,
         ...(result.ok === true || result.message === undefined ? {} : { message: String(result.message).slice(0, 160) }),
       })
+      // 投成功就记一笔"这个成员已经知道怎么用了"，之后改投极短版本
+      if (result.ok === true) {
+        group.briefed = { ...(group.briefed ?? {}), [target]: now() }
+        save(group)
+      }
     }
     return out
   }
@@ -442,6 +490,28 @@ export function createGroups(deps: GroupsDeps) {
       return before === group.members.length ? { ok: true, message: '本来就不在群里。' } : { ok: true }
     },
 
+    /** 设置某个成员的身份（只在用户侧改；agent 只能读）。 */
+    setMemberRole(input: { id: string; sessionId: string; role: string }): { ok: boolean; group?: GroupRecord; message?: string } {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      const member = group.members.find((row) => row.sessionId === input.sessionId) ??
+        group.members.find((row) => shortId(row.sessionId) === String(input.sessionId ?? '').trim())
+      if (member === undefined) return { ok: false, message: '这个人不在群里。' }
+      const role = String(input.role ?? '').trim().slice(0, 20)
+      if (role === '') delete member.role
+      else member.role = role
+      group.updatedAt = now()
+      save(group)
+      append(group.id, {
+        at: now(),
+        kind: 'system',
+        from: 'system',
+        text: shortId(member.sessionId) + (role === '' ? ' 的身份已清空' : ' 的身份设为「' + role + '」'),
+      })
+      return { ok: true, group }
+    },
+
     /** 指定 / 更换群主（必须是群成员）。 */
     setOwner(input: { id: string; sessionId: string }): { ok: boolean; group?: GroupRecord; message?: string } {
       const alive = live(input.id)
@@ -561,7 +631,14 @@ export function createGroups(deps: GroupsDeps) {
         return { ok: false, message: '群主一次最多派 ' + MAX_DISPATCH_TARGETS + ' 个活：拆成几轮。' }
       }
 
-      const entry: GroupEntry = { at: now(), kind, from, ...(targets.length > 0 ? { targets } : {}), text }
+      const entry: GroupEntry = {
+        at: now(),
+        kind,
+        from,
+        ...(targets.length > 0 ? { targets } : {}),
+        text,
+        ...(kind === 'agent' ? { summary: summarize(text) } : {}),
+      }
       append(group.id, entry)
       group.updatedAt = now()
       save(group)
