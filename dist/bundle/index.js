@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.131" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.132" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38331,13 +38331,19 @@ function deliveryText(group, from, text, others, titleOf, recipient, brief) {
   ].join("\n");
 }
 function joinNotice(group, titleOf) {
+  const owner = group.ownerSessionId === void 0 ? "" : titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId);
   return [
     "\u3010\u5165\u7FA4\u901A\u77E5 \xB7 " + group.name + " \xB7 " + group.id + "\u3011",
-    "\u4F60\u88AB\u62C9\u8FDB\u8FD9\u4E2A\u7FA4\u4E86\u3002\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + "\u3002",
-    "\u7528\u6CD5\uFF08\u8BE6\u89C1 skill dafeiyu-groups\uFF0C\u6216\u8C03 groups_guide\uFF09\uFF1A",
-    "\xB7 \u7FA4\u91CC\u6709\u4EBA @ \u4F60\u65F6\uFF0C\u4F60\u4F1A\u6536\u5230\u4E00\u6761\u72EC\u7ACB\u6D88\u606F\uFF08\u5E26\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF09\u2014\u2014\u4F60**\u770B\u4E0D\u5230**\u7FA4\u91CC\u7684\u5176\u4ED6\u6D88\u606F\uFF1B",
-    "\xB7 \u8981\u628A\u7ED3\u8BBA\u540C\u6B65\u7ED9\u7FA4\u91CC\uFF0C\u8C03 group_post(groupId=" + group.id + ", text=...)\uFF0C\u9700\u8981\u70B9\u540D\u5C31\u5E26 to\uFF1B",
-    "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u8C03 group_read(groupId=" + group.id + ")\u3002"
+    "\u4F60\u88AB\u62C9\u8FDB\u8FD9\u4E2A\u7FA4\u4E86\uFF08\u8FD9\u662F\u4E00\u6B21\u5524\u9192\uFF1A\u4E0D\u7528\u7B49\u7528\u6237\u518D\u558A\u4F60\uFF09\u3002",
+    "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (owner === "" ? "" : "\uFF5C\u7FA4\u4E3B " + owner + "\uFF08\u7528\u6237 @ \u591A\u4EBA\u65F6\u7531\u7FA4\u4E3B\u5206\u5DE5\uFF09"),
+    "",
+    "\u7528\u6CD5\uFF08\u4E4B\u540E\u7684\u6D88\u606F\u53EA\u5E26\u6781\u77ED\u5934\u90E8\uFF0C\u8FD9\u4EFD\u8BF4\u660E\u4E0D\u518D\u91CD\u590D\uFF1B\u5FD8\u4E86\u53EF\u4EE5\u8C03 groups_guide\uFF09\uFF1A",
+    "\xB7 \u6709\u4EBA @ \u4F60\u65F6\u4F60\u4F1A\u6536\u5230\u4E00\u6761\u72EC\u7ACB\u6D88\u606F\uFF0C\u5E26\u300C\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\u300D\u2014\u2014\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u5176\u4ED6\u6D88\u606F\uFF1B",
+    "\xB7 \u56DE\u590D\u7528 group_post(groupId=" + group.id + ", text=...)\uFF0C**\u9996\u884C\u5199\u300C\u6458\u8981\uFF1A\u4E00\u53E5\u8BDD\u300D**\uFF08\u7FA4\u91CC\u53EA\u663E\u793A\u6458\u8981\uFF0C\u5168\u6587\u70B9\u5F00\u624D\u770B\uFF09\uFF1B",
+    "\xB7 \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF08\u6C47\u62A5\u5BF9\u8C61\uFF09\uFF1Bto \u53EF\u4EE5\u586B\u5BF9\u65B9\u77ED\u53F7\u6216\u4F1A\u8BDD id\uFF1B",
+    "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002",
+    "",
+    "\u5982\u679C\u4F60\u73B0\u5728\u6B63\u5FD9\uFF0C\u5148\u628A\u8FD9\u6761\u8BB0\u4E0B\uFF1B\u6709\u7A7A\u518D\u56DE\u3002\u77E5\u9053\u6709\u8FD9\u4E2A\u7FA4\u3001\u77E5\u9053\u600E\u4E48\u56DE\u5C31\u591F\u4E86\u3002"
   ].join("\n");
 }
 function memberNotice(group, subject, action, titleOf) {
@@ -38549,6 +38555,36 @@ function createGroups(deps) {
       }
       return before === group.members.length ? { ok: true, message: "\u672C\u6765\u5C31\u4E0D\u5728\u7FA4\u91CC\u3002" } : { ok: true };
     },
+    /**
+     * 主动唤醒成员（2026-11-19）：建群之后要把「你进群了」推给每个成员。
+     *
+     * 为什么不能等用户的第一条群消息：agent 空闲时不会自己去看什么——
+     * 用户不说一句，它就不知道自己被拉进群了。所以建群/加人之后立刻推一次入群通知
+     * （带用法），并把成员标成已告知，之后的消息走极短版。
+     */
+    async announce(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message };
+      const group = alive.group;
+      const notified = [];
+      for (const member of group.members) {
+        if (member.sessionId === input2.except) continue;
+        const result2 = await deps.deliver(member.sessionId, joinNotice(group, titleOf)).catch((error62) => ({
+          ok: false,
+          message: String(error62?.message ?? error62)
+        }));
+        notified.push({
+          sessionId: member.sessionId,
+          ok: result2.ok === true,
+          ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
+        });
+        if (result2.ok === true) {
+          group.briefed = { ...group.briefed ?? {}, [member.sessionId]: now() };
+          save(group);
+        }
+      }
+      return { ok: notified.every((row) => row.ok), notified };
+    },
     /** 设置某个成员的身份（只在用户侧改；agent 只能读）。 */
     setMemberRole(input2) {
       const alive = live(input2.id);
@@ -38756,6 +38792,10 @@ function buildGroupTools(deps) {
           ...input2.includeMe === false ? { includeMe: false } : {}
         });
         deps.log("agent \u5EFA\u7FA4", { ok: String(created.ok) });
+        if (created.ok && created.group !== void 0) {
+          const announced = await deps.groups.announce({ id: created.group.id, ...me === void 0 ? {} : { except: me } });
+          return JSON.stringify({ ...created, announced });
+        }
         return JSON.stringify(created);
       }
     },
@@ -39103,15 +39143,21 @@ function groupsHandlers(deps) {
     },
     {
       path: GROUPS_CREATE_ROUTE,
-      handler: writeRoute(
-        (body) => deps.groups.create({
+      handler: writeRoute(async (body) => {
+        const created = deps.groups.create({
           name: String(body.name ?? ""),
           members: Array.isArray(body.sessionIds) ? body.sessionIds.map((id) => String(id)) : [],
           ...typeof body.me === "string" && body.me.trim() !== "" ? { me: body.me.trim() } : {},
           // 面板传「第一个被勾选的会话」当群主
           ...typeof body.owner === "string" && body.owner.trim() !== "" ? { owner: body.owner.trim() } : {}
-        })
-      )
+        });
+        if (created.ok && created.group !== void 0) {
+          const except = typeof body.me === "string" ? body.me.trim() : "";
+          const announced = await deps.groups.announce({ id: created.group.id, ...except === "" ? {} : { except } });
+          return { ...created, announced };
+        }
+        return created;
+      })
     },
     {
       path: GROUPS_INVITE_ROUTE,
@@ -42786,7 +42832,35 @@ function applyInner(ctx, injected, clock) {
           return [];
         }
       },
+      /*
+       * 投递要能**唤醒**空闲会话（2026-11-19 真机）：只 sendPrompt 时，空闲的 agent 不会开新一轮，
+       * 入群通知就一直躺着——表现是"agent 不知道自己进群了，得用户喊一声"。
+       * 与转生/收件箱同一套：正在跑 → agent.inject 排队；空闲/冷 → sendPrompt 等于替用户按下发送。
+       */
       deliver: async (sessionId, text) => {
+        let service;
+        try {
+          service = ctx.get?.("agents", true);
+        } catch {
+          service = void 0;
+        }
+        const list = service && typeof service.list === "function" ? service.list() ?? [] : [];
+        const agent = (Array.isArray(list) ? list : []).find(
+          (row) => !!row && typeof row.id === "string" && row.id === sessionId
+        );
+        if (agent && typeof agent.inject === "function" && agent.status === "running") {
+          try {
+            agent.inject({
+              id: globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+              role: "user",
+              content: [{ type: "text", text }],
+              source: { kind: "user" }
+            });
+            return { ok: true };
+          } catch (error62) {
+            return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+          }
+        }
         const port = kernel;
         const send = port?.sendPrompt;
         if (!port || !send) return { ok: false, message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF08\u6CA1\u6709 sendPrompt\uFF09" };
