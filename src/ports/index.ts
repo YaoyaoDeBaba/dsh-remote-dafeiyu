@@ -405,6 +405,14 @@ export interface KernelPort {
    */
   listSubagents?(sessionId: string, options?: { descendants?: boolean; includeArchived?: boolean }): Promise<KernelSubagent[]>
   /**
+   * 上一次读子代理目录的取证：走的哪条路（投影 / 服务 / 全量回退）、读了几条、错在哪。
+   *
+   * 2026-11-19 加：宿主换 app 版本后 `subagents` 服务的形状变了，读不到子代理时
+   * **代码里一条异常都不会冒**（每条路都在 catch 里降级），只有面板上是空的。
+   * 把这个带出来，下次再变就不用靠猜。
+   */
+  lastCatalogDebug?(): { source: string; trusted: boolean; count: number; error?: string } | undefined
+  /**
    * 只要「几个 / 几个在跑」，**纯内存、零 I/O**。
    *
    * 手机端面板关着时每 5 秒拉一次列表，只为保住 🐝 徽标数字；走 `listSubagents` 的话

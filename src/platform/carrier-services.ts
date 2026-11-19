@@ -429,6 +429,15 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   const catalogCache = new Map<string, { at: number; value: SubagentCatalogRead; ttl: number }>()
 
   /**
+   * 上一次读子代理目录的取证（2026-11-19）：走的哪条路、读了几条、错在哪。
+   *
+   * 为什么要有：宿主换版本后"读不出正在干活的子代理"这类故障，**代码里一个异常都不会冒出来**
+   * （每条路都在 catch 里静默降级），只有面板上是空的。把这条路记下来、由路由带出去，
+   * 下次再变形状就不用凭猜。
+   */
+  let catalogDebug: { source: string; trusted: boolean; count: number; error?: string } | undefined
+
+  /**
    * 记一个子代理及其父会话。
    *
    * `invalidateCatalog` 只在**从别的来源**得知"多了个成员"时才为 true（目前是 `agent/status`）：
@@ -943,42 +952,38 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   async function readSubagentCatalog(parentSessionId: string, descendants: boolean): Promise<SubagentCatalogRead> {
     const out = new Map<string, SubagentCatalogEntry>()
     const service = services.subagents
-    if (!service) return { entries: out, trusted: false }
+    if (!service) {
+      catalogDebug = { source: 'none', trusted: false, count: 0, error: '没有 subagents 服务' }
+      return { entries: out, trusted: false }
+    }
     const call = (name: 'listDescendants' | 'listChildren'): ((...args: unknown[]) => unknown) | undefined =>
       fn(service, name)
-    /**
-     * 读一次投影。**除 label 之外的字段也留着**（2026-11-13）：
-     * `activity === 'inactive'` 是"这条子代理没被加载"的唯一信号，而冷会话的
-     * createdAt 只有持久化那面有——调用方要按它决定"要不要去查那份持久化列表"。
-     * 顺手把 `mode/depth/hasChildren` 一起存下，免得下次想用又得回来改一遍。
-     */
     /** 投影给的一条（只留我们用得上的字段，其余全走"看不到就空"）。 */
     type CatalogRow = {
       id?: unknown
       label?: unknown
+      name?: unknown
       depth?: unknown
       activity?: unknown
       mode?: unknown
       hasChildren?: unknown
     }
-    const read = async (name: 'listDescendants' | 'listChildren', directOnly = false): Promise<boolean> => {
-      const list = call(name)
-      if (!list) return false
-      const rows = (await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4_000)) as Array<
-        CatalogRow | undefined
-      >
-      for (const row of rows ?? []) {
+    const ingest = (rows: CatalogRow[], directOnly = false): void => {
+      for (const row of rows) {
         if (typeof row?.id !== 'string' || row.id === '') continue
-        // `listDescendants` 会把整棵子树都带出来；只要直接子级时按 depth 过滤（缺 depth 视作 1）。
         if (directOnly && row.depth !== undefined && Number(row.depth) !== 1) continue
-        const label = typeof row.label === 'string' && row.label.trim() !== '' ? row.label.trim() : undefined
+        const label =
+          typeof row.label === 'string' && row.label.trim() !== ''
+            ? row.label.trim()
+            : typeof row.name === 'string' && row.name.trim() !== ''
+              ? row.name.trim()
+              : undefined
         const activity =
           typeof row.activity === 'string' && row.activity.trim() !== '' ? row.activity.trim() : undefined
         const mode = typeof row.mode === 'string' && row.mode.trim() !== '' ? row.mode.trim() : undefined
         const depth = typeof row.depth === 'number' && Number.isFinite(row.depth) ? row.depth : undefined
         const hasChildren = typeof row.hasChildren === 'boolean' ? row.hasChildren : undefined
-        // 两次读（listChildren → 失败后退回 listDescendants）会覆盖同一个 id：
-        // 合并而不是替换，否则后一次缺 label 就把前一次读到的名字抹了。
+        // 两次读会覆盖同一个 id：合并而不是替换，否则后一次缺 label 就把前一次读到的名字抹了。
         out.set(row.id, {
           ...(out.get(row.id) ?? {}),
           ...(label === undefined ? {} : { label }),
@@ -988,28 +993,103 @@ export function createServicesKernel(services: ServicesBundle, options: Services
           ...(hasChildren === undefined ? {} : { hasChildren }),
         })
       }
-      // 空数组也是"调用成功"：投影明确回答了这个父会话没有子代理。
-      return Array.isArray(rows)
+    }
+    /**
+     * 内核各种返回形状归一成行数组（2026-11-19）。
+     *
+     * 新宿主（2026-11-18 那版 app）的 `listDescendants` 回的是 `{kind:'child'|'diagnostic'}` 行数组，
+     * 老宿主回的是纯数组；投影那条路给的是 `{projections:{values:{subagentCatalog:[...]}}}`。
+     * 以前只认"数组"，形状一变就整条静默失效——表现就是"正在干活的子代理一个都读不出来"。
+     */
+    const asRows = (value: unknown): CatalogRow[] | undefined => {
+      if (Array.isArray(value)) return value as CatalogRow[]
+      if (value === null || typeof value !== 'object') return undefined
+      const record = value as Record<string, unknown>
+      for (const key of ['children', 'entries', 'items']) {
+        const candidate = record[key]
+        if (Array.isArray(candidate)) return candidate as CatalogRow[]
+      }
+      const projections = record.projections as { values?: Record<string, unknown> } | undefined
+      const catalog = projections?.values?.subagentCatalog
+      if (Array.isArray(catalog)) return catalog as CatalogRow[]
+      return undefined
+    }
+    /**
+     * 直接读投影——内核自己的 `listChildren` 就是这么实现的：
+     * `ctx.get('sessionQuery').observeSession(id).projections.values.subagentCatalog`。
+     * 宿主服务换了形状时这条路还在，所以它排第一。
+     */
+    const readViaProjection = async (sessionId: string): Promise<CatalogRow[] | undefined> => {
+      const query = services.sessionQuery
+      const observe = fn(query, 'observeSession')
+      if (!observe) return undefined
+      const handle = await withTimeout(Promise.resolve(observe.call(query, sessionId)), 4_000)
+      try {
+        return asRows(handle)
+      } finally {
+        try {
+          const dispose = (handle as { [Symbol.dispose]?: () => void } | undefined)?.[Symbol.dispose]
+          if (typeof dispose === 'function') dispose.call(handle)
+        } catch {
+          /* 释放失败不影响读到的数据 */
+        }
+      }
     }
     let trusted = false
+    let source = 'none'
+    let lastError: string | undefined
     try {
-      if (descendants) {
-        if (await read('listDescendants')) trusted = true
-        if (out.size > 0) return { entries: out, trusted }
-      }
-      if (await read('listChildren')) {
+      const projected = await readViaProjection(parentSessionId)
+      if (projected !== undefined) {
+        ingest(projected)
         trusted = true
-      } else if (await read('listDescendants', true)) {
-        // 2026-11-12：DSH 0.2.2-rc.2 把 `listChildren` 从服务上**删掉了**，只留 `listDescendants`。
-        // 旧代码只认 `listChildren`，拿不到就静默退回"扫全量会话"，而那条路上没有 label，
-        // 于是面板上所有子代理都变成「未按规范填写」（内核里的 label 其实好好的）。
-        // 这里补一条回退：用 `listDescendants` 取整棵子树，再按 depth 只留直接子级。
-        trusted = true
+        source = 'projection'
       }
     } catch (error) {
-      log('subagent catalog unavailable', { message: messageOf(error).slice(0, 120) })
-      return { entries: out, trusted: out.size > 0 }
+      lastError = messageOf(error).slice(0, 120)
     }
+    /** 服务那条路（老宿主 / 投影读不到时）。形状同样走 asRows 归一。 */
+    const read = async (name: 'listDescendants' | 'listChildren', directOnly = false): Promise<boolean> => {
+      const list = call(name)
+      if (!list) {
+        lastError = lastError ?? `${name} 不在 subagents 服务上`
+        return false
+      }
+      const raw = await withTimeout(Promise.resolve(list.call(service, parentSessionId)), 4_000)
+      const rows = asRows(raw)
+      if (rows === undefined) {
+        lastError = lastError ?? `${name} 返回的形状不认识：${Object.keys(raw ?? {}).slice(0, 8).join(',') || typeof raw}`
+        return false
+      }
+      ingest(rows, directOnly)
+      return true
+    }
+    if (!trusted) {
+      try {
+        if (descendants) {
+          if (await read('listDescendants')) {
+            trusted = true
+            source = 'service.listDescendants'
+          }
+        }
+        if (!trusted && (await read('listChildren'))) {
+          trusted = true
+          source = 'service.listChildren'
+        } else if (!trusted && (await read('listDescendants', true))) {
+          // 2026-11-12：DSH 0.2.2-rc.2 把 listChildren 从服务上删了，只留 listDescendants。
+          trusted = true
+          source = 'service.listDescendants(depth=1)'
+        }
+      } catch (error) {
+        lastError = messageOf(error).slice(0, 120)
+      }
+    }
+    if (!trusted) {
+      log('subagent catalog unavailable', { message: (lastError ?? '未知').slice(0, 120) })
+    }
+    catalogDebug = { source, trusted, count: out.size, ...(lastError === undefined ? {} : { error: lastError }) }
+    // trusted 的语义是"这次读成功了吗"，**空数组也算成功**——不然没有子代理的会话每刷新一次
+    // 都会退回全量会话扫描（2026-11-11 修过的那个隐患，别又踩回去）。
     return { entries: out, trusted }
   }
 
@@ -2825,6 +2905,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     avatarManifest,
     avatarSheet,
     listSubagents,
+    lastCatalogDebug: () => catalogDebug,
     subagentCounts,
     newSession,
     subscribe,

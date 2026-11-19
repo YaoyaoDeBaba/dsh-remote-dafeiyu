@@ -25,6 +25,8 @@ export interface SubagentRouteDeps {
   config: { read(): SubagentsConfig; write(patch: unknown): SubagentsConfig }
   /** 当前风格的提示词（设置页预览用，随 mode 变化）。 */
   guidanceText?: () => string
+  /** 上一次读子代理目录的取证（走哪条路 / 几条 / 错在哪）；宿主不给就不下发。 */
+  debug?: () => unknown
   /** 把提示段推送到所有在线会话（一次性上下文；用户按钮触发）。 */
   pushGuidance?: (which: 'subagent' | 'xyq' | 'both', sessionId?: string, mode?: string) => Promise<GuidancePushResult>
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
@@ -66,7 +68,9 @@ export function subagentsHandler(deps: SubagentRouteDeps) {
     const includeArchived = url.searchParams.get('includeArchived') === '1'
     try {
       const items = await deps.list(sessionId, { descendants, includeArchived })
-      json(response, 200, { ok: true, items, config: deps.config.read() })
+      // catalogDebug：读不到时唯一的现场（面板只显示成空，代码里一条异常都不会冒）
+      const debug = deps.debug?.()
+      json(response, 200, { ok: true, items, config: deps.config.read(), ...(debug === undefined ? {} : { debug }) })
     } catch (error) {
       const message = String((error as Error)?.message ?? error).slice(0, 200)
       deps.log('子代理列表读取失败', { message })

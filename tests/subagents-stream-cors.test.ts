@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { subagentsStreamHandler } from '../src/subagents/routes.js'
+import { subagentsHandler, subagentsStreamHandler } from '../src/subagents/routes.js'
 
 interface FakeResponse {
   status: number
@@ -37,7 +37,9 @@ function makeResponse(): FakeResponse {
       this.chunks.push(String(chunk))
       return true
     },
-    end() {},
+    end(chunk?: string) {
+      if (typeof chunk === 'string') this.chunks.push(chunk)
+    },
   }
 }
 
@@ -94,4 +96,28 @@ test('SSE：外来 Origin 仍然不许跨源（这条 CORS 不是给任意网页
   subagentsStreamHandler()(call.request, response as unknown as ServerResponse)
   call.close()
   assert.equal(response.headers['access-control-allow-origin'], undefined, '外来 Origin 不许回声')
+})
+
+test('GET /subagents 带出取证：面板只看到空表时也知道是哪条路读不出来', async () => {
+  const response = makeResponse()
+  const handler = subagentsHandler({
+    list: async () => [],
+    config: {
+      read: () => ({ version: 1, enabled: true, guidance: true, idleWarnMs: 1, mode: 'foreman', autoArchive: false }),
+      write: () => ({ version: 1, enabled: true, guidance: true, idleWarnMs: 1, mode: 'foreman', autoArchive: false }),
+    },
+    debug: () => ({ source: 'none', trusted: false, count: 0, error: 'listChildren 返回的形状不认识' }),
+    log: () => {},
+  })
+  const request = {
+    method: 'GET',
+    url: '/api/dsh-remote-dafeiyu/subagents?sessionId=session-1',
+    headers: { host: '127.0.0.1:19387' },
+    on() {},
+  } as unknown as IncomingMessage
+  await handler(request, response as unknown as ServerResponse)
+  const body = JSON.parse(response.chunks.join('')) as { ok: boolean; items: unknown[]; debug?: { source?: string } }
+  assert.equal(body.ok, true)
+  assert.deepEqual(body.items, [])
+  assert.equal(body.debug?.source, 'none', '空表时必须带出走的哪条路')
 })

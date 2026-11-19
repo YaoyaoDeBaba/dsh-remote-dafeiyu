@@ -1497,6 +1497,10 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
         if (!port || !list) throw new Error('主机这一代不支持子代理列表（没有 listSubagents）')
         return list.call(port, sessionId, options)
       },
+      debug: () => {
+        const port = kernel
+        return port?.lastCatalogDebug?.()
+      },
       archive: async (sessionId, archived) => {
         const port = kernel
         const archive = port?.archiveSession
