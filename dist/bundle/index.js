@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.122" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.124" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38249,7 +38249,8 @@ function readGroup(dir, id) {
       name: parsed.name,
       members: parsed.members,
       createdAt: Number(parsed.createdAt ?? 0),
-      updatedAt: Number(parsed.updatedAt ?? 0)
+      updatedAt: Number(parsed.updatedAt ?? 0),
+      ...Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}
     };
   } catch {
     return void 0;
@@ -38297,6 +38298,21 @@ function joinNotice(group, titleOf) {
     "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u8C03 group_read(groupId=" + group.id + ")\u3002"
   ].join("\n");
 }
+function memberNotice(group, subject, action, titleOf) {
+  const who = titleOf?.(subject)?.trim() || shortId2(subject);
+  return [
+    "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + "\u3011",
+    who + action + "\u4E86\u672C\u7FA4\u3002",
+    "\u73B0\u5728\u7684\u6210\u5458\uFF1A" + rosterLine(group, titleOf)
+  ].join("\n");
+}
+function unavailableNotice(group, reason) {
+  return [
+    "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + "\u3011",
+    reason === "dissolved" ? "\u8FD9\u4E2A\u7FA4\u5DF2\u7ECF\u89E3\u6563\uFF0C**\u5BF9\u4F60\u4E0D\u518D\u53EF\u7528**\uFF1A\u522B\u518D\u5F80\u8FD9\u91CC\u53D1\u6D88\u606F\uFF0C\u4E5F\u4E0D\u9700\u8981\u518D\u7B49\u7FA4\u91CC\u7684\u5176\u4ED6\u901A\u77E5\u3002" : "\u4F60\u5DF2\u7ECF\u88AB\u79FB\u51FA\u8FD9\u4E2A\u7FA4\uFF0C**\u672C\u7FA4\u5BF9\u4F60\u4E0D\u518D\u53EF\u7528**\uFF1A\u522B\u518D\u5F80\u8FD9\u91CC\u53D1\u6D88\u606F\uFF0C\u540E\u7EED\u522B\u518D\u5F15\u7528\u8FD9\u91CC\u7684\u7ED3\u8BBA\u3002",
+    "\u5982\u679C\u4F60\u8FD8\u6709\u6CA1\u540C\u6B65\u5B8C\u7684\u4E8B\u60C5\uFF0C\u76F4\u63A5\u95EE\u7528\u6237\u3002"
+  ].join("\n");
+}
 function createGroups(deps) {
   const now = deps.now ?? (() => Date.now());
   const titleOf = deps.titleOf;
@@ -38337,6 +38353,28 @@ function createGroups(deps) {
       });
     }
     return out;
+  };
+  const live = (id) => {
+    const group = readGroup(deps.dir, String(id ?? "").trim());
+    if (group === void 0) return { message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08id \u53EF\u80FD\u4E0D\u5BF9\uFF09\u3002" };
+    if (group.dissolvedAt !== void 0) return { message: "\u8FD9\u4E2A\u7FA4\u5DF2\u7ECF\u89E3\u6563\u4E86\uFF0C\u7528\u4E0D\u4E86\u3002" };
+    return { group };
+  };
+  const notifyAll = async (group, subject, text) => {
+    const results = [];
+    for (const member of group.members) {
+      if (member.sessionId === subject) continue;
+      const result2 = await deps.deliver(member.sessionId, text).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      results.push({
+        sessionId: member.sessionId,
+        ok: result2.ok === true,
+        ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
+      });
+    }
+    return results;
   };
   return {
     /** 建群：发起方自动入群（除非给了 includeMe:false），可顺手带几个成员。 */
@@ -38385,18 +38423,20 @@ function createGroups(deps) {
       group.updatedAt = now();
       if (!save(group)) return { ok: false, message: "\u6210\u5458\u6CA1\u5199\u8FDB\u53BB\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
       if (added.length === 0) return { ok: true, group, added };
-      append(group.id, { at: now(), kind: "system", from: "system", targets: added, text: "\u62C9\u8FDB\u7FA4\uFF1A" + added.map((id) => shortId2(id)).join("\u3001") });
       const notified = [];
       for (const id of added) {
-        const result2 = await deps.deliver(id, joinNotice(group, titleOf)).catch((error62) => ({
+        const joined = await deps.deliver(id, joinNotice(group, titleOf)).catch((error62) => ({
           ok: false,
           message: String(error62?.message ?? error62)
         }));
         notified.push({
           sessionId: id,
-          ok: result2.ok === true,
-          ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
+          ok: joined.ok === true,
+          ...joined.ok === true || joined.message === void 0 ? {} : { message: String(joined.message).slice(0, 160) }
         });
+        const others = await notifyAll(group, id, memberNotice(group, id, "\u52A0\u5165", titleOf));
+        notified.push(...others);
+        append(group.id, { at: now(), kind: "system", from: "system", text: shortId2(id) + " \u52A0\u5165\u4E86\u672C\u7FA4" });
       }
       return { ok: true, group, added, notified };
     },
@@ -38413,13 +38453,60 @@ function createGroups(deps) {
       }
       return before === group.members.length ? { ok: true, message: "\u672C\u6765\u5C31\u4E0D\u5728\u7FA4\u91CC\u3002" } : { ok: true };
     },
+    /** 把某个成员移出群：通知他本人「不再可用」，通知剩下的人「XX 离开了本群」。 */
+    async remove(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message };
+      const group = alive.group;
+      const subject = String(input2.sessionId ?? "").trim();
+      if (!group.members.some((member) => member.sessionId === subject)) {
+        return { ok: false, message: "\u8FD9\u4E2A\u4F1A\u8BDD\u4E0D\u5728\u7FA4\u91CC\u3002" };
+      }
+      group.members = group.members.filter((member) => member.sessionId !== subject);
+      group.updatedAt = now();
+      save(group);
+      append(group.id, { at: now(), kind: "system", from: "system", text: shortId2(subject) + " \u88AB\u79FB\u51FA\u4E86\u672C\u7FA4" });
+      const notified = [];
+      const kicked = await deps.deliver(subject, unavailableNotice(group, "removed")).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      notified.push({ sessionId: subject, ok: kicked.ok === true, ...kicked.message === void 0 ? {} : { message: kicked.message } });
+      const others = await notifyAll(group, subject, memberNotice(group, subject, "\u79BB\u5F00", titleOf));
+      notified.push(...others);
+      return { ok: true, group, notified };
+    },
+    /** 解散群：通知全体「本群已解散、不再可用」，记录保留给用户看。 */
+    async dissolve(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message };
+      const group = alive.group;
+      group.dissolvedAt = now();
+      group.updatedAt = group.dissolvedAt;
+      save(group);
+      append(group.id, { at: group.dissolvedAt, kind: "system", from: "system", text: "\u7FA4\u5DF2\u89E3\u6563" });
+      const notified = [];
+      for (const member of group.members) {
+        const result2 = await deps.deliver(member.sessionId, unavailableNotice(group, "dissolved")).catch((error62) => ({
+          ok: false,
+          message: String(error62?.message ?? error62)
+        }));
+        notified.push({
+          sessionId: member.sessionId,
+          ok: result2.ok === true,
+          ...result2.ok === true || result2.message === void 0 ? {} : { message: String(result2.message).slice(0, 160) }
+        });
+      }
+      return { ok: true, group, notified };
+    },
     /**
      * 一条群消息：`kind:'user'` 是用户在界面上发的（targets = 他 @ 的人），
      * `kind:'agent'` 是某个成员用 group_post 发的。**只投给 targets**。
      */
     async post(input2) {
-      const group = readGroup(deps.dir, String(input2.id ?? "").trim());
-      if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08\u5148 group_create\uFF09\u3002" };
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message ?? "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08\u5148 group_create\uFF09\u3002" };
+      const group = alive.group;
       const text = String(input2.text ?? "").trim();
       if (text === "") return { ok: false, message: "\u6D88\u606F\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
       if (text.length > MAX_MESSAGE_CHARS) return { ok: false, message: "\u5355\u6761\u6700\u591A " + MAX_MESSAGE_CHARS + " \u5B57\uFF0C\u62C6\u5F00\u53D1\u3002" };
@@ -38614,6 +38701,45 @@ function buildGroupTools(deps) {
       }
     },
     {
+      name: "group_remove",
+      description: "\u628A\u67D0\u4E2A\u6210\u5458\u79FB\u51FA\u7FA4\uFF1A\u4ED6\u672C\u4EBA\u4F1A\u6536\u5230\u300C\u672C\u7FA4\u5BF9\u4F60\u4E0D\u518D\u53EF\u7528\u300D\uFF0C\u5176\u4F59\u6210\u5458\u6536\u5230\u300CXX \u79BB\u5F00\u4E86\u672C\u7FA4\u300D\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          sessionId: { type: "string", description: "\u8981\u79FB\u51FA\u7684\u4F1A\u8BDD id \u6216\u77ED\u53F7\u3002" }
+        },
+        required: ["groupId", "sessionId"]
+      },
+      output: OUT3,
+      timeoutMs: 3e4,
+      async execute(args) {
+        const input2 = args ?? {};
+        const group = deps.groups.get(asString(input2.groupId));
+        let target = asString(input2.sessionId);
+        if (group !== void 0 && !group.members.some((member) => member.sessionId === target)) {
+          const hit = group.members.find((member) => shortId2(member.sessionId) === target);
+          if (hit !== void 0) target = hit.sessionId;
+        }
+        return JSON.stringify(await deps.groups.remove({ id: asString(input2.groupId), sessionId: target }));
+      }
+    },
+    {
+      name: "group_dissolve",
+      description: "\u89E3\u6563\u7FA4\uFF1A\u5168\u4F53\u6210\u5458\u90FD\u4F1A\u6536\u5230\u300C\u7FA4\u5DF2\u89E3\u6563\u3001\u672C\u7FA4\u5BF9\u4F60\u4E0D\u518D\u53EF\u7528\u300D\uFF0C\u8BB0\u5F55\u4FDD\u7559\u7ED9\u7528\u6237\u770B\u3002",
+      parameters: {
+        type: "object",
+        properties: { groupId: { type: "string", description: "\u7FA4 id\u3002" } },
+        required: ["groupId"]
+      },
+      output: OUT3,
+      timeoutMs: 3e4,
+      async execute(args) {
+        const input2 = args ?? {};
+        return JSON.stringify(await deps.groups.dissolve({ id: asString(input2.groupId) }));
+      }
+    },
+    {
       name: "group_read",
       description: "\u8BFB\u7FA4\u91CC\u7684\u6700\u8FD1\u8BB0\u5F55\uFF08\u9ED8\u8BA4 20 \u6761\uFF0C\u6700\u591A 100\uFF09\u3002\u8865\u4E0A\u4E0B\u6587\u7528\uFF0C\u522B\u6BCF\u8F6E\u90FD\u8BFB\u3002",
       parameters: {
@@ -38655,6 +38781,8 @@ var GROUPS_INVITE_ROUTE = "/api/dsh-remote-dafeiyu/groups/invite";
 var GROUPS_POST_ROUTE = "/api/dsh-remote-dafeiyu/groups/post";
 var GROUPS_MESSAGES_ROUTE = "/api/dsh-remote-dafeiyu/groups/messages";
 var GROUPS_LEAVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/leave";
+var GROUPS_REMOVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/remove";
+var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
 function json7(response, status, body) {
   const payload = JSON.stringify(body);
@@ -38749,14 +38877,32 @@ function groupsHandlers(deps) {
   return [
     {
       path: GROUPS_LIST_ROUTE,
-      handler: readRoute(() => ({
-        groups: deps.groups.list().map((group) => ({
-          id: group.id,
-          name: group.name,
-          members: group.members,
-          updatedAt: group.updatedAt
-        }))
-      }))
+      handler: async (request, response) => {
+        applyCors(request, response);
+        if (preflight(request, response)) return;
+        const denied = rejected3(request);
+        if (denied !== void 0) {
+          json7(response, 403, { ok: false, error: denied });
+          return;
+        }
+        const rows = await (deps.listSessions?.() ?? Promise.resolve([])).catch(() => []);
+        const titles = new Map(rows.map((row) => [row.id, row.title]));
+        const short = (id) => String(id).replace(/^session-/, "").slice(0, 8);
+        json7(response, 200, {
+          ok: true,
+          groups: deps.groups.list().map((group) => ({
+            id: group.id,
+            name: group.name,
+            dissolved: group.dissolvedAt !== void 0,
+            updatedAt: group.updatedAt,
+            members: group.members.map((member) => ({
+              sessionId: member.sessionId,
+              // 名字优先级：成员自带的 label → 会话标题 → 短号（对用户显示的是名字，不是 id）
+              name: member.label?.trim() || titles.get(member.sessionId)?.trim() || short(member.sessionId)
+            }))
+          }))
+        });
+      }
     },
     {
       path: GROUPS_MESSAGES_ROUTE,
@@ -38811,6 +38957,16 @@ function groupsHandlers(deps) {
           targets: Array.isArray(body.targets) ? body.targets.map((id) => String(id)) : []
         })
       )
+    },
+    {
+      path: GROUPS_REMOVE_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.remove({ id: String(body.groupId ?? ""), sessionId: String(body.sessionId ?? "") })
+      )
+    },
+    {
+      path: GROUPS_DISSOLVE_ROUTE,
+      handler: writeRoute((body) => deps.groups.dissolve({ id: String(body.groupId ?? "") }))
     },
     {
       path: GROUPS_LEAVE_ROUTE,
@@ -39096,7 +39252,7 @@ var EXTENSIONS = [
     label: "\u5F62\u8C61",
     description: "\u5927\u80A5\u9C7C\u7684\u5F62\u8C61\u5305\uFF1A\u8BBE\u7F6E\u9875\u300C\u5F62\u8C61\u300D\u5206\u680F\uFF08\u7D20\u6750\u67E5\u770B\u5668\uFF09\u4E0E\u684C\u9762\u60AC\u6D6E\u5C0F\u9CB8\u9C7C\u3002",
     gitUrl: "https://github.com/YaoyaoDeBaba/dafeiyu-avatar",
-    commit: "445ff99775db2f5c23f8b1e379a0e519084c104f"
+    commit: "91def4e0df15a4c00c2ee09f8a5ad3a85c0b5308"
   },
   {
     id: "selfloop",
