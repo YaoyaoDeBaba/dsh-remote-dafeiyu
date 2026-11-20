@@ -133,20 +133,26 @@ export function buildHandoffTools(deps: HandoffToolDeps): Array<Record<string, u
           description:
             '边界（选填但强烈建议）：接手者不许碰的文件、目录、后台任务（本体正在动的、别人正在跑的都算）。两个工具都认。',
         },
+        content: {
+          type: 'string',
+          description:
+            '交接文档正文（选填）。给了就由插件自己落盘、直接建新会话——适合**你没有文件写入工具**的时候：把文档内容原样放这里，不要再等自己写盘。不给则按老流程等你写文件。',
+        },
       },
       required: [],
     },
     output: OUT,
     timeoutMs: 30_000,
     async execute(args: unknown, exec?: unknown): Promise<string> {
-      const input = (args ?? {}) as { sessionId?: unknown; note?: unknown; boundary?: unknown }
+      const input = (args ?? {}) as { sessionId?: unknown; note?: unknown; boundary?: unknown; content?: unknown }
       const given = typeof input.sessionId === 'string' ? input.sessionId.trim() : ''
       const sessionId = given !== '' ? given : resolveSessionId(exec)
       if (sessionId === undefined) return explainMissingSession()
       const note = typeof input.note === 'string' ? input.note.slice(0, 2000) : undefined
       const boundary = typeof input.boundary === 'string' ? input.boundary.slice(0, 500) : undefined
+      const content = typeof input.content === 'string' ? input.content.slice(0, 60_000) : undefined
       try {
-        const result = (await deps.service.start(kind, sessionId, note, boundary)) as HandoffStartResult
+        const result = (await deps.service.start(kind, sessionId, note, boundary, content)) as HandoffStartResult
         deps.log(`agent 发起${kind === 'rebirth' ? '转生' : '分身'}`, {
           sessionId,
           ok: String(result.ok),

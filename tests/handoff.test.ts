@@ -9,7 +9,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -102,6 +102,44 @@ const GOOD_DOC = "# 交接\n\n## 目标\n把交接文档写全。\n## 现状（�
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+
+test('没有文件工具的前世：给 content 就由插件落盘、直接建新会话（真机 2026-11-20）', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-content-'))
+  const { deps, calls } = fakeDeps({ handoffDir: dir })
+  const service = createHandoffService(deps)
+  try {
+    const started = await service.start('rebirth', 'session-aaaa1111', '接手继续', undefined, GOOD_DOC)
+    assert.equal(started.ok, true)
+    assert.equal(calls.injected.length, 0, '给了 content 就别再让前世写文档')
+    await wait(80)
+    assert.equal(calls.created.length, 1, '直接建新会话')
+    assert.equal(calls.prompts.length, 1, '首句已投递')
+    const job = service.status(started.jobId!)
+    assert.equal(job?.status, 'done')
+    const files = readdirSync(dir)
+    assert.equal(files.filter((f) => f.endsWith('.md')).length, 1, '文档由插件写好了')
+  } finally {
+    service.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('等不到交接文档也不再判死：兜底建新会话，缺口写进首句', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-timeout-'))
+  const { deps, calls } = fakeDeps({ handoffDir: dir, timeoutMs: 40 })
+  const service = createHandoffService(deps)
+  try {
+    const started = await service.start('rebirth', 'session-bbbb2222', '接手继续')
+    assert.equal(started.ok, true)
+    await wait(200)
+    assert.equal(calls.created.length, 1, '超时也要建会话，不能让用户白点')
+    const prompt = calls.prompts[0]?.text ?? ''
+    assert.ok(prompt.includes('交接文档缺失'), '缺口要写进首句')
+  } finally {
+    service.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('注入指令：点名文件路径与固定标记，转生强调「已完成不要重做」', () => {
   const text = buildInjection(PLAN)
   assert.ok(text.includes(PLAN.filePath), '必须给出绝对路径，模型照抄')
@@ -211,17 +249,21 @@ test('作业：交接文档落盘后才建会话，并把首句发进去', async
   }
 })
 
-test('作业：等不到交接文档就失败，且绝不建会话', async () => {
+test('作业：等不到交接文档 → 兜底建会话（2026-11-20 起不再判死），缺口写进首句', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-'))
   try {
     const { deps, calls } = fakeDeps({ handoffDir: dir, timeoutMs: 80 })
     const service = createHandoffService(deps)
     const started = await service.start('rebirth', 'session-abc')
-    await wait(200)
+    await wait(260)
     const job = service.status(started.jobId!)!
-    assert.equal(job.status, 'failed')
-    assert.match(String(job.message), /还没等到交接文档/)
-    assert.equal(calls.created.length, 0, '失败绝不能留一条空会话')
+    /*
+     * 旧行为是「超时 = failed + 不建会话」，于是「前世没有文件工具」就变成
+     * 用户点了转生却什么也没发生。现在改成兜底建会话，并把缺口写进首句。
+     */
+    assert.match(String(job.message ?? ''), /兜底建新会话|交接完成/)
+    assert.equal(calls.created.length, 1, '兜底也必须留一条新会话')
+    assert.match(calls.prompts[0]?.text ?? '', /交接文档缺失/)
     service.stop()
   } finally {
     rmSync(dir, { recursive: true, force: true })

@@ -137,7 +137,7 @@ export function memoryEntryCount(memoryDir: string): number {
 }
 
 export interface HandoffService {
-  start(kind: HandoffKind, sessionId: string, note?: string, boundary?: string): Promise<{ ok: boolean; jobId?: string; message?: string }>
+  start(kind: HandoffKind, sessionId: string, note?: string, boundary?: string, content?: string): Promise<{ ok: boolean; jobId?: string; message?: string }>
   status(jobId: string): HandoffJob | undefined
   list(): HandoffJob[]
   selfCheck(sessionId: string, cwd?: string): SelfCheck
@@ -310,7 +310,19 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
           }
         }
         if (now() - startedAt > timeoutMs) {
-          finish(job.id, 'failed', `等了 ${Math.round(timeoutMs / 1000)} 秒还没等到交接文档（${job.filePath}）`)
+          /*
+           * 超时兜底（2026-11-20 真机）：以前这里直接判 failed，于是"前世没有写盘工具"
+           * 就变成"整条转生链断掉、什么也没留下"。现在照样建新会话，把缺口写进首句——
+           * 宁可来生多查一步，也别让用户点了转生却什么也没发生。
+           */
+          plan.knownGaps = [
+            ...(plan.knownGaps ?? []),
+            '交接文档缺失（' + job.filePath + '）：等了 ' + Math.round(timeoutMs / 1000) +
+              ' 秒没等到，可能前世没有文件写入工具。请先用 read_memory / git / 磁盘现场自行复原，别假设文档里的结论成立。',
+          ]
+          touch(job, { message: '等不到交接文档，已按兜底建新会话（缺口写进首句）' })
+          deps.log('交接文档超时，兜底建新会话', { jobId: job.id, sessionId: job.sessionId })
+          void spawnHeir(job, plan)
           return
         }
         tick()
@@ -324,7 +336,7 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
   }
 
   return {
-    async start(kind, sessionId, note, boundary) {
+    async start(kind, sessionId, note, boundary, content) {
       if (stopped) return { ok: false, message: '插件正在停机' }
       const id = String(sessionId ?? '').trim()
       if (id === '') return { ok: false, message: '缺少 sessionId' }
@@ -346,6 +358,33 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
         parentSessionId: id,
         ...(trimmedNote ? { note: trimmedNote } : {}),
         ...(String(boundary ?? '').trim() ? { boundary: String(boundary ?? '').trim() } : {}),
+      }
+      /*
+       * 交接文档由**插件自己**落盘（2026-11-20）：前世可能没有文件工具（这一世代到点后
+       * shell/文件工具会被平台收走），那就永远等不到文档、整条转生链断在最后一步。
+       * 给了 content 就跳过"让前世写文档"，直接进建会话那一步。
+       */
+      const direct = String(content ?? '').trim()
+      if (direct !== '') {
+        try {
+          writeFileSync(filePath, direct.endsWith('\n') ? direct : direct + '\n', 'utf8')
+        } catch (error) {
+          return { ok: false, message: '写交接文档失败：' + String((error as Error)?.message ?? error).slice(0, 120) }
+        }
+        const directJob: HandoffJob = {
+          id: idOf('handoff'),
+          kind,
+          sessionId: id,
+          filePath,
+          status: 'creating',
+          createdAt: now(),
+          updatedAt: now(),
+        }
+        jobs.set(directJob.id, directJob)
+        prune()
+        deps.log('转生/分身：文档由插件落盘，直接建新会话', { jobId: directJob.id, kind, sessionId: id })
+        void spawnHeir(directJob, plan)
+        return { ok: true, jobId: directJob.id }
       }
       const injected = await deps.inject(id, buildInjection(plan))
       if (!injected.ok) return { ok: false, message: injected.message ?? '投递写作指令失败（会话可能不在线）' }
