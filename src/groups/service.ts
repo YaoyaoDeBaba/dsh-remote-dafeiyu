@@ -330,10 +330,17 @@ export function createGroups(deps: GroupsDeps) {
     for (const target of targets) {
       if (target === from) continue
       if (!group.members.some((member) => member.sessionId === target)) continue
-      // 冷却：同一对（from → target）60 秒内只投一次，防来回刷屏
+      /*
+       * 冷却：只防「成员 ↔ 成员」来回刷屏（2026-11-20 真机：群主刚派完活回一句，被 60 秒冷却吞了）。
+       *
+       * 群主是调度通道——它和成员之间的往返是主链路，不能被节流；
+       * 真正有死循环风险的是「A ↔ B 互回」，那里留着冷却。
+       */
+      const ownerInvolved =
+        group.ownerSessionId !== undefined && (from === group.ownerSessionId || target === group.ownerSessionId)
       const key = group.id + '|' + from + '|' + target
       const last = lastDeliveryAt.get(key)
-      if (last !== undefined && now() - last < cooldownMs) {
+      if (!ownerInvolved && last !== undefined && now() - last < cooldownMs) {
         out.push({ sessionId: target, ok: true, message: '冷却中（' + Math.round(cooldownMs / 1000) + ' 秒内已投过一次），本次跳过' })
         continue
       }
