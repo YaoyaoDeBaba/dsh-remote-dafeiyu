@@ -1,0 +1,119 @@
+---
+name: dafeiyu-websearch
+description: 用 web_search / paper_search / paper_read / repo_search 联网查资料：网页、论文（OpenAlex/arXiv/DBLP）、正文全文、GitHub 仓库。要查最新事实、找论文、读全文、找开源项目时读这篇，里面写了各上游的限额与已知不可用项。
+---
+
+# 联网搜索：四个工具怎么选
+
+> 这一页是给 **agent** 看的操作说明，不是给用户看的介绍。
+> 工具名就是入口：搜网页 web_search、搜论文 paper_search、读正文 paper_read、找仓库 repo_search。
+
+## 一句话选型
+
+| 你想干什么 | 用哪个 | 备注 |
+|---|---|---|
+| 查一个事实/新闻/官网/文档页 | web_search | Bing 主、Sogou 回退；返回标题+摘要+真实 URL |
+| 找学术论文、看被引数 | paper_search（openalex） | 免费无 key，覆盖最广，带引用数 |
+| 找最新预印本（ML/CV/物理） | paper_search（arxiv） | 有摘要前 200 字，通常比会议正式版更早 |
+| 找计算机领域的会议/期刊论文 | paper_search（dblp） | 只收 CS 出版物，非 CS 查不到是正常的 |
+| 读论文/网页正文 | paper_read | arXiv 链接会自动换成 ar5iv 的 HTML 全文 |
+| 找开源项目/参考实现 | repo_search | GitHub REST，无需 key |
+
+**别拿 web_search 硬凑论文和仓库**：搜索引擎的结果页链接经常是聚合站/镜像，
+paper_search、repo_search 走的是官方 API，字段（年份、被引、星数）才可信。
+
+## web_search
+
+```
+web_search({ query: "DeepSeek V4 发布时间", count: 8, engine: "auto" })
+```
+
+- query 必填，空字符串会被拒（工具会抛中文错，不是静默返回空）。
+- count 1~20，默认 8；engine = auto（默认）/ bing / sogou。
+- 输出每条两行：第 1 行「1. 标题 — 摘要」，第 2 行缩进的 URL；最上面一行是「搜索「词」：N 条（引擎）」。
+- auto 的行为：先 cn.bing.com（带桌面 UA + accept-language: zh-CN），
+  被拦/超时/解析不出结果块就退 www.sogou.com/web，并在结果末尾注一句换引擎的原因。
+- Bing 的 ck/a?...&u=a1<base64url> 跳转会被**还原成真实 URL**——拿到长跳转链说明
+  格式变了，那时把原文 URL 当证据用，别自己猜。
+- 同一 query + count + engine 的内存缓存 5 分钟：连着问同一件事不会重复打上游。
+- 单次请求 8 秒超时；429/5xx 退避重试一次。
+
+## paper_search
+
+```
+paper_search({ query: "diffusion model acceleration", source: "openalex", year_from: 2022, limit: 6 })
+```
+
+- 输出一行一条：标题 · 年份 · venue · 被引 N · URL；arXiv 会多一行「摘要：…（前 200 字）」。
+- openalex：api.openalex.org/works，字段取 display_name / publication_year /
+  primary_location.source.display_name / cited_by_count / open_access.oa_url。
+  oa_url 有值就是**免费全文**，优先给用户这个。
+  它 2026 起有额度：**不带 key 是整台机器/出口 IP 共享的 0.10 美元/天**，被同 IP 别的程序吃光就回 429。
+  配 `OPENALEX_API_KEY`（免费，openalex.org/settings/api）后每天 1 美元，工具会自动带上；
+  真撞上 429 就先用 `source: "arxiv"` 顶上。
+- arxiv：export.arxiv.org/api/query（Atom XML）。**官方要求 3 秒一次**，
+  批量搜时中间自己歇一下，别连发。
+- dblp：dblp.org/search/publ/api?format=json。它会回 **202**，有两种现实：真在排队，或者
+  撞上了**人机验证挑战页**（2026-11-20 本机实测拿到的是「正在确认你是不是机器人！」那个 HTML）。
+  两种情况都等于「没拿到」，工具会退避重试一次并在报错里区分；**别把 202 当成 0 结果**。
+  这时换 `source: "openalex"` 或 `"arxiv"` 更快。
+- 被引数只有 openalex 有（dblp / arxiv 都不给）。它是 **OpenAlex 口径，不是 Google Scholar 口径**，
+  别混着报。
+
+## paper_read
+
+```
+paper_read({ url: "https://arxiv.org/abs/2005.14165", max_chars: 8000 })
+```
+
+- arXiv 的 abs / pdf 链接都会换成 https://ar5iv.labs.arxiv.org/html/<id> 抓 HTML 全文
+  （本机实测 200 / 122KB / 0.8s）。ar5iv 抓不下来时会退回原链接并**明说**退回了。
+- 其它 URL 走通用 HTML→文本：剥 script/style/标签、解实体、压空白。
+- max_chars 默认 8000（500~50000）。超长会截断，并在末尾写「（已截断，原文 N 字）」——
+  **引用时别把截断点当原文结尾**，需要更多就再调一次并调大 max_chars。
+- PDF 直接链接抓不出正文（会报中文错）。要读 PDF 就找它的 HTML 版（arXiv 自动处理）。
+
+## repo_search
+
+```
+repo_search({ query: "vector database", language: "rust", min_stars: 500, sort: "stars", limit: 8 })
+```
+
+- 输出：owner/name · ★N · 语言 · 更新 YYYY-MM-DD · 一句话描述，下一行缩进 URL。
+- 给了 author 就走 /users/<author>/repos?sort=updated（最多 100 条）再本地按
+  language / min_stars / query 过滤，然后按 sort 排序取前 limit 条。
+- **未认证限速 60 次/小时**：结果末尾的 x-ratelimit-remaining ≤3 时会提示一句。
+  配环境变量 GITHUB_TOKEN（或 DSH_GITHUB_TOKEN）能提到 5000 次/小时，工具会自动带上。
+- 403/429 时工具报的是「GitHub 没查成：HTTP 403（被拦）（未认证每小时只有 60 次…）」——
+  看到这句先想额度，别以为网断了。
+
+## 已知不可用 / 坑（2026-11-20 本机实测）
+
+| 上游 | 状态 | 结论 |
+|---|---|---|
+| Bing cn.bing.com | 200 / 97KB / 350ms | 主引擎，结果块是 li class="b_algo" |
+| Bing 跳转链 | www.bing.com/ck/a?...&u=a1<base64url> | base64url 解开就是真实 URL，工具已解 |
+| Sogou www.sogou.com/web?query= | 200 可用 | 回退引擎；结果链接是加密跳转（/link?url=），**还原不了真实域名** |
+| Baidu | 会出安全验证 | **不用**，别指望它 |
+| DuckDuckGo html | 连不上 | **不用** |
+| Semantic Scholar / grep.app | 常 429 | 不接，别为了它们加退避 |
+| OpenAlex | 正常 | 无 key 时**共享 0.10 美元/天**，吃光回 429；配 OPENALEX_API_KEY 后 1 美元/天 |
+| DBLP | 202 | 现在是 202 + 人机验证挑战页，这一轮基本查不了，换 openalex/arxiv |
+| GitHub REST | 正常（本机实测剩余额度会掉到个位数） | 未认证 60/h；配 GITHUB_TOKEN 后 5000/h |
+| ar5iv | 200 / 1.2MB / 0.6s | 比 arXiv 的 PDF 小一个数量级且可直接转文本 |
+
+## 环境变量（可选，配了自动生效）
+
+| 变量 | 作用 |
+|---|---|
+| `GITHUB_TOKEN` / `DSH_GITHUB_TOKEN` | repo_search 带上 Bearer，额度 60/h → 5000/h |
+| `OPENALEX_API_KEY` / `DSH_OPENALEX_API_KEY` | paper_search（openalex）避开共享额度，0.10 → 1 美元/天 |
+
+## 输出与引用纪律
+
+1. 结果里给的 URL 就是证据链：**引用时贴这个 URL**，不要自己重排/缩短。
+2. 摘要只代表搜索页给的那句话，**不是全文结论**——要下判断先 paper_read 读正文。
+3. 搜不到就说搜不到：工具抛的中文错（被拦 / 0 条 / 解析失败）原样转述给用户，
+   不要用「据我所知」补一段看起来像搜过的话。
+4. 一次没成就别硬刷：web_search 有 5 分钟缓存，连续重试只会拿同一份缓存/同一张验证页。
+   换个关键词、换 engine、或换工具（论文/仓库）才是有效动作。

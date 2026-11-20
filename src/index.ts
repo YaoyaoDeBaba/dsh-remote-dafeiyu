@@ -60,6 +60,9 @@ import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 一键转生 / 一键分身（0.9.0.53）：三条回环路由 + 一个作业管理器。
 import { startHandoff, type HandoffHandle } from './handoff/start.js'
 import { startGroups, type GroupsHandle } from './groups/start.js'
+// 联网搜索（2026-11-20）：五个工具（web_search / paper_search / paper_read / repo_search /
+// websearch_guide），只软探测 tools 服务，没有路由也没有后台任务。
+import { startWebsearch, type WebsearchHandle } from './websearch/start.js'
 // 序列帧精灵图（0.9.0.55 → 2026-11-16 搬去独立包 `dsh-dev-kit-dafeiyu`）：20 个工具、
 // 工具页 `/plugins/dafeiyu-sprite/`、skill 安装器全在那边；它自己领房间 `sprite`（order60）。
 // 本体只保留"铺内置 skill"这一件事（见下面 `installPackagedSkills`）：那个批量安装器
@@ -1154,6 +1157,8 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     handoff: softProbe.handoff ?? { started: 'no' },
     subagents: softProbe.subagents ?? { started: 'no' },
     groups: softProbe.groups ?? { started: 'no' },
+    // 联网搜索的软探测（2026-11-20）：tools 挂没挂上、本机有没有 fetch，都在这两格里。
+    websearch: softProbe.websearch ?? { started: 'no' },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: undefined,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -1375,6 +1380,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     handoff?: Record<string, string>
     subagents?: Record<string, string>
     groups?: Record<string, string>
+    websearch?: Record<string, string>
   } = {}
 
   const carrier = createCarrierProbe({
@@ -1827,6 +1833,26 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   softProbe.groups = groupsHandle?.probe
 
   /**
+   * 联网搜索（2026-11-20）：web_search / paper_search / paper_read / repo_search / websearch_guide。
+   *
+   * 只有一块软探测（tools），起不来就是"模型手上没这几个工具"，远控/识图/拉群一行都不受影响。
+   * 探测结果（fetch 有没有、tools 挂上几个）进 softProbe，状态快照里能直接看到。
+   */
+  let websearchHandle: WebsearchHandle | undefined
+  try {
+    websearchHandle = startWebsearch(ctx as never, {
+      packageRoot: packageRoot(),
+      log,
+    })
+  } catch (error) {
+    websearchHandle = undefined
+    log('联网搜索起不来（远控/其它功能不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+  softProbe.websearch = websearchHandle?.probe
+
+  /**
    * 内置 skill 落成 DSH skill（2026-11-16 从 `startSprite` 里搬出来）。
    *
    * 装的是 `assets/skills/` 下的**全部** skill（现在只剩 `dafeiyu-plugin-dev`）：
@@ -1948,6 +1974,12 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       }
       try {
         groupsHandle?.stop()
+      } catch {
+        /* 停机动作不许拖住停机 */
+      }
+      // 联网搜索只剩一个轮询定时器，同样要停（不然它能活过停机继续找 tools）。
+      try {
+        websearchHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }
