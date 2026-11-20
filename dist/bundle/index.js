@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.140" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.141" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31575,6 +31575,7 @@ var SystemSleepBackend = class {
 
 // src/platform/carrier-services.ts
 import fs3 from "node:fs";
+import os2 from "node:os";
 import path6 from "node:path";
 
 // src/platform/avatar-manifest.ts
@@ -31889,19 +31890,23 @@ function createServicesKernel(services, options) {
       }
     }
   }
+  function debugForceLive() {
+    try {
+      const env = globalThis.process?.env;
+      if (String(env?.DAFEIYU_FORCE_LIVE_SESSIONS ?? "") === "1") return true;
+      const home = String(env?.DSH_HOME ?? "").trim() || path6.join(os2.homedir(), ".dsh");
+      return fs3.existsSync(path6.join(home, "storages", "dsh-remote-dafeiyu", "force-live-sessions"));
+    } catch {
+      return false;
+    }
+  }
   async function listSessions(limit) {
     const cap = limit > 0 ? limit : LIST_LIMIT_DEFAULT;
     const archived = archivedIds();
     let records = [];
     let source = "sessionQuery";
     const listPersistent = fn(services.sessionQuery, "listSessions");
-    const forceLive = (() => {
-      try {
-        return String(globalThis.process?.env?.DAFEIYU_FORCE_LIVE_SESSIONS ?? "") === "1";
-      } catch {
-        return false;
-      }
-    })();
+    const forceLive = debugForceLive();
     if (forceLive) log("\u8C03\u8BD5\u5F00\u5173\u751F\u6548\uFF1A\u5F3A\u5236\u53EA\u5217\u5185\u5B58\u91CC\u7684\u6D3B\u4F1A\u8BDD\uFF08DAFEIYU_FORCE_LIVE_SESSIONS=1\uFF09");
     if (listPersistent && !forceLive) {
       try {
@@ -35115,7 +35120,7 @@ function startPill(ctx, deps) {
 
 // src/persona/host.ts
 import fs4 from "node:fs";
-import os2 from "node:os";
+import os3 from "node:os";
 import path12 from "node:path";
 var name = "dsh-persona-dafeiyu";
 var PERSONA_SECTION = "dafeiyu:persona";
@@ -35401,11 +35406,11 @@ function loggerOf(ctx) {
   }
 }
 function personaStorePath() {
-  const home = process.env.DSH_HOME || path12.join(os2.homedir(), ".dsh");
+  const home = process.env.DSH_HOME || path12.join(os3.homedir(), ".dsh");
   return path12.join(home, "storages", "dsh-persona-dafeiyu", "personas.json");
 }
 function sessionPicksPath() {
-  const home = process.env.DSH_HOME || path12.join(os2.homedir(), ".dsh");
+  const home = process.env.DSH_HOME || path12.join(os3.homedir(), ".dsh");
   return path12.join(home, "storages", "dsh-persona-dafeiyu", "session-picks.json");
 }
 var SESSION_PICKS_VERSION = 1;
