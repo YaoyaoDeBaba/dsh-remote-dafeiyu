@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.135" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.136" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -42905,6 +42905,15 @@ function applyInner(ctx, injected, clock) {
        * 与转生/收件箱同一套：正在跑 → agent.inject 排队；空闲/冷 → sendPrompt 等于替用户按下发送。
        */
       deliver: async (sessionId, text) => {
+        const ensure = kernel?.ensureRunnable;
+        if (ensure) {
+          try {
+            const ready = await ensure.call(kernel, sessionId);
+            if (ready?.ok !== true) return { ok: false, message: ready?.message ?? "\u4F1A\u8BDD\u65E0\u6CD5\u6062\u590D\uFF08\u53EF\u80FD\u5DF2\u5F52\u6863\uFF09" };
+          } catch (error62) {
+            return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+          }
+        }
         let service;
         try {
           service = ctx.get?.("agents", true);
