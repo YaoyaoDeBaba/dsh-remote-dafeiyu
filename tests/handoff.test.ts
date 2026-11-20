@@ -9,7 +9,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -93,6 +93,10 @@ function fakeDeps(over: Partial<HandoffDeps> = {}) {
     sessionCwd: async () => 'C:\\work\\proj',
     pollMs: 5,
     timeoutMs: 400,
+    // 缺口等待的三条窗口压到几十毫秒：判据里不能真等 90 秒
+    gapGraceMs: 30,
+    gapQuietMs: 30,
+    gapMaxMs: 400,
     ...over,
   }
   return { deps, calls }
@@ -505,6 +509,52 @@ test('群交接：不在群里就一个群动作都不发，转生照常完成',
   }
 })
 
+
+test('S3 缺口闸：转世没提缺口 → 等满 grace 就放行，并把这事写进 job.message', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-gap-none-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: true, role: '前端主程', others: ['session-2'] })
+    const { deps } = fakeDeps({ handoffDir: dir, sessionTitle: async () => 'X', renameSession: async () => ({ ok: true }), groupHandover: handover, gapGraceMs: 40 })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    writeFileSync(service.status(started.jobId!)!.filePath, GOOD_DOC, 'utf8')
+    await wait(260)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done')
+    assert.match(String(job.message), /没提缺口/, '要说明它是“没提问”而不是“补齐了”')
+    assert.ok(calls.some((call) => call.kind === 'invite'), '放行后仍要拉群')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('S3 缺口闸：有未答的问题就不许往下走（超时才放行并说明剩几个没答）', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-gap-open-'))
+  const inbox = path.join(dir, 'inbox')
+  mkdirSync(inbox, { recursive: true })
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: false, others: ['session-2'] })
+    const { deps } = fakeDeps({ handoffDir: dir, sessionTitle: async () => 'X', renameSession: async () => ({ ok: true }), groupHandover: handover, gapGraceMs: 10, gapQuietMs: 10, gapMaxMs: 120 })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    writeFileSync(service.status(started.jobId!)!.filePath, GOOD_DOC, 'utf8')
+    // 转世建出来之后才会去问；这里直接伪造一条“来生提问、前世没答”的线程
+    writeFileSync(
+      path.join(inbox, 'th1.json'),
+      JSON.stringify({ id: 'th1', from: 'session-new-1', to: 'session-abc', question: '为什么这么定？', status: 'open', createdAt: Date.now(), updatedAt: Date.now() }),
+      'utf8',
+    )
+    await wait(400)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done')
+    assert.match(String(job.message), /没答/, '要说明还有几个问题没答')
+    assert.ok(calls.some((call) => call.kind === 'invite'), '超时也要放行，不许卡死')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('群交接：某一环抛错只记遗留，不拖垮已经起来的转世，后面两步照走', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-group-boom-'))
   try {

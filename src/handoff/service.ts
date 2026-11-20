@@ -23,6 +23,7 @@ import {
   type HandoffPlan,
 } from './prompt.js'
 import { checkHandoffDoc } from './doc-check.js'
+import { listThreads } from './inbox.js'
 
 /**
  * 交接文档结构不合格时，最多"打回补写"几轮（2026-11-17）。
@@ -96,6 +97,12 @@ export interface HandoffDeps {
     remove: (groupId: string, sessionId: string) => void
 
   }
+  /** 缺口问答「安静多久算补齐」（默认 60s）。 */
+  gapQuietMs?: number
+  /** 转世一直没提问，等多久就放行（默认 90s）。 */
+  gapGraceMs?: number
+  /** 缺口等待硬上限（默认 5 分钟）：到点放行并把剩余未答写进 job.message。 */
+  gapMaxMs?: number
   /** 等待交接文档落盘的轮询间隔（毫秒）。 */
   pollMs?: number
   /** 等待上限（毫秒）。 */
@@ -243,6 +250,49 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
   }
 
 
+
+  /**
+   * S3 · 等「前世 ↔ 转世」把缺口补齐，再往下走（2026-11-20 用户裁决）。
+   *
+   * 机制本来就存在：来生用 handoff_ask 提问、前世用 handoff_answer 回答，线程落在
+   * `<handoffDir>/inbox/*.json`。这里只是**加一道闸**：等该答的都答完、且安静一段时间，
+   * 才允许改名/拉群——否则群里会出现「A 刚接手、文档还缺一半」的尴尬。
+   *
+   * 三条出路，任何一条到点都放行（绝不无限等）：
+   *   · 提了问题、全都答完、之后安静 quietMs → 放行；
+   *   · 一直没提问、过了 graceMs → 放行（转世认为没缺口）；
+   *   · 超过 maxMs → 放行，把「还有几个没答」写进 job.message。
+   */
+  const waitGapsCleared = async (childId: string): Promise<string | undefined> => {
+    const inboxDir = path.join(deps.handoffDir, 'inbox')
+    const quietMs = deps.gapQuietMs ?? 60_000
+    const graceMs = deps.gapGraceMs ?? 90_000
+    const maxMs = deps.gapMaxMs ?? 300_000
+    const pollMs = deps.pollMs ?? 1_000
+    const startedAt = now()
+    let lastActivity = 0
+    let answered = 0
+    for (;;) {
+      const threads = listThreads(inboxDir).filter((thread) => thread.from === childId)
+      const open = threads.filter((thread) => thread.status === 'open').length
+      answered = threads.filter((thread) => thread.status === 'answered').length
+      if (threads.length > 0) lastActivity = Math.max(...threads.map((thread) => thread.updatedAt))
+      const elapsed = now() - startedAt
+      if (open === 0 && threads.length > 0 && now() - lastActivity >= quietMs) return undefined
+      if (threads.length === 0 && elapsed >= graceMs) return '转世没提缺口（等了 ' + Math.round(graceMs / 1000) + ' 秒）'
+      if (elapsed >= maxMs) {
+        return '缺口没补完就放行了（' + String(open) + ' 个问题没答，已答 ' + String(answered) + ' 个）'
+      }
+      await new Promise((resolve) => {
+        const timer = setTimeout(resolve, pollMs)
+        try {
+          ;(timer as { unref?: () => void }).unref?.()
+        } catch {
+          /* 环境没有 unref 就算了 */
+        }
+      })
+    }
+  }
   /**
    * S4~S7 · 群交接（2026-11-20 方案，用户已拍板）：
    * 重命名 → 拉群 → 复制身份（群主则转移）→ 群广播「后续由谁接手」→ 前世退群。
@@ -260,6 +310,15 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     }
     if (spot === undefined) return undefined
     const notes: string[] = []
+
+    // S3 先等缺口补齐（三条出路都不会无限等），再改名/拉群
+    try {
+      touch(job, { message: '等待「前世↔转世」把文档缺口补齐…' })
+      const gapNote = await waitGapsCleared(childId)
+      if (gapNote !== undefined) notes.push(gapNote)
+    } catch (error) {
+      notes.push('等缺口时抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+    }
 
     // S4 重命名：<前世名>转世<N>
     let title: string | undefined
