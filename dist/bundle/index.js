@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.138" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.139" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37281,6 +37281,10 @@ function buildHandoffTools(deps) {
         boundary: {
           type: "string",
           description: "\u8FB9\u754C\uFF08\u9009\u586B\u4F46\u5F3A\u70C8\u5EFA\u8BAE\uFF09\uFF1A\u63A5\u624B\u8005\u4E0D\u8BB8\u78B0\u7684\u6587\u4EF6\u3001\u76EE\u5F55\u3001\u540E\u53F0\u4EFB\u52A1\uFF08\u672C\u4F53\u6B63\u5728\u52A8\u7684\u3001\u522B\u4EBA\u6B63\u5728\u8DD1\u7684\u90FD\u7B97\uFF09\u3002\u4E24\u4E2A\u5DE5\u5177\u90FD\u8BA4\u3002"
+        },
+        content: {
+          type: "string",
+          description: "\u4EA4\u63A5\u6587\u6863\u6B63\u6587\uFF08\u9009\u586B\uFF09\u3002\u7ED9\u4E86\u5C31\u7531\u63D2\u4EF6\u81EA\u5DF1\u843D\u76D8\u3001\u76F4\u63A5\u5EFA\u65B0\u4F1A\u8BDD\u2014\u2014\u9002\u5408**\u4F60\u6CA1\u6709\u6587\u4EF6\u5199\u5165\u5DE5\u5177**\u7684\u65F6\u5019\uFF1A\u628A\u6587\u6863\u5185\u5BB9\u539F\u6837\u653E\u8FD9\u91CC\uFF0C\u4E0D\u8981\u518D\u7B49\u81EA\u5DF1\u5199\u76D8\u3002\u4E0D\u7ED9\u5219\u6309\u8001\u6D41\u7A0B\u7B49\u4F60\u5199\u6587\u4EF6\u3002"
         }
       },
       required: []
@@ -37294,8 +37298,9 @@ function buildHandoffTools(deps) {
       if (sessionId === void 0) return explainMissingSession();
       const note = typeof input2.note === "string" ? input2.note.slice(0, 2e3) : void 0;
       const boundary = typeof input2.boundary === "string" ? input2.boundary.slice(0, 500) : void 0;
+      const content = typeof input2.content === "string" ? input2.content.slice(0, 6e4) : void 0;
       try {
-        const result2 = await deps.service.start(kind, sessionId, note, boundary);
+        const result2 = await deps.service.start(kind, sessionId, note, boundary, content);
         deps.log(`agent \u53D1\u8D77${kind === "rebirth" ? "\u8F6C\u751F" : "\u5206\u8EAB"}`, {
           sessionId,
           ok: String(result2.ok),
@@ -37820,7 +37825,13 @@ function createHandoffService(deps) {
           }
         }
         if (now() - startedAt > timeoutMs) {
-          finish(job.id, "failed", `\u7B49\u4E86 ${Math.round(timeoutMs / 1e3)} \u79D2\u8FD8\u6CA1\u7B49\u5230\u4EA4\u63A5\u6587\u6863\uFF08${job.filePath}\uFF09`);
+          plan.knownGaps = [
+            ...plan.knownGaps ?? [],
+            "\u4EA4\u63A5\u6587\u6863\u7F3A\u5931\uFF08" + job.filePath + "\uFF09\uFF1A\u7B49\u4E86 " + Math.round(timeoutMs / 1e3) + " \u79D2\u6CA1\u7B49\u5230\uFF0C\u53EF\u80FD\u524D\u4E16\u6CA1\u6709\u6587\u4EF6\u5199\u5165\u5DE5\u5177\u3002\u8BF7\u5148\u7528 read_memory / git / \u78C1\u76D8\u73B0\u573A\u81EA\u884C\u590D\u539F\uFF0C\u522B\u5047\u8BBE\u6587\u6863\u91CC\u7684\u7ED3\u8BBA\u6210\u7ACB\u3002"
+          ];
+          touch(job, { message: "\u7B49\u4E0D\u5230\u4EA4\u63A5\u6587\u6863\uFF0C\u5DF2\u6309\u515C\u5E95\u5EFA\u65B0\u4F1A\u8BDD\uFF08\u7F3A\u53E3\u5199\u8FDB\u9996\u53E5\uFF09" });
+          deps.log("\u4EA4\u63A5\u6587\u6863\u8D85\u65F6\uFF0C\u515C\u5E95\u5EFA\u65B0\u4F1A\u8BDD", { jobId: job.id, sessionId: job.sessionId });
+          void spawnHeir(job, plan);
           return;
         }
         tick();
@@ -37834,7 +37845,7 @@ function createHandoffService(deps) {
     tick();
   };
   return {
-    async start(kind, sessionId, note, boundary) {
+    async start(kind, sessionId, note, boundary, content) {
       if (stopped) return { ok: false, message: "\u63D2\u4EF6\u6B63\u5728\u505C\u673A" };
       const id = String(sessionId ?? "").trim();
       if (id === "") return { ok: false, message: "\u7F3A\u5C11 sessionId" };
@@ -37855,6 +37866,28 @@ function createHandoffService(deps) {
         ...trimmedNote ? { note: trimmedNote } : {},
         ...String(boundary ?? "").trim() ? { boundary: String(boundary ?? "").trim() } : {}
       };
+      const direct = String(content ?? "").trim();
+      if (direct !== "") {
+        try {
+          writeFileSync2(filePath, direct.endsWith("\n") ? direct : direct + "\n", "utf8");
+        } catch (error62) {
+          return { ok: false, message: "\u5199\u4EA4\u63A5\u6587\u6863\u5931\u8D25\uFF1A" + String(error62?.message ?? error62).slice(0, 120) };
+        }
+        const directJob = {
+          id: idOf("handoff"),
+          kind,
+          sessionId: id,
+          filePath,
+          status: "creating",
+          createdAt: now(),
+          updatedAt: now()
+        };
+        jobs.set(directJob.id, directJob);
+        prune();
+        deps.log("\u8F6C\u751F/\u5206\u8EAB\uFF1A\u6587\u6863\u7531\u63D2\u4EF6\u843D\u76D8\uFF0C\u76F4\u63A5\u5EFA\u65B0\u4F1A\u8BDD", { jobId: directJob.id, kind, sessionId: id });
+        void spawnHeir(directJob, plan);
+        return { ok: true, jobId: directJob.id };
+      }
       const injected = await deps.inject(id, buildInjection(plan));
       if (!injected.ok) return { ok: false, message: injected.message ?? "\u6295\u9012\u5199\u4F5C\u6307\u4EE4\u5931\u8D25\uFF08\u4F1A\u8BDD\u53EF\u80FD\u4E0D\u5728\u7EBF\uFF09" };
       const job = {
