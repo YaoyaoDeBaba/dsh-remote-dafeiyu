@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.143" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.144" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37749,6 +37749,22 @@ function createHandoffService(deps) {
     const sorted = [...jobs.values()].sort((a, b) => a.createdAt - b.createdAt);
     for (const victim of sorted.slice(0, jobs.size - MAX_JOBS)) jobs.delete(victim.id);
   };
+  const nextRebirthGen = (base) => {
+    const file2 = path17.join(deps.handoffDir, "rebirth-gen.json");
+    let map2 = {};
+    try {
+      map2 = JSON.parse(readFileSync5(file2, "utf8"));
+    } catch {
+      map2 = {};
+    }
+    const value = Number(map2[base] ?? 0) + 1;
+    map2[base] = value;
+    try {
+      writeFileSync2(file2, JSON.stringify(map2, null, 2) + "\n", "utf8");
+    } catch {
+    }
+    return value;
+  };
   const probeFile = (filePath) => {
     try {
       if (!existsSync(filePath)) return "pending";
@@ -37764,6 +37780,70 @@ function createHandoffService(deps) {
     if (!job) return;
     touch(job, { status, message });
     deps.log("\u8F6C\u751F/\u5206\u8EAB\u4F5C\u4E1A\u7ED3\u675F", { jobId, status, message: message?.slice(0, 120) });
+  };
+  const handoverGroup = async (job, childId) => {
+    const h = deps.groupHandover;
+    if (h === void 0) return void 0;
+    let spot;
+    try {
+      spot = h.locate(job.sessionId);
+    } catch {
+      return void 0;
+    }
+    if (spot === void 0) return void 0;
+    const notes = [];
+    let title;
+    try {
+      const parentTitle = String(await deps.sessionTitle?.(job.sessionId) ?? "").trim();
+      const rename2 = deps.renameSession;
+      if (parentTitle !== "" && rename2 !== void 0) {
+        const base = parentTitle.replace(/\s*转世\d+$/, "").trim();
+        const next = base + "\u8F6C\u4E16" + String(nextRebirthGen(base));
+        const renamed = await rename2(childId, next);
+        if (renamed.ok) title = next;
+        else notes.push("\u6539\u540D\u5931\u8D25\uFF1A" + String(renamed.message ?? "\u672A\u77E5\u539F\u56E0"));
+      }
+    } catch (error62) {
+      notes.push("\u6539\u540D\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    }
+    let invitedOk = false;
+    try {
+      const invited = await h.invite(spot.groupId, [childId]);
+      invitedOk = invited.ok;
+      if (!invited.ok) notes.push("\u62C9\u7FA4\u5931\u8D25\uFF1A" + String(invited.message ?? "\u672A\u77E5\u539F\u56E0"));
+      else {
+        if (typeof spot.role === "string" && spot.role.trim() !== "") h.setRole(spot.groupId, childId, spot.role.trim());
+        if (spot.isOwner) h.setOwner(spot.groupId, childId);
+      }
+    } catch (error62) {
+      notes.push("\u62C9\u7FA4\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    }
+    if (!invitedOk) {
+      try {
+        await h.post(
+          spot.groupId,
+          job.sessionId,
+          "\u3010\u4EA4\u63A5\u672A\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u8F6C\u4E16\u5DF2\u7ECF\u5EFA\u597D\u4E86\uFF0C\u4F46**\u6CA1\u80FD\u628A TA \u62C9\u8FDB\u7FA4**\uFF08" + String(notes.find((note) => note.startsWith("\u62C9\u7FA4")) ?? "\u539F\u56E0\u672A\u77E5") + "\uFF09\u3002\n\u6211\u5148\u7559\u5728\u7FA4\u91CC\u7EE7\u7EED\u9876\uFF0C\u8BF7\u817E\u51FA\u4E00\u4E2A\u4F4D\u7F6E\u540E\u518D\u62C9\u4E00\u6B21\uFF1A" + (title ?? childId) + "\uFF08" + childId.replace(/^session-/, "").slice(0, 8) + "\uFF09\u3002",
+          spot.recipients
+        );
+      } catch {
+      }
+      return notes.join("\uFF1B");
+    }
+    const childLabel = (title ?? childId) + "\uFF08" + childId.replace(/^session-/, "").slice(0, 8) + "\uFF09";
+    const done = spot.isOwner ? "\u3010\u4EA4\u63A5\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u5DF2\u5B8C\u6210\u8F6C\u4E16\u4EA4\u63A5 \u2192 \u540E\u7EED\u6211\u7684\u5DE5\u4F5C\u7531 " + childLabel + " \u63A5\u624B\uFF0C\u7FA4\u4E3B\u5DF2\u4E00\u5E76\u8F6C\u7ED9\u4ED6\u3002" : "\u3010\u4EA4\u63A5\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u5DF2\u5B8C\u6210\u8F6C\u4E16\u4EA4\u63A5 \u2192 \u540E\u7EED\u6211\u7684\u5DE5\u4F5C\u7531 " + childLabel + " \u63A5\u624B\u3002";
+    try {
+      const posted = await h.post(spot.groupId, job.sessionId, done, spot.recipients);
+      if (!posted.ok) notes.push("\u7FA4\u5E7F\u64AD\u5931\u8D25\uFF1A" + String(posted.message ?? "\u672A\u77E5\u539F\u56E0"));
+    } catch (error62) {
+      notes.push("\u7FA4\u5E7F\u64AD\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    }
+    try {
+      h.remove(spot.groupId, job.sessionId);
+    } catch (error62) {
+      notes.push("\u9000\u7FA4\u5931\u8D25\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    }
+    return notes.length === 0 ? void 0 : notes.join("\uFF1B");
   };
   const spawnHeir = async (job, plan) => {
     touch(job, { status: "creating" });
@@ -37807,7 +37887,17 @@ function createHandoffService(deps) {
       finish(job.id, "failed", `\u65B0\u4F1A\u8BDD\u5DF2\u5EFA\u597D\uFF08${created.sessionId}\uFF09\uFF0C\u9996\u53E5\u629B\u9519\uFF1A${String(error62?.message ?? error62).slice(0, 120)}`);
       return;
     }
-    finish(job.id, "done", "\u4EA4\u63A5\u5B8C\u6210\uFF0C\u65B0\u4F1A\u8BDD\u5DF2\u62A5\u5230\uFF08\u7B49\u4F60\u70B9\u5934\uFF09");
+    let handoverNote;
+    try {
+      handoverNote = await handoverGroup(job, created.sessionId);
+    } catch (error62) {
+      handoverNote = "\u7FA4\u4EA4\u63A5\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 100);
+    }
+    finish(
+      job.id,
+      "done",
+      handoverNote === void 0 ? "\u4EA4\u63A5\u5B8C\u6210\uFF0C\u65B0\u4F1A\u8BDD\u5DF2\u62A5\u5230\uFF08\u7B49\u4F60\u70B9\u5934\uFF09" : "\u4EA4\u63A5\u5B8C\u6210\uFF0C\u4F46\u7FA4\u4EA4\u63A5\u6709\u9057\u7559\uFF1A" + handoverNote
+    );
   };
   const watch = (job, plan) => {
     const startedAt = now();
@@ -37913,6 +38003,11 @@ function createHandoffService(deps) {
         ...trimmedNote ? { note: trimmedNote } : {},
         ...String(boundary ?? "").trim() ? { boundary: String(boundary ?? "").trim() } : {}
       };
+      const spot = deps.groupHandover?.locate(id);
+      if (spot !== void 0 && deps.groupHandover !== void 0) {
+        const announce = spot.isOwner ? "\u3010\u8F6C\u751F\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u8981\u8F6C\u751F\u4E86\uFF08\u4E0A\u4E0B\u6587\u8D85\u8F7D\uFF09\uFF1A\u5148\u5199\u4EA4\u63A5\u6587\u6863\uFF0C\u8F6C\u4E16\u8D77\u6765\u540E\u6211\u4F1A\u628A\u7FA4\u4E3B\u548C\u8EAB\u4EFD\u4E00\u5E76\u4EA4\u7ED9\u4ED6\u3002\n\u4EA4\u63A5\u5B8C\u6210\u524D\u8FD9\u6761\u7FA4\u7167\u5E38\u8FD0\u4F5C\uFF0C\u5206\u5DE5\u7167\u65E7\u7531\u6211\u4E0B\u3002" : "\u3010\u8F6C\u751F\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u7684\u4E0A\u4E0B\u6587\u5DF2\u8D85\u8F7D \u2192 \u5C06\u8F6C\u751F\u4EA4\u63A5\u7ED9\u4E0B\u4E00\u4E16 \u2192 \u7A0D\u540E\u5C06\u6211\u7684\u8F6C\u4E16\u62C9\u8FDB\u7FA4\u3002\n\u4EA4\u63A5\u671F\u95F4\u6211\u7684\u7FA4\u6D88\u606F\u53EF\u80FD\u8FDF\u7F13\uFF0C\u6025\u4E8B\u8BF7\u76F4\u63A5 @ \u6211\u3002";
+        void deps.groupHandover.post(spot.groupId, id, announce, spot.recipients).catch(() => ({ ok: false }));
+      }
       const direct = String(content ?? "").trim();
       if (direct !== "") {
         try {
@@ -38136,7 +38231,10 @@ function startHandoff(ctx, input2) {
     inject: input2.inject,
     newSession: input2.newSession,
     sendPrompt: input2.sendPrompt,
-    sessionCwd: input2.sessionCwd
+    sessionCwd: input2.sessionCwd,
+    ...input2.sessionTitle === void 0 ? {} : { sessionTitle: input2.sessionTitle },
+    ...input2.renameSession === void 0 ? {} : { renameSession: input2.renameSession },
+    ...input2.groupHandover === void 0 ? {} : { groupHandover: input2.groupHandover }
   });
   const inbox = createInbox({
     dir: `${input2.handoffDir ?? resolveHandoffDir()}\\inbox`,
@@ -38800,7 +38898,7 @@ function createGroups(deps) {
       } else if (kind === "agent" && asked.length === 0 && owner !== void 0 && owner !== from) {
         targets = [owner];
       }
-      if (kind === "agent" && from === owner && targets.length > MAX_DISPATCH_TARGETS) {
+      if (kind === "agent" && from === owner && targets.length > MAX_DISPATCH_TARGETS && input2.raw !== true) {
         return { ok: false, message: "\u7FA4\u4E3B\u4E00\u6B21\u6700\u591A\u6D3E " + MAX_DISPATCH_TARGETS + " \u4E2A\u6D3B\uFF1A\u62C6\u6210\u51E0\u8F6E\u3002" };
       }
       const entry = {
@@ -38818,7 +38916,7 @@ function createGroups(deps) {
       if (kind === "agent" && from === owner && targets.length > 0) cancelDispatch(group.id);
       if (isDispatch) armDispatch(group, asked, text);
       if (targets.length === 0) return { ok: true, entry };
-      const results = await deliverEach(group, kind === "user" ? "user" : from, body, targets, isDispatch);
+      const results = await deliverEach(group, kind === "user" ? "user" : from, body, targets, isDispatch || input2.raw === true);
       const failed = results.filter((row) => !row.ok);
       deps.log("\u7FA4\u6295\u9012", { id: group.id, targets: targets.length, failed: failed.length });
       return {
@@ -42878,6 +42976,7 @@ function applyInner(ctx, injected, clock) {
     });
   }
   softProbe.subagents = subagentsHandle?.probe;
+  let groupsHandle;
   let handoffHandle;
   try {
     handoffHandle = startHandoff(ctx, {
@@ -42950,6 +43049,112 @@ function applyInner(ctx, injected, clock) {
         } catch {
           return void 0;
         }
+      },
+      /** 前世的名字（转世要叫「<前世名>转世<N>」，拿不到名字就跳过改名，不编一个）。 */
+      sessionTitle: async (sessionId) => {
+        const port = kernel;
+        const list = port?.listSessions;
+        if (!port || !list) return void 0;
+        try {
+          const rows = await list.call(port, 200);
+          const title = rows.find((row) => row.summary?.id === sessionId)?.summary?.title;
+          return typeof title === "string" && title.trim() !== "" ? title.trim() : void 0;
+        } catch {
+          return void 0;
+        }
+      },
+      renameSession: async (sessionId, title) => {
+        const port = kernel;
+        const rename2 = port?.renameSession;
+        if (!port || !rename2) return { ok: false, message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u6539\u4F1A\u8BDD\u6807\u9898\uFF08\u6CA1\u6709 renameSession\uFF09" };
+        try {
+          const renamed = await rename2.call(port, sessionId, title);
+          return renamed.ok ? { ok: true } : { ok: false, message: renamed.message ?? "\u6539\u6807\u9898\u88AB\u62D2\u7EDD" };
+        } catch (error62) {
+          return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+        }
+      },
+      /*
+       * 群交接（2026-11-20 方案 S1/S4/S5/S6/S7）。
+       *
+       * 每个方法都在**调用时**读 groupsHandle：建 deps 这会儿 groups 还没 start，
+       * 捕获当时的值等于永远拿不到群（见上面那条声明处的注释）。
+       */
+      groupHandover: {
+        locate: (sessionId) => {
+          const service = groupsHandle?.service;
+          if (service === void 0) return void 0;
+          for (const group of service.list()) {
+            if (group.dissolvedAt !== void 0) continue;
+            const member = group.members.find((row) => row.sessionId === sessionId);
+            if (member === void 0) continue;
+            const isOwner = group.ownerSessionId === sessionId;
+            const others = group.members.map((row) => row.sessionId).filter((id) => id !== sessionId);
+            const role = typeof member.role === "string" ? member.role.trim() : "";
+            return {
+              groupId: group.id,
+              groupName: group.name,
+              isOwner,
+              /**
+               * 群主发全员、普通成员只发群主：换人这事群里得看见，
+               * 但没必要让每个群员都收两遍（S1 + S6）。
+               */
+              recipients: isOwner ? others : group.ownerSessionId === void 0 ? [] : [group.ownerSessionId],
+              ...role === "" ? {} : { role }
+            };
+          }
+          return void 0;
+        },
+        post: async (groupId, sessionId, text, to) => {
+          const service = groupsHandle?.service;
+          if (service === void 0) return { ok: false, message: "\u62C9\u7FA4\u670D\u52A1\u6CA1\u8D77\u6765" };
+          try {
+            const posted = await service.post({
+              id: groupId,
+              from: sessionId,
+              text,
+              ...to === void 0 ? {} : { targets: to },
+              kind: "agent",
+              // 预告/交接完成是已经写好的整段话，套普通投递头（名单、怎么回）就变味了
+              raw: true
+            });
+            return posted.ok ? { ok: true } : { ok: false, message: posted.message ?? "\u7FA4\u6D88\u606F\u6CA1\u9001\u51FA\u53BB" };
+          } catch (error62) {
+            return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+          }
+        },
+        invite: async (groupId, ids) => {
+          const service = groupsHandle?.service;
+          if (service === void 0) return { ok: false, message: "\u62C9\u7FA4\u670D\u52A1\u6CA1\u8D77\u6765" };
+          try {
+            const invited = await service.invite({ id: groupId, members: ids });
+            if (!invited.ok) return { ok: false, message: invited.message ?? "\u9080\u8BF7\u88AB\u62D2\u7EDD" };
+            const members2 = invited.group?.members ?? [];
+            const missing = ids.filter((id) => !members2.some((row) => row.sessionId === id));
+            return missing.length === 0 ? { ok: true } : { ok: false, message: "\u6CA1\u8FDB\u7FA4\uFF08\u7FA4\u6EE1 12 \u4EBA\u6216\u4F1A\u8BDD\u4E0D\u53EF\u7528\uFF09\uFF1A" + missing.join("\u3001") };
+          } catch (error62) {
+            return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
+          }
+        },
+        setRole: (groupId, sessionId, role) => {
+          const service = groupsHandle?.service;
+          if (service === void 0) return;
+          service.setMemberRole({ id: groupId, sessionId, role });
+        },
+        setOwner: (groupId, sessionId) => {
+          const service = groupsHandle?.service;
+          if (service === void 0) return;
+          service.setOwner({ id: groupId, sessionId });
+        },
+        remove: (groupId, sessionId) => {
+          const service = groupsHandle?.service;
+          if (service === void 0) return;
+          void Promise.resolve().then(() => service.remove({ id: groupId, sessionId })).then((result2) => {
+            if (result2?.ok !== true) log("\u7FA4\u4EA4\u63A5\uFF1A\u524D\u4E16\u9000\u7FA4\u6CA1\u6210", { message: String(result2?.message ?? "\u672A\u77E5\u539F\u56E0").slice(0, 160) });
+          }).catch((error62) => {
+            log("\u7FA4\u4EA4\u63A5\uFF1A\u524D\u4E16\u9000\u7FA4\u629B\u9519", { message: String(error62?.message ?? error62).slice(0, 160) });
+          });
+        }
       }
     });
   } catch (error62) {
@@ -42959,7 +43164,6 @@ function applyInner(ctx, injected, clock) {
     });
   }
   softProbe.handoff = handoffHandle?.probe;
-  let groupsHandle;
   try {
     groupsHandle = startGroups(ctx, {
       dshHome: resolveDshHome(process.env),
