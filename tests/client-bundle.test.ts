@@ -3968,19 +3968,21 @@ function findElement(
  *      那两个包定，这里用它们真实的值 40/50/60 演一遍）；
  *   ② 产物里**不许**再出现 `/api/dsh-remote-dafeiyu/vision` 与 `/xyq` 前缀（文件末尾那条）。
  */
-test('分栏①：本体自带三栏（远程控制 → 人设 → Agent 团队），住客按 order 排最后', () => {
-  // 没住客：只有本体三栏。空 tab 是缺陷（没装那个包就不该有那一栏）。
+test('分栏①：本体自带的几栏（远程控制 → 人设 → Agent 团队 → 群 → 搜索），住客按 order 排最后', () => {
+  // 没住客：只有本体那几栏。空 tab 是缺陷（没装那个包就不该有那一栏）。
+  // 2026-11-20 加「搜索」：联网搜索的两个 token（GitHub / OpenAlex）在设置页填，
+  // 它用的工具与路由都在本包，所以是本体自带的栏，不是住客房间。
   const bare = load({ react: FAKE_REACT as never, slots: true })
   assert.deepEqual(
     dafeiyuTabLabels(bare),
-    ['远程控制', '人设', 'Agent 团队', '群'],
-    '本体自带的四栏：远程控制 → 人设 → Agent 团队 → 群（肥鱼识图/小云雀/序列帧/形象都由住客注册）',
+    ['远程控制', '人设', 'Agent 团队', '群', '搜索'],
+    '本体自带的五栏：远程控制 → 人设 → Agent 团队 → 群 → 搜索（肥鱼识图/小云雀/序列帧/形象都由住客注册）',
   )
-  // 有住客：房间排在**本体三栏之后**，栏名字由住客自己定
+  // 有住客：房间排在**本体那几栏之后**，栏名字由住客自己定
   const withRoom = load({ react: FAKE_REACT as never, slots: true, rooms: [{ id: 'avatar', label: '形象', order: 10 }] })
   assert.deepEqual(
     dafeiyuTabLabels(withRoom),
-    ['远程控制', '人设', 'Agent 团队', '群', '形象'],
+    ['远程控制', '人设', 'Agent 团队', '群', '搜索', '形象'],
     '住客的房间必须排在本体写死的分栏**之后**（本体不许被住客插到中间）',
   )
   // 三个已迁出的包（识图+小云雀同一个包、序列帧另一个包）：order 生效，且都不插队
@@ -3995,8 +3997,8 @@ test('分栏①：本体自带三栏（远程控制 → 人设 → Agent 团队�
   })
   assert.deepEqual(
     dafeiyuTabLabels(full),
-    ['远程控制', '人设', 'Agent 团队', '群', '肥鱼识图', '小云雀', '序列帧'],
-    '住客之间按 order 升序（vision40 → xyq50 → sprite60），且整组都在本体三栏之后',
+    ['远程控制', '人设', 'Agent 团队', '群', '搜索', '肥鱼识图', '小云雀', '序列帧'],
+    '住客之间按 order 升序（vision40 → xyq50 → sprite60），且整组都在本体那几栏之后',
   )
 })
 

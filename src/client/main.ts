@@ -387,6 +387,25 @@ function resolveCurrentSession(ctx: ClientContext): () => string | undefined {
     } catch {
       /* 同上 */
     }
+    /*
+     * ③ 兜底：从地址栏里认会话 id（2026-11-20 真机）。
+     *
+     * 症状：不管从哪条会话打开「派活助手」，看到的都是同一条会话的子代理。
+     * 前两条都拿不到时，面板会保留上一次的 session，于是永远停在第一次成功解析到的那条上。
+     * 地址栏是最后一个能信的信号：桌面端切会话会改 URL。
+     */
+    try {
+      const href = String((globalThis as { location?: { href?: string } }).location?.href ?? '')
+      const at = href.indexOf('session-')
+      if (at >= 0) {
+        const tail = href.slice(at + 8, at + 8 + 36)
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tail)) return 'session-' + tail.toLowerCase()
+      }
+      const bare = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(href)
+      if (bare !== null) return 'session-' + bare[0].toLowerCase()
+    } catch {
+      /* 测试环境没有 location */
+    }
     return undefined
   }
 }

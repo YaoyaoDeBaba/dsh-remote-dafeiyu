@@ -82,7 +82,7 @@ import { resolveDshHome } from './memory/service.js'
 import { BackupService } from './backup/service.js'
 import type { ConfigSource, EffectivePluginConfig } from './pill/config-routes.js'
 import { claimHostToken, readStoredHostToken, resolveHostTokenFile, writeStoredHostToken } from './shell/claim-token.js'
-import { readUserConfig, resolveUserConfigFile, writeUserConfig, type UserOverrides } from './shell/user-config.js'
+import { readUserConfig, resolveUserConfigFile, saveUserOverrides as persistUserOverrides, type UserOverrides } from './shell/user-config.js'
 import { guardedSubscribe } from './platform/guard.js'
 import { type LivePairing, type PillStatus } from './pill/routes.js'
 import { PLUGIN_VERSION } from './version.js'
@@ -1440,15 +1440,18 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   /**
    * 落盘设置页那两项。**合并而不是整体替换**：表单只提交它改过的那一项，
    * 而"空串 = 删掉这一项"的语义由 `normalizeUserOverrides` 保证（key 在 = 用户动过它）。
+   *
+   * ⚠️ 合并由 `persistUserOverrides` **先重读盘上的文件**再做，这里不许拿 `userOverrides`
+   * 这份内存快照去拼：同一份 `user-config.json` 现在还有第二个写入方
+   * （联网搜索的 GitHub / OpenAlex token，走 `/api/dsh-remote-dafeiyu/websearch/config`）。
+   * 用启动快照合并 = 用户保存"自部署地址"时把刚填的 token 悄悄改回旧值，是数据丢失。
    */
   const saveUserOverrides = (input: UserOverrides): { ok: true } | { ok: false; field: string; error: string } => {
-    const next: UserOverrides = { ...userOverrides }
-    if ('serverUrl' in input) next.serverUrl = input.serverUrl
-    if ('hostToken' in input) next.hostToken = input.hostToken
-    if (!writeUserConfig(userConfigFile, next, clock.now(), log)) {
-      return { ok: false, field: 'file', error: 'cannot write the config file' }
+    const saved = persistUserOverrides(userConfigFile, input, clock.now(), log)
+    if (!saved.ok) {
+      return { ok: false, field: 'file', error: saved.error }
     }
-    userOverrides = next
+    userOverrides = saved.value
     /**
      * 立刻反映到生效值上，让用户保存完就看见新地址。
      *
@@ -1843,6 +1846,8 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     websearchHandle = startWebsearch(ctx as never, {
       packageRoot: packageRoot(),
       log,
+      // 设置页「搜索」栏与「进阶」栏写**同一份** user-config.json：路径只有一个真源，传进去。
+      userConfigFile,
     })
   } catch (error) {
     websearchHandle = undefined

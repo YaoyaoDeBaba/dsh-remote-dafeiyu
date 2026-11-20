@@ -4,7 +4,7 @@
  * 合包前是两张互不相干的卡（「远程控制」与「人设」分属两个包）。合包后把设置页那一格
  * 合成一张卡。2026-11-16 起分栏按已批准的样板重排（`docs/mockup/panel-tabs-mockup-20261116.html`）：
  *
- *   [远程控制] [人设] [Agent 团队] [住客房间…]
+ *   [远程控制] [人设] [Agent 团队] [群] [搜索] [住客房间…]
  *
  * - 「远程控制」= 远控原有那整页 DOM（`buildSettingsSection` 灌进去的）+ 扩展列表；
  * - 「人设」= 人设客户端那整块（`PersonaSettingsSection`，生成物，原样嵌）+ 长期记忆；
@@ -13,9 +13,13 @@
  *   形象（`dsh-avatar-dafeiyu`，order10）、肥鱼识图（`dsh-vision-dafeiyu`，order40）、
  *   小云雀（同一个包的 `xyq` 房间，order50）、序列帧（`dsh-dev-kit-dafeiyu`，order60）。
  *
+ * 2026-11-20：本体自带的分栏多了一栏「搜索」（`DAFEIYU_TAB_SEARCH`，联网搜索的两个 token），
+ * 排在「群」之后——它属于本包自己的能力，不是住客。
+ *
  * ⚠️ 2026-11-16 之前「肥鱼识图」「小云雀」是本表里写死的两栏；它们**连同服务端那一半**
  * 整块搬去 `dsh-vision-dafeiyu`，所以从 `TAB_LABELS` 与下面的 body 分支里一起删掉了。
- * 本体自带的分栏从此刻起固定是**远程控制 / 人设 / Agent 团队**三栏。
+ * 本体自带的分栏从此刻起是**远程控制 / 人设 / Agent 团队**三栏（2026-11-19 加「群」、
+ * 2026-11-20 加「搜索」，都在本体里——它们用的工具与路由都在本包）。
  *
  * 纪律（与远控其余部分同款）：
  * 1. **挂不上就返回 false**，由调用方决定降级成「老样子两张卡」——合页失败不许把设置页
@@ -44,6 +48,7 @@ import { buildMemoryPanel } from './memory-panel.js'
 import { buildExtensionsPanel } from './extensions-panel.js'
 import { buildAgentTeamTab, type AgentTeamHandoffKind } from './agent-team-tab.js'
 import { buildGroupsTab } from './groups-tab.js'
+import { buildWebsearchTab } from './websearch-tab.js'
 import { card, columnStyle, hintStyle } from './panel-kit.js'
 import { listRooms, onRoomsChange, type DafeiyuRoom } from './rooms.js'
 
@@ -61,12 +66,20 @@ export const DAFEIYU_TAB_PERSONA = 'persona'
 export const DAFEIYU_TAB_TEAM = 'team'
 /** 「群」那一栏（2026-11-19）：建群、加人、打开悬浮群面板。 */
 export const DAFEIYU_TAB_GROUPS = 'groups'
+/**
+ * 「搜索」那一栏（2026-11-20）：联网搜索的两个第三方 token（GitHub / OpenAlex）+ 测一下。
+ *
+ * 为什么是本体自带的一栏、而不是像形象/识图那样的住客房间：那几栏是**别的包**的能力，
+ * 本包没有它们的实现；联网搜索的四个工具就在本包里，token 也是本包工具在用的。
+ */
+export const DAFEIYU_TAB_SEARCH = 'search'
 
 const TAB_LABELS: Record<string, string> = {
   [DAFEIYU_TAB_REMOTE]: '远程控制',
   [DAFEIYU_TAB_PERSONA]: '人设',
   [DAFEIYU_TAB_TEAM]: 'Agent 团队',
   [DAFEIYU_TAB_GROUPS]: '群',
+  [DAFEIYU_TAB_SEARCH]: '搜索',
   // ⚠️ 2026-11-16 起这个表里**只剩本体自带的三栏**，其余全是住客：
   //   · 「形象」→ `dsh-avatar-dafeiyu`（order10）
   //   · 「肥鱼识图」→ `dsh-vision-dafeiyu` 的 `vision` 房间（order40）
@@ -126,6 +139,8 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
   const agentTeamTab = buildAgentTeamTab({ createElement, hooks: reactHooks, openHandoff: deps.openHandoff })
   // 「群」那一栏（2026-11-19）：建群/加人；聊天面在悬浮窗（`__dafeiyuGroupsOpen`）。
   const groupsTab = buildGroupsTab({ createElement, hooks: reactHooks })
+  // 「搜索」那一栏（2026-11-20）：GitHub / OpenAlex 两个 token + 测一下（`websearch-tab.ts`）。
+  const websearchTab = buildWebsearchTab({ createElement, hooks: reactHooks })
   // 扩展列表（2026-11-16）：「远程控制」分栏里、配对码那块**下面**。
   const extensionsPanel = buildExtensionsPanel({ createElement, hooks: reactHooks })
 
@@ -405,6 +420,11 @@ export function mountDafeiyuSettings(deps: DafeiyuPageDeps): boolean {
       body = groupsTab
         ? createElement(groupsTab, {})
         : fallbackLine(createElement, '群面板起不来（宿主没给 react hooks）。')
+    } else if (activeTab === DAFEIYU_TAB_SEARCH) {
+      // 起不来时也画一行中文：空白格会让人以为"这一栏是空的"，而不是"它坏了"。
+      body = websearchTab
+        ? createElement(websearchTab, {})
+        : fallbackLine(createElement, '搜索面板起不来（宿主没给 react hooks）。')
     } else if (activeTab === DAFEIYU_TAB_TEAM) {
       body = agentTeamTab
         ? createElement(agentTeamTab, {})

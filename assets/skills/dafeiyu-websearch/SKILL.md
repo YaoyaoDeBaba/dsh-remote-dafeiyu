@@ -1,12 +1,18 @@
 ---
 name: dafeiyu-websearch
-description: 用 web_search / paper_search / paper_read / repo_search 联网查资料：网页、论文（OpenAlex/arXiv/DBLP）、正文全文、GitHub 仓库。要查最新事实、找论文、读全文、找开源项目时读这篇，里面写了各上游的限额与已知不可用项。
+description: 用 web_search / paper_search / paper_read / repo_search / code_search / graphics_papers / hn_search 联网查资料：网页、论文（arXiv 为主，OpenAlex/DBLP 替补）、论文全文、GitHub 仓库、跨仓库代码、图形学论文索引、HN 讨论。要查最新事实、找论文、读全文、找开源项目或代码时读这篇，里面写了各上游的限额与已知不可用项。
 ---
 
 # 联网搜索：四个工具怎么选
 
 > 这一页是给 **agent** 看的操作说明，不是给用户看的介绍。
 > 工具名就是入口：搜网页 web_search、搜论文 paper_search、读正文 paper_read、找仓库 repo_search。
+
+## 主力与替补（2026-11-20 用户裁决）
+
+- **主力**：`paper_search` 默认走 **arXiv**（稳）；`repo_search` 走 **GitHub**（稳，未认证 60 次/小时）。
+- **替补**：`openalex`（无 key 共享额度、常 429）、`dblp`（多半人机验证页）——只在 arxiv 失败或你明确要被引数/精确 venue 时才指定。
+- **定向工具**：`code_search`（grep.app，本机 IP 常 429）、`graphics_papers`（kesen 图形学索引）、`hn_search`（HN 讨论）。
 
 ## 一句话选型
 
@@ -84,7 +90,7 @@ repo_search({ query: "vector database", language: "rust", min_stars: 500, sort: 
 - 给了 author 就走 /users/<author>/repos?sort=updated（最多 100 条）再本地按
   language / min_stars / query 过滤，然后按 sort 排序取前 limit 条。
 - **未认证限速 60 次/小时**：结果末尾的 x-ratelimit-remaining ≤3 时会提示一句。
-  配环境变量 GITHUB_TOKEN（或 DSH_GITHUB_TOKEN）能提到 5000 次/小时，工具会自动带上。
+  在设置页「大肥鱼 → 搜索」里填，或配环境变量 GITHUB_TOKEN（/ DSH_GITHUB_TOKEN），能提到 5000 次/小时。
 - 403/429 时工具报的是「GitHub 没查成：HTTP 403（被拦）（未认证每小时只有 60 次…）」——
   看到这句先想额度，别以为网断了。
 
@@ -106,7 +112,15 @@ repo_search({ query: "vector database", language: "rust", min_stars: 500, sort: 
 | GitHub REST | 正常（本机实测剩余额度会掉到个位数） | 未认证 60/h；配 GITHUB_TOKEN 后 5000/h |
 | ar5iv | 200 / 1.2MB / 0.6s | 比 arXiv 的 PDF 小一个数量级且可直接转文本 |
 
-## 环境变量（可选，配了自动生效）
+## 配置（两种方式，二选一即可）
+
+**方式 A（推荐）：设置页「大肥鱼 → 搜索」栏**
+
+直接填 GitHub Token / OpenAlex Key，保存即生效（工具每次调用现读文件，不用重启）。
+已填的显示成 `已配置（…abcd）`，不会回显明文；旁边还有「测一下」真跑一次验证连通性。
+**优先级：设置页 > 环境变量**（填了设置页就以它为准，免得出现「填了却还在用旧凭据」）。
+
+**方式 B：环境变量**（适合 CI / 临时试）
 
 | 变量 | 作用 |
 |---|---|

@@ -273,17 +273,13 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
     }
   }
   removeStrays()
-  let strays: { disconnect?: () => void } | undefined
-  try {
-    const MO = (globalThis as { MutationObserver?: new (cb: () => void) => { observe: (n: unknown, o: unknown) => void; disconnect: () => void } }).MutationObserver
-    if (MO && doc.body) {
-      const observer = new MO(() => removeStrays())
-      observer.observe(doc.body, { childList: true, subtree: true })
-      strays = observer
-    }
-  } catch {
-    /* 没有 MutationObserver 就只靠挂载时那一次 */
-  }
+  /*
+   * ⚠️ 这里**不要**用 MutationObserver 盯 body（2026-11-20 真机事故）：
+   * 聊天页在流式出字时每秒有上百次 DOM 变更，`subtree:true` 的回调里再跑一次
+   * `querySelectorAll('#'+id)`，等于把主线程按死——表现是设置页每个分栏都卡在「加载中」。
+   * 去重只需要在「面板要显示」和「面板打开期间偶尔」做一次，用定时器就够，别碰整页的变更流。
+   */
+  let strays: ReturnType<typeof setInterval> | undefined
   try {
     makeDraggable(panel, bar, 'groups')
   } catch {
@@ -710,6 +706,8 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   return {
     open(): void {
       removeStrays()
+      // 打开期间每 2 秒摘一次后挂进来的同 id 面板（旧实例可能这时候才 open）
+      if (strays === undefined) strays = setInterval(removeStrays, 2_000)
       if (opened) return
       opened = true
       panel.style.display = 'flex'
@@ -719,14 +717,18 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
       opened = false
       panel.style.display = 'none'
       if (pollTimer !== undefined) clearTimeout(pollTimer)
+      if (strays !== undefined) {
+        clearInterval(strays)
+        strays = undefined
+      }
     },
     destroy(): void {
       opened = false
       if (pollTimer !== undefined) clearTimeout(pollTimer)
       try {
-        strays?.disconnect?.()
+        if (strays !== undefined) clearInterval(strays)
       } catch {
-        /* 断开观察者不许抛 */
+        /* 清定时器不许抛 */
       }
       strays = undefined
       panel.remove()

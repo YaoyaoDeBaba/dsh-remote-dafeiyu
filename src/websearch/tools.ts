@@ -487,22 +487,58 @@ function githubHeaders(token: string): Record<string, string> {
   return headers
 }
 
+/** 设置页「搜索」栏写下的两个 token（`start.ts` 从 user-config.json 读进来注入）。 */
+export interface WebsearchTokens {
+  githubToken?: string
+  openAlexKey?: string
+}
+
+function pickSecret(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+/**
+ * 读注入进来的插件配置。**读不到 / 抛错一律当"没配"**：
+ * 配置文件被手改坏不该让四个工具当场不可用——回退环境变量或匿名额度，功能还在。
+ */
+function configTokens(deps: WebsearchToolDeps): WebsearchTokens {
+  try {
+    const value = deps.readConfig?.()
+    return value !== null && typeof value === 'object' ? value : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * GitHub token 的三级优先级：**显式注入 > 插件配置 > 环境变量**。
+ *
+ * - 显式注入（`deps.githubToken`）只给判据用，生产不传；
+ * - **配置压过环境变量**——与中继那两项相反（理由见 `shell/user-config.ts` 的
+ *   `WebsearchOverrides` 注释）：用户在设置页填了，就说明他想用这一枚；
+ * - 环境变量留着，是"脚本里 export 一个就走"的老用法，也是配置栏空着时的兜底。
+ */
+function readGitHubToken(deps: WebsearchToolDeps): string {
+  const explicit = pickSecret(deps.githubToken)
+  if (explicit !== '') return explicit
+  const fromConfig = pickSecret(configTokens(deps).githubToken)
+  if (fromConfig !== '') return fromConfig
+  const env = process.env
+  return pickSecret(env.GITHUB_TOKEN ?? env.DSH_GITHUB_TOKEN ?? '')
+}
+
 /**
  * OpenAlex 的免费额度（2026-11 现状）：不带 key 时是**整台机器/IP 共享的 0.10 美元/天**，
  * 同一出口 IP 上别的程序跑几次搜索就会把这份预算吃掉、开始回 429。
  * 配一个免费 key（openalex.org/settings/api）后是每天 1 美元，这里自动带上。
+ *
+ * 同样"设置页配置 > 环境变量"（见 `readGitHubToken`）。
  */
-function readOpenAlexKey(): string {
+function readOpenAlexKey(deps: WebsearchToolDeps): string {
+  const fromConfig = pickSecret(configTokens(deps).openAlexKey)
+  if (fromConfig !== '') return fromConfig
   const env = process.env
-  const raw = env.OPENALEX_API_KEY ?? env.DSH_OPENALEX_API_KEY ?? ''
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
-function readToken(explicit: string | undefined): string {
-  if (explicit !== undefined && explicit.trim() !== '') return explicit.trim()
-  const env = process.env
-  const fromEnv = env.GITHUB_TOKEN ?? env.DSH_GITHUB_TOKEN ?? ''
-  return typeof fromEnv === 'string' ? fromEnv.trim() : ''
+  return pickSecret(env.OPENALEX_API_KEY ?? env.DSH_OPENALEX_API_KEY ?? '')
 }
 /** ---------------- 工具 ---------------- */
 
@@ -514,7 +550,16 @@ export interface WebsearchToolDeps {
   fetchImpl?: FetchLike
   /** web_search 的 5 分钟缓存（测试可注入固定 now）。 */
   cache?: TtlCache<string>
+  /** 判据用的显式 token（生产不传，优先级最高）。 */
   githubToken?: string
+  /**
+   * 插件配置里的两个 token（设置页「搜索」栏）。
+   *
+   * 用**注入**而不是在这里读盘：本文件是纯函数域（只认 fetch 与依赖），
+   * 读 user-config.json 归 `start.ts`；这里连 `node:fs` 都不该出现。
+   * 不注入 = 只有环境变量，与加这个口子之前一模一样。
+   */
+  readConfig?: () => WebsearchTokens
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -572,7 +617,7 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
     if (source === 'openalex') {
       let url = OPENALEX_API + '?search=' + encodeURIComponent(query) + '&per-page=' + limit
       if (yearFrom !== undefined) url += '&filter=from_publication_date:' + yearFrom + '-01-01'
-      const apiKey = readOpenAlexKey()
+      const apiKey = readOpenAlexKey(deps)
       if (apiKey !== '') url += '&api_key=' + encodeURIComponent(apiKey)
       const result = await fetchText(url, { timeoutMs: 12_000, fetchImpl: deps.fetchImpl, accept: 'application/json' })
       if (!result.ok) {
@@ -580,7 +625,7 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
         if (result.status === 429) {
           throw new Error(
             'OpenAlex 限流了（HTTP 429）：不带 key 时是整台机器共享的 0.10 美元/天额度，' +
-            '同一出口 IP 上别的程序会把它吃掉。配 OPENALEX_API_KEY（免费）后是每天 1 美元，工具会自动带上；' +
+            '同一出口 IP 上别的程序会把它吃掉。配 OPENALEX_API_KEY（免费；也可以到设置页「搜索」栏填）后是每天 1 美元，工具会自动带上；' +
             '这一轮先用 paper_search 的 source="arxiv" 顶上。',
           )
         }
@@ -673,7 +718,7 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
     sort: RepoSort
     limit: number
   }): Promise<string> {
-    const token = readToken(deps.githubToken)
+    const token = readGitHubToken(deps)
     const headers = githubHeaders(token)
     const noFilter = params.query === '' && params.language === '' && params.minStars === undefined
     if (params.author === '' && noFilter) {
@@ -734,7 +779,7 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
   }
   function gitHubFailure(result: HttpResult): Error {
     const hint = result.status === 403 || result.status === 429
-      ? '（未认证每小时只有 60 次，配 GITHUB_TOKEN 能提到 5000）'
+      ? '（未认证每小时只有 60 次；配 GITHUB_TOKEN 或到设置页「搜索」栏填一枚，能提到 5000）'
       : ''
     return new Error('GitHub 没查成：' + describeFailure(result) + hint)
   }
@@ -784,7 +829,7 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
       description:
         '搜论文。**默认 auto：先 arXiv（主力，稳定），失败再退 OpenAlex / DBLP（替补）**。\n' +
         '三个源的实际状态（2026-11-20 实测）：arxiv 稳定，带摘要前 200 字；' +
-        'openalex 不带 key 是整机共享 0.10 美元/天、容易 429（配 OPENALEX_API_KEY 可改善）；' +
+        'openalex 不带 key 是整机共享 0.10 美元/天、容易 429（配 OPENALEX_API_KEY，或在设置页「搜索」栏填一枚）；' +
         'dblp 现在多半回人机验证页。所以除非你明确要 venue/被引数，别指定它们。\n' +
         '每条一行：标题 · 年份 · venue · 被引 N · URL。limit 默认 6；year_from 是最早年份（含）。\n' +
         '要读全文用 paper_read。',
@@ -846,7 +891,7 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
       description:
         '搜 GitHub 仓库（REST，无需 key）。每条两行：owner/name · ★星数 · 语言 · 最近更新 · 一句话描述 / URL。\n' +
         'sort 默认 stars（还支持 updated / forks），limit 默认 8；给了 author 就走该用户名下的仓库再本地过滤。\n' +
-        '未认证限速 60 次/小时：剩余额度 ≤3 时结果末尾会提示；配 GITHUB_TOKEN 可提到 5000。',
+        '未认证限速 60 次/小时：剩余额度 ≤3 时结果末尾会提示；配 GITHUB_TOKEN（或在设置页「搜索」栏填）可提到 5000。',
       parameters: {
         type: 'object',
         properties: {
