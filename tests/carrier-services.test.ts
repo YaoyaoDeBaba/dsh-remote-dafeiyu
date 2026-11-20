@@ -71,6 +71,8 @@ interface Fixture {
 interface BundleOverrides {
   live?: boolean
   model?: { provider: string; model: string } | undefined
+  /** 会话 header 里报的 agentPreset（有它才做续跑时透传的判据）。 */
+  agentPreset?: string
   /** 有 `sessionController.commands.prompt`（内核的完整入口）。 */
   promptFace?: boolean
   /** 只有 `attachments.admitPromptContent`（那座桥）。 */
@@ -131,6 +133,12 @@ function fixture(
         },
       },
     }
+    if (overrides.agentPreset !== undefined) {
+      const preset = overrides.agentPreset
+      out.sessionQuery = {
+        readSession: (id: string) => Promise.resolve({ session: { id, agentPreset: preset } }),
+      }
+    }
     if (overrides.promptFace) {
       out.sessionController = {
         commands: {
@@ -176,6 +184,19 @@ function fixture(
   }
 }
 
+
+test('续跑必须透传 agentPreset：不带它，会话会掉出 ptc、工具只剩插件那批（2026-11-20）', async () => {
+  const f = fixture()
+  const kernel = f.kernel(f.bundle({ agentPreset: 'ptc' }))
+  const ready = await kernel.ensureRunnable?.('ses_idle')
+  assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
+  const request = f.calls.resume[0] as { agentOptions?: { agentPreset?: string } }
+  assert.equal(
+    request.agentOptions?.agentPreset,
+    'ptc',
+    'agentOptions 里没有 agentPreset：续起来的 agent 会掉出 preset，真机上表现为 shell/文件工具被收走',
+  )
+})
 test('冷会话续跑必须带 agentOptions：不带模型续出来的 Agent 会让整回合在装配阶段死掉', async () => {
   const f = fixture()
   const kernel = f.kernel(f.bundle())

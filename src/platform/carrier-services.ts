@@ -298,6 +298,8 @@ interface ListedSession {
   cwd?: string
   createdAt?: number | string
   origin?: string
+  /** 会话的 preset（`ptc` 等）。**续跑时必须带上**，否则会话会掉出 ptc、工具只剩插件那批（2026-11-20）。 */
+  agentPreset?: string
   /** 排序用的时间戳；对 sessionQuery 是 header.createdAt，对 sessions.list 是记录自身字段。 */
   headerTime?: number | string
 }
@@ -471,6 +473,16 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    */
   let lastTouchedSessionId = ''
   const cwdBySession = new Map<string, string>()
+  /**
+   * `sessionId → agentPreset`（2026-11-20）。
+   *
+   * 为什么要有：`agents.resume({ agentOptions })` 不带 `agentPreset` 时，续起来的 agent
+   * 会掉出 `ptc` preset —— 模型的工具列表从「run_code 一个」变成「插件注册的那 31 个」，
+   * 也就是用户看到的「shell / 文件工具被平台收走了」。
+   * 真机证据：session-3259ce50 在 11-19 20:38 之后每次 request/header 的 tools 都只有插件工具，
+   * 而同工作区的另外三个会话始终是 tools=[run_code]。
+   */
+  const presetBySession = new Map<string, string>()
   /** 取证用：内核实际发过来的会话事件类型，以及我们**没有映射**的那些（进 status.json）。 */
   const seenEventTypes = new Set<string>()
   const unmappedEventTypes = new Set<string>()
@@ -828,6 +840,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     for (const row of records) {
       const cwd = String(row.cwd ?? '').trim()
       if (cwd) cwdBySession.set(row.id, cwd)
+      const preset = String(row.agentPreset ?? '').trim()
+      if (preset !== '') presetBySession.set(row.id, preset)
     }
     const page = records.slice(0, cap)
     /*
@@ -2022,10 +2036,38 @@ export function createServicesKernel(services: ServicesBundle, options: Services
       // 与远程控制毫无关系。主动拒绝才有可读的原因。
       return { ok: false, message: '拿不到当前模型选择（agentDefaultModel.currentSelection 缺失），无法续跑会话' }
     }
+    /*
+     * ★ 必须带 agentPreset（2026-11-20 真机，代价惨重）：
+     * 不带 preset 续起来的 agent 会掉出 ptc，模型的工具表从 [run_code] 变成插件注册的那一批，
+     * 于是「shell / 文件工具被平台收走」——转生写不了文档、任务干不下去，只能等重启。
+     * 缓存来自 listSessions；没有就现读一次 header。
+     */
+    let preset = presetBySession.get(sessionId)
+    if (preset === undefined) {
+      const readSession = fn(services.sessionQuery, 'readSession')
+      if (readSession) {
+        try {
+          const loaded = (await readSession.call(services.sessionQuery, sessionId)) as {
+            session?: { agentPreset?: unknown }
+          }
+          const value = loaded?.session?.agentPreset
+          if (typeof value === 'string' && value.trim() !== '') {
+            preset = value.trim()
+            presetBySession.set(sessionId, preset)
+          }
+        } catch {
+          /* 读不到就当没有：至少不比以前更糟 */
+        }
+      }
+    }
     try {
       await resume.call(services.agents, {
         resumeSessionId: sessionId,
-        agentOptions: { provider: selection.provider, model: selection.model },
+        agentOptions: {
+          provider: selection.provider,
+          model: selection.model,
+          ...(preset === undefined ? {} : { agentPreset: preset }),
+        },
       })
       return { ok: true }
     } catch (error) {
