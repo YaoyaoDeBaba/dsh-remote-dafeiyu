@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.133" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.134" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38350,6 +38350,9 @@ function joinNotice(group, titleOf) {
     "\xB7 \u56DE\u590D\u7528 group_post(groupId=" + group.id + ", text=...)\uFF0C**\u9996\u884C\u5199\u300C\u6458\u8981\uFF1A\u4E00\u53E5\u8BDD\u300D**\uFF08\u7FA4\u91CC\u53EA\u663E\u793A\u6458\u8981\uFF0C\u5168\u6587\u70B9\u5F00\u624D\u770B\uFF09\uFF1B",
     "\xB7 \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF08\u6C47\u62A5\u5BF9\u8C61\uFF09\uFF1Bto \u53EF\u4EE5\u586B\u5BF9\u65B9\u77ED\u53F7\u6216\u4F1A\u8BDD id\uFF1B",
     "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002",
+    "\xB7 \u5982\u679C\u4F60\u7684\u5DE5\u5177\u5217\u8868\u91CC\u6CA1\u6709 group_*\uFF08\u8001\u4F1A\u8BDD\uFF09\uFF0C\u7528 HTTP \u515C\u5E95\uFF1A\u628A\u4F60\u81EA\u5DF1\u7684\u4F1A\u8BDD id \u548C\u6B63\u6587 POST \u5230",
+    "  <DSH Web GUI \u7684 origin>/api/dsh-remote-dafeiyu/groups/agent-post\uFF08\u672C\u673A\u56DE\u73AF\uFF0C\u5E26 x-drc-pair: 1\uFF1B",
+    '  body = {"groupId":"' + group.id + '","sessionId":"<\u4F60\u7684\u4F1A\u8BDDid>","text":"\u2026"}\uFF09\u3002\u8BFB\u7528 agent-read\u3002',
     "",
     "\u5982\u679C\u4F60\u73B0\u5728\u6B63\u5FD9\uFF0C\u5148\u628A\u8FD9\u6761\u8BB0\u4E0B\uFF1B\u6709\u7A7A\u518D\u56DE\u3002\u77E5\u9053\u6709\u8FD9\u4E2A\u7FA4\u3001\u77E5\u9053\u600E\u4E48\u56DE\u5C31\u591F\u4E86\u3002"
   ].join("\n");
@@ -38360,6 +38363,22 @@ function memberNotice(group, subject, action, titleOf) {
     "\u3010\u7FA4 " + group.name + " \xB7 " + group.id + "\u3011",
     who + action + "\u4E86\u672C\u7FA4\u3002",
     "\u73B0\u5728\u7684\u6210\u5458\uFF1A" + rosterLine(group, titleOf)
+  ].join("\n");
+}
+function dispatchText(group, asked, text, titleOf) {
+  const names = asked.map((id) => {
+    const title = titleOf?.(id)?.trim();
+    return title !== void 0 && title !== "" ? title : shortId2(id);
+  });
+  return [
+    "\u3010\u5206\u5DE5\u8BF7\u6C42 \xB7 " + group.name + " \xB7 " + group.id + "\u3011",
+    "\u7528\u6237 @ \u4E86\uFF1A" + names.join("\u3001"),
+    "",
+    "\u539F\u8BDD\uFF1A" + text.trim(),
+    "",
+    "\u4F60\u6765\u5B89\u6392\u5206\u5DE5\uFF1A\u7528 group_post(groupId=" + group.id + "\uFF0Ctext=...\uFF0Cto=[...]) \u6D3E\u6D3B\uFF08\u4E00\u8F6E\u6700\u591A 5 \u4E2A\uFF09\u3002",
+    "\u6D3E\u5B8C\u5728\u7FA4\u91CC\u56DE\u4E00\u6761\u6458\u8981\uFF08\u9996\u884C\u300C\u6458\u8981\uFF1A\u2026\u300D\uFF09\u3002",
+    "90 \u79D2\u5185\u6CA1\u4EBA\u6D3E\u6D3B\uFF0C\u7CFB\u7EDF\u4F1A\u76F4\u63A5\u628A\u539F\u8BDD\u6295\u7ED9\u4ED6\u4EEC\uFF0C\u5E76\u8BB0\u4E00\u7B14\u300C\u7FA4\u4E3B\u672A\u5206\u5DE5\u300D\u3002"
   ].join("\n");
 }
 function unavailableNotice(group, reason) {
@@ -38392,7 +38411,7 @@ function createGroups(deps) {
     const uuid3 = globalThis.crypto?.randomUUID?.();
     return "g-" + (uuid3 ?? String(at) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 10);
   };
-  const deliverEach = async (group, from, text, targets) => {
+  const deliverEach = async (group, from, text, targets, raw = false) => {
     const out = [];
     for (const target of targets) {
       if (target === from) continue;
@@ -38405,7 +38424,7 @@ function createGroups(deps) {
       }
       lastDeliveryAt.set(key, now());
       const brief = group.briefed?.[target] !== void 0;
-      const body = deliveryText(group, from, text, targets, titleOf, target, brief);
+      const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief);
       const result2 = await deps.deliver(target, body).catch((error62) => ({
         ok: false,
         message: String(error62?.message ?? error62)
@@ -38691,9 +38710,12 @@ function createGroups(deps) {
       }
       const asked = (input2.targets ?? []).map((id) => String(id ?? "").trim()).filter((id) => id !== "" && group.members.some((member) => member.sessionId === id));
       const owner = group.ownerSessionId;
+      const isDispatch = kind === "user" && owner !== void 0 && asked.length >= 2;
       let targets = asked;
-      if (kind === "user" && owner !== void 0 && asked.length >= 2) {
+      let body = text;
+      if (isDispatch) {
         targets = [owner];
+        body = dispatchText(group, asked, text, titleOf);
       } else if (kind === "agent" && asked.length === 0 && owner !== void 0 && owner !== from) {
         targets = [owner];
       }
@@ -38704,7 +38726,8 @@ function createGroups(deps) {
         at: now(),
         kind,
         from,
-        ...targets.length > 0 ? { targets } : {},
+        // 记录里写用户真正 @ 的人（群里要能看出 @全体），投递才用 owner-only 的 targets
+        ...asked.length > 0 ? { targets: asked } : {},
         text,
         ...kind === "agent" ? { summary: summarize(text) } : {}
       };
@@ -38712,11 +38735,9 @@ function createGroups(deps) {
       group.updatedAt = now();
       save(group);
       if (kind === "agent" && from === owner && targets.length > 0) cancelDispatch(group.id);
-      if (kind === "user" && owner !== void 0 && asked.length >= 2) {
-        armDispatch(group, asked, text);
-      }
+      if (isDispatch) armDispatch(group, asked, text);
       if (targets.length === 0) return { ok: true, entry };
-      const results = await deliverEach(group, kind === "user" ? "user" : from, text, targets);
+      const results = await deliverEach(group, kind === "user" ? "user" : from, body, targets, isDispatch);
       const failed = results.filter((row) => !row.ok);
       deps.log("\u7FA4\u6295\u9012", { id: group.id, targets: targets.length, failed: failed.length });
       return {
@@ -39003,6 +39024,8 @@ var GROUPS_OWNER_ROUTE = "/api/dsh-remote-dafeiyu/groups/owner";
 var GROUPS_ROLE_ROUTE = "/api/dsh-remote-dafeiyu/groups/role";
 var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
+var GROUPS_AGENT_POST_ROUTE = "/api/dsh-remote-dafeiyu/groups/agent-post";
+var GROUPS_AGENT_READ_ROUTE = "/api/dsh-remote-dafeiyu/groups/agent-read";
 function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
@@ -39199,6 +39222,42 @@ function groupsHandlers(deps) {
       handler: writeRoute(
         (body) => deps.groups.setOwner({ id: String(body.groupId ?? ""), sessionId: String(body.sessionId ?? "") })
       )
+    },
+    {
+      path: GROUPS_AGENT_POST_ROUTE,
+      handler: writeRoute(async (body) => {
+        const groupId = String(body.groupId ?? "");
+        const sessionId = String(body.sessionId ?? "");
+        if (groupId === "" || sessionId === "") {
+          return { ok: false, message: "\u9700\u8981 groupId \u548C sessionId\uFF08\u4F60\u81EA\u5DF1\u7684\u4F1A\u8BDD id\uFF09\u3002" };
+        }
+        const group = deps.groups.get(groupId);
+        if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" };
+        if (group.members.every((member) => member.sessionId !== sessionId)) {
+          return { ok: false, message: "\u4F60\u4E0D\u5728\u8FD9\u4E2A\u7FA4\u91CC\uFF1A\u5148\u7528 group_invite \u6216\u8BA9\u7FA4\u4E3B\u628A\u4F60\u62C9\u8FDB\u6765\u3002" };
+        }
+        const targets = Array.isArray(body.to) ? body.to.map((id) => String(id)) : [];
+        return deps.groups.post({
+          id: groupId,
+          from: sessionId,
+          text: String(body.text ?? ""),
+          targets,
+          kind: "agent"
+        });
+      })
+    },
+    {
+      path: GROUPS_AGENT_READ_ROUTE,
+      handler: readRoute((url2) => {
+        const groupId = url2.searchParams.get("groupId") ?? "";
+        const sessionId = url2.searchParams.get("sessionId") ?? "";
+        const group = deps.groups.get(groupId);
+        if (group === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" };
+        if (sessionId !== "" && group.members.every((member) => member.sessionId !== sessionId)) {
+          return { ok: false, message: "\u4F60\u4E0D\u5728\u8FD9\u4E2A\u7FA4\u91CC\u3002" };
+        }
+        return deps.groups.read({ id: groupId, limit: Number(url2.searchParams.get("limit") ?? "") || void 0 });
+      })
     },
     {
       path: GROUPS_ROLE_ROUTE,
