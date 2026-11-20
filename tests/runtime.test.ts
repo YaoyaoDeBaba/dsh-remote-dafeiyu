@@ -171,6 +171,8 @@ interface FakeKernel extends KernelPort {
   failRunState: boolean
   /** 非空时替代 SESSIONS 作为列表内容：用来证明"尾随推送带的是最新快照"。 */
   listing: SessionSummary[] | undefined
+  /** `kernel.listSessions()` 回来的每一行带哪个来源；用来演「宿主降级到 sessions.list」。 */
+  listingSource: 'sessionQuery' | 'sessions'
   ensureRunnableImpl: ((sessionId: string) => Promise<{ ok: boolean; message?: string }>) | undefined
   /**
    * 非空时替代默认的 archiveSession 实现：用来演"内核拒收"与"抛错"两种结局。
@@ -222,6 +224,7 @@ function makeKernel(): FakeKernel {
     runStateFor: undefined,
     failRunState: false,
     listing: undefined,
+    listingSource: 'sessionQuery',
     ensureRunnableImpl: undefined,
     archiveSessionImpl: undefined,
     renameSessionImpl: undefined,
@@ -231,7 +234,9 @@ function makeKernel(): FakeKernel {
       kernel.calls.listSessions.push(limit)
       if (kernel.failList) throw new Error('内核读列表失败')
       const source = kernel.listing ?? SESSIONS
-      return source.slice(0, limit).map((summary) => ({ summary, live: summary.state === 'running' }))
+      return source
+        .slice(0, limit)
+        .map((summary) => ({ summary, live: summary.state === 'running', listingSource: kernel.listingSource }))
     },
     async runState(sessionId: string) {
       if (kernel.failRunState) throw new Error('内核读不到运行态')
@@ -472,6 +477,27 @@ test('cmd.list_sessions 必须额外推一条 ev.session_changed：ev.result.dat
   assert.ok(kernel.calls.listSessions.length >= 1, '列表必须真的去内核取过，不是拿缓存糊弄')
 })
 
+
+test('宿主降级成「只列活会话」时不许覆盖手机已知列表（2026-11-20 真机：29 条变 3 条）', async () => {
+  const { runtime, transport, kernel } = fixture()
+  runtime.start()
+  await settle()
+  transport.pair('c_000000000001')
+  await runtime.handleCommand(cmd(PAYLOAD_TYPES.cmdListSessions, {}), 'c_000000000001')
+  await settle()
+  const first = transport.ofType(PAYLOAD_TYPES.evSessionChanged).at(-1) as Extract<EvPayload, { t: 'ev.session_changed' }>
+  assert.equal(first.sessions.length, 2, '正常来源应当是全量')
+
+  // 宿主降级：只回来一条，且来源标成 sessions
+  kernel.listingSource = 'sessions'
+  kernel.listing = [{ id: 'ses_live', state: 'running', running: true, title: '活着的那个' } as SessionSummary]
+  transport.broadcasts.length = 0
+  await runtime.handleCommand(cmd(PAYLOAD_TYPES.cmdListSessions, {}), 'c_000000000001')
+  await settle()
+  const after = transport.ofType(PAYLOAD_TYPES.evSessionChanged).at(-1) as Extract<EvPayload, { t: 'ev.session_changed' }>
+  assert.equal(after.sessions.length, 2, '降级列表只含活会话，覆盖上去就是「会话凭空消失」')
+  assert.ok(after.sessions.some((s) => s.id === 'ses_arch'), '已知列表里的其他会话必须还在（不是只剩活会话）')
+})
 test('session_changed 里的 updatedAt 只能是 ISO 字符串：给数字会让手机整页渲染抛错并被静默吞掉（F7）', async () => {
   const { runtime, transport } = fixture()
   runtime.start()

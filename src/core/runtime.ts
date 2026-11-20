@@ -298,6 +298,11 @@ export class HostRuntime {
    * 其余的合并成一条尾随推送（那一条会拿到最新数据，不会丢状态）。
    */
   private pushInFlight = false
+  /**
+   * 见过持久化的会话列表来源（`sessionQuery`）——用来区分「宿主降级」与「老宿主本来就只有 sessions 这一面」。
+   * 见 `pushSessions` 里那份降级列表的处理。
+   */
+  private sawPersistentList = false
   /** 工具步数（M2 状态摘要的 `steps`）：进程启动以来的累计，只加不减。 */
   private stepsDone = 0
 
@@ -1151,7 +1156,27 @@ export class HostRuntime {
       this.pushInFlight = true
       try {
         const listed = await this.kernel.listSessions(LISTING_LIMIT)
-        this.sessions = listed.map((item) => item.summary)
+        /*
+         * 降级列表不许覆盖已知列表（2026-11-20 真机 + 开关实验）。
+         *
+         * 载体在 `sessionQuery.listSessions()` 失败/超时时会退回 `sessions.list()`——
+         * 那只包含**内存里活着的会话**（实测 29 条变 3 条，且正是当前加载的那几条）。
+         * 以前这份降级结果照样广播，手机看到的就是「未归档会话凭空消失」。
+         *
+         * 判据：一旦见过持久化来源（sessionQuery），再出现 sessions 来源就算降级；
+         * 老宿主根本没有 sessionQuery 这一面时（从未见过），照常接受，不要把人卡死。
+         */
+        const fromFallback = listed.length > 0 && listed.every((item) => item.listingSource === 'sessions')
+        if (fromFallback && this.sawPersistentList) {
+          this.log('会话列表来自降级路径（只含活会话），本次保留已知列表', {
+            got: String(listed.length),
+            keep: String(this.sessions.length),
+            reason,
+          })
+        } else {
+          if (listed.some((item) => item.listingSource === 'sessionQuery')) this.sawPersistentList = true
+          this.sessions = listed.map((item) => item.summary)
+        }
       } catch (error) {
         // 读失败时**保留上一次已知的快照**再照常广播：把列表清成空白比停在旧状态更糟
         // （手机会以为会话全没了），而 keep_awake 那一侧的状态仍然必须送达（M25）。
