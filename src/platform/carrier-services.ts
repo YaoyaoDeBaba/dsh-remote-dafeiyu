@@ -749,7 +749,24 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     let records: ListedSession[] = []
     let source: 'sessionQuery' | 'sessions' = 'sessionQuery'
     const listPersistent = fn(services.sessionQuery, 'listSessions')
-    if (listPersistent) {
+    /*
+     * 调试开关（2026-11-19）：强制走「只列内存里活会话」的降级路径。
+     *
+     * 用途只有一个——复现真机上那个"只刷出 1~2 个会话"的现象，验证"降级到 sessions.list()"
+     * 这个推断准不准。默认关；设 `DAFEIYU_FORCE_LIVE_SESSIONS=1` 重启宿主即生效。
+     *
+     * 为什么做成开关而不是临时改代码：明天复现/对照要在两个版本之间来回切，
+     * 改代码就得重新 build + 重启多次，开关只要重启一次。
+     */
+    const forceLive = (() => {
+      try {
+        return String((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.DAFEIYU_FORCE_LIVE_SESSIONS ?? '') === '1'
+      } catch {
+        return false
+      }
+    })()
+    if (forceLive) log('调试开关生效：强制只列内存里的活会话（DAFEIYU_FORCE_LIVE_SESSIONS=1）')
+    if (listPersistent && !forceLive) {
       try {
         const rows = (await listPersistent.call(services.sessionQuery)) as SessionRecordLike[]
         records = (rows ?? [])
