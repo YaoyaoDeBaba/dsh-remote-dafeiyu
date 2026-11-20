@@ -1639,6 +1639,21 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
        * 与转生/收件箱同一套：正在跑 → agent.inject 排队；空闲/冷 → sendPrompt 等于替用户按下发送。
        */
       deliver: async (sessionId, text) => {
+        /*
+         * 先**确保会话能跑**（2026-11-20 真机）：
+         * 成员空闲久了会被宿主卸载，这时 sendPrompt 直接失败——
+         * 「会话没有活的 agent（agents.get(...) 为空，请先恢复会话）」。
+         * 也就是说"唤醒"这一步得先 resume，否则群消息永远送不到离线成员手里。
+         */
+        const ensure = kernel?.ensureRunnable
+        if (ensure) {
+          try {
+            const ready = await ensure.call(kernel, sessionId)
+            if (ready?.ok !== true) return { ok: false, message: ready?.message ?? '会话无法恢复（可能已归档）' }
+          } catch (error) {
+            return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+          }
+        }
         let service: unknown
         try {
           service = ctx.get?.('agents', true)
