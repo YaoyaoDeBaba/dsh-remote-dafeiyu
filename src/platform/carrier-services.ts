@@ -2045,6 +2045,62 @@ export function createServicesKernel(services: ServicesBundle, options: Services
   }
 
   /**
+   * 会话的 `agentPreset`（续跑时必须原样报上去，否则工具被收走——见 ensureRunnable 的注释）。
+   *
+   * 三道信源，从便宜到贵：
+   *   1. `presetBySession` 缓存（listSessions 时顺手填的）；
+   *   2. `sessionQuery.readSession` 现读会话 header——**形状要归一**，真机上见过
+   *      `{ session: {...} }` 与裸描述符两种，只认前一种就会读成空；
+   *   3. `sessionQuery.listSessions` 只读 header（和手机会话列表同一条路，比重读整篇日志轻）。
+   *
+   * 三道都空返回 `undefined`。**调用方必须当成"拒绝续跑"来处理**：
+   * 按无 preset 硬续上，换来的是整个会话的工具被收走，比不投递严重得多。
+   */
+  async function resolveAgentPreset(sessionId: string): Promise<string | undefined> {
+    const remember = (value: unknown): string | undefined => {
+      if (typeof value !== 'string') return undefined
+      const trimmed = value.trim()
+      if (trimmed === '') return undefined
+      presetBySession.set(sessionId, trimmed)
+      return trimmed
+    }
+    const cached = presetBySession.get(sessionId)
+    if (cached !== undefined) return cached
+    const readSession = fn(services.sessionQuery, 'readSession')
+    if (readSession) {
+      try {
+        const loaded = (await readSession.call(services.sessionQuery, sessionId)) as
+          | { session?: { agentPreset?: unknown }; agentPreset?: unknown }
+          | undefined
+        const found = remember(loaded?.session?.agentPreset) ?? remember(loaded?.agentPreset)
+        if (found !== undefined) return found
+      } catch (error) {
+        // 大日志（40MB / 5000+ 帧）上 readSession 很容易抛；抛了还有第三道，别在这里收工。
+        log('读会话 header 拿 agentPreset 失败，改查会话列表', {
+          sessionId,
+          message: messageOf(error).slice(0, 120),
+        })
+      }
+    }
+    const listRows = fn(services.sessionQuery, 'listSessions')
+    if (listRows) {
+      try {
+        const rows = (await listRows.call(services.sessionQuery)) as Array<{
+          header?: { id?: unknown; agentPreset?: unknown }
+        }>
+        const row = (Array.isArray(rows) ? rows : []).find(
+          (one) => String(one?.header?.id ?? '') === sessionId,
+        )
+        const found = remember(row?.header?.agentPreset)
+        if (found !== undefined) return found
+      } catch (error) {
+        log('查会话列表拿 agentPreset 失败', { sessionId, message: messageOf(error).slice(0, 120) })
+      }
+    }
+    return undefined
+  }
+
+  /**
    * 冷会话续跑（归档或未加载的会话发指令前必须走这一步）。
    *
    * **`agentOptions` 不能省**：真机取证抓到的就是这个——宿主每轮结束都会 `session/end-seed`
@@ -2081,24 +2137,23 @@ export function createServicesKernel(services: ServicesBundle, options: Services
      * ★ 必须带 agentPreset（2026-11-20 真机，代价惨重）：
      * 不带 preset 续起来的 agent 会掉出 ptc，模型的工具表从 [run_code] 变成插件注册的那一批，
      * 于是「shell / 文件工具被平台收走」——转生写不了文档、任务干不下去，只能等重启。
-     * 缓存来自 listSessions；没有就现读一次 header。
+     *
+     * 2026-11-20 19:23 二次真机（0.9.0-dafeiyu.150）：.140 那版「缓存 + readSession 现读」
+     * 仍然漏了——形象 / vision 两条部门会话（agentPreset=standard）被群消息唤醒时掉成插件工具集，
+     * 从此写不了文件（转生连交接文档都写不出来，靠超时兜底才建出会话）。两个信源都会空：
+     *   · 缓存靠 listSessions 填，这个进程里还没列过会话就是空的；
+     *   · readSession 要把整篇日志折叠一遍（那条会话 40MB / 5000+ 帧），很容易抛错，
+     *     旧代码 catch 住就当「没有 preset」，然后静默按无 preset 续跑 → 工具被收走。
+     * 三道兜底统一走 resolveAgentPreset；**拿不到就拒绝续跑**（宁可不投递，也不毁会话）。
      */
-    let preset = presetBySession.get(sessionId)
+    const preset = await resolveAgentPreset(sessionId)
     if (preset === undefined) {
-      const readSession = fn(services.sessionQuery, 'readSession')
-      if (readSession) {
-        try {
-          const loaded = (await readSession.call(services.sessionQuery, sessionId)) as {
-            session?: { agentPreset?: unknown }
-          }
-          const value = loaded?.session?.agentPreset
-          if (typeof value === 'string' && value.trim() !== '') {
-            preset = value.trim()
-            presetBySession.set(sessionId, preset)
-          }
-        } catch {
-          /* 读不到就当没有：至少不比以前更糟 */
-        }
+      log('续跑被拒：读不到 agentPreset', { sessionId })
+      return {
+        ok: false,
+        message:
+          `读不到这个会话的 agentPreset（${sessionId}）：为了不把它的工具（shell / 读写文件）收走，这次不续跑。` +
+          '请先在桌面打开这条会话随便发一句话，把它按正常路子拉起来，再来。',
       }
     }
     try {
@@ -2107,7 +2162,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         agentOptions: {
           provider: selection.provider,
           model: selection.model,
-          ...(preset === undefined ? {} : { agentPreset: preset }),
+          agentPreset: preset,
         },
       })
       return { ok: true }

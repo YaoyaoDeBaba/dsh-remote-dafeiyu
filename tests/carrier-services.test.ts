@@ -197,9 +197,66 @@ test('续跑必须透传 agentPreset：不带它，会话会掉出 ptc、工具�
     'agentOptions 里没有 agentPreset：续起来的 agent 会掉出 preset，真机上表现为 shell/文件工具被收走',
   )
 })
+test('preset 现读要认两种形状：readSession 直接回裸描述符时也得读到 agentPreset（2026-11-20）', async () => {
+  // 真机上 readSession 的返回形状见过两种：`{ session: {...} }` 与裸描述符。
+  // 只认前一种，就会把 preset 读成空 —— 这正是 .149 之前那版在部门会话上失效的入口之一。
+  const f = fixture()
+  const services = f.bundle()
+  services.sessionQuery = {
+    readSession: (id: string) => Promise.resolve({ id, agentPreset: 'standard' }),
+  }
+  const kernel = f.kernel(services)
+  const ready = await kernel.ensureRunnable?.('ses_idle')
+  assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
+  const request = f.calls.resume[0] as { agentOptions?: { agentPreset?: string } }
+  assert.equal(
+    request.agentOptions?.agentPreset,
+    'standard',
+    '裸描述符形状没归一：preset 读成空，续起来的 agent 只有插件工具',
+  )
+})
+
+test('readSession 抛错时要退到 sessionQuery.listSessions 的 header 里找 preset（2026-11-20）', async () => {
+  // 真机现场：那条会话的日志 40MB / 5000+ 帧，readSession 要把整篇折叠一遍，很容易抛。
+  // 旧代码 catch 住就当"没有 preset"，于是静默按无 preset 续跑 —— 工具被收走。
+  const f = fixture()
+  const services = f.bundle()
+  services.sessionQuery = {
+    readSession: () => Promise.reject(new Error('session log too large')),
+    listSessions: () => Promise.resolve([{ header: { id: 'ses_idle', agentPreset: 'standard' } }]),
+  }
+  const kernel = f.kernel(services)
+  const ready = await kernel.ensureRunnable?.('ses_idle')
+  assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
+  const request = f.calls.resume[0] as { agentOptions?: { agentPreset?: string } }
+  assert.equal(
+    request.agentOptions?.agentPreset,
+    'standard',
+    '第三道兜底没走：大日志上 readSession 一抛，preset 就丢了',
+  )
+})
+
+test('三道都拿不到 preset 时必须拒绝续跑，不许按无 preset 硬续（2026-11-20 工具被收走的根因）', async () => {
+  const f = fixture()
+  const services = f.bundle()
+  services.sessionQuery = { readSession: () => Promise.resolve({ session: { id: 'ses_idle' } }) }
+  const kernel = f.kernel(services)
+  const ready = await kernel.ensureRunnable?.('ses_idle')
+  assert.equal(
+    ready?.ok,
+    false,
+    '拿不到 preset 还是续了：续出来的 agent 只挂插件工具，整条会话被毁（宁可这条消息送不到）',
+  )
+  assert.match(String(ready?.message ?? ''), /agentPreset/, '拒绝原因要点名 agentPreset，否则用户不知道发生了什么')
+  assert.match(String(ready?.message ?? ''), /桌面/, '拒绝原因要给自救办法（在桌面打开那条会话发一句）')
+  assert.equal(f.calls.resume.length, 0, '拒绝了还把 agent 建出来：那条拒绝就是空话')
+})
+
 test('冷会话续跑必须带 agentOptions：不带模型续出来的 Agent 会让整回合在装配阶段死掉', async () => {
   const f = fixture()
-  const kernel = f.kernel(f.bundle())
+  // 2026-11-20（.150）：拿不到 agentPreset 现在会**拒绝续跑**，这条用例只想钉住
+  // agentOptions 里的模型，所以给一个 preset 让它走到 resume。拒绝那条另有判据。
+  const kernel = f.kernel(f.bundle({ agentPreset: 'standard' }))
   const ready = await kernel.ensureRunnable?.('ses_idle')
   assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
   assert.equal(f.calls.resume.length, 1, '没有调用 agents.resume：会话根本没被唤醒')
@@ -238,7 +295,8 @@ test('拿不到模型选择时必须拒绝续跑，并且一次内核调用都�
 
 test('归档会话：先 unarchive 再 resume，顺序不能反', async () => {
   const f = fixture()
-  const kernel = f.kernel(f.bundle())
+  // 同前：.150 起拿不到 agentPreset 就拒绝续跑，这条只钉"解归档早于 resume"，给它一个 preset。
+  const kernel = f.kernel(f.bundle({ agentPreset: 'standard' }))
   await kernel.ensureRunnable?.('ses_arch')
   assert.deepEqual(
     f.calls.unarchive,
