@@ -22058,13 +22058,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json10, params, message) {
+function handleUnrepresentable(schema, ctx, json11, params, message) {
   const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result2 === "any")
     return false;
   if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json10, result2);
+  Object.assign(json11, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -22300,12 +22300,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json10) {
-  const allOf = json10.allOf;
+function foldIntersection(json11) {
+  const allOf = json11.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json10)
+    if (key in json11)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -22324,8 +22324,8 @@ function foldIntersection(json10) {
   }
   if (!folded)
     return;
-  delete json10.allOf;
-  assignProps(json10, folded);
+  delete json11.allOf;
+  assignProps(json11, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -22407,20 +22407,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json10 of [seen.schema, seen.def]) {
-          const allOf = json10?.allOf;
+        for (const json11 of [seen.schema, seen.def]) {
+          const allOf = json11?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json10);
+            existing.push(json11);
           else
-            carriers.set(allOf, [json10]);
+            carriers.set(allOf, [json11]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json10 of carriers.get(allOf) ?? [])
-          foldIntersection(json10);
+        for (const json11 of carriers.get(allOf) ?? [])
+          foldIntersection(json11);
       }
     }
   }
@@ -22655,29 +22655,29 @@ var exactPatterns = /* @__PURE__ */ new Map([
 ]);
 var exactPattern = (p) => exactPatterns.get(p) ?? p;
 var stringProcessor = (schema, ctx, _json, _params) => {
-  const json10 = _json;
-  json10.type = "string";
+  const json11 = _json;
+  json11.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json10.minLength = minimum;
+    json11.minLength = minimum;
   if (typeof maximum === "number")
-    json10.maxLength = maximum;
+    json11.maxLength = maximum;
   if (format) {
-    json10.format = formatMap[format] ?? format;
-    if (json10.format === "")
-      delete json10.format;
+    json11.format = formatMap[format] ?? format;
+    if (json11.format === "")
+      delete json11.format;
     if (format === "time" || laxFormat) {
-      delete json10.format;
+      delete json11.format;
     }
   }
   if (contentEncoding)
-    json10.contentEncoding = contentEncoding;
+    json11.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const patternList = [...patterns].map(exactPattern);
     if (patternList.length === 1)
-      json10.pattern = patternList[0].source;
+      json11.pattern = patternList[0].source;
     else if (patternList.length > 1) {
-      json10.allOf = [
+      json11.allOf = [
         ...patternList.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -22687,31 +22687,31 @@ var stringProcessor = (schema, ctx, _json, _params) => {
   }
 };
 var numberProcessor = (schema, ctx, _json, params) => {
-  const json10 = _json;
+  const json11 = _json;
   const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-  json10.type = isInt ? "integer" : "number";
+  json11.type = isInt ? "integer" : "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json10.minimum = exclusiveMinimum;
-      json10.exclusiveMinimum = true;
+      json11.minimum = exclusiveMinimum;
+      json11.exclusiveMinimum = true;
     } else {
-      json10.exclusiveMinimum = exclusiveMinimum;
+      json11.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json10.minimum = minimum;
+    json11.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json10.maximum = exclusiveMaximum;
-      json10.exclusiveMaximum = true;
+      json11.maximum = exclusiveMaximum;
+      json11.exclusiveMaximum = true;
     } else {
-      json10.exclusiveMaximum = exclusiveMaximum;
+      json11.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json10.maximum = maximum;
+    json11.maximum = maximum;
   }
   if (multipleOf) {
     const divisors = /* @__PURE__ */ new Set();
@@ -22719,75 +22719,75 @@ var numberProcessor = (schema, ctx, _json, params) => {
       if (Number.isFinite(divisor) && divisor !== 0)
         divisors.add(Math.abs(divisor));
       else
-        handleUnrepresentable(schema, ctx, json10, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+        handleUnrepresentable(schema, ctx, json11, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
     }
     const [first, ...rest] = divisors;
     if (first !== void 0)
-      json10.multipleOf = first;
+      json11.multipleOf = first;
     if (rest.length)
-      json10.allOf = [...json10.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+      json11.allOf = [...json11.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
   }
 };
-var booleanProcessor = (_schema, _ctx, json10, _params) => {
-  json10.type = "boolean";
+var booleanProcessor = (_schema, _ctx, json11, _params) => {
+  json11.type = "boolean";
 };
-var bigintProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "BigInt cannot be represented in JSON Schema");
+var bigintProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "BigInt cannot be represented in JSON Schema");
 };
-var symbolProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Symbols cannot be represented in JSON Schema");
+var symbolProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Symbols cannot be represented in JSON Schema");
 };
-var nullProcessor = (_schema, ctx, json10, _params) => {
+var nullProcessor = (_schema, ctx, json11, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json10.type = "string";
-    json10.nullable = true;
-    json10.enum = [null];
+    json11.type = "string";
+    json11.nullable = true;
+    json11.enum = [null];
   } else {
-    json10.type = "null";
+    json11.type = "null";
   }
 };
-var undefinedProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Undefined cannot be represented in JSON Schema");
+var undefinedProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Undefined cannot be represented in JSON Schema");
 };
-var voidProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Void cannot be represented in JSON Schema");
+var voidProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Void cannot be represented in JSON Schema");
 };
-var neverProcessor = (_schema, _ctx, json10, _params) => {
-  json10.not = {};
+var neverProcessor = (_schema, _ctx, json11, _params) => {
+  json11.not = {};
 };
 var anyProcessor = (_schema, _ctx, _json, _params) => {
 };
 var unknownProcessor = (_schema, _ctx, _json, _params) => {
 };
-var dateProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Date cannot be represented in JSON Schema");
+var dateProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Date cannot be represented in JSON Schema");
 };
-var enumProcessor = (schema, _ctx, json10, _params) => {
+var enumProcessor = (schema, _ctx, json11, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.length === 0) {
-    json10.not = {};
+    json11.not = {};
     return;
   }
   if (values.every((v) => typeof v === "number"))
-    json10.type = "number";
+    json11.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json10.type = "string";
-  json10.enum = values;
+    json11.type = "string";
+  json11.enum = values;
 };
-var literalProcessor = (schema, ctx, json10, params) => {
+var literalProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   if (def.values.length === 0) {
-    json10.not = {};
+    json11.not = {};
     return;
   }
   const vals = [];
   for (const val of def.values) {
     if (val === void 0) {
-      if (handleUnrepresentable(schema, ctx, json10, params, "Literal `undefined` cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json11, params, "Literal `undefined` cannot be represented in JSON Schema"))
         return;
     } else if (typeof val === "bigint") {
-      if (handleUnrepresentable(schema, ctx, json10, params, "BigInt literals cannot be represented in JSON Schema"))
+      if (handleUnrepresentable(schema, ctx, json11, params, "BigInt literals cannot be represented in JSON Schema"))
         return;
       vals.push(Number(val));
     } else {
@@ -22797,37 +22797,37 @@ var literalProcessor = (schema, ctx, json10, params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json10.type = val === null ? "null" : typeof val;
+    json11.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json10.enum = [val];
+      json11.enum = [val];
     } else {
-      json10.const = val;
+      json11.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json10.type = "number";
+      json11.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json10.type = "string";
+      json11.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json10.type = "boolean";
+      json11.type = "boolean";
     if (vals.every((v) => v === null))
-      json10.type = "null";
-    json10.enum = vals;
+      json11.type = "null";
+    json11.enum = vals;
   }
 };
-var nanProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "NaN cannot be represented in JSON Schema");
+var nanProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "NaN cannot be represented in JSON Schema");
 };
-var templateLiteralProcessor = (schema, _ctx, json10, _params) => {
-  const _json = json10;
+var templateLiteralProcessor = (schema, _ctx, json11, _params) => {
+  const _json = json11;
   const pattern = schema._zod.pattern;
   if (!pattern)
     throw new Error("Pattern not found in template literal");
   _json.type = "string";
   _json.pattern = pattern.source;
 };
-var fileProcessor = (schema, _ctx, json10, _params) => {
-  const _json = json10;
+var fileProcessor = (schema, _ctx, json11, _params) => {
+  const _json = json11;
   _json.type = "string";
   _json.format = "binary";
   _json.contentEncoding = "binary";
@@ -22845,34 +22845,34 @@ var fileProcessor = (schema, _ctx, json10, _params) => {
   else
     _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
 };
-var successProcessor = (_schema, _ctx, json10, _params) => {
-  json10.type = "boolean";
+var successProcessor = (_schema, _ctx, json11, _params) => {
+  json11.type = "boolean";
 };
-var customProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Custom types cannot be represented in JSON Schema");
+var customProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Custom types cannot be represented in JSON Schema");
 };
-var functionProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Function types cannot be represented in JSON Schema");
+var functionProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Function types cannot be represented in JSON Schema");
 };
-var transformProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Transforms cannot be represented in JSON Schema");
+var transformProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Transforms cannot be represented in JSON Schema");
 };
-var mapProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Map cannot be represented in JSON Schema");
+var mapProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Map cannot be represented in JSON Schema");
 };
-var setProcessor = (schema, ctx, json10, params) => {
-  handleUnrepresentable(schema, ctx, json10, params, "Set cannot be represented in JSON Schema");
+var setProcessor = (schema, ctx, json11, params) => {
+  handleUnrepresentable(schema, ctx, json11, params, "Set cannot be represented in JSON Schema");
 };
 var arrayProcessor = (schema, ctx, _json, params) => {
-  const json10 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json10.minItems = minimum;
+    json11.minItems = minimum;
   if (typeof maximum === "number")
-    json10.maxItems = maximum;
-  json10.type = "array";
-  json10.items = processSchema(def.element, ctx, {
+    json11.maxItems = maximum;
+  json11.type = "array";
+  json11.items = processSchema(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
@@ -22888,17 +22888,17 @@ function inputOptin(schema) {
   return schema._zod.optin;
 }
 var objectProcessor = (schema, ctx, _json, params) => {
-  const json10 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
   const shape = def.shape;
   const symbolKeys = Object.getOwnPropertySymbols(shape);
-  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json10, params, "Symbol keys cannot be represented in JSON Schema")) {
+  if (symbolKeys.length && handleUnrepresentable(schema, ctx, json11, params, "Symbol keys cannot be represented in JSON Schema")) {
     return;
   }
-  json10.type = "object";
-  json10.properties = {};
+  json11.type = "object";
+  json11.properties = {};
   for (const key in shape) {
-    assignProp(json10.properties, key, processSchema(shape[key], ctx, {
+    assignProp(json11.properties, key, processSchema(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     }));
@@ -22911,21 +22911,21 @@ var objectProcessor = (schema, ctx, _json, params) => {
     }
   }
   if (requiredKeys.length > 0) {
-    json10.required = requiredKeys;
+    json11.required = requiredKeys;
   }
   if (def.catchall?._zod.def.type === "never") {
-    json10.additionalProperties = false;
+    json11.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json10.additionalProperties = false;
+      json11.additionalProperties = false;
   } else if (def.catchall) {
-    json10.additionalProperties = processSchema(def.catchall, ctx, {
+    json11.additionalProperties = processSchema(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 };
-var unionProcessor = (schema, ctx, json10, params) => {
+var unionProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -22933,12 +22933,12 @@ var unionProcessor = (schema, ctx, json10, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json10.oneOf = options;
+    json11.oneOf = options;
   } else {
-    json10.anyOf = options;
+    json11.anyOf = options;
   }
 };
-var intersectionProcessor = (schema, ctx, json10, params) => {
+var intersectionProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   const a = processSchema(def.left, ctx, {
     ...params,
@@ -22953,13 +22953,13 @@ var intersectionProcessor = (schema, ctx, json10, params) => {
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json10.allOf = allOf;
+  json11.allOf = allOf;
   ctx.intersections.push(allOf);
 };
 var tupleProcessor = (schema, ctx, _json, params) => {
-  const json10 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
-  json10.type = "array";
+  json11.type = "array";
   const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
   const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
   const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -22981,70 +22981,70 @@ var tupleProcessor = (schema, ctx, _json, params) => {
   const maxItems = def.items.length;
   const isClosed = !def.rest;
   if (ctx.target === "draft-2020-12") {
-    json10.prefixItems = prefixItems;
+    json11.prefixItems = prefixItems;
     if (isClosed) {
-      json10.items = false;
+      json11.items = false;
     } else if (rest) {
-      json10.items = rest;
+      json11.items = rest;
     }
     if (minItems > 0)
-      json10.minItems = minItems;
+      json11.minItems = minItems;
     if (isClosed)
-      json10.maxItems = maxItems;
+      json11.maxItems = maxItems;
   } else if (ctx.target === "openapi-3.0") {
-    json10.items = {
+    json11.items = {
       anyOf: prefixItems
     };
     if (rest) {
-      json10.items.anyOf.push(rest);
+      json11.items.anyOf.push(rest);
     }
     if (minItems > 0)
-      json10.minItems = minItems;
+      json11.minItems = minItems;
     if (isClosed)
-      json10.maxItems = maxItems;
+      json11.maxItems = maxItems;
   } else {
-    json10.items = prefixItems;
+    json11.items = prefixItems;
     if (isClosed) {
-      json10.additionalItems = false;
+      json11.additionalItems = false;
     } else if (rest) {
-      json10.additionalItems = rest;
+      json11.additionalItems = rest;
     }
     if (minItems > 0)
-      json10.minItems = minItems;
+      json11.minItems = minItems;
     if (isClosed)
-      json10.maxItems = maxItems;
+      json11.maxItems = maxItems;
   }
   const { minimum, maximum } = aggregateChecks(schema);
   if (typeof minimum === "number")
-    json10.minItems = minimum;
+    json11.minItems = minimum;
   if (typeof maximum === "number")
-    json10.maxItems = maximum;
+    json11.maxItems = maximum;
 };
-function stringifyKeyNames(bySchema, json10, visited) {
-  if (json10.$ref) {
-    if (visited.has(json10))
-      return json10;
-    visited.add(json10);
-    const def = bySchema.get(json10)?.def;
+function stringifyKeyNames(bySchema, json11, visited) {
+  if (json11.$ref) {
+    if (visited.has(json11))
+      return json11;
+    visited.add(json11);
+    const def = bySchema.get(json11)?.def;
     if (!def)
-      return json10;
+      return json11;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json10 : inlined;
+    return inlined === def ? json11 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json10[keyword];
+    const branches = json11[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json10 = { ...json10, [keyword]: mapped };
+      json11 = { ...json11, [keyword]: mapped };
   }
-  const types = Array.isArray(json10.type) ? json10.type : [json10.type];
+  const types = Array.isArray(json11.type) ? json11.type : [json11.type];
   const numericType = !types.includes("string") && types.some((t) => t === "number" || t === "integer");
-  const values = json10.enum ?? (json10.const !== void 0 ? [json10.const] : void 0);
+  const values = json11.enum ?? (json11.const !== void 0 ? [json11.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json10;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json10;
+    return json11;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json11;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23084,9 +23084,9 @@ function rewriteKeyNames(ctx) {
   }
 }
 var recordProcessor = (schema, ctx, _json, params) => {
-  const json10 = _json;
+  const json11 = _json;
   const def = schema._zod.def;
-  json10.type = "object";
+  json11.type = "object";
   const keyType = def.keyType;
   const patterns = aggregateChecks(keyType).patterns;
   if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -23094,13 +23094,13 @@ var recordProcessor = (schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json10.patternProperties = {};
+    json11.patternProperties = {};
     for (const pattern of patterns) {
-      assignProp(json10.patternProperties, exactPattern(pattern).source, valueSchema);
+      assignProp(json11.patternProperties, exactPattern(pattern).source, valueSchema);
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json10.propertyNames = processSchema(def.keyType, ctx, {
+      json11.propertyNames = processSchema(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
@@ -23112,7 +23112,7 @@ var recordProcessor = (schema, ctx, _json, params) => {
       }
       pending2.push(schema);
     }
-    json10.additionalProperties = processSchema(def.valueType, ctx, {
+    json11.additionalProperties = processSchema(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -23122,19 +23122,19 @@ var recordProcessor = (schema, ctx, _json, params) => {
   if (keyValues && !def.partial && !omittableOnInput) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json10.required = validKeyValues.map(String);
+      json11.required = validKeyValues.map(String);
     }
   }
 };
-var nullableProcessor = (schema, ctx, json10, params) => {
+var nullableProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   const inner = processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json10.nullable = true;
+    json11.nullable = true;
   } else {
-    json10.anyOf = [inner, { type: "null" }];
+    json11.anyOf = [inner, { type: "null" }];
   }
 };
 var nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -23144,7 +23144,7 @@ var nonoptionalProcessor = (schema, ctx, _json, params) => {
   seen.ref = def.innerType;
 };
 var UNREPRESENTABLE_DEFAULT = /* @__PURE__ */ Symbol();
-function serializeDefaultValue(value, schema, ctx, json10, params) {
+function serializeDefaultValue(value, schema, ctx, json11, params) {
   let unrepresentable = false;
   const serialized = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23154,30 +23154,30 @@ function serializeDefaultValue(value, schema, ctx, json10, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized);
-  handleUnrepresentable(schema, ctx, json10, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json11, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
-var defaultProcessor = (schema, ctx, json10, params) => {
+var defaultProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json10, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json11, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json10.default = value;
+    json11.default = value;
 };
-var prefaultProcessor = (schema, ctx, json10, params) => {
+var prefaultProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io !== "input")
     return;
-  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json10, params);
+  const value = serializeDefaultValue(def.defaultValue, schema, ctx, json11, params);
   if (value !== UNREPRESENTABLE_DEFAULT)
-    json10._prefault = value;
+    json11._prefault = value;
 };
-var catchProcessor = (schema, ctx, json10, params) => {
+var catchProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -23186,10 +23186,10 @@ var catchProcessor = (schema, ctx, json10, params) => {
   try {
     catchValue = def.catchValue(void 0);
   } catch {
-    handleUnrepresentable(schema, ctx, json10, params, "Dynamic catch values are not supported in JSON Schema");
+    handleUnrepresentable(schema, ctx, json11, params, "Dynamic catch values are not supported in JSON Schema");
     return;
   }
-  json10.default = catchValue;
+  json11.default = catchValue;
 };
 var pipeProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23199,12 +23199,12 @@ var pipeProcessor = (schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 };
-var readonlyProcessor = (schema, ctx, json10, params) => {
+var readonlyProcessor = (schema, ctx, json11, params) => {
   const def = schema._zod.def;
   processSchema(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json10.readOnly = true;
+  json11.readOnly = true;
 };
 var promiseProcessor = (schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -23846,7 +23846,7 @@ var _ZodString = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodString.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json10, params) => stringProcessor(inst, ctx, json10, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => stringProcessor(inst, ctx, json11, params);
   },
   /* @__PURE__ */ util_exports.derived({
     format: (inst) => aggregateChecks(inst).format ?? null,
@@ -24205,7 +24205,7 @@ var ZodNumber = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodNumber.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json10, params) => numberProcessor(inst, ctx, json10, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => numberProcessor(inst, ctx, json11, params);
     inst.isFinite = true;
   },
   /* @__PURE__ */ util_exports.derived({
@@ -24295,7 +24295,7 @@ function uint32(params) {
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => booleanProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => booleanProcessor(inst, ctx, json11, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
@@ -24305,7 +24305,7 @@ var ZodBigInt = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodBigInt.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json10, params) => bigintProcessor(inst, ctx, json10, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => bigintProcessor(inst, ctx, json11, params);
   },
   /* @__PURE__ */ util_exports.derived({
     minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -24363,7 +24363,7 @@ function uint64(params) {
 var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
   $ZodSymbol.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => symbolProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => symbolProcessor(inst, ctx, json11, params);
 });
 function symbol(params) {
   return _symbol(ZodSymbol, params);
@@ -24371,7 +24371,7 @@ function symbol(params) {
 var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
   $ZodUndefined.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => undefinedProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => undefinedProcessor(inst, ctx, json11, params);
 });
 function _undefined3(params) {
   return _undefined2(ZodUndefined, params);
@@ -24379,7 +24379,7 @@ function _undefined3(params) {
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => nullProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nullProcessor(inst, ctx, json11, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
@@ -24387,7 +24387,7 @@ function _null3(params) {
 var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
   $ZodAny.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => anyProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => anyProcessor(inst, ctx, json11, params);
 });
 function any() {
   return _any(ZodAny);
@@ -24395,7 +24395,7 @@ function any() {
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => unknownProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => unknownProcessor(inst, ctx, json11, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -24403,7 +24403,7 @@ function unknown() {
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => neverProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => neverProcessor(inst, ctx, json11, params);
 });
 function never(params) {
   return _never(ZodNever, params);
@@ -24411,7 +24411,7 @@ function never(params) {
 var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
   $ZodVoid.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => voidProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => voidProcessor(inst, ctx, json11, params);
 });
 function _void2(params) {
   return _void(ZodVoid, params);
@@ -24421,7 +24421,7 @@ var ZodDate = /* @__PURE__ */ $constructor(
   (inst, def) => {
     $ZodDate.init(inst, def);
     ZodType.init(inst, def);
-    inst._zod.processJSONSchema = (ctx, json10, params) => dateProcessor(inst, ctx, json10, params);
+    inst._zod.processJSONSchema = (ctx, json11, params) => dateProcessor(inst, ctx, json11, params);
     inst.min = (value, params) => inst.check(_gte(value, params));
     inst.max = (value, params) => inst.check(_lte(value, params));
   },
@@ -24443,7 +24443,7 @@ var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => arrayProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => arrayProcessor(inst, ctx, json11, params);
   inst.element = def.element;
 }, {
   min(n, params) {
@@ -24473,7 +24473,7 @@ var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => objectProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => objectProcessor(inst, ctx, json11, params);
   util_exports.installLazyProp(inst, "shape", (self2) => self2._zod.def.shape, false);
 }, {
   keyof() {
@@ -24546,7 +24546,7 @@ function looseObject(shape, params) {
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => unionProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => unionProcessor(inst, ctx, json11, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -24559,7 +24559,7 @@ function union(options, params) {
 var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodXor.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => unionProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => unionProcessor(inst, ctx, json11, params);
   inst.options = def.options;
 });
 function xor(options, params) {
@@ -24585,7 +24585,7 @@ function discriminatedUnion(discriminator, options, params) {
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => intersectionProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => intersectionProcessor(inst, ctx, json11, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -24598,7 +24598,7 @@ var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTuple.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => tupleProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => tupleProcessor(inst, ctx, json11, params);
 }, {
   rest(rest) {
     return this.clone({
@@ -24631,7 +24631,7 @@ var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => recordProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => recordProcessor(inst, ctx, json11, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -24673,7 +24673,7 @@ var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodMap.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => mapProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => mapProcessor(inst, ctx, json11, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
   inst.min = (...args) => inst.check(_minSize(...args));
@@ -24693,7 +24693,7 @@ var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodSet.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => setProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => setProcessor(inst, ctx, json11, params);
   inst.min = (...args) => inst.check(_minSize(...args));
   inst.nonempty = (params) => inst.check(_minSize(1, params));
   inst.max = (...args) => inst.check(_maxSize(...args));
@@ -24709,7 +24709,7 @@ function set(valueType, params) {
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => enumProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => enumProcessor(inst, ctx, json11, params);
   inst.enum = def.entries;
   inst.options = [...inst._zod.values];
   const keys = new Set(Object.keys(def.entries));
@@ -24762,7 +24762,7 @@ function nativeEnum(entries, params) {
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => literalProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => literalProcessor(inst, ctx, json11, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -24783,7 +24783,7 @@ function literal(value, params) {
 var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
   $ZodFile.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => fileProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => fileProcessor(inst, ctx, json11, params);
   inst.min = (size, params) => inst.check(_minSize(size, params));
   inst.max = (size, params) => inst.check(_maxSize(size, params));
   inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
@@ -24795,7 +24795,7 @@ var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   _ensureDefaultMemoizer();
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => transformProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => transformProcessor(inst, ctx, json11, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -24834,7 +24834,7 @@ function transform(fn) {
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => optionalProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => optionalProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -24846,7 +24846,7 @@ function optional(innerType) {
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => optionalProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => optionalProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -24858,7 +24858,7 @@ function exactOptional(innerType) {
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => nullableProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nullableProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -24873,7 +24873,7 @@ function nullish2(innerType) {
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => defaultProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => defaultProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
@@ -24889,7 +24889,7 @@ function _default2(innerType, defaultValue) {
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => prefaultProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => prefaultProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -24904,7 +24904,7 @@ function prefault(innerType, defaultValue) {
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => nonoptionalProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nonoptionalProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -24917,7 +24917,7 @@ function nonoptional(innerType, params) {
 var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
   $ZodSuccess.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => successProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => successProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function success(innerType) {
@@ -24929,7 +24929,7 @@ function success(innerType) {
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => catchProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => catchProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
@@ -24943,7 +24943,7 @@ function _catch2(innerType, catchValue) {
 var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
   $ZodNaN.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => nanProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => nanProcessor(inst, ctx, json11, params);
 });
 function nan(params) {
   return _nan(ZodNaN, params);
@@ -24951,7 +24951,7 @@ function nan(params) {
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => pipeProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => pipeProcessor(inst, ctx, json11, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -24993,7 +24993,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => readonlyProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => readonlyProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -25005,7 +25005,7 @@ function readonly(innerType) {
 var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
   $ZodTemplateLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => templateLiteralProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => templateLiteralProcessor(inst, ctx, json11, params);
 });
 function templateLiteral(parts, params) {
   return new ZodTemplateLiteral({
@@ -25017,7 +25017,7 @@ function templateLiteral(parts, params) {
 var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
   $ZodLazy.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => lazyProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => lazyProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.getter();
 });
 function lazy(getter) {
@@ -25029,7 +25029,7 @@ function lazy(getter) {
 var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
   $ZodPromise.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => promiseProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => promiseProcessor(inst, ctx, json11, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function promise(innerType) {
@@ -25041,7 +25041,7 @@ function promise(innerType) {
 var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
   $ZodFunction.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => functionProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => functionProcessor(inst, ctx, json11, params);
 });
 function _function(params) {
   return new ZodFunction({
@@ -25053,7 +25053,7 @@ function _function(params) {
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json10, params) => customProcessor(inst, ctx, json10, params);
+  inst._zod.processJSONSchema = (ctx, json11, params) => customProcessor(inst, ctx, json11, params);
 });
 function check(fn) {
   const ch = new $ZodCheck({
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.146" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.147" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -34414,6 +34414,7 @@ import { mkdirSync as mkdirSync4, readFileSync as readFileSync3 } from "node:fs"
 import path11 from "node:path";
 var USER_CONFIG_FILE = "user-config.json";
 var MAX_TOKEN_INPUT = 256;
+var MAX_SECRET_INPUT = 512;
 function resolveUserConfigFile(statusFile2) {
   const base = statusFile2 ? path11.dirname(statusFile2) : dataDir();
   return path11.join(base, USER_CONFIG_FILE);
@@ -34443,6 +34444,34 @@ function normalizeUserOverrides(input2) {
       }
       value.hostToken = trimmed;
     }
+  }
+  if ("websearch" in input2) {
+    const raw = input2.websearch;
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      return { ok: false, field: "websearch", error: "\u5FC5\u987B\u662F\u4E00\u4E2A\u5BF9\u8C61\uFF08{ githubToken, openAlexKey }\uFF09" };
+    }
+    const record2 = raw;
+    const nested = {};
+    for (const field of ["githubToken", "openAlexKey"]) {
+      if (!(field in record2)) continue;
+      const one = record2[field];
+      if (typeof one !== "string") {
+        return { ok: false, field: "websearch." + field, error: "\u5FC5\u987B\u662F\u5B57\u7B26\u4E32" };
+      }
+      const trimmed = one.trim();
+      if (trimmed === "") {
+        nested[field] = void 0;
+        continue;
+      }
+      if (trimmed.length > MAX_SECRET_INPUT) {
+        return { ok: false, field: "websearch." + field, error: `\u4E0D\u80FD\u8D85\u8FC7 ${MAX_SECRET_INPUT} \u4E2A\u5B57\u7B26` };
+      }
+      if (/[\s\u0000-\u001f]/.test(trimmed)) {
+        return { ok: false, field: "websearch." + field, error: "\u4E2D\u95F4\u4E0D\u80FD\u6709\u7A7A\u767D\u6216\u63A7\u5236\u5B57\u7B26\uFF08\u53EA\u8D34 token \u672C\u8EAB\uFF0C\u522B\u5E26\u5F15\u53F7/\u6362\u884C\uFF09" };
+      }
+      nested[field] = trimmed;
+    }
+    value.websearch = nested;
   }
   return { ok: true, value };
 }
@@ -34477,7 +34506,45 @@ function readUserConfig(file2, log) {
     const kept = one.value[field];
     if (typeof kept === "string") value[field] = kept;
   }
+  if ("websearch" in record2) {
+    const one = normalizeUserOverrides({ websearch: record2.websearch });
+    if (!one.ok) {
+      log?.("user-config item ignored", { field: "websearch", reason: one.error });
+    } else {
+      const nested = one.value.websearch ?? {};
+      const kept = {};
+      for (const field of ["githubToken", "openAlexKey"]) {
+        const token = nested[field];
+        if (typeof token === "string") kept[field] = token;
+      }
+      if (Object.keys(kept).length > 0) value.websearch = kept;
+    }
+  }
   return value;
+}
+function saveUserOverrides(file2, patch, now, log) {
+  const current = readUserConfig(file2, log);
+  const next = { ...current };
+  for (const field of ["serverUrl", "hostToken"]) {
+    if (!(field in patch)) continue;
+    const value = patch[field];
+    if (typeof value === "string") next[field] = value;
+    else delete next[field];
+  }
+  if ("websearch" in patch) {
+    const merged = { ...current.websearch ?? {} };
+    const incoming = patch.websearch ?? {};
+    for (const field of ["githubToken", "openAlexKey"]) {
+      if (!(field in incoming)) continue;
+      const value = incoming[field];
+      if (typeof value === "string" && value !== "") merged[field] = value;
+      else delete merged[field];
+    }
+    if (Object.keys(merged).length > 0) next.websearch = merged;
+    else delete next.websearch;
+  }
+  if (!writeUserConfig(file2, next, now, log)) return { ok: false, error: "\u5199\u4E0D\u8FDB\u914D\u7F6E\u6587\u4EF6\uFF08\u78C1\u76D8\u6EE1\u4E86\u6216\u6CA1\u6743\u9650\uFF09" };
+  return { ok: true, value: next };
 }
 function writeUserConfig(file2, overrides, now, log) {
   if (!file2) return false;
@@ -38487,8 +38554,8 @@ function rosterLine(group, titleOf) {
 }
 function summarize(text) {
   const raw = String(text ?? "");
-  const firstLine = raw.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== "") ?? "";
-  const matched = /^(?:摘要|summary)\s*[:：]\s*(.+)$/i.exec(firstLine);
+  const firstLine2 = raw.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== "") ?? "";
+  const matched = /^(?:摘要|summary)\s*[:：]\s*(.+)$/i.exec(firstLine2);
   if (matched !== null) {
     const summary2 = matched[1].trim();
     if (summary2 !== "") return summary2.slice(0, 120);
@@ -39756,8 +39823,8 @@ function parseGrepSnippet(snippet) {
   if (chosen === void 0) return { line: null, code: "" };
   return { line: chosen.line, code: truncateCode(chosen.code) };
 }
-function parseGrepAppHits(json10, limit) {
-  const root = asRecord(json10);
+function parseGrepAppHits(json11, limit) {
+  const root = asRecord(json11);
   const hitsBlock = asRecord(root === void 0 ? void 0 : root.hits);
   const rawHits = hitsBlock !== void 0 && Array.isArray(hitsBlock.hits) ? hitsBlock.hits : [];
   const total = asNumber(hitsBlock === void 0 ? void 0 : hitsBlock.total) ?? rawHits.length;
@@ -39911,8 +39978,8 @@ function parseKesenPapers(html, baseUrl = KESEN_INDEX_URL) {
   }
   return papers;
 }
-function parseHnHits(json10, limit) {
-  const root = asRecord(json10);
+function parseHnHits(json11, limit) {
+  const root = asRecord(json11);
   const rawHits = root !== void 0 && Array.isArray(root.hits) ? root.hits : [];
   const hits = [];
   for (const item of rawHits) {
@@ -40756,16 +40823,30 @@ function githubHeaders(token) {
   if (token !== "") headers.authorization = "Bearer " + token;
   return headers;
 }
-function readOpenAlexKey() {
-  const env = process.env;
-  const raw = env.OPENALEX_API_KEY ?? env.DSH_OPENALEX_API_KEY ?? "";
-  return typeof raw === "string" ? raw.trim() : "";
+function pickSecret(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
-function readToken(explicit) {
-  if (explicit !== void 0 && explicit.trim() !== "") return explicit.trim();
+function configTokens(deps) {
+  try {
+    const value = deps.readConfig?.();
+    return value !== null && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+function readGitHubToken(deps) {
+  const explicit = pickSecret(deps.githubToken);
+  if (explicit !== "") return explicit;
+  const fromConfig = pickSecret(configTokens(deps).githubToken);
+  if (fromConfig !== "") return fromConfig;
   const env = process.env;
-  const fromEnv = env.GITHUB_TOKEN ?? env.DSH_GITHUB_TOKEN ?? "";
-  return typeof fromEnv === "string" ? fromEnv.trim() : "";
+  return pickSecret(env.GITHUB_TOKEN ?? env.DSH_GITHUB_TOKEN ?? "");
+}
+function readOpenAlexKey(deps) {
+  const fromConfig = pickSecret(configTokens(deps).openAlexKey);
+  if (fromConfig !== "") return fromConfig;
+  const env = process.env;
+  return pickSecret(env.OPENALEX_API_KEY ?? env.DSH_OPENALEX_API_KEY ?? "");
 }
 var CACHE_TTL_MS = 5 * 60 * 1e3;
 function buildWebsearchTools(deps) {
@@ -40807,13 +40888,13 @@ function buildWebsearchTools(deps) {
     if (source === "openalex") {
       let url3 = OPENALEX_API + "?search=" + encodeURIComponent(query) + "&per-page=" + limit;
       if (yearFrom !== void 0) url3 += "&filter=from_publication_date:" + yearFrom + "-01-01";
-      const apiKey = readOpenAlexKey();
+      const apiKey = readOpenAlexKey(deps);
       if (apiKey !== "") url3 += "&api_key=" + encodeURIComponent(apiKey);
       const result3 = await fetchText(url3, { timeoutMs: 12e3, fetchImpl: deps.fetchImpl, accept: "application/json" });
       if (!result3.ok) {
         if (result3.status === 429) {
           throw new Error(
-            'OpenAlex \u9650\u6D41\u4E86\uFF08HTTP 429\uFF09\uFF1A\u4E0D\u5E26 key \u65F6\u662F\u6574\u53F0\u673A\u5668\u5171\u4EAB\u7684 0.10 \u7F8E\u5143/\u5929\u989D\u5EA6\uFF0C\u540C\u4E00\u51FA\u53E3 IP \u4E0A\u522B\u7684\u7A0B\u5E8F\u4F1A\u628A\u5B83\u5403\u6389\u3002\u914D OPENALEX_API_KEY\uFF08\u514D\u8D39\uFF09\u540E\u662F\u6BCF\u5929 1 \u7F8E\u5143\uFF0C\u5DE5\u5177\u4F1A\u81EA\u52A8\u5E26\u4E0A\uFF1B\u8FD9\u4E00\u8F6E\u5148\u7528 paper_search \u7684 source="arxiv" \u9876\u4E0A\u3002'
+            'OpenAlex \u9650\u6D41\u4E86\uFF08HTTP 429\uFF09\uFF1A\u4E0D\u5E26 key \u65F6\u662F\u6574\u53F0\u673A\u5668\u5171\u4EAB\u7684 0.10 \u7F8E\u5143/\u5929\u989D\u5EA6\uFF0C\u540C\u4E00\u51FA\u53E3 IP \u4E0A\u522B\u7684\u7A0B\u5E8F\u4F1A\u628A\u5B83\u5403\u6389\u3002\u914D OPENALEX_API_KEY\uFF08\u514D\u8D39\uFF1B\u4E5F\u53EF\u4EE5\u5230\u8BBE\u7F6E\u9875\u300C\u641C\u7D22\u300D\u680F\u586B\uFF09\u540E\u662F\u6BCF\u5929 1 \u7F8E\u5143\uFF0C\u5DE5\u5177\u4F1A\u81EA\u52A8\u5E26\u4E0A\uFF1B\u8FD9\u4E00\u8F6E\u5148\u7528 paper_search \u7684 source="arxiv" \u9876\u4E0A\u3002'
           );
         }
         throw new Error("OpenAlex \u6CA1\u67E5\u6210\uFF1A" + describeFailure(result3));
@@ -40892,7 +40973,7 @@ function buildWebsearchTools(deps) {
     return lines.join("\n");
   }
   async function runRepoSearch(params) {
-    const token = readToken(deps.githubToken);
+    const token = readGitHubToken(deps);
     const headers = githubHeaders(token);
     const noFilter = params.query === "" && params.language === "" && params.minStars === void 0;
     if (params.author === "" && noFilter) {
@@ -40948,7 +41029,7 @@ function buildWebsearchTools(deps) {
     return formatRepos("\u4ED3\u5E93\u300C" + q + "\u300D", hits) + rateLimitNote(result2);
   }
   function gitHubFailure(result2) {
-    const hint = result2.status === 403 || result2.status === 429 ? "\uFF08\u672A\u8BA4\u8BC1\u6BCF\u5C0F\u65F6\u53EA\u6709 60 \u6B21\uFF0C\u914D GITHUB_TOKEN \u80FD\u63D0\u5230 5000\uFF09" : "";
+    const hint = result2.status === 403 || result2.status === 429 ? "\uFF08\u672A\u8BA4\u8BC1\u6BCF\u5C0F\u65F6\u53EA\u6709 60 \u6B21\uFF1B\u914D GITHUB_TOKEN \u6216\u5230\u8BBE\u7F6E\u9875\u300C\u641C\u7D22\u300D\u680F\u586B\u4E00\u679A\uFF0C\u80FD\u63D0\u5230 5000\uFF09" : "";
     return new Error("GitHub \u6CA1\u67E5\u6210\uFF1A" + describeFailure(result2) + hint);
   }
   function rateLimitNote(result2) {
@@ -40988,7 +41069,7 @@ function buildWebsearchTools(deps) {
     },
     {
       name: "paper_search",
-      description: "\u641C\u8BBA\u6587\u3002**\u9ED8\u8BA4 auto\uFF1A\u5148 arXiv\uFF08\u4E3B\u529B\uFF0C\u7A33\u5B9A\uFF09\uFF0C\u5931\u8D25\u518D\u9000 OpenAlex / DBLP\uFF08\u66FF\u8865\uFF09**\u3002\n\u4E09\u4E2A\u6E90\u7684\u5B9E\u9645\u72B6\u6001\uFF082026-11-20 \u5B9E\u6D4B\uFF09\uFF1Aarxiv \u7A33\u5B9A\uFF0C\u5E26\u6458\u8981\u524D 200 \u5B57\uFF1Bopenalex \u4E0D\u5E26 key \u662F\u6574\u673A\u5171\u4EAB 0.10 \u7F8E\u5143/\u5929\u3001\u5BB9\u6613 429\uFF08\u914D OPENALEX_API_KEY \u53EF\u6539\u5584\uFF09\uFF1Bdblp \u73B0\u5728\u591A\u534A\u56DE\u4EBA\u673A\u9A8C\u8BC1\u9875\u3002\u6240\u4EE5\u9664\u975E\u4F60\u660E\u786E\u8981 venue/\u88AB\u5F15\u6570\uFF0C\u522B\u6307\u5B9A\u5B83\u4EEC\u3002\n\u6BCF\u6761\u4E00\u884C\uFF1A\u6807\u9898 \xB7 \u5E74\u4EFD \xB7 venue \xB7 \u88AB\u5F15 N \xB7 URL\u3002limit \u9ED8\u8BA4 6\uFF1Byear_from \u662F\u6700\u65E9\u5E74\u4EFD\uFF08\u542B\uFF09\u3002\n\u8981\u8BFB\u5168\u6587\u7528 paper_read\u3002",
+      description: "\u641C\u8BBA\u6587\u3002**\u9ED8\u8BA4 auto\uFF1A\u5148 arXiv\uFF08\u4E3B\u529B\uFF0C\u7A33\u5B9A\uFF09\uFF0C\u5931\u8D25\u518D\u9000 OpenAlex / DBLP\uFF08\u66FF\u8865\uFF09**\u3002\n\u4E09\u4E2A\u6E90\u7684\u5B9E\u9645\u72B6\u6001\uFF082026-11-20 \u5B9E\u6D4B\uFF09\uFF1Aarxiv \u7A33\u5B9A\uFF0C\u5E26\u6458\u8981\u524D 200 \u5B57\uFF1Bopenalex \u4E0D\u5E26 key \u662F\u6574\u673A\u5171\u4EAB 0.10 \u7F8E\u5143/\u5929\u3001\u5BB9\u6613 429\uFF08\u914D OPENALEX_API_KEY\uFF0C\u6216\u5728\u8BBE\u7F6E\u9875\u300C\u641C\u7D22\u300D\u680F\u586B\u4E00\u679A\uFF09\uFF1Bdblp \u73B0\u5728\u591A\u534A\u56DE\u4EBA\u673A\u9A8C\u8BC1\u9875\u3002\u6240\u4EE5\u9664\u975E\u4F60\u660E\u786E\u8981 venue/\u88AB\u5F15\u6570\uFF0C\u522B\u6307\u5B9A\u5B83\u4EEC\u3002\n\u6BCF\u6761\u4E00\u884C\uFF1A\u6807\u9898 \xB7 \u5E74\u4EFD \xB7 venue \xB7 \u88AB\u5F15 N \xB7 URL\u3002limit \u9ED8\u8BA4 6\uFF1Byear_from \u662F\u6700\u65E9\u5E74\u4EFD\uFF08\u542B\uFF09\u3002\n\u8981\u8BFB\u5168\u6587\u7528 paper_read\u3002",
       parameters: {
         type: "object",
         properties: {
@@ -41039,7 +41120,7 @@ function buildWebsearchTools(deps) {
     },
     {
       name: "repo_search",
-      description: "\u641C GitHub \u4ED3\u5E93\uFF08REST\uFF0C\u65E0\u9700 key\uFF09\u3002\u6BCF\u6761\u4E24\u884C\uFF1Aowner/name \xB7 \u2605\u661F\u6570 \xB7 \u8BED\u8A00 \xB7 \u6700\u8FD1\u66F4\u65B0 \xB7 \u4E00\u53E5\u8BDD\u63CF\u8FF0 / URL\u3002\nsort \u9ED8\u8BA4 stars\uFF08\u8FD8\u652F\u6301 updated / forks\uFF09\uFF0Climit \u9ED8\u8BA4 8\uFF1B\u7ED9\u4E86 author \u5C31\u8D70\u8BE5\u7528\u6237\u540D\u4E0B\u7684\u4ED3\u5E93\u518D\u672C\u5730\u8FC7\u6EE4\u3002\n\u672A\u8BA4\u8BC1\u9650\u901F 60 \u6B21/\u5C0F\u65F6\uFF1A\u5269\u4F59\u989D\u5EA6 \u22643 \u65F6\u7ED3\u679C\u672B\u5C3E\u4F1A\u63D0\u793A\uFF1B\u914D GITHUB_TOKEN \u53EF\u63D0\u5230 5000\u3002",
+      description: "\u641C GitHub \u4ED3\u5E93\uFF08REST\uFF0C\u65E0\u9700 key\uFF09\u3002\u6BCF\u6761\u4E24\u884C\uFF1Aowner/name \xB7 \u2605\u661F\u6570 \xB7 \u8BED\u8A00 \xB7 \u6700\u8FD1\u66F4\u65B0 \xB7 \u4E00\u53E5\u8BDD\u63CF\u8FF0 / URL\u3002\nsort \u9ED8\u8BA4 stars\uFF08\u8FD8\u652F\u6301 updated / forks\uFF09\uFF0Climit \u9ED8\u8BA4 8\uFF1B\u7ED9\u4E86 author \u5C31\u8D70\u8BE5\u7528\u6237\u540D\u4E0B\u7684\u4ED3\u5E93\u518D\u672C\u5730\u8FC7\u6EE4\u3002\n\u672A\u8BA4\u8BC1\u9650\u901F 60 \u6B21/\u5C0F\u65F6\uFF1A\u5269\u4F59\u989D\u5EA6 \u22643 \u65F6\u7ED3\u679C\u672B\u5C3E\u4F1A\u63D0\u793A\uFF1B\u914D GITHUB_TOKEN\uFF08\u6216\u5728\u8BBE\u7F6E\u9875\u300C\u641C\u7D22\u300D\u680F\u586B\uFF09\u53EF\u63D0\u5230 5000\u3002",
       parameters: {
         type: "object",
         properties: {
@@ -41103,17 +41184,252 @@ function readWebsearchSkillBody(skillDir) {
   ].join("\n");
 }
 
+// src/websearch/probe.ts
+var WEBSEARCH_PROBE_KINDS = ["github", "arxiv", "web"];
+var PROBE_QUERY = "deepseek";
+var PROBE_SUMMARY_MAX = 120;
+function isProbeKind(value) {
+  return typeof value === "string" && WEBSEARCH_PROBE_KINDS.includes(value);
+}
+function firstLine(text, max = PROBE_SUMMARY_MAX) {
+  const raw = typeof text === "string" ? text : String(text ?? "");
+  const line = raw.split("\n").map((piece) => piece.trim()).find((piece) => piece !== "") ?? "";
+  return line.length > max ? line.slice(0, max) + "\u2026" : line;
+}
+var PROBE_PLAN = {
+  github: { label: "GitHub", tools: ["repo_search"], args: { query: PROBE_QUERY, limit: 1 } },
+  arxiv: { label: "arXiv", tools: ["paper_search"], args: { query: PROBE_QUERY, source: "arxiv", limit: 1 } },
+  web: { label: "\u8054\u7F51\u641C\u7D22", tools: ["web_search"], args: { query: PROBE_QUERY, count: 1 } }
+};
+function findTool(tools, names) {
+  for (const name2 of names) {
+    const hit = tools.find((tool) => tool.name === name2);
+    if (hit !== void 0) return hit;
+  }
+  return void 0;
+}
+async function runProbe(tools, kind) {
+  if (!isProbeKind(kind)) {
+    return { ok: false, summary: "kind \u53EA\u80FD\u662F github / arxiv / web" };
+  }
+  const plan = PROBE_PLAN[kind];
+  const tool = findTool(tools, plan.tools);
+  if (tool === void 0 || typeof tool.execute !== "function") {
+    return { ok: false, summary: plan.label + " \u7684\u5DE5\u5177\u6CA1\u6CE8\u518C\u4E0A\uFF08" + plan.tools[0] + "\uFF09\uFF0C\u8FD9\u4E00\u9879\u6D4B\u4E0D\u4E86" };
+  }
+  try {
+    const output2 = await tool.execute(plan.args);
+    return { ok: true, summary: firstLine(output2) };
+  } catch (error62) {
+    const message = String(error62?.message ?? error62).trim();
+    const hasChinese = /[\u4e00-\u9fff]/.test(message);
+    const summary2 = hasChinese ? message : "\u6D4B" + plan.label + "\u6CA1\u6210\uFF1A" + (message === "" ? "\u6CA1\u6709\u8FD4\u56DE\u539F\u56E0" : message);
+    return { ok: false, summary: firstLine(summary2, PROBE_SUMMARY_MAX + 40) };
+  }
+}
+
+// src/websearch/routes.ts
+var WEBSEARCH_CONFIG_ROUTE = "/api/dsh-remote-dafeiyu/websearch/config";
+var WEBSEARCH_TEST_ROUTE = "/api/dsh-remote-dafeiyu/websearch/test";
+var MAX_WEBSEARCH_BODY_BYTES = 4 * 1024;
+function maskSecret(secret) {
+  const value = typeof secret === "string" ? secret.trim() : "";
+  if (value === "") return "";
+  if (value.length < 12) return "\u5DF2\u914D\u7F6E\uFF08\u5DF2\u9690\u85CF\uFF09";
+  return "\u5DF2\u914D\u7F6E\uFF08\u2026" + value.slice(-4) + "\uFF09";
+}
+function buildConfigView(config2, env) {
+  const pick2 = (fromConfig, fromEnv) => {
+    const configured = typeof fromConfig === "string" ? fromConfig.trim() : "";
+    if (configured !== "") return { value: configured, source: "config" };
+    const fromEnvironment = typeof fromEnv === "string" ? fromEnv.trim() : "";
+    if (fromEnvironment !== "") return { value: fromEnvironment, source: "env" };
+    return { value: "", source: "none" };
+  };
+  const github = pick2(config2.githubToken, env.githubToken);
+  const openalex = pick2(config2.openAlexKey, env.openAlexKey);
+  return {
+    githubToken: maskSecret(github.value),
+    openAlexKey: maskSecret(openalex.value),
+    githubTokenSet: github.value !== "",
+    openAlexKeySet: openalex.value !== "",
+    githubTokenSource: github.source,
+    openAlexKeySource: openalex.source
+  };
+}
+function json8(response, status, body) {
+  const payload = JSON.stringify(body);
+  response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
+  response.end(payload);
+}
+function rejected4(request) {
+  if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
+  if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
+  return void 0;
+}
+function readJsonBody3(request) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    request.on("data", (chunk) => {
+      size += chunk.byteLength;
+      if (size > MAX_WEBSEARCH_BODY_BYTES) {
+        finish(void 0);
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      try {
+        const text = Buffer.concat(chunks).toString("utf8").trim();
+        finish(text === "" ? {} : JSON.parse(text));
+      } catch {
+        finish(void 0);
+      }
+    });
+    request.on("error", () => finish(void 0));
+  });
+}
+function writeGuard(request, response) {
+  if (String(request.headers["x-drc-pair"] ?? "") !== "") return false;
+  json8(response, 403, { ok: false, error: "missing x-drc-pair" });
+  return true;
+}
+function websearchConfigHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected4(request);
+    if (denied !== void 0) {
+      json8(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method === "POST") {
+      if (writeGuard(request, response)) return;
+      const body = await readJsonBody3(request);
+      if (body === void 0 || typeof body !== "object" || body === null || Array.isArray(body)) {
+        json8(response, 400, { ok: false, message: "\u8BF7\u6C42\u4F53\u5FC5\u987B\u662F JSON \u5BF9\u8C61\uFF08{ githubToken?, openAlexKey? }\uFF09" });
+        return;
+      }
+      const record2 = body;
+      const patch = {};
+      for (const field of ["githubToken", "openAlexKey"]) {
+        if (!(field in record2)) continue;
+        const value = record2[field];
+        if (typeof value !== "string") {
+          json8(response, 400, { ok: false, field: "websearch." + field, message: "\u5FC5\u987B\u662F\u5B57\u7B26\u4E32" });
+          return;
+        }
+        patch[field] = value;
+      }
+      if (!("githubToken" in patch) && !("openAlexKey" in patch)) {
+        json8(response, 400, { ok: false, message: "\u4E24\u4E2A\u90FD\u6CA1\u63D0\u4EA4\uFF1A\u8981\u4FDD\u5B58\u5C31\u586B\u4E00\u683C\uFF0C\u8981\u6E05\u9664\u5C31\u663E\u5F0F\u4F20\u7A7A\u4E32" });
+        return;
+      }
+      try {
+        const saved = deps.save(patch);
+        if (!saved.ok) {
+          json8(response, 400, { ok: false, message: saved.message });
+          return;
+        }
+        json8(response, 200, { ok: true, ...deps.view() });
+      } catch (error62) {
+        const message = String(error62?.message ?? error62).slice(0, 200);
+        deps.log("\u8054\u7F51\u641C\u7D22\u914D\u7F6E\u5199\u5165\u5931\u8D25", { message });
+        json8(response, 500, { ok: false, message: "\u4FDD\u5B58\u5931\u8D25\uFF1A" + message });
+      }
+      return;
+    }
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET \u548C POST" });
+      return;
+    }
+    try {
+      json8(response, 200, { ok: true, ...deps.view() });
+    } catch (error62) {
+      const message = String(error62?.message ?? error62).slice(0, 200);
+      deps.log("\u8054\u7F51\u641C\u7D22\u914D\u7F6E\u8BFB\u53D6\u5931\u8D25", { message });
+      json8(response, 500, { ok: false, message: "\u8BFB\u53D6\u914D\u7F6E\u5931\u8D25\uFF1A" + message });
+    }
+  };
+}
+function websearchTestHandler(deps) {
+  return async (request, response) => {
+    applyCors(request, response);
+    if (preflight(request, response)) return;
+    const denied = rejected4(request);
+    if (denied !== void 0) {
+      json8(response, 403, { ok: false, error: denied });
+      return;
+    }
+    if (request.method !== "POST") {
+      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
+      return;
+    }
+    if (writeGuard(request, response)) return;
+    const body = await readJsonBody3(request);
+    if (body === void 0 || typeof body !== "object" || body === null || Array.isArray(body)) {
+      json8(response, 400, { ok: false, message: "\u8BF7\u6C42\u4F53\u5FC5\u987B\u662F JSON \u5BF9\u8C61\uFF08{ kind }\uFF09" });
+      return;
+    }
+    const kind = String(body.kind ?? "");
+    if (kind !== "github" && kind !== "arxiv" && kind !== "web") {
+      json8(response, 400, { ok: false, message: "kind \u53EA\u80FD\u662F github / arxiv / web" });
+      return;
+    }
+    try {
+      const result2 = await deps.probe(kind);
+      json8(response, 200, { ...result2, ok: result2.ok === true, summary: String(result2.summary ?? "") });
+    } catch (error62) {
+      const message = String(error62?.message ?? error62).slice(0, 200);
+      deps.log("\u8054\u7F51\u641C\u7D22\u6D4B\u8BD5\u629B\u9519", { message });
+      json8(response, 500, { ok: false, message: "\u6D4B\u8BD5\u65F6\u51FA\u9519\uFF1A" + message });
+    }
+  };
+}
+function websearchHandlers(deps) {
+  return [
+    { path: WEBSEARCH_CONFIG_ROUTE, handler: websearchConfigHandler(deps) },
+    { path: WEBSEARCH_TEST_ROUTE, handler: websearchTestHandler(deps) }
+  ];
+}
+
 // src/websearch/start.ts
 function startWebsearch(ctx, input2) {
   const probe = {};
   const skillDir = path23.join(input2.packageRoot, "assets", "skills", "dafeiyu-websearch");
+  const configFile2 = input2.userConfigFile ?? resolveUserConfigFile(DEFAULT_CONFIG.statusFile);
+  const now = input2.now ?? (() => Date.now());
   let toolsRegistered = false;
   let stopped = false;
   let toolTimer;
+  const disposers = [];
   probe.fetch = typeof globalThis.fetch === "function" ? "ok" : "none";
   if (probe.fetch === "none") {
     input2.log("\u8FD9\u53F0\u673A\u5668\u7684 Node \u6CA1\u6709\u5168\u5C40 fetch\uFF1A\u8054\u7F51\u641C\u7D22\u53EA\u80FD\u8FD4\u56DE guide\uFF0C\u5DE5\u5177\u4F1A\u62A5\u4E2D\u6587\u9519\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09");
   }
+  const readTokens = () => {
+    try {
+      return readUserConfig(configFile2, input2.log).websearch ?? {};
+    } catch {
+      return {};
+    }
+  };
+  const envTokens = () => ({
+    githubToken: (process.env.GITHUB_TOKEN ?? process.env.DSH_GITHUB_TOKEN ?? "").trim(),
+    openAlexKey: (process.env.OPENALEX_API_KEY ?? process.env.DSH_OPENALEX_API_KEY ?? "").trim()
+  });
+  const toolDeps = {
+    guideBody: () => readWebsearchSkillBody(skillDir),
+    log: input2.log,
+    readConfig: readTokens
+  };
   const acceptTools = (value, via) => {
     if (toolsRegistered) return true;
     if (!value || typeof value !== "object") return false;
@@ -41123,13 +41439,7 @@ function startWebsearch(ctx, input2) {
       return false;
     }
     try {
-      const definitions = [
-        ...buildWebsearchTools({
-          guideBody: () => readWebsearchSkillBody(skillDir),
-          log: input2.log
-        }),
-        ...buildExtraTools()
-      ];
+      const definitions = [...buildWebsearchTools(toolDeps), ...buildExtraTools()];
       for (const definition of definitions) host.register(definition);
       toolsRegistered = true;
       probe.tools = via + ":" + definitions.length;
@@ -41173,6 +41483,106 @@ function startWebsearch(ctx, input2) {
       probe.tools = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
     }
   }
+  const saveConfig = (patch) => {
+    const normalized = normalizeUserOverrides({ websearch: patch });
+    if (!normalized.ok) return { ok: false, message: normalized.error };
+    const saved = saveUserOverrides(configFile2, { websearch: normalized.value.websearch ?? {} }, now(), input2.log);
+    if (!saved.ok) return { ok: false, message: saved.error };
+    const kept = saved.value.websearch ?? {};
+    input2.log("\u8054\u7F51\u641C\u7D22 token \u5199\u5165", {
+      githubTokenSet: typeof kept.githubToken === "string",
+      openAlexKeySet: typeof kept.openAlexKey === "string"
+    });
+    return { ok: true };
+  };
+  const view = () => buildConfigView(readTokens(), envTokens());
+  const probeUpstream = (kind) => runProbe([...buildWebsearchTools({ ...toolDeps, cache: void 0 }), ...buildExtraTools()], kind);
+  const routeDeps = {
+    view,
+    save: saveConfig,
+    probe: probeUpstream,
+    log: input2.log
+  };
+  let web;
+  let routesOn = false;
+  let routeTimer;
+  const tryRoutes = () => {
+    if (routesOn || stopped || !web) return;
+    routesOn = true;
+    try {
+      for (const route of websearchHandlers(routeDeps)) {
+        disposers.push(web.register({ kind: "exact", path: route.path, handler: route.handler }));
+      }
+      probe.routes = "registered";
+    } catch (error62) {
+      probe.routes = "register threw: " + String(error62?.message ?? error62).slice(0, 80);
+      routesOn = false;
+      input2.log("\u8054\u7F51\u641C\u7D22\u7684\u914D\u7F6E\u8DEF\u7531\u6302\u4E0D\u4E0A\uFF08\u5DE5\u5177\u7167\u5E38\u53EF\u7528\uFF0C\u53EA\u662F\u8BBE\u7F6E\u9875\u90A3\u4E00\u680F\u6253\u4E0D\u5F00\uFF09", { message: probe.routes });
+    }
+  };
+  const acceptWeb = (value, via) => {
+    if (!value || typeof value !== "object") return;
+    if (typeof value.register !== "function") {
+      probe.webServer = "object without register()";
+      return;
+    }
+    web = value;
+    probe.webServer = via;
+    tryRoutes();
+  };
+  try {
+    const found = ctx.get?.("webServer", true);
+    if (found) acceptWeb(found, "via get");
+    else probe.webServer = "none";
+  } catch (error62) {
+    probe.webServer = "get threw: " + String(error62?.message ?? error62).slice(0, 80);
+  }
+  try {
+    ctx.inject?.(["webServer"], ((...args) => {
+      try {
+        for (const candidate of [...args, ctx]) {
+          const fromGet = candidate?.get?.("webServer", true);
+          if (fromGet) {
+            acceptWeb(fromGet, "via inject");
+            if (routesOn) return;
+          }
+          acceptWeb(candidate, "via inject");
+          if (routesOn) return;
+        }
+      } catch {
+      }
+    }));
+  } catch {
+  }
+  if (!routesOn) {
+    let attempts = 0;
+    try {
+      routeTimer = setInterval(() => {
+        attempts += 1;
+        if (stopped || routesOn) {
+          if (routeTimer !== void 0) clearInterval(routeTimer);
+          return;
+        }
+        try {
+          const found = ctx.get?.("webServer", true);
+          if (found) acceptWeb(found, "via poll");
+        } catch (error62) {
+          probe.webServer = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
+        }
+        if (routesOn) {
+          if (routeTimer !== void 0) clearInterval(routeTimer);
+          return;
+        }
+        if (attempts >= 60) {
+          if (routeTimer !== void 0) clearInterval(routeTimer);
+          probe.webServer = (probe.webServer ?? "none") + " (poll gave up after " + attempts + ")";
+          input2.log("\u8054\u7F51\u641C\u7D22\u7684\u914D\u7F6E\u8DEF\u7531\u6CA1\u6302\u4E0A\uFF1A\u7B49\u4E86 30 \u79D2\u6CA1\u7B49\u5230 webServer\uFF08\u5DE5\u5177/\u8FDC\u63A7\u90FD\u4E0D\u53D7\u5F71\u54CD\uFF09");
+        }
+      }, 500);
+    } catch (error62) {
+      probe.webServer = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
+    }
+  }
   return {
     probe,
     stop() {
@@ -41180,6 +41590,16 @@ function startWebsearch(ctx, input2) {
       try {
         if (toolTimer !== void 0) clearInterval(toolTimer);
       } catch {
+      }
+      try {
+        if (routeTimer !== void 0) clearInterval(routeTimer);
+      } catch {
+      }
+      for (const dispose of disposers.splice(0)) {
+        try {
+          dispose();
+        } catch {
+        }
       }
     }
   };
@@ -41857,12 +42277,12 @@ function resolveProfileDir(env = process.env, dshHome) {
 var EXTENSIONS_ROUTE = "/api/dsh-remote-control/extensions";
 var EXTENSIONS_ACTION_ROUTE = "/api/dsh-remote-control/extensions/action";
 var COMPAT_ROUTE = "/api/dsh-remote-dafeiyu/compat";
-function json8(response, status, body) {
+function json9(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected4(request) {
+function rejected5(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -41892,22 +42312,22 @@ function extensionsListHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected4(request);
+    const denied = rejected5(request);
     if (denied !== void 0) {
       deps.log("\u6269\u5C55\u5217\u8868\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard: denied });
-      json8(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json9(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      json9(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
-      json8(response, 200, { ok: true, extensions: deps.list() });
+      json9(response, 200, { ok: true, extensions: deps.list() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u6269\u5C55\u5217\u8868\u8BFB\u4E0D\u51FA\u6765", { message });
-      json8(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
+      json9(response, 500, { ok: false, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${message}`, extensions: [] });
     }
   };
 }
@@ -41915,21 +42335,21 @@ function compatHandler(deps) {
   return (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected4(request);
+    const denied = rejected5(request);
     if (denied !== void 0) {
-      json8(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json9(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
-      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
+      json9(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 GET" });
       return;
     }
     try {
-      json8(response, 200, { ok: true, ...deps.report() });
+      json9(response, 200, { ok: true, ...deps.report() });
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 200);
       deps.log("\u517C\u5BB9\u62A5\u544A\u7B97\u4E0D\u51FA\u6765", { message });
-      json8(response, 200, { ok: true, packages: [], blockedRooms: [], warnRooms: [], message });
+      json9(response, 200, { ok: true, packages: [], blockedRooms: [], warnRooms: [], message });
     }
   };
 }
@@ -41937,18 +42357,18 @@ function extensionsActionHandler(deps) {
   return async (request, response) => {
     applyCors(request, response);
     if (preflight(request, response)) return;
-    const denied = rejected4(request);
+    const denied = rejected5(request);
     if (denied !== void 0) {
       deps.log("\u6269\u5C55\u52A8\u4F5C\u8BF7\u6C42\u88AB\u5B88\u536B\u62D2", { guard: denied });
-      json8(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
+      json9(response, 403, { ok: false, error: denied, message: GUARD_MESSAGE[denied] ?? "\u8BF7\u6C42\u4E0D\u53EF\u4FE1" });
       return;
     }
     if (request.method !== "POST") {
-      json8(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
+      json9(response, 405, { ok: false, message: "\u8FD9\u8FB9\u53EA\u652F\u6301 POST" });
       return;
     }
     if (String(request.headers["x-drc-pair"] ?? "") === "") {
-      json8(response, 403, { ok: false, error: "missing x-drc-pair", message: "\u7F3A\u5C11 x-drc-pair \u5934\uFF08\u53EA\u6709\u672C\u673A\u9875\u9762\u80FD\u6539\u6269\u5C55\uFF09" });
+      json9(response, 403, { ok: false, error: "missing x-drc-pair", message: "\u7F3A\u5C11 x-drc-pair \u5934\uFF08\u53EA\u6709\u672C\u673A\u9875\u9762\u80FD\u6539\u6269\u5C55\uFF09" });
       return;
     }
     let body;
@@ -41960,7 +42380,7 @@ function extensionsActionHandler(deps) {
     } catch (error62) {
       const message = String(error62?.message ?? error62).slice(0, 160);
       deps.log("\u6269\u5C55\u52A8\u4F5C\u7684\u8BF7\u6C42\u4F53\u8BFB\u4E0D\u51FA\u6765", { message });
-      json8(response, 400, { ok: false, message: `\u8BF7\u6C42\u4F53\u4E0D\u5BF9\uFF1A${message}` });
+      json9(response, 400, { ok: false, message: `\u8BF7\u6C42\u4F53\u4E0D\u5BF9\uFF1A${message}` });
       return;
     }
     const id = typeof body.id === "string" ? body.id : "";
@@ -41978,7 +42398,7 @@ function extensionsActionHandler(deps) {
     } catch (error62) {
       deps.log("\u6269\u5C55\u52A8\u4F5C\u540E\u5217\u8868\u5237\u65B0\u5931\u8D25", { message: String(error62?.message ?? error62).slice(0, 160) });
     }
-    json8(response, 200, {
+    json9(response, 200, {
       ok: result2.ok === true,
       changed: result2.changed === true,
       needsRestart: result2.needsRestart === true,
@@ -42114,12 +42534,12 @@ function startExtensions(ctx, deps) {
 
 // src/memory/routes.ts
 var MEMORY_ROUTE = "/api/dsh-remote-dafeiyu/memory";
-function json9(response, status, body) {
+function json10(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
   response.end(payload);
 }
-function rejected5(request) {
+function rejected6(request) {
   if (!hostIsLoopback(request.headers.host)) return "host-not-loopback";
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
@@ -42158,39 +42578,39 @@ function personaOf(request) {
 }
 function memoryHandler(deps) {
   return async (request, response) => {
-    const denied = rejected5(request);
+    const denied = rejected6(request);
     if (denied) {
-      json9(response, 403, { ok: false, error: denied });
+      json10(response, 403, { ok: false, error: denied });
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
       const persona2 = personaOf(request);
       if (persona2 === "") {
-        json9(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
+        json10(response, 400, { ok: false, error: "\u7F3A\u5C11 persona \u53C2\u6570" });
         return;
       }
-      json9(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
+      json10(response, 200, { ok: true, persona: persona2, entries: deps.service.list(persona2) });
       return;
     }
     if (request.method !== "POST") {
-      json9(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
+      json10(response, 405, { ok: false, error: "\u53EA\u652F\u6301 GET / POST" });
       return;
     }
     const body = await readBody5(request);
     if (!body.ok) {
-      json9(response, body.status, { ok: false, error: body.error });
+      json10(response, body.status, { ok: false, error: body.error });
       return;
     }
     let parsed;
     try {
       parsed = body.text === "" ? {} : JSON.parse(body.text);
     } catch {
-      json9(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
+      json10(response, 400, { ok: false, error: "\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON" });
       return;
     }
     const persona = typeof parsed.persona === "string" ? parsed.persona.trim() : "";
     if (persona === "") {
-      json9(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
+      json10(response, 400, { ok: false, error: "\u7F3A\u5C11 persona" });
       return;
     }
     const action = typeof parsed.action === "string" ? parsed.action : "add";
@@ -42198,39 +42618,39 @@ function memoryHandler(deps) {
       const text = typeof parsed.text === "string" ? parsed.text : "";
       const result2 = deps.service.add(persona, text, { importance: parsed.importance, source: "manual" });
       if (!result2.ok) {
-        json9(response, 400, { ok: false, error: result2.error });
+        json10(response, 400, { ok: false, error: result2.error });
         return;
       }
-      json9(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "remove") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.remove(persona, id)) {
-        json9(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json10(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json9(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "update") {
       const id = typeof parsed.id === "string" ? parsed.id : "";
       if (id === "" || !deps.service.update(persona, id, { text: parsed.text, importance: parsed.importance })) {
-        json9(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
+        json10(response, 400, { ok: false, error: "\u6CA1\u6709\u8FD9\u6761\u8BB0\u5FC6" });
         return;
       }
-      json9(response, 200, { ok: true, entries: deps.service.list(persona) });
+      json10(response, 200, { ok: true, entries: deps.service.list(persona) });
       return;
     }
     if (action === "clear") {
       if (!deps.service.clear(persona)) {
-        json9(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
+        json10(response, 500, { ok: false, error: "\u6E05\u7A7A\u5931\u8D25" });
         return;
       }
-      json9(response, 200, { ok: true, entries: [] });
+      json10(response, 200, { ok: true, entries: [] });
       return;
     }
-    json9(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
+    json10(response, 400, { ok: false, error: `\u672A\u77E5\u52A8\u4F5C\uFF1A${action}` });
   };
 }
 function registerMemoryRoutes(webServer, deps) {
@@ -42603,7 +43023,7 @@ function writeBackupConfig(dshHome, config2) {
     return false;
   }
 }
-function readToken2(dshHome) {
+function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
   if (!existsSync7(file2)) return "";
   try {
@@ -43033,7 +43453,7 @@ var BackupService = class {
   setTimer;
   /** 当前状态（每次现算 token/git 两项，剩下是缓存的上次结果）。 */
   snapshot() {
-    const token = readToken2(this.deps.dshHome);
+    const token = readToken(this.deps.dshHome);
     this.status.tokenSet = token !== "";
     this.status.tokenShape = redactToken(token);
     this.status.gitAvailable = gitAvailable();
@@ -43298,7 +43718,7 @@ var BackupService = class {
    * 命令行参数在 Windows 上同用户的进程都看得到；凭据不该出现在那里。
    */
   gitEnv() {
-    const token = readToken2(this.deps.dshHome);
+    const token = readToken(this.deps.dshHome);
     if (token === "") return {};
     const helper = this.askpassScript();
     return {
@@ -44480,14 +44900,12 @@ function applyInner(ctx, injected, clock) {
       userConfigFile
     };
   };
-  const saveUserOverrides = (input2) => {
-    const next = { ...userOverrides };
-    if ("serverUrl" in input2) next.serverUrl = input2.serverUrl;
-    if ("hostToken" in input2) next.hostToken = input2.hostToken;
-    if (!writeUserConfig(userConfigFile, next, clock.now(), log)) {
-      return { ok: false, field: "file", error: "cannot write the config file" };
+  const saveUserOverrides2 = (input2) => {
+    const saved = saveUserOverrides(userConfigFile, input2, clock.now(), log);
+    if (!saved.ok) {
+      return { ok: false, field: "file", error: saved.error };
     }
-    userOverrides = next;
+    userOverrides = saved.value;
     const fresh = readConfig(injected, process.env, userOverrides);
     config2.serverUrl = fresh.serverUrl;
     config2.hostToken = fresh.hostToken;
@@ -44805,7 +45223,9 @@ function applyInner(ctx, injected, clock) {
   try {
     websearchHandle = startWebsearch(ctx, {
       packageRoot: packageRoot(),
-      log
+      log,
+      // 设置页「搜索」栏与「进阶」栏写**同一份** user-config.json：路径只有一个真源，传进去。
+      userConfigFile
     });
   } catch (error62) {
     websearchHandle = void 0;
@@ -44867,7 +45287,7 @@ function applyInner(ctx, injected, clock) {
       },
       // 设置页「进阶」那一栏：路由那一层**不碰文件系统**，读写都收在这里。
       config: () => describeEffectiveConfig(),
-      saveConfig: (overrides) => saveUserOverrides(overrides),
+      saveConfig: (overrides) => saveUserOverrides2(overrides),
       // 备份那张卡片的接线（handler 在 `backup/routes.ts`，逻辑在 `backup/service.ts`）。
       // 这里只做转发，**一行都不能少**（`startPill` 那边是逐个字段重建对象的）。
       backup: backup ? {
