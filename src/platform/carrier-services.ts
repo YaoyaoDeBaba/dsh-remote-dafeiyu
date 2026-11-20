@@ -301,6 +301,8 @@ interface ListedSession {
   origin?: string
   /** 会话的 preset（`ptc` 等）。**续跑时必须带上**，否则会话会掉出 ptc、工具只剩插件那批（2026-11-20）。 */
   agentPreset?: string
+  /** 委派深度（>0 = 子代理会话）。用户会话列表里**不该出现**它们（2026-11-20 真机）。 */
+  delegationDepth?: number
   /** 排序用的时间戳；对 sessionQuery 是 header.createdAt，对 sessions.list 是记录自身字段。 */
   headerTime?: number | string
 }
@@ -329,7 +331,15 @@ interface SubagentCatalogRead {
 
 /** 平台会话记录（`sessionQuery.listSessions()` 的形状，取证 dsh-session-query/lib/types/index.d.ts:55）。 */
 interface SessionRecordLike {
-  header?: { id?: string; createdAt?: number | string; cwd?: string; origin?: string; parentSession?: string; delegationDepth?: number }
+  header?: {
+    id?: string
+    createdAt?: number | string
+    cwd?: string
+    origin?: string
+    parentSession?: string
+    delegationDepth?: number
+    agentPreset?: string
+  }
   live?: unknown
   persisted?: unknown
 }
@@ -802,6 +812,8 @@ export function createServicesKernel(services: ServicesBundle, options: Services
             cwd: row.header?.cwd,
             createdAt: row.header?.createdAt,
             origin: row.header?.origin,
+            agentPreset: row.header?.agentPreset,
+            delegationDepth: typeof row.header?.delegationDepth === 'number' ? row.header.delegationDepth : 0,
             headerTime: row.header?.createdAt,
           }))
       } catch (error) {
@@ -809,6 +821,11 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         records = []
       }
     }
+    /*
+     * 子代理会话不进用户列表（2026-11-20 真机：降级路径把 2-3总工8 派出去的子会话也列出来了）。
+     * 判据两条：header.origin === 'subagent' 或 delegationDepth > 0。
+     */
+    records = records.filter((row) => (row.origin ?? '') !== 'subagent' && (row.delegationDepth ?? 0) === 0)
     if (records.length === 0) {
       const listLive = fn(services.sessions, 'list')
       if (!listLive) {
@@ -824,20 +841,30 @@ export function createServicesKernel(services: ServicesBundle, options: Services
         cwd?: string
         createdAt?: number | string
         origin?: string
+        delegationDepth?: number
+        header?: { origin?: string; delegationDepth?: number; agentPreset?: string }
         headerTime?: number | string
       }>
+      /*
+       * 降级路径（sessions.list）给的是**活着的会话对象**，形状和持久化行不一样：
+       * origin / delegationDepth 常常在 `row.header` 里，之前只读 `row.origin`，于是子代理会话
+       * 一路漏进用户列表（2026-11-20 真机：2-3总工8 派出去的子会话出现在手机列表里）。
+       */
       records = (live ?? [])
         .filter((row) => typeof row?.id === 'string')
         .map((row) => ({
           id: String(row.id),
-          cwd: row.cwd,
+          cwd: row.cwd ?? row.header?.origin,
           createdAt: row.createdAt,
-          origin: row.origin,
+          origin: row.origin ?? row.header?.origin,
+          delegationDepth: row.delegationDepth ?? row.header?.delegationDepth ?? 0,
+          agentPreset: row.header?.agentPreset,
           headerTime: row.createdAt,
         }))
     }
     // 委派子会话整行过滤：手机上点进一条无法回答审批的子会话，比看不见更容易误导。
-    records = records.filter((row) => row.origin !== 'subagent')
+    // 判据两条（origin 或 delegationDepth），降级路径上这俩字段的来源不同，缺一漏一。
+    records = records.filter((row) => (row.origin ?? '') !== 'subagent' && (row.delegationDepth ?? 0) === 0)
     // 刚建的会话要**补**进来：`sessionQuery.listSessions` 扫的是持久化日志，
     // 而一条还没有任何消息的新会话根本没有日志。不补的话，用户在手机上新建完
     // 回到列表会发现那条不在里面 —— 「新建了但列表没变」比一条报错更难懂。
