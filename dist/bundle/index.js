@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path28 from "node:path";
+import path30 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path29) {
-  if (!path29)
+function getElementAtPath(obj, path31) {
+  if (!path31)
     return obj;
-  return path29.reduce((acc, key) => acc?.[key], obj);
+  return path31.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path29, issues) {
+function prefixIssues(path31, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path29);
+    iss.path.unshift(path31);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path29 = []) => {
+  const processError = (error63, path31 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path29, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else {
-        const fullpath = [...path29, ...issue2.path];
+        const fullpath = [...path31, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path29 = []) => {
+  const processError = (error63, path31 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path29, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path29, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
       } else {
-        const fullpath = [...path29, ...issue2.path];
+        const fullpath = [...path31, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path29 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path29) {
+  const path31 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path31) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path29 = ref.slice(1).split("/").filter(Boolean);
-  if (path29.length === 0) {
+  const path31 = ref.slice(1).split("/").filter(Boolean);
+  if (path31.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path29[0] === defsKey) {
-    const key = path29[1] === void 0 ? void 0 : decodeJSONPointerSegment(path29[1]);
+  if (path31[0] === defsKey) {
+    const key = path31[1] === void 0 ? void 0 : decodeJSONPointerSegment(path31[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.144" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.145" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -28545,10 +28545,10 @@ var HISTORY_LIMIT = 40;
 var MODEL_CACHE_MAX = 256;
 var SESSION_MERGE_MS = 500;
 var HostRuntime = class {
-  constructor(kernel, transport, sleep, clock, options = {}) {
+  constructor(kernel, transport, sleep2, clock, options = {}) {
     this.kernel = kernel;
     this.transport = transport;
-    this.sleep = sleep;
+    this.sleep = sleep2;
     this.clock = clock;
     this.options = { ...DEFAULTS, ...options };
     this.window = new DeltaWindow((delta) => this.broadcast(delta, RUN_OUTPUT), this.clock, {
@@ -30675,42 +30675,42 @@ function createCarrierProbe(deps) {
   } catch (error62) {
     probe.hasFiber = `threw: ${String(error62?.message ?? error62).slice(0, 80)}`;
   }
-  const asRecord2 = (value) => value && typeof value === "object" ? value : {};
+  const asRecord4 = (value) => value && typeof value === "object" ? value : {};
   const liveFiberChain = () => {
     const chain = [];
     const seen = /* @__PURE__ */ new Set();
-    let fiber = asRecord2(deps.ctx).fiber;
+    let fiber = asRecord4(deps.ctx).fiber;
     while (fiber && !seen.has(fiber) && chain.length < 12) {
       seen.add(fiber);
-      const record2 = asRecord2(fiber);
-      const entryId = asRecord2(record2.entry).id;
+      const record2 = asRecord4(fiber);
+      const entryId = asRecord4(record2.entry).id;
       chain.push(
         `${String(record2.name ?? "?")}#${String(record2.uid ?? "null")}@${String(record2.state ?? "?")}${entryId ? `[${String(entryId)}]` : ""}`
       );
-      fiber = asRecord2(asRecord2(record2.parent).fiber === record2.fiber ? null : asRecord2(record2.parent).fiber);
+      fiber = asRecord4(asRecord4(record2.parent).fiber === record2.fiber ? null : asRecord4(record2.parent).fiber);
     }
     return chain;
   };
   const liveStore = () => {
-    const store = asRecord2(asRecord2(deps.ctx).reflect).store;
+    const store = asRecord4(asRecord4(deps.ctx).reflect).store;
     const names = [];
-    for (const key of Object.getOwnPropertySymbols(asRecord2(store))) {
-      const impl = asRecord2(asRecord2(store)[key]);
-      names.push(`${String(impl.name)}@${String(asRecord2(impl.fiber).state ?? "?")}`);
+    for (const key of Object.getOwnPropertySymbols(asRecord4(store))) {
+      const impl = asRecord4(asRecord4(store)[key]);
+      names.push(`${String(impl.name)}@${String(asRecord4(impl.fiber).state ?? "?")}`);
     }
     return names;
   };
   const liveIsolate = () => {
-    const map2 = asRecord2(deps.ctx)[/* @__PURE__ */ Symbol.for("cordis.isolate")];
+    const map2 = asRecord4(deps.ctx)[/* @__PURE__ */ Symbol.for("cordis.isolate")];
     const names = [];
-    for (const key in map2) names.push(`${key}=${String(asRecord2(map2)[key])}`);
+    for (const key in map2) names.push(`${key}=${String(asRecord4(map2)[key])}`);
     return names;
   };
   const collectForensics = (prefix) => {
     try {
       probe[`${prefix}store`] = liveStore().join("|").slice(0, 900);
       probe[`${prefix}isolate`] = liveIsolate().join(",").slice(0, 900);
-      probe[`${prefix}props`] = Object.getOwnPropertyNames(asRecord2(asRecord2(asRecord2(deps.ctx).reflect).props)).slice(0, 160).join("|");
+      probe[`${prefix}props`] = Object.getOwnPropertyNames(asRecord4(asRecord4(asRecord4(deps.ctx).reflect).props)).slice(0, 160).join("|");
       probe[`${prefix}fibers`] = liveFiberChain().join(" <- ").slice(0, 600);
       for (const name2 of SERVICE_NAMES) {
         const got = deps.ctx.get?.(name2, true);
@@ -30731,10 +30731,10 @@ function createCarrierProbe(deps) {
         on.bind(deps.ctx),
         "internal/status",
         ((fiber, oldState) => {
-          if (asRecord2(fiber) !== asRecord2(deps.ctx).fiber) return;
-          const record2 = asRecord2(fiber);
+          if (asRecord4(fiber) !== asRecord4(deps.ctx).fiber) return;
+          const record2 = asRecord4(fiber);
           const state = Number(record2.state ?? -1);
-          const entry = asRecord2(record2.entry);
+          const entry = asRecord4(record2.entry);
           const error62 = record2._error;
           const tail = `${error62 ? ` err=${String(error62?.name ?? "")}:${String(error62?.message ?? error62).slice(0, 200)} @${String(
             error62?.stack ?? ""
@@ -30775,7 +30775,7 @@ function createCarrierProbe(deps) {
     if (typeof loader?.entries === "function") {
       const rows = [];
       for (const entry of loader.entries()) {
-        const options = asRecord2(asRecord2(entry).options);
+        const options = asRecord4(asRecord4(entry).options);
         rows.push(`${String(options.id ?? "?")}=${String(options.name ?? "?")}`);
         if (rows.length >= 300) break;
       }
@@ -30795,8 +30795,8 @@ function createCarrierProbe(deps) {
         probe.injectFired = probe.injectFiredLive;
         collectForensics(`t${delayMs}:`);
         probe.injectChildren = injectChildren.map(([childName, child]) => {
-          const record2 = asRecord2(child);
-          const store = asRecord2(record2.store);
+          const record2 = asRecord4(child);
+          const store = asRecord4(record2.store);
           return `${childName}@${String(record2.state ?? "?")}/uid${String(record2.uid ?? "null")}${store ? `[${Object.keys(store).join("|")}]` : ""}`;
         }).join(" ");
         probe.fiberStates = states.join(" | ").slice(0, 1800);
@@ -34952,12 +34952,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path29 = __require("node:path");
+        const path31 = __require("node:path");
         const fs8 = __require("node:fs");
-        const dir = path29.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        const dir = path31.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
         fs8.mkdirSync(dir, { recursive: true, mode: 448 });
         fs8.writeFileSync(
-          path29.join(dir, "client-report.json"),
+          path31.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -39626,19 +39626,1566 @@ function startGroups(ctx, input2) {
   };
 }
 
-// src/skills/install.ts
-import { cpSync, existsSync as existsSync4, mkdirSync as mkdirSync8, readFileSync as readFileSync9, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
+// src/websearch/start.ts
+import path23 from "node:path";
+
+// src/websearch/extra.ts
+var KESEN_INDEX_URL = "https://kesen.realtimerendering.com/";
+var KESEN_HOST = "https://kesen.realtimerendering.com";
+var GREP_APP_API = "https://grep.app/api/search";
+var HN_SEARCH_API = "https://hn.algolia.com/api/v1/search";
+var USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
+var REQUEST_TIMEOUT_MS = 12e3;
+var RATE_LIMIT_BACKOFF_MS = 1500;
+var CODE_LINE_MAX = 120;
+var PAPER_LIMIT = 15;
+var KESEN_MAX_PAGES = 3;
+var KESEN_DEADLINE_MS = 35e3;
+async function globalFetch(input2, init) {
+  const impl = globalThis.fetch;
+  if (impl === void 0) throw new Error("\u5F53\u524D Node \u6CA1\u6709\u5168\u5C40 fetch\uFF08\u9700\u8981 Node 20 \u4EE5\u4E0A\uFF09");
+  return impl(input2, init);
+}
+async function httpGet(url2, deps, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await deps.fetchImpl(url2, {
+      signal: controller.signal,
+      headers: { "user-agent": USER_AGENT, accept: "*/*" }
+    });
+    const body = await response.text();
+    return { status: response.status, body, url: url2 };
+  } catch (error62) {
+    const message = error62 instanceof Error ? error62.message : String(error62);
+    if (/abort/i.test(message)) {
+      throw new Error("\u8BF7\u6C42\u8D85\u65F6\uFF08" + Math.round(timeoutMs / 1e3) + " \u79D2\u6CA1\u54CD\u5E94\uFF09\uFF1A" + url2);
+    }
+    throw new Error("\u8BF7\u6C42\u5931\u8D25\uFF08" + message + "\uFF09\uFF1A" + url2);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+var NAMED_ENTITIES = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  hellip: "\u2026",
+  mdash: "\u2014",
+  ndash: "\u2013"
+};
+function decodeEntities(input2) {
+  return input2.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (whole, name2) => {
+    const key = name2.toLowerCase();
+    if (key.startsWith("#x")) {
+      const code = Number.parseInt(key.slice(2), 16);
+      return Number.isInteger(code) && code > 0 && code <= 1114111 ? String.fromCodePoint(code) : whole;
+    }
+    if (key.startsWith("#")) {
+      const code = Number.parseInt(key.slice(1), 10);
+      return Number.isInteger(code) && code > 0 && code <= 1114111 ? String.fromCodePoint(code) : whole;
+    }
+    return NAMED_ENTITIES[key] ?? whole;
+  });
+}
+function textOf2(html) {
+  return decodeEntities(html.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+}
+function rawTextOf(html) {
+  return decodeEntities(html.replace(/<[^>]*>/g, "")).replace(/\r/g, "").replace(/[ \t]+$/g, "");
+}
+function asRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : void 0;
+}
+function asText(value) {
+  return typeof value === "string" ? value : "";
+}
+function asNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : void 0;
+}
+function rawOf(value) {
+  if (typeof value === "string") return value;
+  const record2 = asRecord(value);
+  return record2 === void 0 ? "" : asText(record2.raw);
+}
+function resolveUrl(href, base) {
+  try {
+    return new URL(href, base).toString();
+  } catch {
+    return href;
+  }
+}
+function unknownKeys(input2, allowed2) {
+  return Object.keys(input2).filter((key) => !allowed2.includes(key));
+}
+function ignoredNote(keys) {
+  return keys.length === 0 ? "" : "\uFF08\u672A\u8BC6\u522B\u53C2\u6570\uFF1A" + keys.join("\u3001") + "\uFF09";
+}
+function clampInt(value, fallback, min, max) {
+  if (value === void 0) return fallback;
+  const rounded = Math.trunc(value);
+  return Math.min(max, Math.max(min, rounded));
+}
+function truncateCode(code) {
+  return code.length > CODE_LINE_MAX ? code.slice(0, CODE_LINE_MAX - 1) + "\u2026" : code;
+}
+function parseGrepSnippet(snippet) {
+  const rows = [...snippet.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((match) => match[1] ?? "");
+  if (rows.length === 0) {
+    const code = rawTextOf(snippet.replace(/<\/?(?:mark|em)\b[^>]*>/gi, "")).trim();
+    return { line: null, code: truncateCode(code) };
+  }
+  const parsed = rows.map((row) => {
+    const cells = [...row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map((match) => match[1] ?? "");
+    let line = null;
+    let codeCell = row;
+    if (cells.length >= 2) {
+      const first = (cells[0] ?? "").trim();
+      if (/^\d+$/.test(first)) {
+        line = Number.parseInt(first, 10);
+        codeCell = cells.slice(1).join("");
+      }
+    }
+    const code = rawTextOf(codeCell.replace(/<\/?(?:mark|em)\b[^>]*>/gi, "")).trim();
+    return { line, code, matched: /<mark\b/i.test(row) };
+  });
+  const chosen = parsed.find((row) => row.matched && row.code !== "") ?? parsed.find((row) => row.code !== "");
+  if (chosen === void 0) return { line: null, code: "" };
+  return { line: chosen.line, code: truncateCode(chosen.code) };
+}
+function parseGrepAppHits(json10, limit) {
+  const root = asRecord(json10);
+  const hitsBlock = asRecord(root === void 0 ? void 0 : root.hits);
+  const rawHits = hitsBlock !== void 0 && Array.isArray(hitsBlock.hits) ? hitsBlock.hits : [];
+  const total = asNumber(hitsBlock === void 0 ? void 0 : hitsBlock.total) ?? rawHits.length;
+  const hits = [];
+  for (const item of rawHits) {
+    const record2 = asRecord(item);
+    if (record2 === void 0) continue;
+    const repo = rawOf(record2.repo);
+    const path31 = rawOf(record2.path);
+    if (repo === "" && path31 === "") continue;
+    const content = asRecord(record2.content);
+    const snippet = asText(content === void 0 ? void 0 : content.snippet);
+    const parsed = parseGrepSnippet(snippet);
+    hits.push({ repo, path: path31, line: parsed.line, code: parsed.code });
+    if (hits.length >= limit) break;
+  }
+  return { hits, total };
+}
+function fileStem(url2) {
+  try {
+    const pathname = new URL(url2).pathname;
+    const last = pathname.split("/").filter((part) => part !== "").pop() ?? "";
+    return last.replace(/\.html?$/i, "");
+  } catch {
+    return url2.replace(/^.*\//, "").replace(/\.html?$/i, "");
+  }
+}
+function parseKesenIndex(html, baseUrl = KESEN_INDEX_URL) {
+  const links = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const match of html.matchAll(/<a\s[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]{0,240}?)<\/a>/gi)) {
+    const href = decodeEntities((match[1] ?? "").trim());
+    if (!/\.html?($|[?#])/i.test(href)) continue;
+    const text = textOf2(match[2] ?? "");
+    const yearInText = /((?:19|20)\d{2})/.exec(text);
+    const yearInHref = /((?:19|20)\d{2})\.html?($|[?#])/i.exec(href);
+    const yearText = yearInText === null ? yearInHref === null ? void 0 : yearInHref[1] : yearInText[1];
+    if (yearText === void 0 || yearText === null) continue;
+    const year = Number.parseInt(yearText, 10);
+    let conf = text.replace(/(?:19|20)\d{2}/g, " ").replace(/[^A-Za-z]+/g, " ").trim().toUpperCase();
+    if (conf === "") {
+      conf = fileStem(href).replace(/[^A-Za-z]+/g, " ").replace(/\b(?:19|20)\d{2}\b/g, "").trim().toUpperCase();
+    }
+    if (conf === "") continue;
+    const url2 = resolveUrl(href, baseUrl);
+    const key = conf + "|" + String(year) + "|" + url2;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push({ conf, year, url: url2 });
+  }
+  return links;
+}
+function kesenPageCandidates(url2) {
+  const ordered = [];
+  const push = (candidate) => {
+    if (candidate !== "" && !ordered.includes(candidate)) ordered.push(candidate);
+  };
+  let parsed;
+  try {
+    parsed = new URL(url2);
+  } catch {
+    return [url2];
+  }
+  const stem = parsed.pathname.split("/").filter((part) => part !== "").pop() ?? "";
+  const mirror = stem === "" ? "" : KESEN_HOST + "/" + stem;
+  const isRealTimeHouse = /(^|\.)realtimerendering\.com$/i.test(parsed.hostname);
+  if (mirror === "" || mirror === url2) {
+    push(url2);
+  } else if (isRealTimeHouse) {
+    push(mirror);
+    push(url2);
+  } else {
+    push(url2);
+    push(mirror);
+  }
+  return ordered;
+}
+function normalizeConf(value) {
+  return value.replace(/[^A-Za-z0-9]+/g, "").toUpperCase();
+}
+function stemKey(url2) {
+  return normalizeConf(
+    fileStem(url2).replace(/papers?$/i, "").replace(/(?:19|20)\d{2}/g, "")
+  );
+}
+function isSubsequence(short, long) {
+  if (short.length < 2) return false;
+  let cursor = 0;
+  for (const char of long) {
+    if (char === short[cursor]) cursor += 1;
+    if (cursor === short.length) return true;
+  }
+  return false;
+}
+function confTier(label, stem, conf) {
+  const wanted = normalizeConf(conf);
+  if (wanted === "") return 0;
+  const normalizedLabel = normalizeConf(label);
+  if (stem === wanted) return 1;
+  if (normalizedLabel === wanted) return 2;
+  if (normalizedLabel.startsWith(wanted) || wanted.startsWith(normalizedLabel)) return 3;
+  if (stem.startsWith(wanted) || wanted.startsWith(stem)) return 3;
+  if (normalizedLabel.includes(wanted) || wanted.includes(normalizedLabel)) return 4;
+  if (stem.includes(wanted) || wanted.includes(stem)) return 4;
+  if (isSubsequence(wanted, normalizedLabel) || isSubsequence(wanted, stem)) return 5;
+  return 0;
+}
+function pageRank(link) {
+  if (link.conf.startsWith("SIGGRAPH")) return 0;
+  if (link.conf === "EG" || link.conf.startsWith("EUROGRAPHICS")) return 1;
+  return 2;
+}
+function pickKesenPages(links, year, conf) {
+  const sameYear = links.filter((link) => link.year === year);
+  const wanted = conf === void 0 ? "" : conf.trim();
+  let filtered = sameYear;
+  if (wanted !== "") {
+    const scored = sameYear.map((link) => ({ link, tier: confTier(link.conf, stemKey(link.url), wanted) }));
+    const matched = scored.filter((item) => item.tier > 0);
+    if (matched.length === 0) {
+      filtered = [];
+    } else {
+      const best = Math.min(...matched.map((item) => item.tier));
+      filtered = matched.filter((item) => item.tier === best).map((item) => item.link);
+    }
+  }
+  return filtered.slice().sort((left, right) => {
+    const rank = pageRank(left) - pageRank(right);
+    return rank !== 0 ? rank : left.conf.localeCompare(right.conf);
+  });
+}
+function parseKesenPapers(html, baseUrl = KESEN_INDEX_URL) {
+  const papers = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const block of html.matchAll(/<dt\b[^>]*>([\s\S]*?)<\/dt>/gi)) {
+    const body = block[1] ?? "";
+    const bold = /<b[^>]*>([\s\S]*?)<\/b>/i.exec(body);
+    let title = bold === null ? "" : textOf2(bold[1] ?? "");
+    if (title === "") title = textOf2(body.split(/<a\s/i)[0] ?? "");
+    if (title === "") continue;
+    const anchors = [...body.matchAll(/<a\s[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map((match) => ({ href: decodeEntities((match[1] ?? "").trim()), inner: match[2] ?? "" })).filter((anchor2) => anchor2.href !== "" && !/^mailto:/i.test(anchor2.href));
+    const pdf = anchors.find((anchor2) => /\.pdf($|[?#])/i.test(anchor2.href));
+    const preprint = anchors.find((anchor2) => /alt\s*=\s*["']author preprint["']/i.test(anchor2.inner));
+    const abstract = anchors.find((anchor2) => /alt\s*=\s*["']paper abstract["']/i.test(anchor2.inner));
+    const chosen = pdf ?? preprint ?? abstract ?? anchors[0];
+    const url2 = chosen === void 0 ? "" : resolveUrl(chosen.href, baseUrl);
+    const key = title + "|" + url2;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    papers.push({ title, url: url2 });
+  }
+  return papers;
+}
+function parseHnHits(json10, limit) {
+  const root = asRecord(json10);
+  const rawHits = root !== void 0 && Array.isArray(root.hits) ? root.hits : [];
+  const hits = [];
+  for (const item of rawHits) {
+    const record2 = asRecord(item);
+    if (record2 === void 0) continue;
+    const title = asText(record2.title).trim();
+    if (title === "") continue;
+    const objectId = asText(record2.objectID);
+    const external = asText(record2.url).trim();
+    const createdAt = asText(record2.created_at);
+    const fallback = objectId === "" ? "" : "https://news.ycombinator.com/item?id=" + objectId;
+    hits.push({
+      title,
+      points: asNumber(record2.points) ?? 0,
+      comments: asNumber(record2.num_comments) ?? 0,
+      date: createdAt === "" ? "" : createdAt.slice(0, 10),
+      url: external !== "" ? external : fallback
+    });
+    if (hits.length >= limit) break;
+  }
+  return hits;
+}
+function buildHnUrl(query, limit, days, nowMs) {
+  const params = new URLSearchParams({ query, hitsPerPage: String(limit) });
+  params.set("tags", "story");
+  if (days !== void 0) {
+    const since = Math.floor(nowMs / 1e3) - days * 86400;
+    params.set("numericFilters", "created_at_i>" + String(since));
+  }
+  return HN_SEARCH_API + "?" + params.toString();
+}
+var OUT4 = {
+  schema: { type: "string" },
+  render: (_args, value) => [
+    { type: "text", text: typeof value === "string" ? value : JSON.stringify(value) }
+  ]
+};
+function buildExtraTools(overrides = {}) {
+  const deps = {
+    fetchImpl: overrides.fetchImpl ?? globalFetch,
+    sleep: overrides.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+    now: overrides.now ?? (() => Date.now())
+  };
+  return [
+    {
+      name: "code_search",
+      description: "\u5728 GitHub \u516C\u5F00\u4ED3\u5E93\u91CC\u641C\u4EE3\u7801\u7247\u6BB5\uFF08grep.app\uFF0C\u514D\u8D39\u65E0 key\uFF09\u3002\n\u4F55\u65F6\u7528\uFF1A\u60F3\u627E\u67D0\u4E2A API/\u51FD\u6570/\u914D\u7F6E\u9879\u5728\u771F\u5B9E\u9879\u76EE\u91CC\u600E\u4E48\u5199\uFF08\u4F8B\uFF1ArequestAnimationFrame \u7684\u5FAA\u73AF\u5199\u6CD5\u3001\u67D0\u4E2A\u6784\u5EFA\u914D\u7F6E\u5B57\u6BB5\uFF09\u3002\n\u8FD4\u56DE\uFF1A\u4ED3\u5E93/\u8DEF\u5F84:\u884C\u53F7 + \u547D\u4E2D\u90A3\u4E00\u884C\u4EE3\u7801\uFF08\u88C1\u5230 120 \u5B57\uFF09\u3002limit \u9ED8\u8BA4 6\uFF0C\u4E0A\u9650 20\u3002\nlanguage \u53EF\u9009\uFF08TypeScript / Python / Rust\u2026\uFF09\uFF0C\u53EA\u505A\u670D\u52A1\u7AEF\u8FC7\u6EE4\uFF0C\u5927\u5C0F\u5199\u5199\u9519\u4F1A\u8FC7\u6EE4\u6210\u7A7A\u3002\n\u6CE8\u610F\uFF1Agrep.app \u5E38\u88AB\u9650\u6D41\uFF0C429 \u65F6\u4F1A\u81EA\u52A8\u7B49 1.5 \u79D2\u91CD\u8BD5\u4E00\u6B21\uFF1B\u4ECD\u5931\u8D25\u4F1A\u76F4\u63A5\u62A5\u300C\u6682\u65F6\u88AB\u9650\u6D41\u300D\uFF0C\u8FD9\u65F6\u522B\u786C\u91CD\u8BD5\uFF0C\u6539\u7528 repo_search \u6216 web_search\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "\u8981\u641C\u7684\u4EE3\u7801\u5173\u952E\u8BCD\uFF08\u51FD\u6570\u540D\u3001API\u3001\u914D\u7F6E\u5B57\u6BB5\uFF09\uFF0C\u522B\u6574\u53E5\u81EA\u7136\u8BED\u8A00\u3002" },
+          language: { type: "string", description: "\u53EF\u9009\uFF1A\u6309\u8BED\u8A00\u8FC7\u6EE4\uFF0C\u4F8B\u5982 TypeScript\u3001Python\u3001Rust\u3002" },
+          limit: { type: "number", description: "\u8FD4\u56DE\u6761\u6570\uFF0C\u9ED8\u8BA4 6\uFF0C\u4E0A\u9650 20\u3002" }
+        },
+        required: ["query"]
+      },
+      output: OUT4,
+      timeoutMs: 3e4,
+      async execute(args) {
+        const input2 = asRecord(args) ?? {};
+        const ignored = unknownKeys(input2, ["query", "language", "limit"]);
+        const query = asText(input2.query).trim();
+        if (query === "") throw new Error("query \u4E0D\u80FD\u4E3A\u7A7A\uFF1A\u8981\u641C\u7684\u4EE3\u7801\u5173\u952E\u8BCD\uFF08\u51FD\u6570\u540D\u3001API\u3001\u914D\u7F6E\u5B57\u6BB5\uFF09\u5F97\u7ED9\u4E00\u4E2A\u3002");
+        const language = asText(input2.language).trim();
+        const limit = clampInt(asNumber(input2.limit), 6, 1, 20);
+        const params = new URLSearchParams({ q: query });
+        if (language !== "") params.set("f.lang", language);
+        const url2 = GREP_APP_API + "?" + params.toString();
+        let response = await httpGet(url2, deps);
+        if (response.status === 429) {
+          await deps.sleep(RATE_LIMIT_BACKOFF_MS);
+          response = await httpGet(url2, deps);
+        }
+        if (response.status === 429) {
+          throw new Error("\u4EE3\u7801\u641C\u7D22\u6682\u65F6\u88AB\u9650\u6D41\uFF0C\u7A0D\u540E\u518D\u8BD5\u6216\u6539\u7528 repo_search");
+        }
+        if (response.status === 403 || response.status === 503) {
+          throw new Error(
+            "grep.app \u62D2\u7EDD\u4E86\u8FD9\u6B21\u8BF7\u6C42\uFF08HTTP " + String(response.status) + "\uFF0C\u591A\u534A\u662F\u5B89\u5168\u6821\u9A8C\uFF09\uFF0C\u7A0D\u540E\u518D\u8BD5\u6216\u6539\u7528 repo_search"
+          );
+        }
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(
+            "grep.app \u8FD4\u56DE HTTP " + String(response.status) + "\uFF0C\u4EE3\u7801\u641C\u7D22\u6682\u65F6\u4E0D\u53EF\u7528\uFF0C\u7A0D\u540E\u518D\u8BD5\u6216\u6539\u7528 repo_search"
+          );
+        }
+        let parsed;
+        try {
+          parsed = JSON.parse(response.body);
+        } catch {
+          throw new Error("grep.app \u8FD4\u56DE\u7684\u4E0D\u662F JSON\uFF08\u53EF\u80FD\u88AB\u5B89\u5168\u6821\u9A8C\u62E6\u622A\uFF09\uFF0C\u7A0D\u540E\u518D\u8BD5\u6216\u6539\u7528 repo_search");
+        }
+        const { hits, total } = parseGrepAppHits(parsed, limit);
+        const ignoredLine = ignoredNote(ignored);
+        if (hits.length === 0) {
+          return ["grep.app \u4EE3\u7801\u641C\u7D22\u300C" + query + "\u300D\u6CA1\u6709\u547D\u4E2D\uFF08\u5171 0 \u6761\uFF09", ignoredLine].filter((line) => line !== "").join("\n");
+        }
+        const lines = ["grep.app \u4EE3\u7801\u641C\u7D22\u300C" + query + "\u300D\xB7 " + String(hits.length) + " / " + String(total) + " \u6761"];
+        for (let index = 0; index < hits.length; index += 1) {
+          const hit = hits[index];
+          if (hit === void 0) continue;
+          const lineNo = hit.line === null ? "?" : String(hit.line);
+          lines.push(String(index + 1) + ". " + hit.repo + "/" + hit.path + ":" + lineNo);
+          if (hit.code !== "") lines.push("   " + hit.code);
+        }
+        if (ignoredLine !== "") lines.push(ignoredLine);
+        return lines.join("\n");
+      }
+    },
+    {
+      name: "graphics_papers",
+      description: "\u6293 Ke-Sen Huang \u7684\u56FE\u5F62\u5B66\u8BBA\u6587\u7D22\u5F15\uFF08kesen.realtimerendering.com\uFF09\uFF0C\u5217\u51FA\u67D0\u4E00\u5E74/\u67D0\u4E2A\u4F1A\u8BAE\u7684\u8BBA\u6587\u6807\u9898 + \u94FE\u63A5\uFF0C\u6700\u591A 15 \u6761\u3002\n\u4F55\u65F6\u7528\uFF1A\u60F3\u627E SIGGRAPH / Eurographics(EG) \u67D0\u5E74\u7684\u8BBA\u6587\u6E05\u5355\u3001\u67D0\u7BC7\u56FE\u5F62\u5B66\u8BBA\u6587\u7684 preprint \u94FE\u63A5\u3002\nyear \u7F3A\u7701\u53D6\u7D22\u5F15\u9875\u91CC\u6700\u65B0\u7684\u4E00\u5E74\uFF08\u90A3\u5E74\u8FD8\u6CA1\u653E\u51FA\u8BBA\u6587\u65F6\u81EA\u52A8\u56DE\u9000\u524D\u4E24\u5E74\uFF0C\u8F93\u51FA\u4F1A\u5199\u660E\u5B9E\u9645\u7528\u4E86\u54EA\u5E74\uFF09\u3002\nconf \u53EF\u9009\uFF1ASIGGRAPH\u3001EG\u3001ICCP \u7B49\uFF1BSIGA \u8FD9\u79CD\u7F29\u5199\u4E5F\u80FD\u547D\u4E2D SIGGRAPH\u3002\n\u6CE8\u610F\uFF1A\u8FD9\u4E2A\u7AD9\u70B9\u6709\u9632\u62A4\uFF0C\u6293\u4E0D\u5230\u6216\u89E3\u6790\u4E0D\u5230\u65F6\u4F1A\u660E\u786E\u8BF4\u300C\u9875\u9762\u7ED3\u6784\u53D8\u4E86\u300D\uFF0C\u4E0D\u4F1A\u9759\u9ED8\u8FD4\u56DE\u7A7A\u5217\u8868\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          year: { type: "number", description: "\u53EF\u9009\uFF1A\u56DB\u4F4D\u5E74\u4EFD\uFF0C\u5982 2024\u3002\u7F3A\u7701\u53D6\u7D22\u5F15\u9875\u91CC\u6700\u65B0\u7684\u4E00\u5E74\u3002" },
+          conf: { type: "string", description: "\u53EF\u9009\uFF1A\u4F1A\u8BAE\u8FC7\u6EE4\uFF0C\u5982 SIGGRAPH\u3001EG\u3001SIGA\uFF08SIGA \u547D\u4E2D SIGGRAPH\uFF09\u3002" }
+        },
+        required: []
+      },
+      output: OUT4,
+      timeoutMs: 45e3,
+      async execute(args) {
+        const input2 = asRecord(args) ?? {};
+        const ignored = unknownKeys(input2, ["year", "conf"]);
+        const confRaw = asText(input2.conf).trim();
+        const conf = confRaw === "" ? void 0 : confRaw;
+        const yearInput = asNumber(input2.year);
+        if (yearInput !== void 0 && (!Number.isInteger(yearInput) || yearInput < 1990 || yearInput > 2100)) {
+          throw new Error("year \u4E0D\u50CF\u4E2A\u5E74\u4EFD\uFF1A" + String(yearInput) + "\uFF08\u8981\u56DB\u4F4D\u6574\u6570\uFF0C\u4F8B\u5982 2024\uFF09");
+        }
+        const index = await httpGet(KESEN_INDEX_URL, deps);
+        if (index.status < 200 || index.status >= 300) {
+          throw new Error(
+            "kesen \u7D22\u5F15\u9875\u6253\u4E0D\u5F00\uFF08HTTP " + String(index.status) + "\uFF09\uFF0C\u56FE\u5F62\u5B66\u8BBA\u6587\u6682\u65F6\u67E5\u4E0D\u4E86\uFF1A" + KESEN_INDEX_URL
+          );
+        }
+        const links = parseKesenIndex(index.body, KESEN_INDEX_URL);
+        if (links.length === 0) {
+          throw new Error("kesen \u7D22\u5F15\u9875\u89E3\u6790\u4E0D\u5230\u4EFB\u4F55\u5E74\u4EFD\u94FE\u63A5\uFF0C\u9875\u9762\u7ED3\u6784\u53D8\u4E86\uFF08\u9875\u9762\uFF1A" + KESEN_INDEX_URL + "\uFF09");
+        }
+        const years = [...new Set(links.map((link) => link.year))].sort((left, right) => right - left);
+        const latest = years[0] ?? new Date(deps.now()).getUTCFullYear();
+        const attempts = yearInput === void 0 ? [latest, latest - 1, latest - 2] : [yearInput];
+        const deadline = deps.now() + KESEN_DEADLINE_MS;
+        const collected = [];
+        const usedPages = [];
+        let usedYear = null;
+        let lastProblem = "";
+        let structureProblem = "";
+        for (const year of attempts) {
+          const pages = pickKesenPages(links, year, conf);
+          if (pages.length === 0) {
+            lastProblem = yearInput === void 0 ? String(year) + " \u5E74\u5728\u7D22\u5F15\u9875\u4E0A\u6CA1\u6709\u5BF9\u5E94\u7684\u5E74\u4EFD\u9875" : String(year) + " \u5E74" + (conf === void 0 ? "" : "\u3001" + conf) + "\u5728\u7D22\u5F15\u9875\u4E0A\u6CA1\u6709\u5BF9\u5E94\u7684\u5E74\u4EFD\u9875\uFF08\u53EF\u7528\u7684\u5E74\u4EFD\uFF1A" + years.slice(0, 8).join("\u3001") + "\uFF09";
+            continue;
+          }
+          const papers = [];
+          for (const page of pages.slice(0, KESEN_MAX_PAGES)) {
+            if (deps.now() > deadline) {
+              lastProblem = "\u6293\u53D6\u8D85\u8FC7 " + String(Math.round(KESEN_DEADLINE_MS / 1e3)) + " \u79D2\u9884\u7B97\uFF0C\u5DF2\u653E\u5F03\u5269\u4F59\u9875\u9762";
+              break;
+            }
+            const pagePapers = [];
+            const failures = [];
+            for (const candidate of kesenPageCandidates(page.url).slice(0, 2)) {
+              try {
+                const response = await httpGet(candidate, deps);
+                if (response.status < 200 || response.status >= 300) {
+                  failures.push("HTTP " + String(response.status) + "\uFF08" + candidate + "\uFF09");
+                  continue;
+                }
+                const parsedPapers = parseKesenPapers(response.body, candidate);
+                if (parsedPapers.length === 0) {
+                  failures.push("\u9875\u9762\u91CC\u89E3\u6790\u4E0D\u5230\u8BBA\u6587\uFF0C\u9875\u9762\u7ED3\u6784\u53D8\u4E86\uFF08" + candidate + "\uFF09");
+                  continue;
+                }
+                usedPages.push(candidate);
+                for (const paper of parsedPapers) pagePapers.push({ ...paper, conf: page.conf, year: page.year });
+                break;
+              } catch (error62) {
+                failures.push(error62 instanceof Error ? error62.message : String(error62));
+              }
+            }
+            if (pagePapers.length > 0) {
+              for (const paper of pagePapers) papers.push(paper);
+            } else {
+              const structure = failures.find((item) => item.includes("\u9875\u9762\u7ED3\u6784\u53D8\u4E86"));
+              if (structure !== void 0 && structureProblem === "") structureProblem = structure;
+              lastProblem = structure !== void 0 ? structure : failures[0] ?? lastProblem;
+            }
+          }
+          if (papers.length > 0) {
+            for (const paper of papers) {
+              if (collected.some((existing) => existing.title === paper.title && existing.url === paper.url)) continue;
+              if (collected.length >= PAPER_LIMIT) break;
+              collected.push(paper);
+            }
+            usedYear = year;
+            break;
+          }
+        }
+        if (collected.length === 0) {
+          throw new Error(
+            "\u56FE\u5F62\u5B66\u8BBA\u6587\u89E3\u6790\u4E0D\u5230\u5185\u5BB9\uFF1A" + (structureProblem !== "" ? structureProblem : lastProblem === "" ? "\u9875\u9762\u7ED3\u6784\u53D8\u4E86" : lastProblem) + "\uFF08\u7D22\u5F15\u9875\uFF1A" + KESEN_INDEX_URL + "\uFF09" + ignoredNote(ignored)
+          );
+        }
+        const lines = [
+          "kesen \u56FE\u5F62\u5B66\u8BBA\u6587 \xB7 " + String(usedYear ?? "\u672A\u77E5") + " \u5E74 \xB7 " + String(collected.length) + " \u6761",
+          "\uFF08\u6765\u6E90\uFF1A" + (usedPages.join("\u3001") === "" ? KESEN_INDEX_URL : usedPages.join("\u3001")) + "\uFF09"
+        ];
+        for (let index2 = 0; index2 < collected.length; index2 += 1) {
+          const paper = collected[index2];
+          if (paper === void 0) continue;
+          lines.push(String(index2 + 1) + ". " + paper.title + " \u2014 " + paper.conf + " " + String(paper.year));
+          if (paper.url !== "") lines.push("   " + paper.url);
+        }
+        const ignoredLine = ignoredNote(ignored);
+        if (ignoredLine !== "") lines.push(ignoredLine);
+        return lines.join("\n");
+      }
+    },
+    {
+      name: "hn_search",
+      description: "\u641C Hacker News\uFF08hn.algolia.com\uFF0C\u514D\u8D39 JSON\uFF09\uFF1A\u6309\u5173\u952E\u8BCD\u627E\u8BA8\u8BBA\uFF0C\u8FD4\u56DE\u6807\u9898 \xB7 \u5206\u6570 \xB7 \u8BC4\u8BBA\u6570 \xB7 \u65F6\u95F4 \xB7 \u94FE\u63A5\u3002\n\u4F55\u65F6\u7528\uFF1A\u60F3\u77E5\u9053\u67D0\u4E2A\u6280\u672F/\u9879\u76EE/\u65B0\u95FB\u5728 HN \u4E0A\u6709\u6CA1\u6709\u8BA8\u8BBA\u3001\u70ED\u5EA6\u548C\u793E\u533A\u89C2\u70B9\uFF08\u4F8B\uFF1AVulkan\u3001bun runtime\uFF09\u3002\ndays \u53EF\u9009\uFF1A\u53EA\u53D6\u6700\u8FD1 N \u5929\uFF08\u5185\u90E8\u6362\u7B97\u6210 created_at_i > \u73B0\u5728-N*86400 \u79D2\uFF09\u3002limit \u9ED8\u8BA4 8\uFF0C\u4E0A\u9650 20\u3002\n\u8F93\u51FA\u6BCF\u6761\u4E00\u884C\uFF1B\u6CA1\u6709\u5916\u94FE\u7684\uFF08Ask HN / Show HN \u81EA\u5E16\uFF09\u7528 HN item \u94FE\u63A5\u515C\u5E95\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "\u641C\u7D22\u5173\u952E\u8BCD\uFF0C\u4F8B\u5982 Vulkan\u3001bun runtime\u3002" },
+          days: { type: "number", description: "\u53EF\u9009\uFF1A\u53EA\u53D6\u6700\u8FD1 N \u5929\u5185\u7684\u5E16\u5B50\uFF08\u6B63\u6574\u6570\uFF09\u3002" },
+          limit: { type: "number", description: "\u8FD4\u56DE\u6761\u6570\uFF0C\u9ED8\u8BA4 8\uFF0C\u4E0A\u9650 20\u3002" }
+        },
+        required: ["query"]
+      },
+      output: OUT4,
+      timeoutMs: 2e4,
+      async execute(args) {
+        const input2 = asRecord(args) ?? {};
+        const ignored = unknownKeys(input2, ["query", "days", "limit"]);
+        const query = asText(input2.query).trim();
+        if (query === "") throw new Error("query \u4E0D\u80FD\u4E3A\u7A7A\uFF1A\u8981\u641C\u7684 HN \u5173\u952E\u8BCD\u5F97\u7ED9\u4E00\u4E2A\u3002");
+        const limit = clampInt(asNumber(input2.limit), 8, 1, 20);
+        const daysInput = asNumber(input2.days);
+        if (daysInput !== void 0 && daysInput <= 0) throw new Error("days \u8981\u7ED9\u6B63\u6574\u6570\uFF08\u6700\u8FD1\u591A\u5C11\u5929\uFF09\uFF0C\u4F8B\u5982 30\u3002");
+        const days = daysInput === void 0 ? void 0 : Math.trunc(daysInput);
+        const url2 = buildHnUrl(query, limit, days, deps.now());
+        const response = await httpGet(url2, deps);
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error("HN \u641C\u7D22\u63A5\u53E3\u8FD4\u56DE HTTP " + String(response.status) + "\uFF0C\u6682\u65F6\u67E5\u4E0D\u4E86\uFF0C\u7A0D\u540E\u518D\u8BD5");
+        }
+        let parsed;
+        try {
+          parsed = JSON.parse(response.body);
+        } catch {
+          throw new Error("HN \u641C\u7D22\u63A5\u53E3\u8FD4\u56DE\u7684\u4E0D\u662F JSON\uFF08\u53EF\u80FD\u88AB\u4E2D\u95F4\u5C42\u6539\u5199\uFF09\uFF0C\u7A0D\u540E\u518D\u8BD5");
+        }
+        const hits = parseHnHits(parsed, limit);
+        const scope = days === void 0 ? "\u5168\u90E8\u65F6\u95F4" : "\u6700\u8FD1 " + String(days) + " \u5929";
+        const ignoredLine = ignoredNote(ignored);
+        if (hits.length === 0) {
+          return ["Hacker News \u641C\u7D22\u300C" + query + "\u300D\u6CA1\u627E\u5230\uFF08" + scope + "\uFF09", ignoredLine].filter((line) => line !== "").join("\n");
+        }
+        const lines = ["Hacker News \u641C\u7D22\u300C" + query + "\u300D\xB7 " + String(hits.length) + " \u6761\uFF08" + scope + "\uFF09"];
+        for (let index = 0; index < hits.length; index += 1) {
+          const hit = hits[index];
+          if (hit === void 0) continue;
+          const date5 = hit.date === "" ? "\u672A\u77E5\u65F6\u95F4" : hit.date;
+          lines.push(
+            String(index + 1) + ". " + hit.title + " \xB7 " + String(hit.points) + " points \xB7 " + String(hit.comments) + " \u8BC4\u8BBA \xB7 " + date5 + " \xB7 " + hit.url
+          );
+        }
+        if (ignoredLine !== "") lines.push(ignoredLine);
+        return lines.join("\n");
+      }
+    }
+  ];
+}
+
+// src/websearch/http.ts
+var SEARCH_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+function flattenHeaders(headers) {
+  const out = {};
+  try {
+    if (typeof headers.forEach === "function") {
+      headers.forEach((value, key) => {
+        out[String(key).toLowerCase()] = String(value);
+      });
+    } else if (typeof headers.get === "function") {
+      for (const key of ["content-type", "x-ratelimit-remaining", "x-ratelimit-limit"]) {
+        const value = headers.get(key);
+        if (value !== null) out[key] = value;
+      }
+    }
+  } catch {
+  }
+  return out;
+}
+function describeError(error62, timeoutMs, aborted2) {
+  if (aborted2) return "\u8BF7\u6C42\u8D85\u65F6\uFF08\u8D85\u8FC7 " + Math.round(timeoutMs / 1e3) + " \u79D2\u6CA1\u6709\u56DE\u5E94\uFF09";
+  const message = String(error62?.message ?? error62);
+  if (/abort/i.test(message)) return "\u8BF7\u6C42\u88AB\u4E2D\u65AD\uFF08\u8D85\u65F6\u6216\u8C03\u7528\u65B9\u53D6\u6D88\uFF09";
+  return "\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25\uFF1A" + message.slice(0, 160);
+}
+async function fetchText(url2, options = {}) {
+  const impl = options.fetchImpl ?? globalThis.fetch;
+  if (typeof impl !== "function") {
+    return {
+      ok: false,
+      status: 0,
+      url: url2,
+      body: "",
+      headers: {},
+      error: "\u8FD9\u53F0\u673A\u5668\u6CA1\u6709\u53EF\u7528\u7684 fetch\uFF08Node 18 \u4EE5\u4E0B\uFF09\uFF0C\u8054\u7F51\u641C\u7D22\u7528\u4E0D\u4E86"
+    };
+  }
+  const timeoutMs = options.timeoutMs ?? 8e3;
+  const retries = Math.max(0, options.retries ?? 1);
+  const retryable = options.retryableStatuses ?? [429, 500, 502, 503, 504];
+  const failures = options.failureStatuses ?? [];
+  const headers = {
+    "user-agent": SEARCH_UA,
+    accept: options.accept ?? "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+    "accept-language": "zh-CN,zh;q=0.9,en;q=0.6",
+    ...options.headers
+  };
+  let last = {
+    ok: false,
+    status: 0,
+    url: url2,
+    body: "",
+    headers: {},
+    error: "\u8BF7\u6C42\u6CA1\u6709\u6267\u884C"
+  };
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    if (attempt > 0) await sleep(options.retryDelayMs ?? 600);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await impl(url2, { headers, signal: controller.signal, redirect: "follow" });
+      let body = "";
+      try {
+        body = await response.text();
+      } catch {
+        body = "";
+      }
+      const status = Number(response.status) || 0;
+      const finalUrl = typeof response.url === "string" && response.url !== "" ? response.url : url2;
+      last = {
+        // 空 body 也算失败：200 但 0 字节说明对面在耍人（常见于软拦）
+        ok: response.ok && body !== "" && !failures.includes(status),
+        status,
+        url: finalUrl,
+        body,
+        headers: flattenHeaders(response.headers)
+      };
+    } catch (error62) {
+      last = {
+        ok: false,
+        status: 0,
+        url: url2,
+        body: "",
+        headers: {},
+        error: describeError(error62, timeoutMs, controller.signal.aborted)
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+    if (last.ok) return last;
+    const worthRetry = last.status === 0 || retryable.includes(last.status) || failures.includes(last.status);
+    if (!worthRetry) return last;
+  }
+  return last;
+}
+function describeFailure(result2) {
+  if (result2.status === 0) return result2.error ?? "\u8BF7\u6C42\u6CA1\u53D1\u51FA\u53BB";
+  if (result2.status === 429) return "HTTP 429\uFF08\u88AB\u9650\u6D41\uFF0C\u6B47\u4E00\u4F1A\u513F\u518D\u8BD5\uFF09";
+  if (result2.status === 403) return "HTTP 403\uFF08\u88AB\u62E6\uFF09";
+  if (result2.status >= 500) return "HTTP " + result2.status + "\uFF08\u4E0A\u6E38\u81EA\u5DF1\u6302\u4E86\uFF09";
+  return "HTTP " + result2.status;
+}
+var NAMED_ENTITIES2 = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  ensp: " ",
+  emsp: " ",
+  thinsp: " ",
+  mdash: "\u2014",
+  ndash: "\u2013",
+  hellip: "\u2026",
+  ldquo: "\u201C",
+  rdquo: "\u201D",
+  lsquo: "\u2018",
+  rsquo: "\u2019",
+  middot: "\xB7",
+  bull: "\u2022",
+  laquo: "\xAB",
+  raquo: "\xBB",
+  copy: "\xA9",
+  reg: "\xAE",
+  trade: "\u2122",
+  times: "\xD7",
+  divide: "\xF7",
+  deg: "\xB0",
+  plusmn: "\xB1",
+  frac12: "\xBD",
+  eacute: "\xE9",
+  egrave: "\xE8",
+  uuml: "\xFC",
+  ouml: "\xF6",
+  auml: "\xE4",
+  szlig: "\xDF",
+  agrave: "\xE0",
+  ccedil: "\xE7"
+};
+function decodeEntities2(input2) {
+  if (!input2.includes("&")) return input2;
+  return input2.replace(/&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,31});/g, (whole, body) => {
+    if (body.startsWith("#")) {
+      const code = body[1] === "x" || body[1] === "X" ? Number.parseInt(body.slice(2), 16) : Number.parseInt(body.slice(1), 10);
+      if (!Number.isFinite(code) || code <= 0 || code > 1114111) return whole;
+      try {
+        return String.fromCodePoint(code);
+      } catch {
+        return whole;
+      }
+    }
+    const hit = NAMED_ENTITIES2[body.toLowerCase()];
+    return hit === void 0 ? whole : hit;
+  });
+}
+function htmlToText(html) {
+  if (html === "") return "";
+  let text = html.replace(/<!--[\s\S]*?-->/g, " ");
+  text = text.replace(
+    /<(script|style|noscript|template|svg|iframe|head|object)\b[^>]*>[\s\S]*?<\/[a-zA-Z][a-zA-Z0-9]*\s*>/gi,
+    " "
+  );
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+  text = text.replace(/<\/(p|div|li|tr|h[1-6]|section|article|blockquote|pre|table|ul|ol)\s*>/gi, "\n");
+  text = text.replace(/<[^>]*>/g, " ");
+  text = decodeEntities2(text);
+  text = text.replace(/[ \t\f\v\u00a0]+/g, " ");
+  text = text.replace(/ *\n */g, "\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
+}
+function inlineText(html) {
+  return decodeEntities2(html.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+}
+function decodeBase64Url(value) {
+  const cleaned = value.trim().replace(/-/g, "+").replace(/_/g, "/");
+  if (cleaned === "" || !/^[A-Za-z0-9+/]+={0,2}$/.test(cleaned)) return null;
+  const padded = cleaned + "=".repeat((4 - cleaned.length % 4) % 4);
+  let decoded = "";
+  try {
+    decoded = Buffer.from(padded, "base64").toString("utf8");
+  } catch {
+    return null;
+  }
+  return /^https?:\/\/\S+$/i.test(decoded) ? decoded : null;
+}
+function absoluteUrl(href, base) {
+  const raw = href.trim();
+  if (raw === "") return "";
+  try {
+    return new URL(raw, base).toString();
+  } catch {
+    return raw;
+  }
+}
+function truncateText(text, maxChars) {
+  const total = text.length;
+  if (total <= maxChars) return { text, total, truncated: false };
+  return { text: text.slice(0, maxChars), total, truncated: true };
+}
+function createTtlCache(ttlMs, maxEntries = 64, now = Date.now) {
+  const store = /* @__PURE__ */ new Map();
+  return {
+    get(key) {
+      const hit = store.get(key);
+      if (hit === void 0) return void 0;
+      if (hit.expiresAt <= now()) {
+        store.delete(key);
+        return void 0;
+      }
+      return hit.value;
+    },
+    set(key, value) {
+      store.delete(key);
+      store.set(key, { value, expiresAt: now() + ttlMs });
+      while (store.size > maxEntries) {
+        const oldest = store.keys().next();
+        if (oldest.done === true) break;
+        store.delete(oldest.value);
+      }
+    },
+    get size() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    }
+  };
+}
+
+// src/websearch/tools.ts
+var BING_SEARCH = "https://cn.bing.com/search";
+var BING_BASE = "https://cn.bing.com";
+var SOGOU_SEARCH = "https://www.sogou.com/web";
+var SOGOU_BASE = "https://www.sogou.com";
+var AR5IV_HTML = "https://ar5iv.labs.arxiv.org/html/";
+var OPENALEX_API = "https://api.openalex.org/works";
+var ARXIV_API = "http://export.arxiv.org/api/query";
+var DBLP_API = "https://dblp.org/search/publ/api";
+var GITHUB_API = "https://api.github.com";
+var SEARCH_ENGINES = ["auto", "bing", "sogou"];
+var PAPER_SOURCES = ["openalex", "arxiv", "dblp"];
+var REPO_SORTS = ["stars", "updated", "forks"];
+var OUT5 = {
+  schema: { type: "string" },
+  render: (_args, value) => [
+    { type: "text", text: typeof value === "string" ? value : JSON.stringify(value) }
+  ]
+};
+function asString2(value) {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+function asRecord2(value) {
+  return value !== null && typeof value === "object" ? value : {};
+}
+function asNumber2(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) return Number(value.trim());
+  return void 0;
+}
+function clampInt2(value, min, max, fallback) {
+  const parsed = typeof value === "number" ? value : Number(asString2(value));
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(parsed)));
+}
+function pickEnum(value, allowed2, fallback) {
+  const raw = asString2(value).toLowerCase();
+  return allowed2.includes(raw) ? raw : fallback;
+}
+function firstHttpUrl(candidates) {
+  for (const candidate of candidates) {
+    if (/^https?:\/\//i.test(candidate.trim())) return candidate.trim();
+  }
+  return candidates.find((candidate) => candidate.trim() !== "")?.trim() ?? "";
+}
+function sliceBlocks(html, opener, closeTag) {
+  const starts = [];
+  opener.lastIndex = 0;
+  let match;
+  while ((match = opener.exec(html)) !== null) {
+    starts.push(match.index + match[0].length);
+    if (match[0].length === 0) opener.lastIndex += 1;
+  }
+  const blocks = [];
+  for (let index = 0; index < starts.length; index += 1) {
+    const start = starts[index];
+    const nextStart = index + 1 < starts.length ? starts[index + 1] : html.length;
+    const closing = html.indexOf(closeTag, start);
+    const end = closing >= 0 && closing < nextStart ? closing : nextStart;
+    blocks.push(html.slice(start, end));
+  }
+  return blocks;
+}
+function firstAnchor(fragment) {
+  const match = /<a\b[^>]*href\s*=\s*("([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/i.exec(fragment);
+  if (match === null) return null;
+  const href = decodeEntities2(match[2] ?? match[3] ?? "").trim();
+  return { href, text: inlineText(match[4] ?? "") };
+}
+function headingAnchor(block) {
+  const heading = /<h[23]\b[^>]*>([\s\S]*?)<\/h[23]>/i.exec(block);
+  const scope = heading === null ? block : heading[1] ?? "";
+  return firstAnchor(scope);
+}
+function clip(text, max) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length > max ? clean.slice(0, max) + "\u2026" : clean;
+}
+function resolveBingLink(href) {
+  const raw = decodeEntities2(href).trim();
+  if (raw === "") return "";
+  if (raw.startsWith("/")) return absoluteUrl(raw, BING_BASE);
+  if (!/\/ck\/a\?/i.test(raw)) return raw;
+  let param = "";
+  try {
+    param = new URL(raw, BING_BASE).searchParams.get("u") ?? "";
+  } catch {
+    param = "";
+  }
+  if (param === "") return raw;
+  if (/^https?:\/\//i.test(param)) return param;
+  const body = param.startsWith("a1") ? param.slice(2) : param;
+  return decodeBase64Url(body) ?? raw;
+}
+function resolveSogouLink(href) {
+  const raw = decodeEntities2(href).trim();
+  if (raw === "") return "";
+  return absoluteUrl(raw, SOGOU_BASE);
+}
+function bingSnippet(block) {
+  const paragraph = /<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(block);
+  if (paragraph !== null) return clip(inlineText(paragraph[1] ?? ""), 280);
+  const caption = /<div\b[^>]*class\s*=\s*"[^"]*b_caption[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(block);
+  if (caption !== null) return clip(inlineText(caption[1] ?? ""), 280);
+  return "";
+}
+function parseBing(html) {
+  if (html === "") return [];
+  const blocks = sliceBlocks(html, /<li\b[^>]*class\s*=\s*"[^"]*\bb_algo\b[^"]*"[^>]*>/gi, "</li>");
+  const hits = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const block of blocks) {
+    const anchor2 = headingAnchor(block);
+    if (anchor2 === null || anchor2.text === "") continue;
+    const url2 = resolveBingLink(anchor2.href);
+    if (url2 === "" || seen.has(url2)) continue;
+    seen.add(url2);
+    hits.push({ title: clip(anchor2.text, 160), url: url2, snippet: bingSnippet(block) });
+  }
+  return hits;
+}
+function parseSogou(html) {
+  if (html === "") return [];
+  let blocks = sliceBlocks(html, /<h3\b[^>]*class\s*=\s*"[^"]*vr-?title[^"]*"[^>]*>/gi, "</div>");
+  if (blocks.length === 0) {
+    blocks = sliceBlocks(html, /<div\b[^>]*class\s*=\s*"[^"]*\brb\b[^"]*"[^>]*>/gi, "</div>");
+  }
+  const hits = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const block of blocks) {
+    const anchor2 = headingAnchor(block) ?? firstAnchor(block);
+    if (anchor2 === null || anchor2.text === "") continue;
+    const url2 = resolveSogouLink(anchor2.href);
+    if (url2 === "" || seen.has(url2)) continue;
+    seen.add(url2);
+    const snippetMatch = /<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(block);
+    const snippet = snippetMatch === null ? "" : clip(inlineText(snippetMatch[1] ?? ""), 280);
+    hits.push({ title: clip(anchor2.text, 160), url: url2, snippet });
+  }
+  return hits;
+}
+function looksBlocked(html) {
+  if (html === "") return false;
+  const text = htmlToText(html).slice(0, 5e3);
+  return /(安全验证|人机验证|请输入验证码|滑动验证|访问异常|captcha|unusual traffic|are you a robot|请完成下列验证)/i.test(text);
+}
+function judgeSearchPage(label, result2, parse3) {
+  if (!result2.ok) return { ok: false, hits: [], reason: label + " " + describeFailure(result2) };
+  const hits = parse3(result2.body);
+  if (hits.length === 0) {
+    return {
+      ok: false,
+      hits: [],
+      reason: looksBlocked(result2.body) ? label + " \u56DE\u4E86\u9A8C\u8BC1/\u62E6\u622A\u9875\uFF08\u8981\u4EBA\u673A\u9A8C\u8BC1\uFF09" : label + " \u6CA1\u89E3\u6790\u51FA\u7ED3\u679C\u5757\uFF08\u9875\u9762\u7ED3\u6784\u53EF\u80FD\u53D8\u4E86\uFF09"
+    };
+  }
+  return { ok: true, hits, reason: "" };
+}
+async function searchBing(fetchImpl, query, count) {
+  const url2 = BING_SEARCH + "?q=" + encodeURIComponent(query) + "&setlang=zh-CN&count=" + count;
+  const result2 = await fetchText(url2, { timeoutMs: 8e3, fetchImpl, accept: "text/html" });
+  return judgeSearchPage("Bing", result2, parseBing);
+}
+async function searchSogou(fetchImpl, query, count) {
+  const url2 = SOGOU_SEARCH + "?query=" + encodeURIComponent(query);
+  const result2 = await fetchText(url2, { timeoutMs: 8e3, fetchImpl, accept: "text/html" });
+  const attempt = judgeSearchPage("Sogou", result2, parseSogou);
+  return { ...attempt, hits: attempt.hits.slice(0, count) };
+}
+function formatSearch(query, engine, hits) {
+  const lines = ["\u641C\u7D22\u300C" + query + "\u300D\uFF1A" + hits.length + " \u6761\uFF08" + engine + "\uFF09"];
+  hits.forEach((hit, index) => {
+    lines.push(index + 1 + ". " + hit.title + (hit.snippet === "" ? "" : " \u2014 " + hit.snippet));
+    lines.push("   " + hit.url);
+  });
+  return lines.join("\n");
+}
+function parseOpenAlex(payload, limit) {
+  const results = asRecord2(payload).results;
+  const rows = Array.isArray(results) ? results : [];
+  const hits = [];
+  for (const row of rows) {
+    if (hits.length >= limit) break;
+    const work = asRecord2(row);
+    const title = inlineText(asString2(work.title));
+    if (title === "") continue;
+    const primary = asRecord2(work.primary_location);
+    const source = asRecord2(primary.source);
+    const openAccess = asRecord2(work.open_access);
+    const url2 = firstHttpUrl([
+      asString2(openAccess.oa_url),
+      asString2(primary.landing_page_url),
+      asString2(work.doi),
+      asString2(work.id)
+    ]);
+    const cited = asNumber2(work.cited_by_count);
+    hits.push({
+      title: clip(title, 200),
+      year: asString2(work.publication_year),
+      venue: clip(inlineText(asString2(source.display_name)), 60),
+      ...cited === void 0 ? {} : { cited },
+      url: url2
+    });
+  }
+  return hits;
+}
+function firstTag(block, tag) {
+  const pattern = new RegExp("<" + tag + "\\b[^>]*>([\\s\\S]*?)</" + tag + ">", "i");
+  const match = pattern.exec(block);
+  return match === null ? "" : match[1] ?? "";
+}
+function parseArxivAtom(xml, limit) {
+  if (xml === "") return [];
+  const hits = [];
+  const entries = xml.matchAll(/<entry\b[^>]*>([\s\S]*?)<\/entry>/gi);
+  for (const entry of entries) {
+    if (hits.length >= limit) break;
+    const block = entry[1] ?? "";
+    const title = clip(inlineText(firstTag(block, "title")), 200);
+    if (title === "") continue;
+    const id = inlineText(firstTag(block, "id"));
+    const published = inlineText(firstTag(block, "published"));
+    const summary2 = inlineText(firstTag(block, "summary"));
+    const year = /^\d{4}/.test(published) ? published.slice(0, 4) : "";
+    const abstract = summary2.length > 200 ? summary2.slice(0, 200) + "\u2026" : summary2;
+    hits.push({
+      title,
+      year,
+      venue: "arXiv",
+      url: id.replace(/^http:/i, "https:"),
+      ...abstract === "" ? {} : { extra: "\u6458\u8981\uFF1A" + abstract }
+    });
+  }
+  return hits;
+}
+function parseDblp(payload, limit) {
+  const result2 = asRecord2(asRecord2(payload).result);
+  const rawHits = asRecord2(result2.hits).hit;
+  const rows = Array.isArray(rawHits) ? rawHits : rawHits === void 0 ? [] : [rawHits];
+  const hits = [];
+  for (const row of rows) {
+    if (hits.length >= limit) break;
+    const info = asRecord2(asRecord2(row).info);
+    const title = clip(inlineText(asString2(info.title)).replace(/\.$/, ""), 200);
+    if (title === "") continue;
+    const url2 = firstHttpUrl([asString2(info.ee), asString2(info.url)]);
+    hits.push({ title, year: asString2(info.year), venue: clip(inlineText(asString2(info.venue)), 60), url: url2 });
+  }
+  return hits;
+}
+function formatPapers(label, source, hits) {
+  const lines = [label + "\uFF1A" + hits.length + " \u6761\uFF08" + source + "\uFF09"];
+  hits.forEach((hit, index) => {
+    const parts = [hit.title];
+    if (hit.year !== "") parts.push(hit.year);
+    if (hit.venue !== "") parts.push(hit.venue);
+    if (hit.cited !== void 0) parts.push("\u88AB\u5F15 " + hit.cited);
+    if (hit.url !== "") parts.push(hit.url);
+    lines.push(index + 1 + ". " + parts.join(" \xB7 "));
+    if (hit.extra !== void 0) lines.push("   " + hit.extra);
+  });
+  return lines.join("\n");
+}
+function arxivIdOf(url2) {
+  const match = /^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\/([^?#]+)/i.exec(url2.trim());
+  if (match === null) return null;
+  let id = (match[1] ?? "").trim();
+  if (id.toLowerCase().endsWith(".pdf")) id = id.slice(0, -4);
+  return id === "" ? null : id;
+}
+function parseGitHubRepos(payload, limit) {
+  const record2 = asRecord2(payload);
+  const items = Array.isArray(record2.items) ? record2.items : Array.isArray(payload) ? payload : [];
+  const hits = [];
+  for (const item of items) {
+    if (hits.length >= limit) break;
+    const repo = asRecord2(item);
+    const fullName = asString2(repo.full_name);
+    if (fullName === "") continue;
+    const language = asString2(repo.language);
+    hits.push({
+      fullName,
+      stars: asNumber2(repo.stargazers_count) ?? 0,
+      forks: asNumber2(repo.forks_count) ?? 0,
+      language: language === "" ? "\u672A\u77E5\u8BED\u8A00" : language,
+      updatedAt: asString2(repo.pushed_at) || asString2(repo.updated_at),
+      description: clip(inlineText(asString2(repo.description)), 120),
+      url: asString2(repo.html_url) === "" ? "https://github.com/" + fullName : asString2(repo.html_url)
+    });
+  }
+  return hits;
+}
+function formatRepos(label, hits) {
+  const lines = [label + "\uFF1A" + hits.length + " \u6761"];
+  hits.forEach((hit, index) => {
+    const day = hit.updatedAt.slice(0, 10);
+    const parts = [hit.fullName, "\u2605" + hit.stars, hit.language, day === "" ? "" : "\u66F4\u65B0 " + day, hit.description];
+    lines.push(index + 1 + ". " + parts.filter((part) => part !== "").join(" \xB7 "));
+    lines.push("   " + hit.url);
+  });
+  return lines.join("\n");
+}
+function sortRepos(hits, sort) {
+  const copy = [...hits];
+  copy.sort((left, right) => {
+    if (sort === "updated") return right.updatedAt.localeCompare(left.updatedAt);
+    if (sort === "forks") return right.forks - left.forks;
+    return right.stars - left.stars;
+  });
+  return copy;
+}
+function parseJson(body, label) {
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error(label + " \u56DE\u7684\u4E0D\u662F JSON\uFF08\u5927\u6982\u7387\u88AB\u62E6\u6216\u6539\u4E86\u63A5\u53E3\uFF09");
+  }
+}
+function githubHeaders(token) {
+  const headers = {
+    accept: "application/vnd.github+json",
+    "x-github-api-version": "2022-11-28",
+    "user-agent": "dsh-remote-dafeiyu-websearch"
+  };
+  if (token !== "") headers.authorization = "Bearer " + token;
+  return headers;
+}
+function readOpenAlexKey() {
+  const env = process.env;
+  const raw = env.OPENALEX_API_KEY ?? env.DSH_OPENALEX_API_KEY ?? "";
+  return typeof raw === "string" ? raw.trim() : "";
+}
+function readToken(explicit) {
+  if (explicit !== void 0 && explicit.trim() !== "") return explicit.trim();
+  const env = process.env;
+  const fromEnv = env.GITHUB_TOKEN ?? env.DSH_GITHUB_TOKEN ?? "";
+  return typeof fromEnv === "string" ? fromEnv.trim() : "";
+}
+var CACHE_TTL_MS = 5 * 60 * 1e3;
+function buildWebsearchTools(deps) {
+  const cache = deps.cache ?? createTtlCache(CACHE_TTL_MS, 64);
+  async function runSearch(query, count, engine) {
+    const key = engine + "|" + count + "|" + query;
+    const cached2 = cache.get(key);
+    if (cached2 !== void 0) return cached2;
+    const order = engine === "auto" ? ["bing", "sogou"] : [engine];
+    const failures = [];
+    for (const name2 of order) {
+      const attempt = name2 === "bing" ? await searchBing(deps.fetchImpl, query, count) : await searchSogou(deps.fetchImpl, query, count);
+      if (attempt.ok) {
+        const label = name2 === "bing" ? "Bing" : "Sogou";
+        const fallbackNote = failures.length > 0 ? "\n\uFF08" + failures.join("\uFF1B") + "\uFF0C\u5DF2\u6539\u7528 Sogou\uFF09" : "";
+        const text = formatSearch(query, fallbackNote === "" ? label : label + "\uFF08\u56DE\u9000\uFF09", attempt.hits.slice(0, count)) + fallbackNote;
+        cache.set(key, text);
+        deps.log("\u8054\u7F51\u641C\u7D22", { engine: name2, hits: attempt.hits.length });
+        return text;
+      }
+      failures.push(attempt.reason);
+    }
+    throw new Error(
+      "\u8054\u7F51\u641C\u7D22\u6CA1\u6210\uFF1A" + failures.join("\uFF1B") + "\u3002\u7A0D\u540E\u91CD\u8BD5\uFF0C\u6216\u6539\u7528 paper_search\uFF08\u8BBA\u6587\uFF09/ repo_search\uFF08GitHub \u4ED3\u5E93\uFF09\u8D70\u5404\u81EA\u7684\u5B98\u65B9 API\u3002"
+    );
+  }
+  async function runPaperSearch(query, source, limit, yearFrom) {
+    if (source === "openalex") {
+      let url3 = OPENALEX_API + "?search=" + encodeURIComponent(query) + "&per-page=" + limit;
+      if (yearFrom !== void 0) url3 += "&filter=from_publication_date:" + yearFrom + "-01-01";
+      const apiKey = readOpenAlexKey();
+      if (apiKey !== "") url3 += "&api_key=" + encodeURIComponent(apiKey);
+      const result3 = await fetchText(url3, { timeoutMs: 12e3, fetchImpl: deps.fetchImpl, accept: "application/json" });
+      if (!result3.ok) {
+        if (result3.status === 429) {
+          throw new Error(
+            'OpenAlex \u9650\u6D41\u4E86\uFF08HTTP 429\uFF09\uFF1A\u4E0D\u5E26 key \u65F6\u662F\u6574\u53F0\u673A\u5668\u5171\u4EAB\u7684 0.10 \u7F8E\u5143/\u5929\u989D\u5EA6\uFF0C\u540C\u4E00\u51FA\u53E3 IP \u4E0A\u522B\u7684\u7A0B\u5E8F\u4F1A\u628A\u5B83\u5403\u6389\u3002\u914D OPENALEX_API_KEY\uFF08\u514D\u8D39\uFF09\u540E\u662F\u6BCF\u5929 1 \u7F8E\u5143\uFF0C\u5DE5\u5177\u4F1A\u81EA\u52A8\u5E26\u4E0A\uFF1B\u8FD9\u4E00\u8F6E\u5148\u7528 paper_search \u7684 source="arxiv" \u9876\u4E0A\u3002'
+          );
+        }
+        throw new Error("OpenAlex \u6CA1\u67E5\u6210\uFF1A" + describeFailure(result3));
+      }
+      const hits2 = parseOpenAlex(parseJson(result3.body, "OpenAlex"), limit);
+      if (hits2.length === 0) throw new Error("OpenAlex \u6CA1\u641C\u5230\u300C" + query + "\u300D\u7684\u8BBA\u6587\uFF1A\u6362\u4E2A\u5173\u952E\u8BCD\uFF0C\u6216\u53BB\u6389\u5E74\u4EFD\u4E0B\u9650\u8BD5\u8BD5");
+      deps.log("\u8BBA\u6587\u68C0\u7D22", { source, hits: hits2.length });
+      return formatPapers("\u8BBA\u6587\u300C" + query + "\u300D", "OpenAlex", hits2);
+    }
+    if (source === "arxiv") {
+      const url3 = ARXIV_API + "?search_query=all:" + encodeURIComponent(query) + "&max_results=" + limit;
+      const result3 = await fetchText(url3, { timeoutMs: 12e3, fetchImpl: deps.fetchImpl, accept: "application/atom+xml" });
+      if (!result3.ok) throw new Error("arXiv \u6CA1\u67E5\u6210\uFF1A" + describeFailure(result3));
+      let hits2 = parseArxivAtom(result3.body, limit);
+      if (yearFrom !== void 0) hits2 = hits2.filter((hit) => hit.year === "" || Number(hit.year) >= yearFrom);
+      if (hits2.length === 0) throw new Error("arXiv \u6CA1\u641C\u5230\u300C" + query + "\u300D\u7684\u8BBA\u6587\uFF1A\u6362\u4E2A\u5173\u952E\u8BCD\uFF0C\u6216\u53BB\u6389\u5E74\u4EFD\u4E0B\u9650\u8BD5\u8BD5");
+      deps.log("\u8BBA\u6587\u68C0\u7D22", { source, hits: hits2.length });
+      return formatPapers("\u8BBA\u6587\u300C" + query + "\u300D", "arXiv", hits2);
+    }
+    const url2 = DBLP_API + "?q=" + encodeURIComponent(query) + "&format=json&h=" + limit;
+    const result2 = await fetchText(url2, {
+      timeoutMs: 12e3,
+      fetchImpl: deps.fetchImpl,
+      accept: "application/json",
+      // DBLP 忙的时候回 202（排队中）——202 是 ok，不点名就会被当成「搜到 0 条」
+      failureStatuses: [202],
+      retryableStatuses: [202, 429, 500, 502, 503, 504]
+    });
+    if (!result2.ok) {
+      if (result2.status === 202) {
+        const challenge = /(机器人|人机|robot|challenge|anubis|验证码)/i.test(result2.body.slice(0, 4e3));
+        throw new Error(challenge ? 'DBLP \u7ED9\u8FD9\u53F0\u673A\u5668\u56DE\u4E86\u4EBA\u673A\u9A8C\u8BC1\u9875\uFF08HTTP 202 + \u6311\u6218\u9875\uFF09\uFF0C\u8FD9\u4E00\u8F6E\u67E5\u4E0D\u4E86\uFF1A\u6539\u7528 source="openalex" \u6216 "arxiv"\u3002' : "DBLP \u5728\u6392\u961F\uFF08HTTP 202\uFF0C\u91CD\u8BD5\u4E00\u6B21\u8FD8\u6CA1\u597D\uFF09\uFF0C\u7B49\u4E00\u4E0B\u518D\u8BD5");
+      }
+      throw new Error("DBLP \u6CA1\u67E5\u6210\uFF1A" + describeFailure(result2));
+    }
+    const hits = parseDblp(parseJson(result2.body, "DBLP"), limit);
+    if (hits.length === 0) {
+      throw new Error("DBLP \u6CA1\u641C\u5230\u300C" + query + "\u300D\u7684\u8BBA\u6587\uFF1Adblp \u53EA\u6536\u8BA1\u7B97\u673A\u65B9\u5411\u7684\u51FA\u7248\u7269\uFF0C\u6362\u4E2A\u5173\u952E\u8BCD\u6216\u6362 source \u8BD5\u8BD5");
+    }
+    deps.log("\u8BBA\u6587\u68C0\u7D22", { source, hits: hits.length });
+    return formatPapers("\u8BBA\u6587\u300C" + query + "\u300D", "DBLP", hits);
+  }
+  async function runPaperRead(rawUrl, maxChars) {
+    const id = arxivIdOf(rawUrl);
+    const lines = [];
+    let body = "";
+    let finalUrl = rawUrl;
+    let contentType = "";
+    if (id !== null) {
+      const full = await fetchText(AR5IV_HTML + id, { timeoutMs: 15e3, fetchImpl: deps.fetchImpl, accept: "text/html" });
+      if (full.ok) {
+        body = full.body;
+        finalUrl = full.url;
+        contentType = full.headers["content-type"] ?? "";
+      } else {
+        lines.push("\uFF08ar5iv \u5168\u6587\u9875\u6CA1\u6293\u4E0B\u6765\uFF1A" + describeFailure(full) + "\uFF0C\u5DF2\u9000\u56DE\u539F\u94FE\u63A5\uFF09");
+      }
+    }
+    if (body === "") {
+      const result2 = await fetchText(rawUrl, { timeoutMs: 15e3, fetchImpl: deps.fetchImpl, accept: "text/html" });
+      if (!result2.ok) throw new Error("\u6293\u53D6\u5931\u8D25\uFF1A" + describeFailure(result2) + "\uFF08" + rawUrl + "\uFF09");
+      body = result2.body;
+      finalUrl = result2.url;
+      contentType = result2.headers["content-type"] ?? "";
+    }
+    if (/pdf/i.test(contentType) || /^%PDF-/.test(body.slice(0, 8))) {
+      throw new Error("\u8FD9\u4E2A\u94FE\u63A5\u662F PDF\uFF0C\u6293\u4E0D\u51FA\u6B63\u6587\uFF1BarXiv \u7684\u94FE\u63A5\u4F1A\u81EA\u52A8\u8D70 ar5iv\uFF0C\u5176\u5B83 PDF \u8BF7\u627E HTML \u7248");
+    }
+    const text = htmlToText(body);
+    if (text === "") throw new Error("\u9875\u9762\u6293\u4E0B\u6765\u6CA1\u6709\u6B63\u6587\uFF08\u53EF\u80FD\u8981\u767B\u5F55\uFF0C\u6216\u5185\u5BB9\u5168\u5728\u811A\u672C\u91CC\uFF09");
+    const cut = truncateText(text, maxChars);
+    lines.push("\u6765\u6E90\uFF1A" + finalUrl);
+    lines.push("");
+    lines.push(cut.text);
+    if (cut.truncated) lines.push("", "\uFF08\u5DF2\u622A\u65AD\uFF0C\u539F\u6587 " + cut.total + " \u5B57\uFF09");
+    return lines.join("\n");
+  }
+  async function runRepoSearch(params) {
+    const token = readToken(deps.githubToken);
+    const headers = githubHeaders(token);
+    const noFilter = params.query === "" && params.language === "" && params.minStars === void 0;
+    if (params.author === "" && noFilter) {
+      throw new Error("\u81F3\u5C11\u7ED9 query\u3001author\u3001language\u3001min_stars \u91CC\u7684\u4E00\u6837\uFF0C\u4E0D\u7136\u4E0D\u77E5\u9053\u641C\u4EC0\u4E48");
+    }
+    if (params.author !== "") {
+      const url3 = GITHUB_API + "/users/" + encodeURIComponent(params.author) + "/repos?sort=updated&per_page=100";
+      const result3 = await fetchText(url3, {
+        timeoutMs: 12e3,
+        fetchImpl: deps.fetchImpl,
+        headers,
+        accept: "application/vnd.github+json"
+      });
+      if (!result3.ok) throw gitHubFailure(result3);
+      let hits2 = parseGitHubRepos(parseJson(result3.body, "GitHub"), 100);
+      if (params.language !== "") {
+        const language = params.language.toLowerCase();
+        hits2 = hits2.filter((hit) => hit.language.toLowerCase() === language);
+      }
+      const minStars = params.minStars;
+      if (minStars !== void 0) hits2 = hits2.filter((hit) => hit.stars >= minStars);
+      if (params.query !== "") {
+        const needle = params.query.toLowerCase();
+        hits2 = hits2.filter(
+          (hit) => hit.fullName.toLowerCase().includes(needle) || hit.description.toLowerCase().includes(needle)
+        );
+      }
+      const trimmed = sortRepos(hits2, params.sort).slice(0, params.limit);
+      if (trimmed.length === 0) {
+        throw new Error("\u300C" + params.author + "\u300D\u540D\u4E0B\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u4ED3\u5E93\uFF08\u8BED\u8A00/\u661F\u6570/\u5173\u952E\u8BCD\u662F\u4E0D\u662F\u592A\u4E25\u4E86\uFF1F\uFF09");
+      }
+      deps.log("\u4ED3\u5E93\u68C0\u7D22", { mode: "author", hits: trimmed.length });
+      return formatRepos("\u4ED3\u5E93\u300C" + params.author + "\u300D", trimmed) + rateLimitNote(result3);
+    }
+    const qualifiers = [];
+    if (params.query !== "") qualifiers.push(params.query);
+    if (params.language !== "") qualifiers.push("language:" + params.language);
+    if (params.minStars !== void 0) qualifiers.push("stars:>=" + params.minStars);
+    const q = qualifiers.join(" ");
+    const url2 = GITHUB_API + "/search/repositories?q=" + encodeURIComponent(q) + "&sort=" + params.sort + "&order=desc&per_page=" + params.limit;
+    const result2 = await fetchText(url2, {
+      timeoutMs: 12e3,
+      fetchImpl: deps.fetchImpl,
+      headers,
+      accept: "application/vnd.github+json"
+    });
+    if (!result2.ok) throw gitHubFailure(result2);
+    const hits = parseGitHubRepos(parseJson(result2.body, "GitHub"), params.limit);
+    if (hits.length === 0) {
+      throw new Error("GitHub \u4E0A\u6CA1\u6709\u5339\u914D\u300C" + q + "\u300D\u7684\u4ED3\u5E93\uFF1A\u6362\u4E2A\u5173\u952E\u8BCD\uFF0C\u6216\u53BB\u6389 min_stars/language \u9650\u5236");
+    }
+    deps.log("\u4ED3\u5E93\u68C0\u7D22", { mode: "search", hits: hits.length });
+    return formatRepos("\u4ED3\u5E93\u300C" + q + "\u300D", hits) + rateLimitNote(result2);
+  }
+  function gitHubFailure(result2) {
+    const hint = result2.status === 403 || result2.status === 429 ? "\uFF08\u672A\u8BA4\u8BC1\u6BCF\u5C0F\u65F6\u53EA\u6709 60 \u6B21\uFF0C\u914D GITHUB_TOKEN \u80FD\u63D0\u5230 5000\uFF09" : "";
+    return new Error("GitHub \u6CA1\u67E5\u6210\uFF1A" + describeFailure(result2) + hint);
+  }
+  function rateLimitNote(result2) {
+    const raw = result2.headers["x-ratelimit-remaining"];
+    if (raw === void 0) return "";
+    const remaining = Number(raw);
+    if (!Number.isFinite(remaining) || remaining > 3) return "";
+    return "\n\uFF08GitHub \u989D\u5EA6\u5FEB\u7528\u5B8C\u4E86\uFF08\u53EF\u914D token \u63D0\u5347\uFF09\uFF1A\u672C\u6B21\u8FD8\u5269 " + remaining + " \u6B21/\u5C0F\u65F6\uFF09";
+  }
+  return [
+    {
+      name: "web_search",
+      description: "\u8054\u7F51\u641C\u7F51\u9875\uFF08Bing \u4E3B\uFF0C\u5931\u8D25\u9000 Sogou\uFF09\u3002\u6BCF\u6761\u7ED3\u679C\u4E24\u884C\uFF1A\u6807\u9898 \u2014 \u6458\u8981 / URL\u3002\ncount \u9ED8\u8BA4 8\uFF081~20\uFF09\uFF1Bengine \u9ED8\u8BA4 auto\uFF0C\u4E5F\u53EF\u4EE5\u9489\u6B7B bing \u6216 sogou\u3002\n\u540C\u4E00 query 5 \u5206\u949F\u5185\u8D70\u7F13\u5B58\u3002\u8981\u8BBA\u6587\u7528 paper_search\uFF0C\u8981\u4EE3\u7801\u4ED3\u5E93\u7528 repo_search\uFF0C\u4E0D\u8981\u62FF\u5B83\u786C\u51D1\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "\u641C\u4EC0\u4E48\uFF0C\u4E00\u53E5\u6709\u5185\u5BB9\u7684\u8BDD\uFF08\u7A7A\u5B57\u7B26\u4E32\u4F1A\u88AB\u62D2\uFF09\u3002" },
+          count: { type: "integer", minimum: 1, maximum: 20, description: "\u8981\u51E0\u6761\uFF0C\u9ED8\u8BA4 8\u3002" },
+          engine: {
+            type: "string",
+            enum: SEARCH_ENGINES,
+            description: "auto\uFF08\u9ED8\u8BA4\uFF0C\u5148 Bing \u518D Sogou\uFF09/ bing / sogou\u3002"
+          }
+        },
+        required: ["query"]
+      },
+      output: OUT5,
+      timeoutMs: 45e3,
+      async execute(args) {
+        const input2 = asRecord2(args);
+        const query = asString2(input2.query);
+        if (query === "") throw new Error("\u641C\u7D22\u8BCD\u4E0D\u80FD\u4E3A\u7A7A\uFF1Aquery \u8981\u5199\u4E00\u53E5\u6709\u5185\u5BB9\u7684\u8BDD");
+        const count = clampInt2(input2.count, 1, 20, 8);
+        const engine = pickEnum(input2.engine, SEARCH_ENGINES, "auto");
+        return runSearch(query, count, engine);
+      }
+    },
+    {
+      name: "paper_search",
+      description: "\u641C\u8BBA\u6587\u3002\u4E09\u4E2A\u6E90\uFF1Aopenalex\uFF08\u9ED8\u8BA4\uFF0C\u514D\u8D39\u65E0 key\uFF0C\u5E26\u88AB\u5F15\u6570\uFF09/ arxiv\uFF08\u9884\u5370\u672C\uFF0C\u5E26\u6458\u8981\u524D 200 \u5B57\uFF09/ dblp\uFF08\u8BA1\u7B97\u673A\u65B9\u5411\uFF09\u3002\n\u6BCF\u6761\u4E00\u884C\uFF1A\u6807\u9898 \xB7 \u5E74\u4EFD \xB7 venue \xB7 \u88AB\u5F15 N \xB7 URL\u3002limit \u9ED8\u8BA4 6\uFF1Byear_from \u662F\u6700\u65E9\u5E74\u4EFD\uFF08\u542B\uFF09\u3002\n\u8981\u8BFB\u5168\u6587\u7528 paper_read\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "\u5173\u952E\u8BCD\uFF0C\u82F1\u6587\u6548\u679C\u6700\u597D\u3002" },
+          source: {
+            type: "string",
+            enum: PAPER_SOURCES,
+            description: "openalex\uFF08\u9ED8\u8BA4\uFF09/ arxiv / dblp\u3002"
+          },
+          year_from: { type: "integer", minimum: 1900, maximum: 2100, description: "\u53EA\u8981\u8FD9\u5E74\uFF08\u542B\uFF09\u4E4B\u540E\u7684\u3002" },
+          limit: { type: "integer", minimum: 1, maximum: 20, description: "\u8981\u51E0\u6761\uFF0C\u9ED8\u8BA4 6\u3002" }
+        },
+        required: ["query"]
+      },
+      output: OUT5,
+      timeoutMs: 45e3,
+      async execute(args) {
+        const input2 = asRecord2(args);
+        const query = asString2(input2.query);
+        if (query === "") throw new Error("\u8BBA\u6587\u5173\u952E\u8BCD\u4E0D\u80FD\u4E3A\u7A7A\uFF1Aquery \u8981\u5199\u70B9\u4EC0\u4E48");
+        const source = pickEnum(input2.source, PAPER_SOURCES, "openalex");
+        const limit = clampInt2(input2.limit, 1, 20, 6);
+        const yearRaw = asString2(input2.year_from);
+        const yearParsed = yearRaw === "" ? 0 : clampInt2(yearRaw, 1900, 2100, 0);
+        return runPaperSearch(query, source, limit, yearParsed === 0 ? void 0 : yearParsed);
+      }
+    },
+    {
+      name: "paper_read",
+      description: "\u6293\u4E00\u7BC7\u8BBA\u6587/\u7F51\u9875\u7684\u6B63\u6587\uFF0C\u8F6C\u6210\u7EAF\u6587\u672C\u3002arXiv \u94FE\u63A5\uFF08abs \u6216 pdf \u90FD\u7B97\uFF09\u4F1A\u81EA\u52A8\u6362\u6210 ar5iv \u7684 HTML \u5168\u6587\u518D\u6293\uFF1B\n\u5176\u5B83\u94FE\u63A5\u8D70\u901A\u7528 HTML\u2192\u6587\u672C\u3002max_chars \u9ED8\u8BA4 8000\uFF0C\u8D85\u957F\u4F1A\u622A\u65AD\u5E76\u660E\u786E\u8BF4\u300C\u5DF2\u622A\u65AD\uFF0C\u539F\u6587 N \u5B57\u300D\u3002\nPDF \u76F4\u63A5\u94FE\u63A5\u6293\u4E0D\u51FA\u6B63\u6587\uFF0C\u522B\u62FF\u5B83\u5F53 PDF \u89E3\u6790\u5668\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "\u8981\u8BFB\u7684\u94FE\u63A5\uFF08\u5FC5\u987B http:// \u6216 https:// \u5F00\u5934\uFF09\u3002" },
+          max_chars: { type: "integer", minimum: 500, maximum: 5e4, description: "\u6700\u591A\u8FD4\u56DE\u591A\u5C11\u5B57\uFF0C\u9ED8\u8BA4 8000\u3002" }
+        },
+        required: ["url"]
+      },
+      output: OUT5,
+      timeoutMs: 45e3,
+      async execute(args) {
+        const input2 = asRecord2(args);
+        const url2 = asString2(input2.url);
+        if (!/^https?:\/\//i.test(url2)) throw new Error("URL \u8981\u5199\u5168\uFF08\u4EE5 http:// \u6216 https:// \u5F00\u5934\uFF09");
+        const maxChars = clampInt2(input2.max_chars, 500, 5e4, 8e3);
+        return runPaperRead(url2, maxChars);
+      }
+    },
+    {
+      name: "repo_search",
+      description: "\u641C GitHub \u4ED3\u5E93\uFF08REST\uFF0C\u65E0\u9700 key\uFF09\u3002\u6BCF\u6761\u4E24\u884C\uFF1Aowner/name \xB7 \u2605\u661F\u6570 \xB7 \u8BED\u8A00 \xB7 \u6700\u8FD1\u66F4\u65B0 \xB7 \u4E00\u53E5\u8BDD\u63CF\u8FF0 / URL\u3002\nsort \u9ED8\u8BA4 stars\uFF08\u8FD8\u652F\u6301 updated / forks\uFF09\uFF0Climit \u9ED8\u8BA4 8\uFF1B\u7ED9\u4E86 author \u5C31\u8D70\u8BE5\u7528\u6237\u540D\u4E0B\u7684\u4ED3\u5E93\u518D\u672C\u5730\u8FC7\u6EE4\u3002\n\u672A\u8BA4\u8BC1\u9650\u901F 60 \u6B21/\u5C0F\u65F6\uFF1A\u5269\u4F59\u989D\u5EA6 \u22643 \u65F6\u7ED3\u679C\u672B\u5C3E\u4F1A\u63D0\u793A\uFF1B\u914D GITHUB_TOKEN \u53EF\u63D0\u5230 5000\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "\u5173\u952E\u8BCD\uFF08\u4ED3\u5E93\u540D/\u63CF\u8FF0\u91CC\u51FA\u73B0\uFF09\uFF0C\u53EF\u7A7A\u3002" },
+          author: { type: "string", description: "GitHub \u7528\u6237\u540D\uFF1B\u7ED9\u4E86\u5C31\u53EA\u5728\u8FD9\u4E2A\u7528\u6237\u540D\u4E0B\u627E\u3002" },
+          language: { type: "string", description: "\u8BED\u8A00\u8FC7\u6EE4\uFF0C\u4F8B\u5982 python / rust\u3002" },
+          min_stars: { type: "integer", minimum: 0, description: "\u6700\u5C11\u661F\u6570\u3002" },
+          sort: { type: "string", enum: REPO_SORTS, description: "stars\uFF08\u9ED8\u8BA4\uFF09/ updated / forks\u3002" },
+          limit: { type: "integer", minimum: 1, maximum: 30, description: "\u8981\u51E0\u6761\uFF0C\u9ED8\u8BA4 8\u3002" }
+        },
+        required: []
+      },
+      output: OUT5,
+      timeoutMs: 45e3,
+      async execute(args) {
+        const input2 = asRecord2(args);
+        const minStarsRaw = asString2(input2.min_stars);
+        return runRepoSearch({
+          query: asString2(input2.query),
+          author: asString2(input2.author),
+          language: asString2(input2.language),
+          minStars: minStarsRaw === "" ? void 0 : clampInt2(minStarsRaw, 0, 1e6, 0),
+          sort: pickEnum(input2.sort, REPO_SORTS, "stars"),
+          limit: clampInt2(input2.limit, 1, 30, 8)
+        });
+      }
+    },
+    {
+      name: "websearch_guide",
+      description: "\u8FD4\u56DE\u300C\u8054\u7F51\u641C\u7D22\u300D\u7684\u5B8C\u6574\u7528\u6CD5\uFF08\u4E0E skill dafeiyu-websearch \u540C\u4E00\u4EFD\u6B63\u6587\uFF09\uFF1A\u4EC0\u4E48\u65F6\u5019\u7528\u54EA\u4E2A\u5DE5\u5177\u3001\n\u5404\u4E0A\u6E38\u7684\u9650\u989D\u4E0E\u5DF2\u77E5\u4E0D\u53EF\u7528\u9879\u3002\u4E0A\u4E0B\u6587\u91CC\u6CA1\u6709\u90A3\u4E2A skill\u3001\u6216\u672C\u673A fetch \u4E0D\u53EF\u7528\u65F6\u7528\u5B83\u515C\u5E95\u3002",
+      parameters: { type: "object", properties: {} },
+      output: OUT5,
+      timeoutMs: 15e3,
+      async execute() {
+        return deps.guideBody();
+      }
+    }
+  ];
+}
+
+// src/websearch/skill.ts
+import { existsSync as existsSync4, readFileSync as readFileSync9 } from "node:fs";
 import path22 from "node:path";
+function readWebsearchSkillBody(skillDir) {
+  try {
+    const file2 = path22.join(skillDir, "SKILL.md");
+    if (existsSync4(file2)) {
+      const text = readFileSync9(file2, "utf8");
+      if (text.trim() !== "") return text;
+    }
+  } catch {
+  }
+  return [
+    "# \u8054\u7F51\u641C\u7D22\uFF08\u515C\u5E95\u8BF4\u660E\uFF09",
+    "",
+    "\u641C\u7F51\u9875\u7528 web_search(query, count, engine)\uFF1B\u641C\u8BBA\u6587\u7528 paper_search(query, source, year_from, limit)\uFF1B",
+    "\u8BFB\u5168\u6587\u7528 paper_read(url, max_chars)\uFF1B\u627E\u4ED3\u5E93\u7528 repo_search(query, author, language, min_stars, sort, limit)\u3002",
+    "",
+    "\u5DF2\u77E5\u4E0D\u53EF\u7528\uFF1ABaidu \u8981\u5B89\u5168\u9A8C\u8BC1\u3001DuckDuckGo html \u8FDE\u4E0D\u4E0A\uFF0C\u6240\u4EE5\u4E3B\u5F15\u64CE\u662F Bing\u3001\u56DE\u9000 Sogou\u3002",
+    "GitHub \u672A\u8BA4\u8BC1\u9650\u901F 60 \u6B21/\u5C0F\u65F6\uFF1BOpenAlex \u514D\u8D39\u65E0 key\uFF1BarXiv \u5EFA\u8BAE 3 \u79D2\u4E00\u6B21\u3002"
+  ].join("\n");
+}
+
+// src/websearch/start.ts
+function startWebsearch(ctx, input2) {
+  const probe = {};
+  const skillDir = path23.join(input2.packageRoot, "assets", "skills", "dafeiyu-websearch");
+  let toolsRegistered = false;
+  let stopped = false;
+  let toolTimer;
+  probe.fetch = typeof globalThis.fetch === "function" ? "ok" : "none";
+  if (probe.fetch === "none") {
+    input2.log("\u8FD9\u53F0\u673A\u5668\u7684 Node \u6CA1\u6709\u5168\u5C40 fetch\uFF1A\u8054\u7F51\u641C\u7D22\u53EA\u80FD\u8FD4\u56DE guide\uFF0C\u5DE5\u5177\u4F1A\u62A5\u4E2D\u6587\u9519\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09");
+  }
+  const acceptTools = (value, via) => {
+    if (toolsRegistered) return true;
+    if (!value || typeof value !== "object") return false;
+    const host = value;
+    if (typeof host.register !== "function") {
+      probe.tools = "object without register()";
+      return false;
+    }
+    try {
+      const definitions = [
+        ...buildWebsearchTools({
+          guideBody: () => readWebsearchSkillBody(skillDir),
+          log: input2.log
+        }),
+        ...buildExtraTools()
+      ];
+      for (const definition of definitions) host.register(definition);
+      toolsRegistered = true;
+      probe.tools = via + ":" + definitions.length;
+      return true;
+    } catch (error62) {
+      probe.tools = "register threw: " + String(error62?.message ?? error62).slice(0, 80);
+      return false;
+    }
+  };
+  const tryToolsOnce = (via) => {
+    let value;
+    try {
+      value = ctx.get?.("tools", true);
+    } catch (error62) {
+      probe.tools = "get threw: " + String(error62?.message ?? error62).slice(0, 80);
+      return false;
+    }
+    return acceptTools(value, via);
+  };
+  tryToolsOnce("via get");
+  if (!toolsRegistered) {
+    let attempts = 0;
+    try {
+      toolTimer = setInterval(() => {
+        attempts += 1;
+        if (stopped || toolsRegistered) {
+          if (toolTimer !== void 0) clearInterval(toolTimer);
+          return;
+        }
+        if (tryToolsOnce("via poll")) {
+          if (toolTimer !== void 0) clearInterval(toolTimer);
+          return;
+        }
+        if (attempts >= 60) {
+          if (toolTimer !== void 0) clearInterval(toolTimer);
+          probe.tools = (probe.tools ?? "none") + " (poll gave up after " + attempts + ")";
+          input2.log("\u8054\u7F51\u641C\u7D22\u5DE5\u5177\u6CA1\u6302\u4E0A\uFF1A\u7B49\u4E86 30 \u79D2\u6CA1\u7B49\u5230 tools\uFF08\u8FDC\u63A7\u4E0D\u53D7\u5F71\u54CD\uFF09");
+        }
+      }, 500);
+    } catch (error62) {
+      probe.tools = "poll threw: " + String(error62?.message ?? error62).slice(0, 80);
+    }
+  }
+  return {
+    probe,
+    stop() {
+      stopped = true;
+      try {
+        if (toolTimer !== void 0) clearInterval(toolTimer);
+      } catch {
+      }
+    }
+  };
+}
+
+// src/skills/install.ts
+import { cpSync, existsSync as existsSync5, mkdirSync as mkdirSync8, readFileSync as readFileSync10, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
+import path24 from "node:path";
 import { fileURLToPath } from "node:url";
 var SKILL_VERSION_FILE = ".dafeiyu-skill-version";
 function packageRoot() {
   try {
-    let candidate = path22.dirname(fileURLToPath(import.meta.url));
+    let candidate = path24.dirname(fileURLToPath(import.meta.url));
     for (let depth = 0; depth < 5; depth += 1) {
-      if (existsSync4(path22.join(candidate, "package.json")) && existsSync4(path22.join(candidate, "assets", "skills"))) {
+      if (existsSync5(path24.join(candidate, "package.json")) && existsSync5(path24.join(candidate, "assets", "skills"))) {
         return candidate;
       }
-      const parent = path22.dirname(candidate);
+      const parent = path24.dirname(candidate);
       if (parent === candidate) break;
       candidate = parent;
     }
@@ -39648,7 +41195,7 @@ function packageRoot() {
 }
 function packageVersion() {
   try {
-    const raw = readFileSync9(path22.join(packageRoot(), "package.json"), "utf8");
+    const raw = readFileSync10(path24.join(packageRoot(), "package.json"), "utf8");
     const parsed = JSON.parse(raw);
     return typeof parsed.version === "string" ? parsed.version : "unknown";
   } catch {
@@ -39659,7 +41206,7 @@ function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync4(path22.join(base, rel), { withFileTypes: true });
+      entries = readdirSync4(path24.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -39669,7 +41216,7 @@ function fingerprint(dir) {
       if (entry.isDirectory()) out.push(...walk2(base, childRel));
       else {
         try {
-          out.push(`${childRel}:${statSync3(path22.join(base, childRel)).size}`);
+          out.push(`${childRel}:${statSync3(path24.join(base, childRel)).size}`);
         } catch {
           out.push(`${childRel}:?`);
         }
@@ -39682,19 +41229,19 @@ function fingerprint(dir) {
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path22.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync4(path22.join(entry.dir, "SKILL.md")));
+    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path24.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync5(path24.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
   if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
   const installed = [];
   for (const entry of entries) {
-    const target = path22.join(deps.dshHome, "skills", entry.name);
-    const stamp = path22.join(target, SKILL_VERSION_FILE);
+    const target = path24.join(deps.dshHome, "skills", entry.name);
+    const stamp = path24.join(target, SKILL_VERSION_FILE);
     try {
-      if (existsSync4(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
-      mkdirSync8(path22.dirname(target), { recursive: true });
-      if (existsSync4(target)) rmSync(target, { recursive: true, force: true });
+      if (existsSync5(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
+      mkdirSync8(path24.dirname(target), { recursive: true });
+      if (existsSync5(target)) rmSync(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
       writeFileSync5(stamp, `${deps.version}
 `, "utf8");
@@ -39714,7 +41261,7 @@ function installPackagedSkills(deps) {
   try {
     return installBundledSkills({
       dshHome: deps.dshHome,
-      assetsRoot: path22.join(packageRoot(), "assets", "skills"),
+      assetsRoot: path24.join(packageRoot(), "assets", "skills"),
       version: packageVersion(),
       log: deps.log
     });
@@ -39725,8 +41272,8 @@ function installPackagedSkills(deps) {
 
 // src/extensions/service.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync5, readFileSync as readFileSync10, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync6 } from "node:fs";
-import path23 from "node:path";
+import { existsSync as existsSync6, readFileSync as readFileSync11, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync6 } from "node:fs";
+import path25 from "node:path";
 
 // src/extensions/registry.ts
 var EXTENSIONS = [
@@ -39901,17 +41448,17 @@ function isExtensionAction(value) {
   return typeof value === "string" && EXTENSION_ACTIONS.includes(value);
 }
 var nodeFs = {
-  existsSync: (file2) => existsSync5(file2),
+  existsSync: (file2) => existsSync6(file2),
   // 包一层而不是直接传引用：node 的 readFileSync 是重载，直接传会被 TS 判成 Buffer 那个签名。
-  readFileSync: (file2, encoding) => readFileSync10(file2, encoding),
+  readFileSync: (file2, encoding) => readFileSync11(file2, encoding),
   writeFileSync: (file2, data, encoding) => writeFileSync6(file2, data, encoding),
   renameSync: (from, to) => renameSync2(from, to),
   unlinkSync: (file2) => unlinkSync2(file2)
 };
 function profilePackageFile(profileDir) {
-  return path23.join(profileDir, "package.json");
+  return path25.join(profileDir, "package.json");
 }
-function asRecord(value) {
+function asRecord3(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 function readProfilePackage(profileDir, fs8 = nodeFs) {
@@ -39934,22 +41481,22 @@ function readProfilePackage(profileDir, fs8 = nodeFs) {
   }
 }
 function bundlesOf(doc) {
-  const profile = asRecord(asRecord(doc.dsh).profile);
+  const profile = asRecord3(asRecord3(doc.dsh).profile);
   const bundles = profile.bundles;
   return Array.isArray(bundles) ? bundles.filter((name2) => typeof name2 === "string") : [];
 }
 function dependenciesOf(doc) {
-  return asRecord(doc.dependencies);
+  return asRecord3(doc.dependencies);
 }
 function installedPackageFile(profileDir, packageName) {
-  return path23.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
+  return path25.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
 }
 function readInstalledVersion(profileDir, spec, fs8) {
   const file2 = installedPackageFile(profileDir, spec.packageName);
   if (!fs8.existsSync(file2)) return void 0;
   try {
     const parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
-    const version2 = asRecord(parsed).version;
+    const version2 = asRecord3(parsed).version;
     return typeof version2 === "string" && version2 !== "" ? version2 : void 0;
   } catch {
     return void 0;
@@ -40014,14 +41561,14 @@ function cloneDoc(doc) {
 function applyWrites(doc, writes, spec) {
   const next = cloneDoc(doc);
   if (writes.addDependency !== void 0 || writes.removeDependency === true) {
-    const dependencies = { ...asRecord(next.dependencies) };
+    const dependencies = { ...asRecord3(next.dependencies) };
     if (writes.removeDependency === true) delete dependencies[spec.packageName];
     if (writes.addDependency !== void 0) dependencies[spec.packageName] = writes.addDependency;
     next.dependencies = dependencies;
   }
   if (writes.addBundle === true || writes.removeBundle === true) {
-    const dsh = { ...asRecord(next.dsh) };
-    const profile = { ...asRecord(dsh.profile) };
+    const dsh = { ...asRecord3(next.dsh) };
+    const profile = { ...asRecord3(dsh.profile) };
     const current = bundlesOf(next).filter((name2) => name2 !== spec.packageName);
     if (writes.removeBundle !== true && writes.addBundle === true) current.push(spec.packageName);
     profile.bundles = current;
@@ -40085,7 +41632,7 @@ function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs8 = n
         message: `\u5199\u540E\u8BFB\u4E0D\u56DE\u6765\uFF08${String(error62?.message ?? error62).slice(0, 120)}\uFF09${restored ? "\uFF0C\u5DF2\u56DE\u6EDA" : "\uFF0C\u56DE\u6EDA\u4E5F\u5931\u8D25\u4E86\uFF0C\u8BF7\u770B package.json.bak"}`
       };
     }
-    const mismatch = verifyWrites(asRecord(parsed), writes, spec);
+    const mismatch = verifyWrites(asRecord3(parsed), writes, spec);
     if (mismatch !== void 0) {
       const restored = restoreFile(file2, originalText, fs8);
       return {
@@ -40113,8 +41660,8 @@ function pnpmInstallArgs(pnpmScript) {
   return [pnpmScript, "install"];
 }
 function resolveRuntimeDir(env = process.env, options = {}) {
-  const exists = options.exists ?? existsSync5;
-  const hasPnpm = (dir) => exists(path23.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
+  const exists = options.exists ?? existsSync6;
+  const hasPnpm = (dir) => exists(path25.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
   const candidates = [];
   const explicit = (env.DSH_RUNTIME_DIR ?? "").trim();
   if (explicit !== "") candidates.push(explicit);
@@ -40122,17 +41669,17 @@ function resolveRuntimeDir(env = process.env, options = {}) {
   if (installDir !== "") {
     let current = installDir;
     for (let depth = 0; depth < 8; depth += 1) {
-      const parent = path23.dirname(current);
+      const parent = path25.dirname(current);
       if (parent === current) break;
       current = parent;
-      if (path23.basename(current).toLowerCase() === "resources") {
-        candidates.push(path23.join(current, "runtime", "primary-runtime"), path23.join(current, "runtime"));
+      if (path25.basename(current).toLowerCase() === "resources") {
+        candidates.push(path25.join(current, "runtime", "primary-runtime"), path25.join(current, "runtime"));
         break;
       }
     }
   }
   const resources = (options.resourcesPath ?? process.resourcesPath ?? "").trim();
-  if (resources !== "") candidates.push(path23.join(resources, "runtime", "primary-runtime"), path23.join(resources, "runtime"));
+  if (resources !== "") candidates.push(path25.join(resources, "runtime", "primary-runtime"), path25.join(resources, "runtime"));
   for (const dir of candidates) if (hasPnpm(dir)) return dir;
   return void 0;
 }
@@ -40150,9 +41697,9 @@ function runPnpmInstall(input2) {
   if (runtimeDir === void 0) {
     return Promise.resolve({ ok: false, message: "\u627E\u4E0D\u5230\u5BBF\u4E3B\u81EA\u5E26\u7684 pnpm\uFF08\u8FD0\u884C\u65F6\u76EE\u5F55\u672A\u5B9A\u4F4D\uFF09\uFF0C\u6CA1\u6CD5\u5B89\u88C5\uFF1B\u8BF7\u7528\u684C\u9762\u7248\u5B89\u88C5\u5668\u91CD\u88C5\u540E\u518D\u8BD5" });
   }
-  const pnpmScript = path23.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
-  const nodeExe = path23.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
-  const useBundledNode = existsSync5(nodeExe);
+  const pnpmScript = path25.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
+  const nodeExe = path25.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
+  const useBundledNode = existsSync6(nodeExe);
   const command = useBundledNode ? nodeExe : process.execPath;
   const env = useBundledNode ? { ...process.env } : { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
   return new Promise((resolve) => {
@@ -40291,7 +41838,7 @@ function resolveProfileDir(env = process.env, dshHome) {
   const explicit = (env.DSH_PROFILE_DIR ?? "").trim();
   if (explicit !== "") return explicit;
   const profile = (env.DSH_PROFILE ?? "").trim() || "desktop";
-  return path23.join(dshHome, "profiles", profile);
+  return path25.join(dshHome, "profiles", profile);
 }
 
 // src/extensions/routes.ts
@@ -40897,12 +42444,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync8, mkdirSync as mkdirSync10, readdirSync as readdirSync6, readFileSync as readFileSync13, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync8 } from "node:fs";
-import path26 from "node:path";
+import { existsSync as existsSync9, mkdirSync as mkdirSync10, readdirSync as readdirSync6, readFileSync as readFileSync14, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync8 } from "node:fs";
+import path28 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync6, readFileSync as readFileSync11 } from "node:fs";
-import path24 from "node:path";
+import { existsSync as existsSync7, readFileSync as readFileSync12 } from "node:fs";
+import path26 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -40914,26 +42461,26 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path24.join(dshHome, "dsh-backup-git");
+  return path26.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path24.join(backupDir(dshHome), "config.json");
+  return path26.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path24.join(backupDir(dshHome), "credential.json");
+  return path26.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path24.join(backupDir(dshHome), "status.json");
+  return path26.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path24.join(backupDir(dshHome), "work");
+  return path26.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync6(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync7(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync11(file2, "utf8"));
+    parsed = JSON.parse(readFileSync12(file2, "utf8"));
   } catch (error62) {
     return {
       config: { ...DEFAULT_BACKUP_CONFIG },
@@ -40973,14 +42520,14 @@ function normalizeConfig(patch, base = DEFAULT_BACKUP_CONFIG) {
     next.repoUrl = raw;
   }
   if ("intervalHours" in patch) {
-    const value = asNumber(patch.intervalHours);
+    const value = asNumber3(patch.intervalHours);
     if (value === void 0 || !Number.isFinite(value) || value < 0 || value > 168) {
       return { ok: false, field: "intervalHours", error: "\u8981\u5728 0\u2013168 \u4E4B\u95F4\uFF080 = \u53EA\u624B\u52A8\u5907\u4EFD\uFF09" };
     }
     next.intervalHours = value;
   }
   if ("idleDays" in patch) {
-    const value = asNumber(patch.idleDays);
+    const value = asNumber3(patch.idleDays);
     if (value === void 0 || !Number.isFinite(value) || value < 1 || value > 3650) {
       return { ok: false, field: "idleDays", error: "\u8981\u5728 1\u20133650 \u5929\u4E4B\u95F4" };
     }
@@ -41015,7 +42562,7 @@ function normalizeConfig(patch, base = DEFAULT_BACKUP_CONFIG) {
   }
   return { ok: true, value: next };
 }
-function asNumber(raw) {
+function asNumber3(raw) {
   if (typeof raw === "number") return raw;
   if (typeof raw === "string" && raw.trim() !== "") {
     const parsed = Number(raw.trim());
@@ -41044,11 +42591,11 @@ function writeBackupConfig(dshHome, config2) {
     return false;
   }
 }
-function readToken(dshHome) {
+function readToken2(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync6(file2)) return "";
+  if (!existsSync7(file2)) return "";
   try {
-    const parsed = JSON.parse(readFileSync11(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync12(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
   } catch {
     return "";
@@ -41160,19 +42707,19 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync7, readdirSync as readdirSync5, readFileSync as readFileSync12, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync8, readdirSync as readdirSync5, readFileSync as readFileSync13, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path25 from "node:path";
+import path27 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path25.join(sessionsRoot, slug);
+    const slugDir = path27.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path25.join(slugDir, dirName);
+      const sessionDir = path27.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path25.join(sessionDir, fileName);
+        const file2 = path27.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync4(file2);
@@ -41184,7 +42731,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path25.posix.join(slug, dirName, fileName),
+          relPath: path27.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -41233,11 +42780,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path25.join(input2.stagingDir, "latest");
+  const staging = path27.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path25.join(staging, "sessions", entry.relPath);
+    const target = path27.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -41246,20 +42793,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path25.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path27.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path25.join(staging, "profiles", path25.basename(input2.profileDir));
+    const target = path27.join(staging, "profiles", path27.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path25.join(input2.profileDir, name2);
-      if (!existsSync7(source)) continue;
-      await copyFileFresh(source, path25.join(target, name2));
+      const source = path27.join(input2.profileDir, name2);
+      if (!existsSync8(source)) continue;
+      await copyFileFresh(source, path27.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path25.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path27.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -41275,18 +42822,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path25.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path27.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path25.join(stagingDir, "archive");
+  const root = path27.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path25.join(root, entry.relPath);
-    if (existsSync7(target)) continue;
+    const target = path27.join(root, entry.relPath);
+    if (existsSync8(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -41299,7 +42846,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync7(dir)) return;
+  if (!existsSync8(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -41331,7 +42878,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path25.join(dir, entry.name);
+    const full = path27.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -41342,8 +42889,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path25.dirname(target), { recursive: true });
-  if (existsSync7(target)) {
+  await mkdir(path27.dirname(target), { recursive: true });
+  if (existsSync8(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -41351,25 +42898,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync7(sourceDir)) return [];
+  if (!existsSync8(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path25.join(sourceDir, name2), path25.join(targetDir, name2));
+    await copyFileFresh(path27.join(sourceDir, name2), path27.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync7(sourceDir)) return total;
+  if (!existsSync8(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path25.join(sourceDir, entry.name);
-    const target = path25.join(targetDir, entry.name);
+    const source = path27.join(sourceDir, entry.name);
+    const target = path27.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -41401,14 +42948,14 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync7(profilesRoot)) return "";
+  if (!existsSync8(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path25.join(profilesRoot, name2);
-    const manifest = path25.join(dir, "package.json");
-    if (!existsSync7(manifest)) continue;
+    const dir = path27.join(profilesRoot, name2);
+    const manifest = path27.join(dir, "package.json");
+    if (!existsSync8(manifest)) continue;
     try {
-      const parsed = JSON.parse(readFileSync12(manifest, "utf8"));
+      const parsed = JSON.parse(readFileSync13(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
       if (!bundles.some((entry) => typeof entry === "string" && packageNames.includes(entry))) continue;
       const mtimeMs = statSync4(manifest).mtimeMs;
@@ -41474,7 +43021,7 @@ var BackupService = class {
   setTimer;
   /** 当前状态（每次现算 token/git 两项，剩下是缓存的上次结果）。 */
   snapshot() {
-    const token = readToken(this.deps.dshHome);
+    const token = readToken2(this.deps.dshHome);
     this.status.tokenSet = token !== "";
     this.status.tokenShape = redactToken(token);
     this.status.gitAvailable = gitAvailable();
@@ -41657,13 +43204,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path26.join(base, "staging"),
-      hotRepo: path26.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path26.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path26.join(this.deps.dshHome, "sessions"),
-      storagesDir: path26.join(this.deps.dshHome, "storages"),
-      profilesRoot: path26.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path26.join(this.deps.dshHome, "attachments")
+      staging: path28.join(base, "staging"),
+      hotRepo: path28.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path28.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path28.join(this.deps.dshHome, "sessions"),
+      storagesDir: path28.join(this.deps.dshHome, "storages"),
+      profilesRoot: path28.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path28.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -41686,7 +43233,7 @@ var BackupService = class {
   }
   async prepareRepo(repo) {
     mkdirSync10(repo, { recursive: true });
-    if (!existsSync8(path26.join(repo, ".git"))) {
+    if (!existsSync9(path28.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -41706,8 +43253,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path26.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync8(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path28.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync9(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -41739,7 +43286,7 @@ var BackupService = class {
    * 命令行参数在 Windows 上同用户的进程都看得到；凭据不该出现在那里。
    */
   gitEnv() {
-    const token = readToken(this.deps.dshHome);
+    const token = readToken2(this.deps.dshHome);
     if (token === "") return {};
     const helper = this.askpassScript();
     return {
@@ -41752,12 +43299,12 @@ var BackupService = class {
     const base = backupDir(this.deps.dshHome);
     mkdirSync10(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path26.join(base, "askpass.cmd");
-      if (!existsSync8(file3)) writeFileSync8(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path28.join(base, "askpass.cmd");
+      if (!existsSync9(file3)) writeFileSync8(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path26.join(base, "askpass.sh");
-    if (!existsSync8(file2)) {
+    const file2 = path28.join(base, "askpass.sh");
+    if (!existsSync9(file2)) {
       writeFileSync8(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
@@ -41780,32 +43327,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path26.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path28.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path26.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path26.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path28.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path28.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path26.join(staging, "latest");
-      const restoredHot = existsSync8(path26.join(restoreLatest, "sessions")) ? countSessionFiles(path26.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path28.join(staging, "latest");
+      const restoredHot = existsSync9(path28.join(restoreLatest, "sessions")) ? countSessionFiles(path28.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path26.join(this.deps.dshHome, name2);
-        if (existsSync8(target)) {
+        const target = path28.join(this.deps.dshHome, name2);
+        if (existsSync9(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path26.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path26.join(restoreLatest, "storages"), path26.join(this.deps.dshHome, "storages"));
-      if (existsSync8(path26.join(restoreLatest, "attachments"))) {
-        await mergeTree(path26.join(restoreLatest, "attachments"), path26.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path28.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path28.join(restoreLatest, "storages"), path28.join(this.deps.dshHome, "storages"));
+      if (existsSync9(path28.join(restoreLatest, "attachments"))) {
+        await mergeTree(path28.join(restoreLatest, "attachments"), path28.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path26.join(staging, "archive"), sessionsRoot);
-      const profiles = path26.join(restoreLatest, "profiles");
-      if (existsSync8(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path28.join(staging, "archive"), sessionsRoot);
+      const profiles = path28.join(restoreLatest, "profiles");
+      if (existsSync9(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -41841,36 +43388,36 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync6(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path26.join(repo, entry.name);
+    const target = path28.join(repo, entry.name);
     rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync8(source)) return;
+  if (!existsSync9(source)) return;
   for (const entry of readdirSync6(source, { withFileTypes: true })) {
-    const from = path26.join(source, entry.name);
-    const to = path26.join(target, entry.name);
+    const from = path28.join(source, entry.name);
+    const to = path28.join(target, entry.name);
     if (entry.isDirectory()) {
       mkdirSync10(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync8(to)) continue;
+    if (existsSync9(to)) continue;
     mkdirSync10(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync8(profilesRoot)) return;
+  if (!existsSync9(profilesRoot)) return;
   for (const entry of readdirSync6(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path26.join(source, entry.name);
-    const to = path26.join(profilesRoot, entry.name);
-    if (!existsSync8(to)) continue;
+    const from = path28.join(source, entry.name);
+    const to = path28.join(profilesRoot, entry.name);
+    if (!existsSync9(to)) continue;
     for (const file2 of readdirSync6(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path26.join(from, file2.name), path26.join(to, file2.name));
+      await copyFileFresh(path28.join(from, file2.name), path28.join(to, file2.name));
     }
   }
 }
@@ -41884,12 +43431,12 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path26.join(dir, entry.name);
+      const full = path28.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync8(root)) walk2(root);
+  if (existsSync9(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -41899,8 +43446,8 @@ function formatBytes(bytes) {
 }
 
 // src/shell/claim-token.ts
-import { readFileSync as readFileSync14 } from "node:fs";
-import path27 from "node:path";
+import { readFileSync as readFileSync15 } from "node:fs";
+import path29 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -41930,14 +43477,14 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path27.dirname(statusFile2) : dataDir();
-  return path27.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path29.dirname(statusFile2) : dataDir();
+  return path29.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
   let raw;
   try {
-    raw = readFileSync14(file2, "utf8");
+    raw = readFileSync15(file2, "utf8");
   } catch {
     return void 0;
   }
@@ -41945,12 +43492,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path27.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path29.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path27.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path29.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -41989,7 +43536,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path27.dirname(file2));
+    ensureSecureDir(path29.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -42172,7 +43719,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path28.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path30.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -42195,7 +43742,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path28.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path30.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -42365,11 +43912,11 @@ function applyInner(ctx, injected, clock) {
     }
     return mpCode;
   };
-  const sleep = new KeepAwake(new SystemSleepBackend(), clock, {
+  const sleep2 = new KeepAwake(new SystemSleepBackend(), clock, {
     idleReleaseMs: config2.keepAwake.idleReleaseSec * 1e3,
     keepDisplay: config2.keepAwake.keepDisplay
   });
-  if (config2.keepAwake.enabled) sleep.setEnabled(true);
+  if (config2.keepAwake.enabled) sleep2.setEnabled(true);
   let kernel;
   let runtime;
   let relay;
@@ -42582,7 +44129,7 @@ function applyInner(ctx, injected, clock) {
         pairStore.markDirty();
       }
     });
-    runtime = new HostRuntime(port, transport, sleep, clock, {
+    runtime = new HostRuntime(port, transport, sleep2, clock, {
       listingRefreshMs: config2.listingRefreshSec * 1e3,
       unarchiveOnPrompt: config2.unarchiveOnPrompt,
       uploadDir: resolveUploadDir(config2),
@@ -42616,7 +44163,7 @@ function applyInner(ctx, injected, clock) {
     housekeeping.startSelfTimer(Boolean(config2.statusFile), (stop) => stopHooks.push(stop));
   };
   const state = () => {
-    const snapshot = sleep.snapshot();
+    const snapshot = sleep2.snapshot();
     return {
       carrier: startedCarrier || (config2.mockBridge ? "mock" : "probing"),
       serverUrl: config2.serverUrl,
@@ -42744,7 +44291,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path28.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path30.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -42762,6 +44309,8 @@ function applyInner(ctx, injected, clock) {
       handoff: softProbe.handoff ?? { started: "no" },
       subagents: softProbe.subagents ?? { started: "no" },
       groups: softProbe.groups ?? { started: "no" },
+      // 联网搜索的软探测（2026-11-20）：tools 挂没挂上、本机有没有 fetch，都在这两格里。
+      websearch: softProbe.websearch ?? { started: "no" },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: void 0,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -42932,7 +44481,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path28.dirname(path28.dirname(config2.statusFile)) : path28.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path30.dirname(path30.dirname(config2.statusFile)) : path30.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -43240,6 +44789,19 @@ function applyInner(ctx, injected, clock) {
     });
   }
   softProbe.groups = groupsHandle?.probe;
+  let websearchHandle;
+  try {
+    websearchHandle = startWebsearch(ctx, {
+      packageRoot: packageRoot(),
+      log
+    });
+  } catch (error62) {
+    websearchHandle = void 0;
+    log("\u8054\u7F51\u641C\u7D22\u8D77\u4E0D\u6765\uFF08\u8FDC\u63A7/\u5176\u5B83\u529F\u80FD\u4E0D\u53D7\u5F71\u54CD\uFF09", {
+      message: String(error62?.message ?? error62).slice(0, 200)
+    });
+  }
+  softProbe.websearch = websearchHandle?.probe;
   try {
     const skillsInstalled = installPackagedSkills({ dshHome, log });
     if (!skillsInstalled.ok && skillsInstalled.reason !== void 0) {
@@ -43333,6 +44895,10 @@ function applyInner(ctx, injected, clock) {
       } catch {
       }
       try {
+        websearchHandle?.stop();
+      } catch {
+      }
+      try {
         extensionsHandle?.stop();
       } catch {
       }
@@ -43352,7 +44918,7 @@ function applyInner(ctx, injected, clock) {
       }
       runtime?.stop();
       relay?.stop();
-      sleep.stop();
+      sleep2.stop();
     }
   };
 }
