@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.142" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.143" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -28697,6 +28697,11 @@ var HostRuntime = class {
    * 其余的合并成一条尾随推送（那一条会拿到最新数据，不会丢状态）。
    */
   pushInFlight = false;
+  /**
+   * 见过持久化的会话列表来源（`sessionQuery`）——用来区分「宿主降级」与「老宿主本来就只有 sessions 这一面」。
+   * 见 `pushSessions` 里那份降级列表的处理。
+   */
+  sawPersistentList = false;
   /** 工具步数（M2 状态摘要的 `steps`）：进程启动以来的累计，只加不减。 */
   stepsDone = 0;
   /** 挂接内核。任何一步失败都只降级，不抛（外层 apply() 的红线）。 */
@@ -29330,7 +29335,17 @@ var HostRuntime = class {
       this.pushInFlight = true;
       try {
         const listed = await this.kernel.listSessions(LISTING_LIMIT);
-        this.sessions = listed.map((item) => item.summary);
+        const fromFallback = listed.length > 0 && listed.every((item) => item.listingSource === "sessions");
+        if (fromFallback && this.sawPersistentList) {
+          this.log("\u4F1A\u8BDD\u5217\u8868\u6765\u81EA\u964D\u7EA7\u8DEF\u5F84\uFF08\u53EA\u542B\u6D3B\u4F1A\u8BDD\uFF09\uFF0C\u672C\u6B21\u4FDD\u7559\u5DF2\u77E5\u5217\u8868", {
+            got: String(listed.length),
+            keep: String(this.sessions.length),
+            reason
+          });
+        } else {
+          if (listed.some((item) => item.listingSource === "sessionQuery")) this.sawPersistentList = true;
+          this.sessions = listed.map((item) => item.summary);
+        }
       } catch (error62) {
         this.log("list sessions failed", { message: messageOf(error62), reason });
       } finally {
