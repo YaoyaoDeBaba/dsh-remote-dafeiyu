@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.148" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.149" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37982,7 +37982,7 @@ function createHandoffService(deps) {
     const inboxDir = path18.join(deps.handoffDir, "inbox");
     const quietMs = deps.gapQuietMs ?? 6e4;
     const graceMs = deps.gapGraceMs ?? 9e4;
-    const maxMs = deps.gapMaxMs ?? 3e5;
+    const maxMs = deps.gapMaxMs ?? 48e4;
     const pollMs2 = deps.pollMs ?? 1e3;
     const startedAt = now();
     let lastActivity = 0;
@@ -37996,6 +37996,9 @@ function createHandoffService(deps) {
       if (open4 === 0 && threads.length > 0 && now() - lastActivity >= quietMs) return void 0;
       if (threads.length === 0 && elapsed >= graceMs) return "\u8F6C\u4E16\u6CA1\u63D0\u7F3A\u53E3\uFF08\u7B49\u4E86 " + Math.round(graceMs / 1e3) + " \u79D2\uFF09";
       if (elapsed >= maxMs) {
+        if (open4 === 0) {
+          return "\u7F3A\u53E3\u95EE\u7B54\u5DF2\u7B54\u5B8C\uFF08" + String(answered) + " \u4E2A\uFF09\uFF0C\u4F46\u6CA1\u7B49\u6EE1\u5B89\u9759\u7A97\u53E3\u5C31\u653E\u884C\u4E86";
+        }
         return "\u7F3A\u53E3\u6CA1\u8865\u5B8C\u5C31\u653E\u884C\u4E86\uFF08" + String(open4) + " \u4E2A\u95EE\u9898\u6CA1\u7B54\uFF0C\u5DF2\u7B54 " + String(answered) + " \u4E2A\uFF09";
       }
       await new Promise((resolve) => {
