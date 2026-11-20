@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.132" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.133" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31894,7 +31894,15 @@ function createServicesKernel(services, options) {
     let records = [];
     let source = "sessionQuery";
     const listPersistent = fn(services.sessionQuery, "listSessions");
-    if (listPersistent) {
+    const forceLive = (() => {
+      try {
+        return String(globalThis.process?.env?.DAFEIYU_FORCE_LIVE_SESSIONS ?? "") === "1";
+      } catch {
+        return false;
+      }
+    })();
+    if (forceLive) log("\u8C03\u8BD5\u5F00\u5173\u751F\u6548\uFF1A\u5F3A\u5236\u53EA\u5217\u5185\u5B58\u91CC\u7684\u6D3B\u4F1A\u8BDD\uFF08DAFEIYU_FORCE_LIVE_SESSIONS=1\uFF09");
+    if (listPersistent && !forceLive) {
       try {
         const rows = await listPersistent.call(services.sessionQuery);
         records = (rows ?? []).filter((row) => typeof row?.header?.id === "string").map((row) => ({
