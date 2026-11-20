@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.139" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.140" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31753,6 +31753,7 @@ function createServicesKernel(services, options) {
   }
   let lastTouchedSessionId = "";
   const cwdBySession = /* @__PURE__ */ new Map();
+  const presetBySession = /* @__PURE__ */ new Map();
   const seenEventTypes = /* @__PURE__ */ new Set();
   const unmappedEventTypes = /* @__PURE__ */ new Set();
   const injectedUserMessages = /* @__PURE__ */ new Map();
@@ -31945,6 +31946,8 @@ function createServicesKernel(services, options) {
     for (const row of records) {
       const cwd = String(row.cwd ?? "").trim();
       if (cwd) cwdBySession.set(row.id, cwd);
+      const preset = String(row.agentPreset ?? "").trim();
+      if (preset !== "") presetBySession.set(row.id, preset);
     }
     const page = records.slice(0, cap);
     const pendingTitles = loadTitles(page.map((row) => row.id).filter((id) => !titleCache.has(id)));
@@ -32657,10 +32660,29 @@ function createServicesKernel(services, options) {
     if (!selection) {
       return { ok: false, message: "\u62FF\u4E0D\u5230\u5F53\u524D\u6A21\u578B\u9009\u62E9\uFF08agentDefaultModel.currentSelection \u7F3A\u5931\uFF09\uFF0C\u65E0\u6CD5\u7EED\u8DD1\u4F1A\u8BDD" };
     }
+    let preset = presetBySession.get(sessionId);
+    if (preset === void 0) {
+      const readSession = fn(services.sessionQuery, "readSession");
+      if (readSession) {
+        try {
+          const loaded = await readSession.call(services.sessionQuery, sessionId);
+          const value = loaded?.session?.agentPreset;
+          if (typeof value === "string" && value.trim() !== "") {
+            preset = value.trim();
+            presetBySession.set(sessionId, preset);
+          }
+        } catch {
+        }
+      }
+    }
     try {
       await resume.call(services.agents, {
         resumeSessionId: sessionId,
-        agentOptions: { provider: selection.provider, model: selection.model }
+        agentOptions: {
+          provider: selection.provider,
+          model: selection.model,
+          ...preset === void 0 ? {} : { agentPreset: preset }
+        }
       });
       return { ok: true };
     } catch (error62) {
