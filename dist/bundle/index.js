@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.136" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.137" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38416,9 +38416,10 @@ function createGroups(deps) {
     for (const target of targets) {
       if (target === from) continue;
       if (!group.members.some((member) => member.sessionId === target)) continue;
+      const ownerInvolved = group.ownerSessionId !== void 0 && (from === group.ownerSessionId || target === group.ownerSessionId);
       const key = group.id + "|" + from + "|" + target;
       const last = lastDeliveryAt.get(key);
-      if (last !== void 0 && now() - last < cooldownMs) {
+      if (!ownerInvolved && last !== void 0 && now() - last < cooldownMs) {
         out.push({ sessionId: target, ok: true, message: "\u51B7\u5374\u4E2D\uFF08" + Math.round(cooldownMs / 1e3) + " \u79D2\u5185\u5DF2\u6295\u8FC7\u4E00\u6B21\uFF09\uFF0C\u672C\u6B21\u8DF3\u8FC7" });
         continue;
       }
