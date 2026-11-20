@@ -27,6 +27,7 @@
  */
 import type { QuestionItem, SessionSummary } from '@dsh-remote/protocol'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { loadAvatarManifest } from './avatar-manifest.js'
 import { emitSubagentChange } from '../subagents/bus.js'
@@ -755,6 +756,25 @@ export function createServicesKernel(services: ServicesBundle, options: Services
     }
   }
 
+  /**
+   * 「强制只列内存里活会话」的调试开关（2026-11-20）。
+   *
+   * 两个入口，都是为了复现「会话列表里未归档的会话凭空消失」：
+   * 1. 环境变量 DAFEIYU_FORCE_LIVE_SESSIONS=1（要在启动宿主前设，麻烦）；
+   * 2. **删/建一个标记文件**：`<dshHome>/storages/dsh-remote-dafeiyu/force-live-sessions`
+   *    ——不用重启，随开随关，翻车了立刻能停。
+   */
+  function debugForceLive(): boolean {
+    try {
+      const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+      if (String(env?.DAFEIYU_FORCE_LIVE_SESSIONS ?? '') === '1') return true
+      const home = String(env?.DSH_HOME ?? '').trim() || path.join(os.homedir(), '.dsh')
+      return fs.existsSync(path.join(home, 'storages', 'dsh-remote-dafeiyu', 'force-live-sessions'))
+    } catch {
+      return false
+    }
+  }
+
   async function listSessions(limit: number): Promise<KernelSession[]> {
     const cap = limit > 0 ? limit : LIST_LIMIT_DEFAULT
     const archived = archivedIds()
@@ -770,13 +790,7 @@ export function createServicesKernel(services: ServicesBundle, options: Services
      * 为什么做成开关而不是临时改代码：明天复现/对照要在两个版本之间来回切，
      * 改代码就得重新 build + 重启多次，开关只要重启一次。
      */
-    const forceLive = (() => {
-      try {
-        return String((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.DAFEIYU_FORCE_LIVE_SESSIONS ?? '') === '1'
-      } catch {
-        return false
-      }
-    })()
+    const forceLive = debugForceLive()
     if (forceLive) log('调试开关生效：强制只列内存里的活会话（DAFEIYU_FORCE_LIVE_SESSIONS=1）')
     if (listPersistent && !forceLive) {
       try {

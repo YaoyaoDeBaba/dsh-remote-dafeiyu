@@ -105,3 +105,13 @@ description: 给「大肥鱼」DSH 桌面插件（dsh-remote-dafeiyu）新增工
 | `references/authoring.md` | 正在写 `tools.ts` / `start.ts`，想知道字段怎么填、描述怎么写、注释写什么时 |
 | `references/testing.md` | 要写判据、要跨端对拍、跑测试前、测试红但看不出为什么时 |
 | `references/release.md` | 准备发版、改版本号、更新 market 与 profile pin 时 |
+
+## 续跑会话必须透传 agentPreset（2026-11-20，血泪）
+
+`agents.resume({ resumeSessionId, agentOptions })` 的 `agentOptions` 里**必须带 `agentPreset`**（从会话 header 取），
+否则续起来的 agent 会掉出 `ptc` preset：模型的工具表从 `[run_code]` 变成「插件注册的那一批」，
+在用户看来就是「shell / 文件工具被平台收走，只剩插件工具」——转生写不了文档、任务干不下去，只能重启。
+
+- 取证方法：读该会话日志里 `request/header` 事件的 `data.header.tools`；正常应只有 `run_code`。
+- 任何走 `ensureRunnable` 的路径（群投递、手机发指令、转生）都会踩；改这类代码时先看一眼这条。
+- 已经在跑的坏 agent 只能靠重启重建，改代码救不了现成的那一个。
