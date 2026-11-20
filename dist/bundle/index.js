@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.145" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.146" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -40438,6 +40438,7 @@ var DBLP_API = "https://dblp.org/search/publ/api";
 var GITHUB_API = "https://api.github.com";
 var SEARCH_ENGINES = ["auto", "bing", "sogou"];
 var PAPER_SOURCES = ["openalex", "arxiv", "dblp"];
+var PAPER_SOURCE_ORDER = ["arxiv", "openalex", "dblp"];
 var REPO_SORTS = ["stars", "updated", "forks"];
 var OUT5 = {
   schema: { type: "string" },
@@ -40792,6 +40793,17 @@ function buildWebsearchTools(deps) {
     );
   }
   async function runPaperSearch(query, source, limit, yearFrom) {
+    if (source === "auto") {
+      const failures = [];
+      for (const candidate of PAPER_SOURCE_ORDER) {
+        try {
+          return await runPaperSearch(query, candidate, limit, yearFrom);
+        } catch (error62) {
+          failures.push(candidate + "\uFF1A" + String(error62?.message ?? error62).slice(0, 120));
+        }
+      }
+      throw new Error("\u8BBA\u6587\u68C0\u7D22\u4E09\u4E2A\u6E90\u90FD\u6CA1\u6210\uFF08\u6309 arxiv \u2192 openalex \u2192 dblp \u4F9D\u6B21\u8BD5\u8FC7\uFF09\uFF1A" + failures.join("\uFF1B"));
+    }
     if (source === "openalex") {
       let url3 = OPENALEX_API + "?search=" + encodeURIComponent(query) + "&per-page=" + limit;
       if (yearFrom !== void 0) url3 += "&filter=from_publication_date:" + yearFrom + "-01-01";
@@ -40976,15 +40988,15 @@ function buildWebsearchTools(deps) {
     },
     {
       name: "paper_search",
-      description: "\u641C\u8BBA\u6587\u3002\u4E09\u4E2A\u6E90\uFF1Aopenalex\uFF08\u9ED8\u8BA4\uFF0C\u514D\u8D39\u65E0 key\uFF0C\u5E26\u88AB\u5F15\u6570\uFF09/ arxiv\uFF08\u9884\u5370\u672C\uFF0C\u5E26\u6458\u8981\u524D 200 \u5B57\uFF09/ dblp\uFF08\u8BA1\u7B97\u673A\u65B9\u5411\uFF09\u3002\n\u6BCF\u6761\u4E00\u884C\uFF1A\u6807\u9898 \xB7 \u5E74\u4EFD \xB7 venue \xB7 \u88AB\u5F15 N \xB7 URL\u3002limit \u9ED8\u8BA4 6\uFF1Byear_from \u662F\u6700\u65E9\u5E74\u4EFD\uFF08\u542B\uFF09\u3002\n\u8981\u8BFB\u5168\u6587\u7528 paper_read\u3002",
+      description: "\u641C\u8BBA\u6587\u3002**\u9ED8\u8BA4 auto\uFF1A\u5148 arXiv\uFF08\u4E3B\u529B\uFF0C\u7A33\u5B9A\uFF09\uFF0C\u5931\u8D25\u518D\u9000 OpenAlex / DBLP\uFF08\u66FF\u8865\uFF09**\u3002\n\u4E09\u4E2A\u6E90\u7684\u5B9E\u9645\u72B6\u6001\uFF082026-11-20 \u5B9E\u6D4B\uFF09\uFF1Aarxiv \u7A33\u5B9A\uFF0C\u5E26\u6458\u8981\u524D 200 \u5B57\uFF1Bopenalex \u4E0D\u5E26 key \u662F\u6574\u673A\u5171\u4EAB 0.10 \u7F8E\u5143/\u5929\u3001\u5BB9\u6613 429\uFF08\u914D OPENALEX_API_KEY \u53EF\u6539\u5584\uFF09\uFF1Bdblp \u73B0\u5728\u591A\u534A\u56DE\u4EBA\u673A\u9A8C\u8BC1\u9875\u3002\u6240\u4EE5\u9664\u975E\u4F60\u660E\u786E\u8981 venue/\u88AB\u5F15\u6570\uFF0C\u522B\u6307\u5B9A\u5B83\u4EEC\u3002\n\u6BCF\u6761\u4E00\u884C\uFF1A\u6807\u9898 \xB7 \u5E74\u4EFD \xB7 venue \xB7 \u88AB\u5F15 N \xB7 URL\u3002limit \u9ED8\u8BA4 6\uFF1Byear_from \u662F\u6700\u65E9\u5E74\u4EFD\uFF08\u542B\uFF09\u3002\n\u8981\u8BFB\u5168\u6587\u7528 paper_read\u3002",
       parameters: {
         type: "object",
         properties: {
           query: { type: "string", description: "\u5173\u952E\u8BCD\uFF0C\u82F1\u6587\u6548\u679C\u6700\u597D\u3002" },
           source: {
             type: "string",
-            enum: PAPER_SOURCES,
-            description: "openalex\uFF08\u9ED8\u8BA4\uFF09/ arxiv / dblp\u3002"
+            enum: ["auto", ...PAPER_SOURCES],
+            description: "auto\uFF08\u9ED8\u8BA4\uFF0Carxiv\u2192openalex\u2192dblp \u81EA\u52A8\u515C\u5E95\uFF09/ arxiv\uFF08\u4E3B\u529B\uFF09/ openalex\uFF08\u66FF\u8865\uFF0C\u6613 429\uFF09/ dblp\uFF08\u66FF\u8865\uFF0C\u5E38\u88AB\u9A8C\u8BC1\u9875\u6321\uFF09\u3002"
           },
           year_from: { type: "integer", minimum: 1900, maximum: 2100, description: "\u53EA\u8981\u8FD9\u5E74\uFF08\u542B\uFF09\u4E4B\u540E\u7684\u3002" },
           limit: { type: "integer", minimum: 1, maximum: 20, description: "\u8981\u51E0\u6761\uFF0C\u9ED8\u8BA4 6\u3002" }
@@ -40997,7 +41009,7 @@ function buildWebsearchTools(deps) {
         const input2 = asRecord2(args);
         const query = asString2(input2.query);
         if (query === "") throw new Error("\u8BBA\u6587\u5173\u952E\u8BCD\u4E0D\u80FD\u4E3A\u7A7A\uFF1Aquery \u8981\u5199\u70B9\u4EC0\u4E48");
-        const source = pickEnum(input2.source, PAPER_SOURCES, "openalex");
+        const source = pickEnum(input2.source, ["auto", ...PAPER_SOURCES], "auto");
         const limit = clampInt2(input2.limit, 1, 20, 6);
         const yearRaw = asString2(input2.year_from);
         const yearParsed = yearRaw === "" ? 0 : clampInt2(yearRaw, 1900, 2100, 0);
