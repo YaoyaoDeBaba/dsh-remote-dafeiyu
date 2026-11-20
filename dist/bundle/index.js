@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.134" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.135" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38351,7 +38351,7 @@ function joinNotice(group, titleOf) {
     "\xB7 \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF08\u6C47\u62A5\u5BF9\u8C61\uFF09\uFF1Bto \u53EF\u4EE5\u586B\u5BF9\u65B9\u77ED\u53F7\u6216\u4F1A\u8BDD id\uFF1B",
     "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002",
     "\xB7 \u5982\u679C\u4F60\u7684\u5DE5\u5177\u5217\u8868\u91CC\u6CA1\u6709 group_*\uFF08\u8001\u4F1A\u8BDD\uFF09\uFF0C\u7528 HTTP \u515C\u5E95\uFF1A\u628A\u4F60\u81EA\u5DF1\u7684\u4F1A\u8BDD id \u548C\u6B63\u6587 POST \u5230",
-    "  <DSH Web GUI \u7684 origin>/api/dsh-remote-dafeiyu/groups/agent-post\uFF08\u672C\u673A\u56DE\u73AF\uFF0C\u5E26 x-drc-pair: 1\uFF1B",
+    "  <DSH Web GUI \u7684 origin>/plugins/dafeiyu-groups/agent-post\uFF08\u672C\u673A\u56DE\u73AF\uFF0C\u5E26 x-drc-pair: 1\uFF1B",
     '  body = {"groupId":"' + group.id + '","sessionId":"<\u4F60\u7684\u4F1A\u8BDDid>","text":"\u2026"}\uFF09\u3002\u8BFB\u7528 agent-read\u3002',
     "",
     "\u5982\u679C\u4F60\u73B0\u5728\u6B63\u5FD9\uFF0C\u5148\u628A\u8FD9\u6761\u8BB0\u4E0B\uFF1B\u6709\u7A7A\u518D\u56DE\u3002\u77E5\u9053\u6709\u8FD9\u4E2A\u7FA4\u3001\u77E5\u9053\u600E\u4E48\u56DE\u5C31\u591F\u4E86\u3002"
@@ -39024,8 +39024,8 @@ var GROUPS_OWNER_ROUTE = "/api/dsh-remote-dafeiyu/groups/owner";
 var GROUPS_ROLE_ROUTE = "/api/dsh-remote-dafeiyu/groups/role";
 var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
-var GROUPS_AGENT_POST_ROUTE = "/api/dsh-remote-dafeiyu/groups/agent-post";
-var GROUPS_AGENT_READ_ROUTE = "/api/dsh-remote-dafeiyu/groups/agent-read";
+var GROUPS_AGENT_POST_ROUTE = "/plugins/dafeiyu-groups/agent-post";
+var GROUPS_AGENT_READ_ROUTE = "/plugins/dafeiyu-groups/agent-read";
 function json7(response, status, body) {
   const payload = JSON.stringify(body);
   response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) });
