@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.147" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.148" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37497,8 +37497,8 @@ function parentOf(handoffDir, sessionId) {
 }
 
 // src/handoff/service.ts
-import { existsSync, mkdirSync as mkdirSync5, readFileSync as readFileSync5, readdirSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import path17 from "node:path";
+import { existsSync, mkdirSync as mkdirSync6, readFileSync as readFileSync6, readdirSync as readdirSync2, statSync as statSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import path18 from "node:path";
 
 // src/handoff/prompt.ts
 var HANDOFF_MARKER = "DAFEIYU_HANDOFF_OK";
@@ -37751,6 +37751,136 @@ function checkHandoffDoc(text, kind) {
   return { ok: problems.length === 0, problems: problems.slice(0, 8) };
 }
 
+// src/handoff/inbox.ts
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync5, readdirSync, writeFileSync as writeFileSync2 } from "node:fs";
+import path17 from "node:path";
+function ensureDir(dir) {
+  try {
+    mkdirSync5(dir, { recursive: true });
+  } catch {
+  }
+}
+function threadPath(dir, id) {
+  return path17.join(dir, String(id).replace(/[^A-Za-z0-9_-]/g, "_") + ".json");
+}
+function shortId(sessionId) {
+  return sessionId.replace(/^session-/, "").slice(0, 8);
+}
+function readThread(dir, id) {
+  try {
+    const parsed = JSON.parse(readFileSync5(threadPath(dir, id), "utf8"));
+    if (typeof parsed?.id !== "string" || typeof parsed.from !== "string" || typeof parsed.to !== "string") return void 0;
+    return parsed;
+  } catch {
+    return void 0;
+  }
+}
+function listThreads(dir) {
+  try {
+    const out = [];
+    for (const file2 of readdirSync(dir)) {
+      if (!file2.endsWith(".json")) continue;
+      const thread = readThread(dir, file2.replace(/\.json$/, ""));
+      if (thread !== void 0) out.push(thread);
+    }
+    return out.sort((a, b) => b.createdAt - a.createdAt);
+  } catch {
+    return [];
+  }
+}
+function askDeliveryText(thread) {
+  return [
+    "\u3010\u6765\u751F\u63D0\u95EE \xB7 \u6536\u4EF6\u7BB1 " + thread.id + "\u3011",
+    "\u6765\u81EA\u4F1A\u8BDD " + shortId(thread.from) + "\uFF08\u5B83\u5728\u63A5\u624B\u4F60\u8F6C\u751F/\u5206\u8EAB\u51FA\u53BB\u7684\u90A3\u6761\u6D3B\uFF09\u3002",
+    thread.question.trim(),
+    "",
+    "\u56DE\u7B54\u8BF7\u8C03 handoff_answer\uFF1AinboxId=" + thread.id + "\uFF0Canswer \u5199\u6E05\u300C\u6539\u54EA\u4E2A\u6587\u4EF6\u3001\u8DD1\u4EC0\u4E48\u547D\u4EE4\u3001\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\u300D\u3002",
+    "\u4E0D\u77E5\u9053\u5C31\u76F4\u8BF4\u300C\u4E0D\u77E5\u9053\u300D\uFF0C\u522B\u731C\u2014\u2014\u5BF9\u9762\u4F1A\u62FF\u4F60\u7684\u8BDD\u5F53\u4E8B\u5B9E\u7528\u3002"
+  ].join("\n");
+}
+function answerDeliveryText(thread) {
+  return [
+    "\u3010\u524D\u4E16\u56DE\u590D \xB7 \u6536\u4EF6\u7BB1 " + thread.id + "\u3011",
+    String(thread.answer ?? "").trim(),
+    "",
+    "\uFF08\u8FD9\u6761\u662F " + shortId(thread.to) + " \u5BF9\u4F60\u63D0\u95EE\u7684\u56DE\u7B54\uFF1A\u5199\u8FDB\u4EA4\u63A5\u6587\u6863\u5BF9\u5E94\u5C0F\u8282\uFF0C\u5E76\u628A\u8FD9\u6761\u4ECE\u300C\u7F3A\u53E3\u300D\u91CC\u5212\u6389\u3002\uFF09"
+  ].join("\n");
+}
+function newId(now) {
+  const uuid3 = globalThis.crypto?.randomUUID?.();
+  return (uuid3 ?? String(now) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 12);
+}
+function createInbox(deps) {
+  const now = deps.now ?? (() => Date.now());
+  const save = (thread) => {
+    ensureDir(deps.dir);
+    try {
+      writeFileSync2(threadPath(deps.dir, thread.id), JSON.stringify(thread, null, 2) + "\n", "utf8");
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  return {
+    /** 来生提问：落盘 → 送进前世会话。送不到就标 undeliverable，别让它以为问了。 */
+    async ask(input2) {
+      const question = String(input2.question ?? "").trim();
+      if (question === "") return { ok: false, message: "\u95EE\u9898\u4E0D\u80FD\u662F\u7A7A\u7684\uFF1A\u5199\u6E05\u4F60\u7F3A\u4EC0\u4E48\uFF08\u6539\u54EA\u4E2A\u6587\u4EF6 / \u5F53\u65F6\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\uFF09\u3002" };
+      if (String(input2.to ?? "").trim() === "") return { ok: false, message: "\u4E0D\u77E5\u9053\u8BE5\u95EE\u8C01\uFF1A\u8C03\u7528\u65F6\u628A\u524D\u4E16\u4F1A\u8BDD id \u4F20\u7ED9 to\u3002" };
+      const at = now();
+      const thread = {
+        id: newId(at),
+        from: input2.from,
+        to: input2.to,
+        question,
+        status: "open",
+        createdAt: at,
+        updatedAt: at
+      };
+      if (!save(thread)) return { ok: false, message: "\u95EE\u9898\u6CA1\u843D\u76D8\uFF08\u6536\u4EF6\u7BB1\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002\u76F4\u63A5\u95EE\u7528\u6237\u5427\u3002" };
+      const sent = await deps.deliver(thread.to, askDeliveryText(thread)).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      if (!sent.ok) {
+        thread.status = "undeliverable";
+        thread.updatedAt = now();
+        save(thread);
+        deps.log("\u6536\u4EF6\u7BB1\uFF1A\u95EE\u9898\u9001\u4E0D\u8FDB\u524D\u4E16\u4F1A\u8BDD", { id: thread.id, to: thread.to, message: String(sent.message ?? "").slice(0, 120) });
+        return {
+          ok: false,
+          thread,
+          message: "\u524D\u4E16\u4F1A\u8BDD\u4E0D\u5728\u7EBF\uFF08\u6216\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF09\uFF0C\u95EE\u9898\u5DF2\u5B58\u6863\u4F46\u9001\u4E0D\u5230\uFF1A\u76F4\u63A5\u95EE\u7528\u6237\uFF0C\u522B\u7B49\u3002"
+        };
+      }
+      deps.log("\u6536\u4EF6\u7BB1\uFF1A\u95EE\u9898\u5DF2\u9001\u8FDB\u524D\u4E16\u4F1A\u8BDD", { id: thread.id, to: thread.to });
+      return { ok: true, thread };
+    },
+    /** 前世回答：落盘 → 送回给来生。 */
+    async answer(input2) {
+      const thread = readThread(deps.dir, String(input2.id ?? "").trim());
+      if (thread === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u6761\u6536\u4EF6\u7BB1\u7EBF\u7A0B\uFF08id \u53EF\u80FD\u4E0D\u5BF9\uFF09\uFF1A\u770B\u770B\u63D0\u793A\u91CC\u90A3\u4E32 id\u3002" };
+      const answer = String(input2.answer ?? "").trim();
+      if (answer === "") return { ok: false, message: "\u56DE\u7B54\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
+      thread.answer = answer;
+      thread.status = "answered";
+      thread.updatedAt = now();
+      if (!save(thread)) return { ok: false, message: "\u56DE\u7B54\u6CA1\u843D\u76D8\uFF08\u6536\u4EF6\u7BB1\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      const sent = await deps.deliver(thread.from, answerDeliveryText(thread)).catch((error62) => ({
+        ok: false,
+        message: String(error62?.message ?? error62)
+      }));
+      if (!sent.ok) {
+        deps.log("\u6536\u4EF6\u7BB1\uFF1A\u56DE\u7B54\u9001\u4E0D\u56DE\u6765\u751F\u4F1A\u8BDD", { id: thread.id, from: thread.from, message: String(sent.message ?? "").slice(0, 120) });
+        return { ok: true, thread, message: "\u56DE\u7B54\u5DF2\u5B58\u6863\uFF0C\u4F46\u6CA1\u9001\u8FDB\u5BF9\u9762\u4F1A\u8BDD\uFF08\u5B83\u53EF\u80FD\u5DF2\u5F52\u6863\uFF09\uFF1A\u544A\u8BC9\u7528\u6237\u5230\u8FD9\u91CC\u53D6\u3002" };
+      }
+      return { ok: true, thread };
+    },
+    list: () => listThreads(deps.dir),
+    get: (id) => readThread(deps.dir, id)
+  };
+}
+
 // src/handoff/service.ts
 var MAX_FIX_ROUNDS = 2;
 var OVERLOAD_BYTES = 15 * 1024 * 1024;
@@ -37764,18 +37894,18 @@ function sessionLogBytes(sessionsRoot, sessionId) {
   let total = 0;
   let slugs;
   try {
-    slugs = readdirSync(sessionsRoot, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    slugs = readdirSync2(sessionsRoot, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   } catch {
     return 0;
   }
   for (const slug of slugs) {
     for (const candidate of [sessionId, bare, `session-${bare}`]) {
-      const dir = path17.join(sessionsRoot, slug, candidate);
+      const dir = path18.join(sessionsRoot, slug, candidate);
       if (!existsSync(dir)) continue;
       try {
-        for (const file2 of readdirSync(dir)) {
+        for (const file2 of readdirSync2(dir)) {
           if (!file2.includes(".jsonl.")) continue;
-          total += statSync2(path17.join(dir, file2)).size;
+          total += statSync2(path18.join(dir, file2)).size;
         }
       } catch {
       }
@@ -37786,10 +37916,10 @@ function sessionLogBytes(sessionsRoot, sessionId) {
 function memoryEntryCount(memoryDir2) {
   try {
     let total = 0;
-    for (const file2 of readdirSync(memoryDir2)) {
+    for (const file2 of readdirSync2(memoryDir2)) {
       if (!file2.endsWith(".json")) continue;
       try {
-        const parsed = JSON.parse(readFileSync5(path17.join(memoryDir2, file2), "utf8"));
+        const parsed = JSON.parse(readFileSync6(path18.join(memoryDir2, file2), "utf8"));
         if (Array.isArray(parsed.entries)) total += parsed.entries.length;
       } catch {
       }
@@ -37817,17 +37947,17 @@ function createHandoffService(deps) {
     for (const victim of sorted.slice(0, jobs.size - MAX_JOBS)) jobs.delete(victim.id);
   };
   const nextRebirthGen = (base) => {
-    const file2 = path17.join(deps.handoffDir, "rebirth-gen.json");
+    const file2 = path18.join(deps.handoffDir, "rebirth-gen.json");
     let map2 = {};
     try {
-      map2 = JSON.parse(readFileSync5(file2, "utf8"));
+      map2 = JSON.parse(readFileSync6(file2, "utf8"));
     } catch {
       map2 = {};
     }
     const value = Number(map2[base] ?? 0) + 1;
     map2[base] = value;
     try {
-      writeFileSync2(file2, JSON.stringify(map2, null, 2) + "\n", "utf8");
+      writeFileSync3(file2, JSON.stringify(map2, null, 2) + "\n", "utf8");
     } catch {
     }
     return value;
@@ -37835,7 +37965,7 @@ function createHandoffService(deps) {
   const probeFile = (filePath) => {
     try {
       if (!existsSync(filePath)) return "pending";
-      const raw = readFileSync5(filePath, "utf8");
+      const raw = readFileSync6(filePath, "utf8");
       if (raw.trim() === "") return "empty";
       return raw.includes(HANDOFF_MARKER) || raw.length > 400 ? "ok" : "pending";
     } catch {
@@ -37848,6 +37978,36 @@ function createHandoffService(deps) {
     touch(job, { status, message });
     deps.log("\u8F6C\u751F/\u5206\u8EAB\u4F5C\u4E1A\u7ED3\u675F", { jobId, status, message: message?.slice(0, 120) });
   };
+  const waitGapsCleared = async (childId) => {
+    const inboxDir = path18.join(deps.handoffDir, "inbox");
+    const quietMs = deps.gapQuietMs ?? 6e4;
+    const graceMs = deps.gapGraceMs ?? 9e4;
+    const maxMs = deps.gapMaxMs ?? 3e5;
+    const pollMs2 = deps.pollMs ?? 1e3;
+    const startedAt = now();
+    let lastActivity = 0;
+    let answered = 0;
+    for (; ; ) {
+      const threads = listThreads(inboxDir).filter((thread) => thread.from === childId);
+      const open4 = threads.filter((thread) => thread.status === "open").length;
+      answered = threads.filter((thread) => thread.status === "answered").length;
+      if (threads.length > 0) lastActivity = Math.max(...threads.map((thread) => thread.updatedAt));
+      const elapsed = now() - startedAt;
+      if (open4 === 0 && threads.length > 0 && now() - lastActivity >= quietMs) return void 0;
+      if (threads.length === 0 && elapsed >= graceMs) return "\u8F6C\u4E16\u6CA1\u63D0\u7F3A\u53E3\uFF08\u7B49\u4E86 " + Math.round(graceMs / 1e3) + " \u79D2\uFF09";
+      if (elapsed >= maxMs) {
+        return "\u7F3A\u53E3\u6CA1\u8865\u5B8C\u5C31\u653E\u884C\u4E86\uFF08" + String(open4) + " \u4E2A\u95EE\u9898\u6CA1\u7B54\uFF0C\u5DF2\u7B54 " + String(answered) + " \u4E2A\uFF09";
+      }
+      await new Promise((resolve) => {
+        const timer = setTimeout(resolve, pollMs2);
+        try {
+          ;
+          timer.unref?.();
+        } catch {
+        }
+      });
+    }
+  };
   const handoverGroup = async (job, childId) => {
     const h = deps.groupHandover;
     if (h === void 0) return void 0;
@@ -37859,6 +38019,13 @@ function createHandoffService(deps) {
     }
     if (spot === void 0) return void 0;
     const notes = [];
+    try {
+      touch(job, { message: "\u7B49\u5F85\u300C\u524D\u4E16\u2194\u8F6C\u4E16\u300D\u628A\u6587\u6863\u7F3A\u53E3\u8865\u9F50\u2026" });
+      const gapNote = await waitGapsCleared(childId);
+      if (gapNote !== void 0) notes.push(gapNote);
+    } catch (error62) {
+      notes.push("\u7B49\u7F3A\u53E3\u65F6\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    }
     let title;
     try {
       const parentTitle = String(await deps.sessionTitle?.(job.sessionId) ?? "").trim();
@@ -37933,15 +38100,15 @@ function createHandoffService(deps) {
     }
     touch(job, { newSessionId: created.sessionId, ...cwd ? { newSessionCwd: cwd } : {} });
     try {
-      const lineagePath = path17.join(path17.dirname(job.filePath), "lineage.json");
+      const lineagePath = path18.join(path18.dirname(job.filePath), "lineage.json");
       let lineage = {};
       try {
-        lineage = JSON.parse(readFileSync5(lineagePath, "utf8"));
+        lineage = JSON.parse(readFileSync6(lineagePath, "utf8"));
       } catch {
         lineage = {};
       }
       lineage[created.sessionId] = job.sessionId;
-      writeFileSync2(lineagePath, JSON.stringify(lineage, null, 2) + "\n", "utf8");
+      writeFileSync3(lineagePath, JSON.stringify(lineage, null, 2) + "\n", "utf8");
     } catch {
     }
     try {
@@ -37980,7 +38147,7 @@ function createHandoffService(deps) {
         if (state === "ok") {
           let text = "";
           try {
-            text = readFileSync5(job.filePath, "utf8");
+            text = readFileSync6(job.filePath, "utf8");
           } catch {
             text = "";
           }
@@ -38058,11 +38225,11 @@ function createHandoffService(deps) {
         return { ok: false, message: "\u5206\u8EAB\u5FC5\u987B\u5199\u6E05\u695A\u5206\u652F\u4EFB\u52A1\uFF08\u4E0D\u7136\u5B83\u4E0D\u77E5\u9053\u53BB\u5E72\u4EC0\u4E48\uFF09" };
       }
       try {
-        mkdirSync5(deps.handoffDir, { recursive: true });
+        mkdirSync6(deps.handoffDir, { recursive: true });
       } catch {
       }
       const at = new Date(now());
-      const filePath = path17.join(deps.handoffDir, handoffFileName(kind, id, at).replace(/\.md$/, `-${at.getMilliseconds()}.md`));
+      const filePath = path18.join(deps.handoffDir, handoffFileName(kind, id, at).replace(/\.md$/, `-${at.getMilliseconds()}.md`));
       const plan = {
         kind,
         filePath,
@@ -38078,7 +38245,7 @@ function createHandoffService(deps) {
       const direct = String(content ?? "").trim();
       if (direct !== "") {
         try {
-          writeFileSync2(filePath, direct.endsWith("\n") ? direct : direct + "\n", "utf8");
+          writeFileSync3(filePath, direct.endsWith("\n") ? direct : direct + "\n", "utf8");
         } catch (error62) {
           return { ok: false, message: "\u5199\u4EA4\u63A5\u6587\u6863\u5931\u8D25\uFF1A" + String(error62?.message ?? error62).slice(0, 120) };
         }
@@ -38121,11 +38288,11 @@ function createHandoffService(deps) {
       return [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt);
     },
     selfCheck(sessionId, cwd) {
-      const logBytes = sessionLogBytes(path17.join(deps.dshHome, "sessions"), sessionId);
-      const memoryDir2 = path17.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "memory");
+      const logBytes = sessionLogBytes(path18.join(deps.dshHome, "sessions"), sessionId);
+      const memoryDir2 = path18.join(deps.dshHome, "storages", "dsh-remote-dafeiyu", "memory");
       let ready = false;
       try {
-        mkdirSync5(deps.handoffDir, { recursive: true });
+        mkdirSync6(deps.handoffDir, { recursive: true });
         ready = statSync2(deps.handoffDir).isDirectory();
       } catch {
         ready = false;
@@ -38150,136 +38317,6 @@ function createHandoffService(deps) {
         if (job.status === "waiting" || job.status === "creating") touch(job, { status: "failed", message: "\u63D2\u4EF6\u505C\u673A\uFF0C\u4F5C\u4E1A\u4E2D\u65AD" });
       }
     }
-  };
-}
-
-// src/handoff/inbox.ts
-import { mkdirSync as mkdirSync6, readFileSync as readFileSync6, readdirSync as readdirSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import path18 from "node:path";
-function ensureDir(dir) {
-  try {
-    mkdirSync6(dir, { recursive: true });
-  } catch {
-  }
-}
-function threadPath(dir, id) {
-  return path18.join(dir, String(id).replace(/[^A-Za-z0-9_-]/g, "_") + ".json");
-}
-function shortId(sessionId) {
-  return sessionId.replace(/^session-/, "").slice(0, 8);
-}
-function readThread(dir, id) {
-  try {
-    const parsed = JSON.parse(readFileSync6(threadPath(dir, id), "utf8"));
-    if (typeof parsed?.id !== "string" || typeof parsed.from !== "string" || typeof parsed.to !== "string") return void 0;
-    return parsed;
-  } catch {
-    return void 0;
-  }
-}
-function listThreads(dir) {
-  try {
-    const out = [];
-    for (const file2 of readdirSync2(dir)) {
-      if (!file2.endsWith(".json")) continue;
-      const thread = readThread(dir, file2.replace(/\.json$/, ""));
-      if (thread !== void 0) out.push(thread);
-    }
-    return out.sort((a, b) => b.createdAt - a.createdAt);
-  } catch {
-    return [];
-  }
-}
-function askDeliveryText(thread) {
-  return [
-    "\u3010\u6765\u751F\u63D0\u95EE \xB7 \u6536\u4EF6\u7BB1 " + thread.id + "\u3011",
-    "\u6765\u81EA\u4F1A\u8BDD " + shortId(thread.from) + "\uFF08\u5B83\u5728\u63A5\u624B\u4F60\u8F6C\u751F/\u5206\u8EAB\u51FA\u53BB\u7684\u90A3\u6761\u6D3B\uFF09\u3002",
-    thread.question.trim(),
-    "",
-    "\u56DE\u7B54\u8BF7\u8C03 handoff_answer\uFF1AinboxId=" + thread.id + "\uFF0Canswer \u5199\u6E05\u300C\u6539\u54EA\u4E2A\u6587\u4EF6\u3001\u8DD1\u4EC0\u4E48\u547D\u4EE4\u3001\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\u300D\u3002",
-    "\u4E0D\u77E5\u9053\u5C31\u76F4\u8BF4\u300C\u4E0D\u77E5\u9053\u300D\uFF0C\u522B\u731C\u2014\u2014\u5BF9\u9762\u4F1A\u62FF\u4F60\u7684\u8BDD\u5F53\u4E8B\u5B9E\u7528\u3002"
-  ].join("\n");
-}
-function answerDeliveryText(thread) {
-  return [
-    "\u3010\u524D\u4E16\u56DE\u590D \xB7 \u6536\u4EF6\u7BB1 " + thread.id + "\u3011",
-    String(thread.answer ?? "").trim(),
-    "",
-    "\uFF08\u8FD9\u6761\u662F " + shortId(thread.to) + " \u5BF9\u4F60\u63D0\u95EE\u7684\u56DE\u7B54\uFF1A\u5199\u8FDB\u4EA4\u63A5\u6587\u6863\u5BF9\u5E94\u5C0F\u8282\uFF0C\u5E76\u628A\u8FD9\u6761\u4ECE\u300C\u7F3A\u53E3\u300D\u91CC\u5212\u6389\u3002\uFF09"
-  ].join("\n");
-}
-function newId(now) {
-  const uuid3 = globalThis.crypto?.randomUUID?.();
-  return (uuid3 ?? String(now) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 12);
-}
-function createInbox(deps) {
-  const now = deps.now ?? (() => Date.now());
-  const save = (thread) => {
-    ensureDir(deps.dir);
-    try {
-      writeFileSync3(threadPath(deps.dir, thread.id), JSON.stringify(thread, null, 2) + "\n", "utf8");
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  return {
-    /** 来生提问：落盘 → 送进前世会话。送不到就标 undeliverable，别让它以为问了。 */
-    async ask(input2) {
-      const question = String(input2.question ?? "").trim();
-      if (question === "") return { ok: false, message: "\u95EE\u9898\u4E0D\u80FD\u662F\u7A7A\u7684\uFF1A\u5199\u6E05\u4F60\u7F3A\u4EC0\u4E48\uFF08\u6539\u54EA\u4E2A\u6587\u4EF6 / \u5F53\u65F6\u4E3A\u4EC0\u4E48\u8FD9\u4E48\u5B9A\uFF09\u3002" };
-      if (String(input2.to ?? "").trim() === "") return { ok: false, message: "\u4E0D\u77E5\u9053\u8BE5\u95EE\u8C01\uFF1A\u8C03\u7528\u65F6\u628A\u524D\u4E16\u4F1A\u8BDD id \u4F20\u7ED9 to\u3002" };
-      const at = now();
-      const thread = {
-        id: newId(at),
-        from: input2.from,
-        to: input2.to,
-        question,
-        status: "open",
-        createdAt: at,
-        updatedAt: at
-      };
-      if (!save(thread)) return { ok: false, message: "\u95EE\u9898\u6CA1\u843D\u76D8\uFF08\u6536\u4EF6\u7BB1\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002\u76F4\u63A5\u95EE\u7528\u6237\u5427\u3002" };
-      const sent = await deps.deliver(thread.to, askDeliveryText(thread)).catch((error62) => ({
-        ok: false,
-        message: String(error62?.message ?? error62)
-      }));
-      if (!sent.ok) {
-        thread.status = "undeliverable";
-        thread.updatedAt = now();
-        save(thread);
-        deps.log("\u6536\u4EF6\u7BB1\uFF1A\u95EE\u9898\u9001\u4E0D\u8FDB\u524D\u4E16\u4F1A\u8BDD", { id: thread.id, to: thread.to, message: String(sent.message ?? "").slice(0, 120) });
-        return {
-          ok: false,
-          thread,
-          message: "\u524D\u4E16\u4F1A\u8BDD\u4E0D\u5728\u7EBF\uFF08\u6216\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF09\uFF0C\u95EE\u9898\u5DF2\u5B58\u6863\u4F46\u9001\u4E0D\u5230\uFF1A\u76F4\u63A5\u95EE\u7528\u6237\uFF0C\u522B\u7B49\u3002"
-        };
-      }
-      deps.log("\u6536\u4EF6\u7BB1\uFF1A\u95EE\u9898\u5DF2\u9001\u8FDB\u524D\u4E16\u4F1A\u8BDD", { id: thread.id, to: thread.to });
-      return { ok: true, thread };
-    },
-    /** 前世回答：落盘 → 送回给来生。 */
-    async answer(input2) {
-      const thread = readThread(deps.dir, String(input2.id ?? "").trim());
-      if (thread === void 0) return { ok: false, message: "\u6CA1\u6709\u8FD9\u6761\u6536\u4EF6\u7BB1\u7EBF\u7A0B\uFF08id \u53EF\u80FD\u4E0D\u5BF9\uFF09\uFF1A\u770B\u770B\u63D0\u793A\u91CC\u90A3\u4E32 id\u3002" };
-      const answer = String(input2.answer ?? "").trim();
-      if (answer === "") return { ok: false, message: "\u56DE\u7B54\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
-      thread.answer = answer;
-      thread.status = "answered";
-      thread.updatedAt = now();
-      if (!save(thread)) return { ok: false, message: "\u56DE\u7B54\u6CA1\u843D\u76D8\uFF08\u6536\u4EF6\u7BB1\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
-      const sent = await deps.deliver(thread.from, answerDeliveryText(thread)).catch((error62) => ({
-        ok: false,
-        message: String(error62?.message ?? error62)
-      }));
-      if (!sent.ok) {
-        deps.log("\u6536\u4EF6\u7BB1\uFF1A\u56DE\u7B54\u9001\u4E0D\u56DE\u6765\u751F\u4F1A\u8BDD", { id: thread.id, from: thread.from, message: String(sent.message ?? "").slice(0, 120) });
-        return { ok: true, thread, message: "\u56DE\u7B54\u5DF2\u5B58\u6863\uFF0C\u4F46\u6CA1\u9001\u8FDB\u5BF9\u9762\u4F1A\u8BDD\uFF08\u5B83\u53EF\u80FD\u5DF2\u5F52\u6863\uFF09\uFF1A\u544A\u8BC9\u7528\u6237\u5230\u8FD9\u91CC\u53D6\u3002" };
-      }
-      return { ok: true, thread };
-    },
-    list: () => listThreads(deps.dir),
-    get: (id) => readThread(deps.dir, id)
   };
 }
 
