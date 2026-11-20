@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.141" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.142" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31916,6 +31916,8 @@ function createServicesKernel(services, options) {
           cwd: row.header?.cwd,
           createdAt: row.header?.createdAt,
           origin: row.header?.origin,
+          agentPreset: row.header?.agentPreset,
+          delegationDepth: typeof row.header?.delegationDepth === "number" ? row.header.delegationDepth : 0,
           headerTime: row.header?.createdAt
         }));
       } catch (error62) {
@@ -31923,6 +31925,7 @@ function createServicesKernel(services, options) {
         records = [];
       }
     }
+    records = records.filter((row) => (row.origin ?? "") !== "subagent" && (row.delegationDepth ?? 0) === 0);
     if (records.length === 0) {
       const listLive = fn(services.sessions, "list");
       if (!listLive) {
@@ -31936,13 +31939,15 @@ function createServicesKernel(services, options) {
       const live = listLive.call(services.sessions) ?? [];
       records = (live ?? []).filter((row) => typeof row?.id === "string").map((row) => ({
         id: String(row.id),
-        cwd: row.cwd,
+        cwd: row.cwd ?? row.header?.origin,
         createdAt: row.createdAt,
-        origin: row.origin,
+        origin: row.origin ?? row.header?.origin,
+        delegationDepth: row.delegationDepth ?? row.header?.delegationDepth ?? 0,
+        agentPreset: row.header?.agentPreset,
         headerTime: row.createdAt
       }));
     }
-    records = records.filter((row) => row.origin !== "subagent");
+    records = records.filter((row) => (row.origin ?? "") !== "subagent" && (row.delegationDepth ?? 0) === 0);
     for (const [id, row] of [...freshSessions]) {
       if (records.some((item) => item.id === id)) freshSessions.delete(id);
       else records.push(row);
