@@ -15,7 +15,7 @@ import {
   type HandoffRouteDeps,
 } from './routes.js'
 import { buildHandoffTools } from './tools.js'
-import { createHandoffService, type HandoffService } from './service.js'
+import { createHandoffService, type HandoffDeps, type HandoffService } from './service.js'
 import { createInbox } from './inbox.js'
 
 interface LooseContext {
@@ -53,6 +53,17 @@ export function startHandoff(
     newSession: (args: { workspace?: string }) => Promise<{ ok: boolean; sessionId?: string; message?: string }>
     sendPrompt: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
     sessionCwd: (sessionId: string) => Promise<string | undefined>
+    /** 读会话标题（转世要叫「<前世名>转世<N>」）。拿不到就不改名，不编名字。 */
+    sessionTitle?: (sessionId: string) => Promise<string | undefined> | string | undefined
+    /** 改会话标题（端口可能没有这一代）。 */
+    renameSession?: (sessionId: string, title: string) => Promise<{ ok: boolean; message?: string }>
+    /**
+     * 群交接（2026-11-20 方案 S1/S4/S5/S6/S7）。可选：没有群就没这回事。
+     *
+     * 为什么在插件这边做而不是让前世自己做：转生到点后前世的工具可能已经被收走，
+     * 它没法自己去群里发预告、拉人、改名片。
+     */
+    groupHandover?: HandoffDeps['groupHandover']
     handoffDir?: string
   },
 ): HandoffHandle {
@@ -65,6 +76,9 @@ export function startHandoff(
     newSession: input.newSession,
     sendPrompt: input.sendPrompt,
     sessionCwd: input.sessionCwd,
+    ...(input.sessionTitle === undefined ? {} : { sessionTitle: input.sessionTitle }),
+    ...(input.renameSession === undefined ? {} : { renameSession: input.renameSession }),
+    ...(input.groupHandover === undefined ? {} : { groupHandover: input.groupHandover }),
   })
   /*
    * 收件箱（2026-11-17）：前世 ↔ 来生的电话线。

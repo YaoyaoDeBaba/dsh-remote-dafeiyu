@@ -62,6 +62,40 @@ export interface HandoffDeps {
   sendPrompt: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
   /** 当前会话的工作目录（转生要用它做新会话的 cwd）。 */
   sessionCwd: (sessionId: string) => Promise<string | undefined>
+  /** 读会话标题（转世重命名要用：<前世名>转世<N>）。 */
+  sessionTitle?: (sessionId: string) => Promise<string | undefined> | string | undefined
+  /** 改会话标题。 */
+  renameSession?: (sessionId: string, title: string) => Promise<{ ok: boolean; message?: string }>
+  /**
+   * 群交接（2026-11-20 方案 S1/S4/S5/S6/S7）。**可选**：没有群就没这回事。
+   *
+   * 全部由插件代发/代调：此刻"前世"可能已经没有工具（这一世代到点后 shell 会被收走），
+   * 不能指望它自己去群里说话、拉人、改名片。
+   */
+  groupHandover?: {
+    /** 这个会话在哪个群、什么身份；不在群里返回 undefined。 */
+    locate: (sessionId: string) =>
+      | {
+          groupId: string
+          groupName: string
+          isOwner: boolean
+          role?: string
+          /** 这条群广播该发给谁：群主发全员，普通成员发群主。 */
+          recipients: string[]
+        }
+      | undefined
+    /** 以该会话的身份往群里发一条（raw，不套普通投递头）。 */
+    post: (groupId: string, sessionId: string, text: string, to?: string[]) => Promise<{ ok: boolean; message?: string }>
+    /** 把新会话拉进群。 */
+    invite: (groupId: string, sessionIds: string[]) => Promise<{ ok: boolean; message?: string }>
+    /** 把成员身份设成 role。 */
+    setRole: (groupId: string, sessionId: string, role: string) => void
+    /** 转移群主。 */
+    setOwner: (groupId: string, sessionId: string) => void
+    /** 把成员移出群。 */
+    remove: (groupId: string, sessionId: string) => void
+
+  }
   /** 等待交接文档落盘的轮询间隔（毫秒）。 */
   pollMs?: number
   /** 等待上限（毫秒）。 */
@@ -166,6 +200,30 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
   }
 
   /** 交接文档落盘且带标记 = 写作完成。返回 'ok' | 'pending' | 'empty'。 */
+  /**
+   * 「<前世名>转世<N>」的序号（2026-11-20 方案，用户拍板：**按 base 累加**）。
+   *
+   * 计数器落在 handoffDir/rebirth-gen.json：同 base 已经转过几代就 +1。
+   * 前世本身已叫 `…转世K` 时先剥掉后缀再算，避免出现 `转世1转世1`。
+   */
+  const nextRebirthGen = (base: string): number => {
+    const file = path.join(deps.handoffDir, 'rebirth-gen.json')
+    let map: Record<string, number> = {}
+    try {
+      map = JSON.parse(readFileSync(file, 'utf8')) as Record<string, number>
+    } catch {
+      map = {}
+    }
+    const value = Number(map[base] ?? 0) + 1
+    map[base] = value
+    try {
+      writeFileSync(file, JSON.stringify(map, null, 2) + '\n', 'utf8')
+    } catch {
+      /* 写不进去就用算出来的数，下次会重新从 1 开始——不会因此卡住转生 */
+    }
+    return value
+  }
+
   const probeFile = (filePath: string): 'ok' | 'pending' | 'empty' => {
     try {
       if (!existsSync(filePath)) return 'pending'
@@ -184,6 +242,97 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     deps.log('转生/分身作业结束', { jobId, status, message: message?.slice(0, 120) })
   }
 
+
+  /**
+   * S4~S7 · 群交接（2026-11-20 方案，用户已拍板）：
+   * 重命名 → 拉群 → 复制身份（群主则转移）→ 群广播「后续由谁接手」→ 前世退群。
+   *
+   * 顺序不能换：先改名再拉人，群成员表里一进来就是最终名字；先广播再退群，否则前世已经不在群里、发不出去。
+   */
+  const handoverGroup = async (job: HandoffJob, childId: string): Promise<string | undefined> => {
+    const h = deps.groupHandover
+    if (h === undefined) return undefined
+    let spot: ReturnType<NonNullable<typeof h.locate>>
+    try {
+      spot = h.locate(job.sessionId)
+    } catch {
+      return undefined
+    }
+    if (spot === undefined) return undefined
+    const notes: string[] = []
+
+    // S4 重命名：<前世名>转世<N>
+    let title: string | undefined
+    try {
+      const parentTitle = String((await deps.sessionTitle?.(job.sessionId)) ?? '').trim()
+      const rename = deps.renameSession
+      if (parentTitle !== '' && rename !== undefined) {
+        const base = parentTitle.replace(/\s*转世\d+$/, '').trim()
+        const next = base + '转世' + String(nextRebirthGen(base))
+        const renamed = await rename(childId, next)
+        if (renamed.ok) title = next
+        else notes.push('改名失败：' + String(renamed.message ?? '未知原因'))
+      }
+    } catch (error) {
+      notes.push('改名抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+    }
+
+    // S5 拉群 + 身份 + 群主转移
+    let invitedOk = false
+    try {
+      const invited = await h.invite(spot.groupId, [childId])
+      invitedOk = invited.ok
+      if (!invited.ok) notes.push('拉群失败：' + String(invited.message ?? '未知原因'))
+      else {
+        if (typeof spot.role === 'string' && spot.role.trim() !== '') h.setRole(spot.groupId, childId, spot.role.trim())
+        if (spot.isOwner) h.setOwner(spot.groupId, childId)
+      }
+    } catch (error) {
+      notes.push('拉群抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+    }
+    /*
+     * 没拉进来就别宣布交接完成、也别退群：
+     * 群满 12 人时 invite 会 ok:false 但**前世还在群里**——这时先把原因说清楚，
+     * 用户手动腾个位置再拉；要是这时把前世退了，群里就成了「没人接手」的空档。
+     */
+    if (!invitedOk) {
+      try {
+        await h.post(
+          spot.groupId,
+          job.sessionId,
+          '【交接未完成 · ' + spot.groupName + '】\n转世已经建好了，但**没能把 TA 拉进群**（' +
+            String(notes.find((note) => note.startsWith('拉群')) ?? '原因未知') +
+            '）。\n我先留在群里继续顶，请腾出一个位置后再拉一次：' +
+            (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）。',
+          spot.recipients,
+        )
+      } catch {
+        /* 说不上话也不影响上面的 notes 被带进 job.message */
+      }
+      return notes.join('；')
+    }
+
+    // S6 群广播（发完再退群）
+    const childLabel = (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）'
+    const done = spot.isOwner
+      ? '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手，群主已一并转给他。'
+      : '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手。'
+    try {
+      const posted = await h.post(spot.groupId, job.sessionId, done, spot.recipients)
+      if (!posted.ok) notes.push('群广播失败：' + String(posted.message ?? '未知原因'))
+    } catch (error) {
+      notes.push('群广播抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+    }
+
+    // S7 前世退群（用户拍板：同一角色不留两个 agent）
+    try {
+      h.remove(spot.groupId, job.sessionId)
+    } catch (error) {
+      notes.push('退群失败：' + String((error as Error)?.message ?? error).slice(0, 80))
+    }
+
+    return notes.length === 0 ? undefined : notes.join('；')
+  }
   /** ③④：交接文档到手 → 建会话 → 发第一句。 */
   const spawnHeir = async (job: HandoffJob, plan: HandoffPlan): Promise<void> => {
     touch(job, { status: 'creating' })
@@ -234,7 +383,18 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       finish(job.id, 'failed', `新会话已建好（${created.sessionId}），首句抛错：${String((error as Error)?.message ?? error).slice(0, 120)}`)
       return
     }
-    finish(job.id, 'done', '交接完成，新会话已报到（等你点头）')
+    // S4~S7：群交接（不在群里就什么都不做）
+    let handoverNote: string | undefined
+    try {
+      handoverNote = await handoverGroup(job, created.sessionId)
+    } catch (error) {
+      handoverNote = '群交接抛错：' + String((error as Error)?.message ?? error).slice(0, 100)
+    }
+    finish(
+      job.id,
+      'done',
+      handoverNote === undefined ? '交接完成，新会话已报到（等你点头）' : '交接完成，但群交接有遗留：' + handoverNote,
+    )
   }
 
   const watch = (job: HandoffJob, plan: HandoffPlan): void => {
@@ -364,6 +524,19 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
        * shell/文件工具会被平台收走），那就永远等不到文档、整条转生链断在最后一步。
        * 给了 content 就跳过"让前世写文档"，直接进建会话那一步。
        */
+      /*
+       * S1 · 转生预告（2026-11-20 方案）：在群里的话先说一声，不然群友只会看到「这个人突然不回话了」。
+       * 由插件代发——前世此刻可能已经没有工具。**必须早于下面那条 direct 早返回**，
+       * 否则「插件代写文档」这条路（前世没工具）群里就一条预告也看不到。
+       */
+      const spot = deps.groupHandover?.locate(id)
+      if (spot !== undefined && deps.groupHandover !== undefined) {
+        const announce = spot.isOwner
+          ? '【转生预告 · ' + spot.groupName + '】\n我要转生了（上下文超载）：先写交接文档，转世起来后我会把群主和身份一并交给他。\n交接完成前这条群照常运作，分工照旧由我下。'
+          : '【转生预告 · ' + spot.groupName + '】\n我的上下文已超载 → 将转生交接给下一世 → 稍后将我的转世拉进群。\n交接期间我的群消息可能迟缓，急事请直接 @ 我。'
+        void deps.groupHandover.post(spot.groupId, id, announce, spot.recipients).catch(() => ({ ok: false }))
+      }
+
       const direct = String(content ?? '').trim()
       if (direct !== '') {
         try {

@@ -1519,6 +1519,14 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   }
   softProbe.subagents = subagentsHandle?.probe
 
+  /**
+   * 群交接要调拉群服务，而 handoff 比 groups **先** start（本文件里就是下面那一块）。
+   *
+   * 所以声明提到这里、赋值留在原处：handoff 的 deps 里每个用到它的地方都在**调用时**
+   * 才去读。要是建 deps 时就把 groupsHandle 收进闭包，转生时拿到的永远是那一刻的
+   * undefined——功能看着接上了，实际一次也不会生效。
+   */
+  let groupsHandle: GroupsHandle | undefined
   let handoffHandle: HandoffHandle | undefined
   try {
     handoffHandle = startHandoff(ctx as never, {
@@ -1595,6 +1603,126 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
           return undefined
         }
       },
+      /** 前世的名字（转世要叫「<前世名>转世<N>」，拿不到名字就跳过改名，不编一个）。 */
+      sessionTitle: async (sessionId) => {
+        const port = kernel
+        const list = port?.listSessions
+        if (!port || !list) return undefined
+        try {
+          const rows = await list.call(port, 200)
+          const title = rows.find((row) => row.summary?.id === sessionId)?.summary?.title
+          return typeof title === 'string' && title.trim() !== '' ? title.trim() : undefined
+        } catch {
+          return undefined
+        }
+      },
+      renameSession: async (sessionId, title) => {
+        const port = kernel
+        const rename = port?.renameSession
+        if (!port || !rename) return { ok: false, message: '主机这一代不支持改会话标题（没有 renameSession）' }
+        try {
+          const renamed = await rename.call(port, sessionId, title)
+          return renamed.ok ? { ok: true } : { ok: false, message: renamed.message ?? '改标题被拒绝' }
+        } catch (error) {
+          return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+        }
+      },
+      /*
+       * 群交接（2026-11-20 方案 S1/S4/S5/S6/S7）。
+       *
+       * 每个方法都在**调用时**读 groupsHandle：建 deps 这会儿 groups 还没 start，
+       * 捕获当时的值等于永远拿不到群（见上面那条声明处的注释）。
+       */
+      groupHandover: {
+        locate: (sessionId) => {
+          const service = groupsHandle?.service
+          if (service === undefined) return undefined
+          for (const group of service.list()) {
+            // 已解散的群只剩一条记录给用户翻，对成员不可用，不能拿它当交接现场
+            if (group.dissolvedAt !== undefined) continue
+            const member = group.members.find((row) => row.sessionId === sessionId)
+            if (member === undefined) continue
+            const isOwner = group.ownerSessionId === sessionId
+            const others = group.members.map((row) => row.sessionId).filter((id) => id !== sessionId)
+            const role = typeof member.role === 'string' ? member.role.trim() : ''
+            return {
+              groupId: group.id,
+              groupName: group.name,
+              isOwner,
+              /**
+               * 群主发全员、普通成员只发群主：换人这事群里得看见，
+               * 但没必要让每个群员都收两遍（S1 + S6）。
+               */
+              recipients: isOwner ? others : group.ownerSessionId === undefined ? [] : [group.ownerSessionId],
+              ...(role === '' ? {} : { role }),
+            }
+          }
+          return undefined
+        },
+        post: async (groupId, sessionId, text, to) => {
+          const service = groupsHandle?.service
+          if (service === undefined) return { ok: false, message: '拉群服务没起来' }
+          try {
+            const posted = await service.post({
+              id: groupId,
+              from: sessionId,
+              text,
+              ...(to === undefined ? {} : { targets: to }),
+              kind: 'agent',
+              // 预告/交接完成是已经写好的整段话，套普通投递头（名单、怎么回）就变味了
+              raw: true,
+            })
+            return posted.ok ? { ok: true } : { ok: false, message: posted.message ?? '群消息没送出去' }
+          } catch (error) {
+            return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+          }
+        },
+        invite: async (groupId, ids) => {
+          const service = groupsHandle?.service
+          if (service === undefined) return { ok: false, message: '拉群服务没起来' }
+          try {
+            const invited = await service.invite({ id: groupId, members: ids })
+            if (!invited.ok) return { ok: false, message: invited.message ?? '邀请被拒绝' }
+            /*
+             * invite 在「群满 12 人」时也是 ok:true（只是没加进去），
+             * 所以要回头核对成员表——不然 S6 会对着一个根本没进群的人说"由他接手"。
+             */
+            const members = invited.group?.members ?? []
+            const missing = ids.filter((id) => !members.some((row) => row.sessionId === id))
+            return missing.length === 0
+              ? { ok: true }
+              : { ok: false, message: '没进群（群满 12 人或会话不可用）：' + missing.join('、') }
+          } catch (error) {
+            return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }
+          }
+        },
+        setRole: (groupId, sessionId, role) => {
+          const service = groupsHandle?.service
+          if (service === undefined) return
+          service.setMemberRole({ id: groupId, sessionId, role })
+        },
+        setOwner: (groupId, sessionId) => {
+          const service = groupsHandle?.service
+          if (service === undefined) return
+          service.setOwner({ id: groupId, sessionId })
+        },
+        remove: (groupId, sessionId) => {
+          const service = groupsHandle?.service
+          if (service === undefined) return
+          /*
+           * 退群要通知剩下的人，是异步的——转生流程不等它，也不该被它判失败。
+           * 但失败不能一句都不留：前世没退成 = 群里留着两个同一角色，日志是唯一的痕迹。
+           */
+          void Promise.resolve()
+            .then(() => service.remove({ id: groupId, sessionId }))
+            .then((result) => {
+              if (result?.ok !== true) log('群交接：前世退群没成', { message: String(result?.message ?? '未知原因').slice(0, 160) })
+            })
+            .catch((error: unknown) => {
+              log('群交接：前世退群抛错', { message: String((error as Error)?.message ?? error).slice(0, 160) })
+            })
+        },
+      },
     })
   } catch (error) {
     handoffHandle = undefined
@@ -1610,7 +1738,6 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
    * 内核没有顶层互发的 API，所以这条线只能走插件自己的投递口——和「前世↔来生收件箱」同一套。
    * 投递用 sendPrompt（空闲会话会被唤醒），失败原样回给发起方，不静默。
    */
-  let groupsHandle: GroupsHandle | undefined
   try {
     groupsHandle = startGroups(ctx as never, {
       dshHome: resolveDshHome(process.env),

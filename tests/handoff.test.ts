@@ -98,6 +98,73 @@ function fakeDeps(over: Partial<HandoffDeps> = {}) {
   return { deps, calls }
 }
 
+/**
+ * 群交接的假实现（2026-11-20 S1/S4/S5/S6/S7）。
+ *
+ * 这里只记「被调了什么、谁收的」，不模拟群服务本身——那由 groups 自己的判据管；
+ * 这一层要钉的是**转生流程有没有按顺序、按身份把它用对**。
+ */
+interface HandoverCall {
+  kind: 'locate' | 'post' | 'invite' | 'setRole' | 'setOwner' | 'remove'
+  groupId?: string
+  sessionId?: string
+  ids?: string[]
+  role?: string
+  text?: string
+  to?: string[]
+}
+
+function fakeGroupHandover(options: {
+  isOwner?: boolean
+  role?: string
+  /** 群里除自己以外的人（群主时是"全员"，普通成员时第一个是群主）。 */
+  others?: string[]
+  /** 模拟"这个会话不在任何群里"。 */
+  absent?: boolean
+  /** 让某一环炸掉，验证失败不吞掉整条转生。 */
+  throwOn?: 'invite' | 'post' | 'remove'
+} = {}): { handover: NonNullable<HandoffDeps['groupHandover']>; calls: HandoverCall[] } {
+  const isOwner = options.isOwner ?? true
+  const others = options.others ?? ['session-owner', 'session-b']
+  const groupName = '反向联调'
+  const calls: HandoverCall[] = []
+  const handover: NonNullable<HandoffDeps['groupHandover']> = {
+    locate: (sessionId) => {
+      calls.push({ kind: 'locate', sessionId })
+      if (options.absent === true) return undefined
+      return {
+        groupId: 'group-1',
+        groupName,
+        isOwner,
+        ...(options.role === undefined ? {} : { role: options.role }),
+        // 群主发全员、普通成员只发群主：S1/S6 唯一的分歧点
+        recipients: isOwner ? [...others] : [others[0]!],
+      }
+    },
+    post: async (groupId, sessionId, text, to) => {
+      calls.push({ kind: 'post', groupId, sessionId, text, ...(to === undefined ? {} : { to }) })
+      if (options.throwOn === 'post') throw new Error('投递炸了')
+      return { ok: true }
+    },
+    invite: async (groupId, ids) => {
+      calls.push({ kind: 'invite', groupId, ids })
+      if (options.throwOn === 'invite') throw new Error('群满了')
+      return { ok: true }
+    },
+    setRole: (groupId, sessionId, role) => {
+      calls.push({ kind: 'setRole', groupId, sessionId, role })
+    },
+    setOwner: (groupId, sessionId) => {
+      calls.push({ kind: 'setOwner', groupId, sessionId })
+    },
+    remove: (groupId, sessionId) => {
+      calls.push({ kind: 'remove', groupId, sessionId })
+      if (options.throwOn === 'remove') throw new Error('退群炸了')
+    },
+  }
+  return { handover, calls }
+}
+
 const GOOD_DOC = "# 交接\n\n## 目标\n把交接文档写全。\n## 现状（做到哪一步）\n判据已过。\n## 已完成（不要重做）\n- 交接指令重写：src/handoff/prompt.ts:120\n## 未完成 / 下一步\n- 打开 src/handoff/service.ts 跑 node --test dist/tests/handoff.test.js，全绿算完成\n## 等用户拍板\n无\n## 后台在跑\n无\n## 边界（不要碰的东西）\n无\n## 长期记忆要点\n- 2026-11-17 交接文档在 D:/handoff/x.md\n## 关键决定与理由\n补写用打回，而不是重发整份指令。\n## 坑与教训（踩过的坑、被否掉的方案）\n无\n## 工作区与版本\n分支 release-main，脏文件 0。\n## 相关文件\nC:/work/proj/src/handoff/prompt.ts\n\nDAFEIYU_HANDOFF_OK: D:/handoff/x.md"
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -307,6 +374,171 @@ test('作业：首句发不出去时，状态要说明"会话已建但首句没�
     assert.match(String(job.message), /首句没发出去/)
     assert.equal(calls.created.length, 1, '会话已经建了，不假装没建')
     assert.equal(job.newSessionId, 'session-new-1')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('群交接：群主转生 → 全员收到预告，转世改名、进群、继承身份、接任群主，最后前世退群', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-group-owner-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: true, role: '前端主程', others: ['session-2', 'session-3'] })
+    const renamed: Array<{ sessionId: string; title: string }> = []
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => '2-3 前端联调',
+      renameSession: async (sessionId, title) => {
+        renamed.push({ sessionId, title })
+        return { ok: true }
+      },
+      groupHandover: handover,
+    })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    assert.equal(started.ok, true)
+
+    // S1 必须在 start 那一刻就发：转生开始后前世可能已经没有 group_post 了，只能插件代发
+    const announce = calls.find((call) => call.kind === 'post')
+    assert.ok(announce, '没发转生预告，群友只会看到「这个人突然不回话了」')
+    assert.match(String(announce.text), /转生预告/)
+    assert.deepEqual(announce.to, ['session-2', 'session-3'], '群主转生 → 预告发全员')
+
+    writeFileSync(service.status(started.jobId!)!.filePath, GOOD_DOC, 'utf8')
+    await wait(160)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done', String(job.message ?? ''))
+
+    assert.deepEqual(renamed, [{ sessionId: 'session-new-1', title: '2-3 前端联调转世1' }])
+    const invite = calls.find((call) => call.kind === 'invite')
+    assert.deepEqual(invite?.ids, ['session-new-1'], '转世要进群，否则它接不到群消息')
+    assert.equal(calls.find((call) => call.kind === 'setRole')?.role, '前端主程', '身份要跟着角色走，不能给新人一张白纸')
+    assert.deepEqual(
+      calls.filter((call) => call.kind === 'setOwner').map((call) => call.sessionId),
+      ['session-new-1'],
+      '群主转生要把群主交出去，否则分工还得用户手动改',
+    )
+
+    // 注意用「【交接完成」：S1 正文里也有「交接完成前这条群照常运作」，只搜「交接完成」会认错
+    const donePost = calls.filter((call) => call.kind === 'post').find((call) => /【交接完成/.test(String(call.text)))
+    assert.ok(donePost, 'S6 没发：群里不知道后面该 @ 谁')
+    assert.deepEqual(donePost.to, ['session-2', 'session-3'], '交接完成也要让全员知道')
+    assert.match(String(donePost.text), /new-1/, 'S6 要带转世短号，群友才认得出是谁接手')
+    assert.match(String(donePost.text), /群主已一并转给他/)
+
+    const removeAt = calls.findIndex((call) => call.kind === 'remove')
+    assert.ok(removeAt > 0, '前世交接完要退群：同一个角色留两个 agent，@ 谁都会答')
+    assert.equal(calls[removeAt]!.sessionId, 'session-abc', '退群的是前世，不是转世')
+    assert.ok(removeAt > calls.indexOf(donePost), '先广播再退群：反了的话前世已经不在群里，那句 S6 根本发不出去')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('群交接：普通成员只发群主；序号按 base 累加，再转一次是「转世2」', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-group-gen-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: false, role: '后端', others: ['session-owner'] })
+    const renamed: string[] = []
+    let title = 'X'
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => title,
+      renameSession: async (_sessionId, next) => {
+        renamed.push(next)
+        // 真机上改完名，下一次转生读到的就是这个标题
+        title = next
+        return { ok: true }
+      },
+      groupHandover: handover,
+    })
+    const live = createHandoffService(deps)
+    try {
+      const first = await live.start('rebirth', 'session-abc')
+      writeFileSync(live.status(first.jobId!)!.filePath, GOOD_DOC, 'utf8')
+      await wait(160)
+      assert.equal(live.status(first.jobId!)!.status, 'done')
+      const second = await live.start('rebirth', 'session-new-1')
+      writeFileSync(live.status(second.jobId!)!.filePath, GOOD_DOC, 'utf8')
+      await wait(160)
+      assert.equal(live.status(second.jobId!)!.status, 'done', String(live.status(second.jobId!)!.message ?? ''))
+
+      assert.deepEqual(renamed, ['X转世1', 'X转世2'], '前世已叫「转世1」时要先剥后缀再 +1，不能叠成转世1转世1')
+      const announces = calls.filter((call) => call.kind === 'post' && /转生预告/.test(String(call.text)))
+      assert.equal(announces.length, 2)
+      for (const announce of announces) assert.deepEqual(announce.to, ['session-owner'], '普通成员只发群主，别在群里刷两遍')
+      assert.equal(calls.filter((call) => call.kind === 'setOwner').length, 0, '前世不是群主就别动群主')
+      assert.equal(calls.filter((call) => call.kind === 'setRole').length, 2, '每一世都要继承身份')
+      assert.equal(calls.filter((call) => call.kind === 'remove').length, 2)
+    } finally {
+      live.stop()
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('群交接：不在群里就一个群动作都不发，转生照常完成', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-group-none-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ absent: true })
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => 'X',
+      renameSession: async () => ({ ok: true }),
+      groupHandover: handover,
+    })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    writeFileSync(service.status(started.jobId!)!.filePath, GOOD_DOC, 'utf8')
+    await wait(160)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done')
+    assert.match(String(job.message), /等你点头/)
+    assert.ok(!String(job.message).includes('群交接'), '没群的人不该冒出「群交接有遗留」')
+    // 只查了归属（S1 一次、收尾一次），其余动作一个都不许发
+    assert.deepEqual(calls.map((call) => call.kind), ['locate', 'locate'])
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('群交接：某一环抛错只记遗留，不拖垮已经起来的转世，后面两步照走', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-group-boom-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({
+      isOwner: true,
+      role: '前端主程',
+      others: ['session-2', 'session-3'],
+      throwOn: 'invite',
+    })
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => 'X',
+      renameSession: async () => ({ ok: true }),
+      groupHandover: handover,
+    })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    writeFileSync(service.status(started.jobId!)!.filePath, GOOD_DOC, 'utf8')
+    await wait(160)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done', '群交接是收尾，新会话已经建好了，不能因此判死')
+    assert.match(String(job.message), /群交接有遗留/)
+    assert.match(String(job.message), /拉群/, '遗留里要点名是哪一环，不然面板上只有一句「有遗留」')
+    /*
+     * 拉群失败 ⇒ **不许**宣布交接完成、也**不许**退群（2026-11-20 修）：
+     * 否则群里留下「前世已经走了、新人没进来」的空档。改成发一条「交接未完成」，
+     * 让前世继续顶着，用户腾位置后再拉。
+     */
+    assert.ok(
+      calls.some((call) => call.kind === 'post' && /【交接未完成/.test(String(call.text))),
+      '拉群失败要明说，不能默默不吭声',
+    )
+    assert.ok(!calls.some((call) => call.kind === 'post' && /【交接完成/.test(String(call.text))), '没进群就别宣布完成')
+    assert.ok(!calls.some((call) => call.kind === 'remove'), '没进群就别把前世踢走')
     service.stop()
   } finally {
     rmSync(dir, { recursive: true, force: true })

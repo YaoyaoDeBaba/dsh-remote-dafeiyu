@@ -667,7 +667,15 @@ export function createGroups(deps: GroupsDeps) {
      * 一条群消息：`kind:'user'` 是用户在界面上发的（targets = 他 @ 的人），
      * `kind:'agent'` 是某个成员用 group_post 发的。**只投给 targets**。
      */
-    async post(input: { id: string; from: string; text: string; targets?: string[]; kind?: EntryKind }): Promise<{
+    async post(input: {
+      id: string
+      from: string
+      text: string
+      targets?: string[]
+      kind?: EntryKind
+      /** true = 原样投递（转生预告/交接完成这种已写好的整段话），不套普通投递头。 */
+      raw?: boolean
+    }): Promise<{
       ok: boolean
       entry?: GroupEntry
       delivered?: DeliveryResult[]
@@ -711,7 +719,8 @@ export function createGroups(deps: GroupsDeps) {
       } else if (kind === 'agent' && asked.length === 0 && owner !== undefined && owner !== from) {
         targets = [owner]
       }
-      if (kind === 'agent' && from === owner && targets.length > MAX_DISPATCH_TARGETS) {
+      // raw 是「成品整段话」（转生预告/交接完成），不是派活，不该受派活个数上限约束。
+      if (kind === 'agent' && from === owner && targets.length > MAX_DISPATCH_TARGETS && input.raw !== true) {
         return { ok: false, message: '群主一次最多派 ' + MAX_DISPATCH_TARGETS + ' 个活：拆成几轮。' }
       }
 
@@ -734,7 +743,7 @@ export function createGroups(deps: GroupsDeps) {
       if (isDispatch) armDispatch(group, asked, text)
 
       if (targets.length === 0) return { ok: true, entry }
-      const results = await deliverEach(group, kind === 'user' ? 'user' : from, body, targets, isDispatch)
+      const results = await deliverEach(group, kind === 'user' ? 'user' : from, body, targets, isDispatch || input.raw === true)
       const failed = results.filter((row) => !row.ok)
       deps.log('群投递', { id: group.id, targets: targets.length, failed: failed.length })
       return {
