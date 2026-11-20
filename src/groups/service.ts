@@ -233,6 +233,9 @@ function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string 
     '· 回复用 group_post(groupId=' + group.id + ', text=...)，**首行写「摘要：一句话」**（群里只显示摘要，全文点开才看）；',
     '· 不带 to 时默认回给群主（汇报对象）；to 可以填对方短号或会话 id；',
     '· 想看最近记录用 group_read(groupId=' + group.id + ')。',
+    '· 如果你的工具列表里没有 group_*（老会话），用 HTTP 兜底：把你自己的会话 id 和正文 POST 到',
+    '  <DSH Web GUI 的 origin>/api/dsh-remote-dafeiyu/groups/agent-post（本机回环，带 x-drc-pair: 1；',
+    '  body = {"groupId":"' + group.id + '","sessionId":"<你的会话id>","text":"…"}）。读用 agent-read。',
     '',
     '如果你现在正忙，先把这条记下；有空再回。知道有这个群、知道怎么回就够了。',
   ].join('\n')
@@ -245,6 +248,34 @@ export function memberNotice(group: GroupRecord, subject: string, action: '加�
     '【群 ' + group.name + ' · ' + group.id + '】',
     who + action + '了本群。',
     '现在的成员：' + rosterLine(group, titleOf),
+  ].join('\n')
+}
+
+/**
+ * 「分工请求」：用户一次 @ 多个人时，投给群主的那条（2026-11-20）。
+ *
+ * 之前的实现只把 targets 换成群主，正文还是原话——于是群主看到的是「本轮只有你」，
+ * 既不知道用户 @ 了谁，也不知道自己被要求分工（真机报的正是这个）。
+ */
+export function dispatchText(
+  group: GroupRecord,
+  asked: string[],
+  text: string,
+  titleOf?: (sessionId: string) => string | undefined,
+): string {
+  const names = asked.map((id) => {
+    const title = titleOf?.(id)?.trim()
+    return title !== undefined && title !== '' ? title : shortId(id)
+  })
+  return [
+    '【分工请求 · ' + group.name + ' · ' + group.id + '】',
+    '用户 @ 了：' + names.join('、'),
+    '',
+    '原话：' + text.trim(),
+    '',
+    '你来安排分工：用 group_post(groupId=' + group.id + '，text=...，to=[...]) 派活（一轮最多 5 个）。',
+    '派完在群里回一条摘要（首行「摘要：…」）。',
+    '90 秒内没人派活，系统会直接把原话投给他们，并记一笔「群主未分工」。',
   ].join('\n')
 }
 
@@ -292,6 +323,8 @@ export function createGroups(deps: GroupsDeps) {
     from: string,
     text: string,
     targets: string[],
+    /** true = 原样投递（分工请求这种已经写好的整段话），不再套普通投递头。 */
+    raw = false,
   ): Promise<DeliveryResult[]> => {
     const out: DeliveryResult[] = []
     for (const target of targets) {
@@ -307,7 +340,7 @@ export function createGroups(deps: GroupsDeps) {
       lastDeliveryAt.set(key, now())
       // 每个收件人一份正文：协作对象里不能出现他自己；第二次起只带极短头部。
       const brief = group.briefed?.[target] !== undefined
-      const body = deliveryText(group, from, text, targets, titleOf, target, brief)
+      const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief)
       const result = await deps.deliver(target, body).catch((error: unknown) => ({
         ok: false,
         message: String((error as Error)?.message ?? error),
@@ -658,9 +691,16 @@ export function createGroups(deps: GroupsDeps) {
        * agent 侧：不带 to 时默认回给群主（汇报对象），这样一轮里消息路径是
        * 「群主 → 成员」与「成员 → 群主」，不会 A↔B 来回刷。
        */
+      /*
+       * 用户一次 @ 多个人 ⇒ 只投群主，而且投的是**分工请求**（不是原话）：
+       * 群主得知道「用户 @ 了谁」和「我被要求分工」，否则它看到的就是一句「本轮只有你」。
+       */
+      const isDispatch = kind === 'user' && owner !== undefined && asked.length >= 2
       let targets = asked
-      if (kind === 'user' && owner !== undefined && asked.length >= 2) {
+      let body = text
+      if (isDispatch) {
         targets = [owner]
+        body = dispatchText(group, asked, text, titleOf)
       } else if (kind === 'agent' && asked.length === 0 && owner !== undefined && owner !== from) {
         targets = [owner]
       }
@@ -672,7 +712,8 @@ export function createGroups(deps: GroupsDeps) {
         at: now(),
         kind,
         from,
-        ...(targets.length > 0 ? { targets } : {}),
+        // 记录里写用户真正 @ 的人（群里要能看出 @全体），投递才用 owner-only 的 targets
+        ...(asked.length > 0 ? { targets: asked } : {}),
         text,
         ...(kind === 'agent' ? { summary: summarize(text) } : {}),
       }
@@ -683,12 +724,10 @@ export function createGroups(deps: GroupsDeps) {
       // 群主派了活 ⇒ 取消这一轮的降级计时器
       if (kind === 'agent' && from === owner && targets.length > 0) cancelDispatch(group.id)
       // 用户 @ 多人 ⇒ 起一个降级计时器（超时直投被 @ 的人）
-      if (kind === 'user' && owner !== undefined && asked.length >= 2) {
-        armDispatch(group, asked, text)
-      }
+      if (isDispatch) armDispatch(group, asked, text)
 
       if (targets.length === 0) return { ok: true, entry }
-      const results = await deliverEach(group, kind === 'user' ? 'user' : from, text, targets)
+      const results = await deliverEach(group, kind === 'user' ? 'user' : from, body, targets, isDispatch)
       const failed = results.filter((row) => !row.ok)
       deps.log('群投递', { id: group.id, targets: targets.length, failed: failed.length })
       return {

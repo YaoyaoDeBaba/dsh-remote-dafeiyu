@@ -19,6 +19,15 @@ export const GROUPS_OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 export const GROUPS_ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
 export const GROUPS_DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
+/**
+ * agent 兜底入口（2026-11-20）：工具没注册上的会话（老会话、工具晚到）也能发/读群消息。
+ *
+ * 存在理由：真机上「会话开着时才注册群工具」意味着**已经在跑的会话拿不到工具**，
+ * 它们能收到群消息却回不了话。给一条本机回环的 HTTP 口子，agent 用 curl 就能补上。
+ * 守卫与面板写路由同一套（Host 回环 + x-drc-pair），不额外开权限。
+ */
+export const GROUPS_AGENT_POST_ROUTE = '/api/dsh-remote-dafeiyu/groups/agent-post'
+export const GROUPS_AGENT_READ_ROUTE = '/api/dsh-remote-dafeiyu/groups/agent-read'
 
 export interface GroupsRouteDeps {
   groups: Groups
@@ -238,6 +247,42 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
       handler: writeRoute((body) =>
         deps.groups.setOwner({ id: String(body.groupId ?? ''), sessionId: String(body.sessionId ?? '') }),
       ),
+    },
+    {
+      path: GROUPS_AGENT_POST_ROUTE,
+      handler: writeRoute(async (body) => {
+        const groupId = String(body.groupId ?? '')
+        const sessionId = String(body.sessionId ?? '')
+        if (groupId === '' || sessionId === '') {
+          return { ok: false, message: '需要 groupId 和 sessionId（你自己的会话 id）。' }
+        }
+        const group = deps.groups.get(groupId)
+        if (group === undefined) return { ok: false, message: '没有这个群。' }
+        if (group.members.every((member) => member.sessionId !== sessionId)) {
+          return { ok: false, message: '你不在这个群里：先用 group_invite 或让群主把你拉进来。' }
+        }
+        const targets = Array.isArray(body.to) ? body.to.map((id) => String(id)) : []
+        return deps.groups.post({
+          id: groupId,
+          from: sessionId,
+          text: String(body.text ?? ''),
+          targets,
+          kind: 'agent',
+        })
+      }),
+    },
+    {
+      path: GROUPS_AGENT_READ_ROUTE,
+      handler: readRoute((url) => {
+        const groupId = url.searchParams.get('groupId') ?? ''
+        const sessionId = url.searchParams.get('sessionId') ?? ''
+        const group = deps.groups.get(groupId)
+        if (group === undefined) return { ok: false, message: '没有这个群。' }
+        if (sessionId !== '' && group.members.every((member) => member.sessionId !== sessionId)) {
+          return { ok: false, message: '你不在这个群里。' }
+        }
+        return deps.groups.read({ id: groupId, limit: Number(url.searchParams.get('limit') ?? '') || undefined })
+      }),
     },
     {
       path: GROUPS_ROLE_ROUTE,

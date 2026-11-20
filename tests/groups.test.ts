@@ -300,6 +300,47 @@ test('建群后主动唤醒：成员收到入群通知（含摘要格式），�
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('@全体：群主收到的是「分工请求」（带所有被 @ 的人 + 原话），不是一句「本轮只有你」', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-groups-all-'))
+  const sent: Array<{ sessionId: string; text: string }> = []
+  const groups = createGroups({
+    dir,
+    deliver: async (sessionId, text) => {
+      sent.push({ sessionId, text })
+      return { ok: true }
+    },
+    dispatchTimeoutMs: 5_000,
+    cooldownMs: 0,
+    log: () => {},
+  })
+  try {
+    const created = groups.create({ name: '联调', me: 'session-aaaa1111', members: ['session-bbbb2222', 'session-cccc3333'] })
+    const id = created.group!.id
+    const posted = await groups.post({
+      id,
+      from: 'user',
+      text: '互相认个人，打个招呼',
+      targets: ['session-aaaa1111', 'session-bbbb2222', 'session-cccc3333'],
+      kind: 'user',
+    })
+    assert.equal(sent.length, 1, '只投群主')
+    assert.equal(sent[0]!.sessionId, 'session-aaaa1111')
+    assert.ok(sent[0]!.text.includes('分工请求'), '要说清这是分工请求')
+    assert.ok(sent[0]!.text.includes('互相认个人'), '原话要带上')
+    assert.ok(sent[0]!.text.includes('aaaa1111'), '要列出用户 @ 了谁（群主自己）')
+    assert.ok(sent[0]!.text.includes('bbbb2222'), '还要列出其他被 @ 的人')
+    assert.ok(sent[0]!.text.includes('cccc3333'))
+    assert.ok(!sent[0]!.text.includes('本轮只有你'), '不许再出现「本轮只有你」这种误导')
+    assert.deepEqual(
+      posted.entry!.targets,
+      ['session-aaaa1111', 'session-bbbb2222', 'session-cccc3333'],
+      '记录里保留用户真正 @ 的人',
+    )
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('工具形状：十个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {
