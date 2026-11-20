@@ -555,6 +555,41 @@ test('S3 缺口闸：有未答的问题就不许往下走（超时才放行并�
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('S3 缺口闸：全答完但没等满安静窗口 → 放行且措辞不许自相矛盾（别说「0 个没答」）', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-gap-answered-'))
+  const inbox = path.join(dir, 'inbox')
+  mkdirSync(inbox, { recursive: true })
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: false, others: ['session-2'] })
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => 'X',
+      renameSession: async () => ({ ok: true }),
+      groupHandover: handover,
+      gapGraceMs: 10,
+      gapQuietMs: 60_000, // 安静窗口设得极大：保证是 max 先到
+      gapMaxMs: 80,
+    })
+    const service = createHandoffService(deps)
+    const started = await service.start('rebirth', 'session-abc')
+    writeFileSync(service.status(started.jobId!)!.filePath, GOOD_DOC, 'utf8')
+    writeFileSync(
+      path.join(inbox, 'th2.json'),
+      JSON.stringify({ id: 'th2', from: 'session-new-1', to: 'session-abc', question: '为什么？', answer: '因为这样。', status: 'answered', createdAt: Date.now(), updatedAt: Date.now() }),
+      'utf8',
+    )
+    await wait(400)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done')
+    assert.match(String(job.message), /已答完/, '答完了就要说答完：' + String(job.message))
+    assert.ok(!/0 个问题没答/.test(String(job.message)), '不许出现「0 个问题没答」这种自相矛盾的话')
+    assert.ok(calls.some((call) => call.kind === 'invite'), '放行后仍要拉群')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 test('群交接：某一环抛错只记遗留，不拖垮已经起来的转世，后面两步照走', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-group-boom-'))
   try {

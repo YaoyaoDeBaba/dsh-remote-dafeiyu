@@ -267,7 +267,7 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     const inboxDir = path.join(deps.handoffDir, 'inbox')
     const quietMs = deps.gapQuietMs ?? 60_000
     const graceMs = deps.gapGraceMs ?? 90_000
-    const maxMs = deps.gapMaxMs ?? 300_000
+    const maxMs = deps.gapMaxMs ?? 480_000
     const pollMs = deps.pollMs ?? 1_000
     const startedAt = now()
     let lastActivity = 0
@@ -281,6 +281,14 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       if (open === 0 && threads.length > 0 && now() - lastActivity >= quietMs) return undefined
       if (threads.length === 0 && elapsed >= graceMs) return '转世没提缺口（等了 ' + Math.round(graceMs / 1000) + ' 秒）'
       if (elapsed >= maxMs) {
+        /*
+         * 到上限时的措辞必须分清两种现实（2026-11-20 真机踩到）：
+         * 全答完了、只是没等满安静窗口，和「还有问题没人答」是两回事。
+         * 上一版一律说「没补完」，于是 job.message 出现「0 个问题没答」这种自相矛盾的话。
+         */
+        if (open === 0) {
+          return '缺口问答已答完（' + String(answered) + ' 个），但没等满安静窗口就放行了'
+        }
         return '缺口没补完就放行了（' + String(open) + ' 个问题没答，已答 ' + String(answered) + ' 个）'
       }
       await new Promise((resolve) => {
