@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.149" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.150" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -32668,6 +32668,44 @@ function createServicesKernel(services, options) {
     cancel.call(agent, { kind: "user" }, { keepInbox: true });
     return { ok: true };
   }
+  async function resolveAgentPreset(sessionId) {
+    const remember = (value) => {
+      if (typeof value !== "string") return void 0;
+      const trimmed = value.trim();
+      if (trimmed === "") return void 0;
+      presetBySession.set(sessionId, trimmed);
+      return trimmed;
+    };
+    const cached2 = presetBySession.get(sessionId);
+    if (cached2 !== void 0) return cached2;
+    const readSession = fn(services.sessionQuery, "readSession");
+    if (readSession) {
+      try {
+        const loaded = await readSession.call(services.sessionQuery, sessionId);
+        const found = remember(loaded?.session?.agentPreset) ?? remember(loaded?.agentPreset);
+        if (found !== void 0) return found;
+      } catch (error62) {
+        log("\u8BFB\u4F1A\u8BDD header \u62FF agentPreset \u5931\u8D25\uFF0C\u6539\u67E5\u4F1A\u8BDD\u5217\u8868", {
+          sessionId,
+          message: messageOf(error62).slice(0, 120)
+        });
+      }
+    }
+    const listRows = fn(services.sessionQuery, "listSessions");
+    if (listRows) {
+      try {
+        const rows = await listRows.call(services.sessionQuery);
+        const row = (Array.isArray(rows) ? rows : []).find(
+          (one) => String(one?.header?.id ?? "") === sessionId
+        );
+        const found = remember(row?.header?.agentPreset);
+        if (found !== void 0) return found;
+      } catch (error62) {
+        log("\u67E5\u4F1A\u8BDD\u5217\u8868\u62FF agentPreset \u5931\u8D25", { sessionId, message: messageOf(error62).slice(0, 120) });
+      }
+    }
+    return void 0;
+  }
   async function ensureRunnable(sessionId) {
     if (liveAgent(sessionId)) return { ok: true };
     const registry2 = services.workspaceRegistry;
@@ -32685,20 +32723,13 @@ function createServicesKernel(services, options) {
     if (!selection) {
       return { ok: false, message: "\u62FF\u4E0D\u5230\u5F53\u524D\u6A21\u578B\u9009\u62E9\uFF08agentDefaultModel.currentSelection \u7F3A\u5931\uFF09\uFF0C\u65E0\u6CD5\u7EED\u8DD1\u4F1A\u8BDD" };
     }
-    let preset = presetBySession.get(sessionId);
+    const preset = await resolveAgentPreset(sessionId);
     if (preset === void 0) {
-      const readSession = fn(services.sessionQuery, "readSession");
-      if (readSession) {
-        try {
-          const loaded = await readSession.call(services.sessionQuery, sessionId);
-          const value = loaded?.session?.agentPreset;
-          if (typeof value === "string" && value.trim() !== "") {
-            preset = value.trim();
-            presetBySession.set(sessionId, preset);
-          }
-        } catch {
-        }
-      }
+      log("\u7EED\u8DD1\u88AB\u62D2\uFF1A\u8BFB\u4E0D\u5230 agentPreset", { sessionId });
+      return {
+        ok: false,
+        message: `\u8BFB\u4E0D\u5230\u8FD9\u4E2A\u4F1A\u8BDD\u7684 agentPreset\uFF08${sessionId}\uFF09\uFF1A\u4E3A\u4E86\u4E0D\u628A\u5B83\u7684\u5DE5\u5177\uFF08shell / \u8BFB\u5199\u6587\u4EF6\uFF09\u6536\u8D70\uFF0C\u8FD9\u6B21\u4E0D\u7EED\u8DD1\u3002\u8BF7\u5148\u5728\u684C\u9762\u6253\u5F00\u8FD9\u6761\u4F1A\u8BDD\u968F\u4FBF\u53D1\u4E00\u53E5\u8BDD\uFF0C\u628A\u5B83\u6309\u6B63\u5E38\u8DEF\u5B50\u62C9\u8D77\u6765\uFF0C\u518D\u6765\u3002`
+      };
     }
     try {
       await resume.call(services.agents, {
@@ -32706,7 +32737,7 @@ function createServicesKernel(services, options) {
         agentOptions: {
           provider: selection.provider,
           model: selection.model,
-          ...preset === void 0 ? {} : { agentPreset: preset }
+          agentPreset: preset
         }
       });
       return { ok: true };
