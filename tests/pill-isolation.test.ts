@@ -402,7 +402,11 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
       withWeb.registerCalls
         .map((call) => call.path)
         .filter(
-          (path) => !path.startsWith('/api/dsh-remote-dafeiyu/') && !path.startsWith('/api/dsh-remote-control/'),
+          (path) =>
+            !path.startsWith('/api/dsh-remote-dafeiyu/') &&
+            !path.startsWith('/api/dsh-remote-control/') &&
+            // 群面板那两条 agent 兜底口子（/plugins/dafeiyu-groups/）不是配对路由
+            !path.startsWith('/plugins/dafeiyu-groups/'),
         ),
       [
         PAIR_NEW_ROUTE,
@@ -504,7 +508,10 @@ test('pill.enabled=false：显式关掉唯一配对入口，路由一条都不�
     const state = await off.waitForCarrier()
     // 扩展列表那两条是另一个订阅者（`startExtensions`），与配对入口开不开无关。
     const pillOnly = off.registerCalls.filter(
-      (call) => !call.path.startsWith('/api/dsh-remote-dafeiyu/') && !call.path.startsWith('/api/dsh-remote-control/'),
+      (call) =>
+        !call.path.startsWith('/api/dsh-remote-dafeiyu/') &&
+        !call.path.startsWith('/api/dsh-remote-control/') &&
+        !call.path.startsWith('/plugins/dafeiyu-groups/'),
     )
     assert.equal(pillOnly.length, 0, '关掉了就不该去挂配对路由（识图那三条是独立订阅者）')
     assert.equal((state.pill as Record<string, string>).pill, 'disabled')
@@ -535,7 +542,11 @@ test('那七条配对路由挂上去的就是带守卫的那七条（接线，�
       withWeb.registerCalls
         .map((call) => call.path)
         .filter(
-          (path) => !path.startsWith('/api/dsh-remote-dafeiyu/') && !path.startsWith('/api/dsh-remote-control/'),
+          (path) =>
+            !path.startsWith('/api/dsh-remote-dafeiyu/') &&
+            !path.startsWith('/api/dsh-remote-control/') &&
+            // 群面板那两条 agent 兜底口子（/plugins/dafeiyu-groups/）不是配对路由
+            !path.startsWith('/plugins/dafeiyu-groups/'),
         ),
       [
         PAIR_NEW_ROUTE,

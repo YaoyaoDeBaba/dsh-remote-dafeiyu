@@ -234,7 +234,7 @@ function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string 
     '· 不带 to 时默认回给群主（汇报对象）；to 可以填对方短号或会话 id；',
     '· 想看最近记录用 group_read(groupId=' + group.id + ')。',
     '· 如果你的工具列表里没有 group_*（老会话），用 HTTP 兜底：把你自己的会话 id 和正文 POST 到',
-    '  <DSH Web GUI 的 origin>/api/dsh-remote-dafeiyu/groups/agent-post（本机回环，带 x-drc-pair: 1；',
+    '  <DSH Web GUI 的 origin>/plugins/dafeiyu-groups/agent-post（本机回环，带 x-drc-pair: 1；',
     '  body = {"groupId":"' + group.id + '","sessionId":"<你的会话id>","text":"…"}）。读用 agent-read。',
     '',
     '如果你现在正忙，先把这条记下；有空再回。知道有这个群、知道怎么回就够了。',

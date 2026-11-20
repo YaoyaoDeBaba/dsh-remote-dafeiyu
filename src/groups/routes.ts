@@ -26,8 +26,13 @@ export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
  * 它们能收到群消息却回不了话。给一条本机回环的 HTTP 口子，agent 用 curl 就能补上。
  * 守卫与面板写路由同一套（Host 回环 + x-drc-pair），不额外开权限。
  */
-export const GROUPS_AGENT_POST_ROUTE = '/api/dsh-remote-dafeiyu/groups/agent-post'
-export const GROUPS_AGENT_READ_ROUTE = '/api/dsh-remote-dafeiyu/groups/agent-read'
+/*
+ * ⚠️ 前缀必须是 /plugins/**：真机实测 /api/** 的 **POST** 会被宿主那一层直接回 `unauthorized`
+ * （GET 不受影响，`/plugins/**` 的 POST 不受影响）。这里另起一个 /plugins/dafeiyu-groups/，
+ * 不与配对面板那条 /plugins/dsh-remote-control/ 混在一起（那边的路由条数有判据钉着）。
+ */
+export const GROUPS_AGENT_POST_ROUTE = '/plugins/dafeiyu-groups/agent-post'
+export const GROUPS_AGENT_READ_ROUTE = '/plugins/dafeiyu-groups/agent-read'
 
 export interface GroupsRouteDeps {
   groups: Groups
