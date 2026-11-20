@@ -43,7 +43,15 @@ export type SearchEngine = 'auto' | 'bing' | 'sogou'
 export const SEARCH_ENGINES: SearchEngine[] = ['auto', 'bing', 'sogou']
 /** paper_search 的数据源。 */
 export type PaperSource = 'openalex' | 'arxiv' | 'dblp'
+/** 显式指定时可用的源（不含 auto）。 */
 export const PAPER_SOURCES: PaperSource[] = ['openalex', 'arxiv', 'dblp']
+/**
+ * 检索优先级（2026-11-20 用户裁决：**arxiv 是主力，openalex / dblp 进替补席**）。
+ *
+ * 依据是本机实测：arXiv 一直通；OpenAlex 不带 key 是整机共享 0.10 美元/天、很容易 429；
+ * DBLP 现在回 Anubis 人机验证挑战页。所以 auto 先打 arXiv，失败再按这个顺序兜。
+ */
+export const PAPER_SOURCE_ORDER: PaperSource[] = ['arxiv', 'openalex', 'dblp']
 /** repo_search 的排序档位。 */
 export type RepoSort = 'stars' | 'updated' | 'forks'
 export const REPO_SORTS: RepoSort[] = ['stars', 'updated', 'forks']
@@ -542,10 +550,25 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
 
   async function runPaperSearch(
     query: string,
-    source: PaperSource,
+    source: PaperSource | 'auto',
     limit: number,
     yearFrom: number | undefined,
   ): Promise<string> {
+    /*
+     * auto：按 PAPER_SOURCE_ORDER（arxiv → openalex → dblp）依次试，谁先成谁上。
+     * 失败的那些原因**要带出去**——只说"没搜到"会让模型以为关键词写错了。
+     */
+    if (source === 'auto') {
+      const failures: string[] = []
+      for (const candidate of PAPER_SOURCE_ORDER) {
+        try {
+          return await runPaperSearch(query, candidate, limit, yearFrom)
+        } catch (error) {
+          failures.push(candidate + '：' + String((error as Error)?.message ?? error).slice(0, 120))
+        }
+      }
+      throw new Error('论文检索三个源都没成（按 arxiv → openalex → dblp 依次试过）：' + failures.join('；'))
+    }
     if (source === 'openalex') {
       let url = OPENALEX_API + '?search=' + encodeURIComponent(query) + '&per-page=' + limit
       if (yearFrom !== undefined) url += '&filter=from_publication_date:' + yearFrom + '-01-01'
@@ -759,7 +782,10 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
     {
       name: 'paper_search',
       description:
-        '搜论文。三个源：openalex（默认，免费无 key，带被引数）/ arxiv（预印本，带摘要前 200 字）/ dblp（计算机方向）。\n' +
+        '搜论文。**默认 auto：先 arXiv（主力，稳定），失败再退 OpenAlex / DBLP（替补）**。\n' +
+        '三个源的实际状态（2026-11-20 实测）：arxiv 稳定，带摘要前 200 字；' +
+        'openalex 不带 key 是整机共享 0.10 美元/天、容易 429（配 OPENALEX_API_KEY 可改善）；' +
+        'dblp 现在多半回人机验证页。所以除非你明确要 venue/被引数，别指定它们。\n' +
         '每条一行：标题 · 年份 · venue · 被引 N · URL。limit 默认 6；year_from 是最早年份（含）。\n' +
         '要读全文用 paper_read。',
       parameters: {
@@ -768,8 +794,9 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
           query: { type: 'string', description: '关键词，英文效果最好。' },
           source: {
             type: 'string',
-            enum: PAPER_SOURCES,
-            description: 'openalex（默认）/ arxiv / dblp。',
+            enum: ['auto', ...PAPER_SOURCES],
+            description:
+              'auto（默认，arxiv→openalex→dblp 自动兜底）/ arxiv（主力）/ openalex（替补，易 429）/ dblp（替补，常被验证页挡）。',
           },
           year_from: { type: 'integer', minimum: 1900, maximum: 2100, description: '只要这年（含）之后的。' },
           limit: { type: 'integer', minimum: 1, maximum: 20, description: '要几条，默认 6。' },
@@ -782,7 +809,8 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
         const input = asRecord(args)
         const query = asString(input.query)
         if (query === '') throw new Error('论文关键词不能为空：query 要写点什么')
-        const source = pickEnum(input.source, PAPER_SOURCES, 'openalex')
+        // 默认 auto：arxiv 主力，openalex / dblp 只做兜底（2026-11-20 用户裁决）
+        const source = pickEnum(input.source, ['auto', ...PAPER_SOURCES] as const, 'auto')
         const limit = clampInt(input.limit, 1, 20, 6)
         const yearRaw = asString(input.year_from)
         const yearParsed = yearRaw === '' ? 0 : clampInt(yearRaw, 1900, 2100, 0)

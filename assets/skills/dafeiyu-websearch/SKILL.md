@@ -13,9 +13,10 @@ description: 用 web_search / paper_search / paper_read / repo_search 联网查�
 | 你想干什么 | 用哪个 | 备注 |
 |---|---|---|
 | 查一个事实/新闻/官网/文档页 | web_search | Bing 主、Sogou 回退；返回标题+摘要+真实 URL |
-| 找学术论文、看被引数 | paper_search（openalex） | 免费无 key，覆盖最广，带引用数 |
+| 找学术论文（默认） | `paper_search` 不写 source（= auto） | 先 arXiv（稳定），失败自动退 openalex / dblp |
+| 需要被引数 | `paper_search(source: 'openalex')` | **替补**：无 key 时共享 0.10 美元/天，常 429 |
 | 找最新预印本（ML/CV/物理） | paper_search（arxiv） | 有摘要前 200 字，通常比会议正式版更早 |
-| 找计算机领域的会议/期刊论文 | paper_search（dblp） | 只收 CS 出版物，非 CS 查不到是正常的 |
+| 找 CS 会议/期刊的精确 venue | `paper_search(source: 'dblp')` | **替补**：现在多半回人机验证页，能通就通、不通换 arxiv |
 | 读论文/网页正文 | paper_read | arXiv 链接会自动换成 ar5iv 的 HTML 全文 |
 | 找开源项目/参考实现 | repo_search | GitHub REST，无需 key |
 
@@ -41,7 +42,7 @@ web_search({ query: "DeepSeek V4 发布时间", count: 8, engine: "auto" })
 ## paper_search
 
 ```
-paper_search({ query: "diffusion model acceleration", source: "openalex", year_from: 2022, limit: 6 })
+paper_search({ query: "diffusion model acceleration", year_from: 2022, limit: 6 })   // auto：arxiv → openalex → dblp
 ```
 
 - 输出一行一条：标题 · 年份 · venue · 被引 N · URL；arXiv 会多一行「摘要：…（前 200 字）」。
@@ -97,8 +98,11 @@ repo_search({ query: "vector database", language: "rust", min_stars: 500, sort: 
 | Baidu | 会出安全验证 | **不用**，别指望它 |
 | DuckDuckGo html | 连不上 | **不用** |
 | Semantic Scholar / grep.app | 常 429 | 不接，别为了它们加退避 |
-| OpenAlex | 正常 | 无 key 时**共享 0.10 美元/天**，吃光回 429；配 OPENALEX_API_KEY 后 1 美元/天 |
-| DBLP | 202 | 现在是 202 + 人机验证挑战页，这一轮基本查不了，换 openalex/arxiv |
+| OpenAlex（**替补**） | 429 常态 | 无 key 时**共享 0.10 美元/天**，吃光回 429；配 OPENALEX_API_KEY 后 1 美元/天 |
+| DBLP（**替补**） | 202 | 通常是 202 + 人机验证挑战页，这一轮基本查不了 |
+
+> **替补区的意思**（2026-11-20 用户裁决）：`paper_search` 默认 `auto`，顺序是 **arxiv → openalex → dblp**。
+> arXiv 是主力；openalex / dblp 只在 arxiv 失败时兜底，或者你明确需要被引数 / 精确 venue 时才手动指定。
 | GitHub REST | 正常（本机实测剩余额度会掉到个位数） | 未认证 60/h；配 GITHUB_TOKEN 后 5000/h |
 | ar5iv | 200 / 1.2MB / 0.6s | 比 arXiv 的 PDF 小一个数量级且可直接转文本 |
 

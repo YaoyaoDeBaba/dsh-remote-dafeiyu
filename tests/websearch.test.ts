@@ -298,7 +298,8 @@ test('工具定义：六键齐全、output 是字符串渲染', () => {
   const engine = toolOf(tools, 'web_search').parameters.properties.engine
   assert.deepEqual(engine.enum, ['auto', 'bing', 'sogou'])
   const source = toolOf(tools, 'paper_search').parameters.properties.source
-  assert.deepEqual(source.enum, ['openalex', 'arxiv', 'dblp'])
+  // auto 打头：默认先 arXiv，openalex / dblp 只做替补（2026-11-20 用户裁决）
+  assert.deepEqual(source.enum, ['auto', 'openalex', 'arxiv', 'dblp'])
 })
 test('web_search：Bing 被验证页拦下时退 Sogou，并说明为什么换', async () => {
   const fetchStub = stubFetch((url) =>
@@ -538,7 +539,7 @@ test('paper_search：OpenAlex 429 要说清共享额度并指路 api_key', async
   const fetchStub = stubFetch(() => ({ status: 429, body: '{"error":"budget"}' }))
   const tools = makeTools(fetchStub.impl)
   await assert.rejects(
-    () => toolOf(tools, 'paper_search').execute({ query: 'x' }),
+    () => toolOf(tools, 'paper_search').execute({ query: 'x', source: 'openalex' }),
     (error: Error) => {
       assert.ok(error.message.includes('OPENALEX_API_KEY'), '要告诉用户怎么解：' + error.message)
       assert.ok(error.message.includes('429'))
@@ -552,7 +553,8 @@ test('paper_search：配了 OPENALEX_API_KEY 就自动带上 api_key', async () 
   try {
     const fetchStub = stubFetch(() => ({ body: OPENALEX_JSON }))
     const tools = makeTools(fetchStub.impl)
-    await toolOf(tools, 'paper_search').execute({ query: 'x' })
+    // 默认已是 auto（先打 arxiv），这里显式点 openalex 才能验 key 拼接
+    await toolOf(tools, 'paper_search').execute({ query: 'x', source: 'openalex' })
     assert.ok(fetchStub.calls[0]!.includes('api_key=test-key'), 'key 要拼进 URL：' + fetchStub.calls[0])
   } finally {
     delete process.env.OPENALEX_API_KEY
@@ -580,4 +582,8 @@ test('八个工具一起注册：核心五个 + 定向三个，名字不许撞�
     '少一个或多一个都会让模型看不到那个工具，且没有任何报错',
   )
   assert.equal(new Set(names).size, names.length, '工具名撞了：后注册的会顶掉前一个')
+})
+test('论文源排序：默认 auto 且 arXiv 在主力位，openalex/dblp 只做替补（2026-11-20 用户裁决）', async () => {
+  const { PAPER_SOURCE_ORDER } = await import('../src/websearch/tools.js')
+  assert.deepEqual(PAPER_SOURCE_ORDER, ['arxiv', 'openalex', 'dblp'], ' arXiv 必须是第一个兜底主力')
 })
