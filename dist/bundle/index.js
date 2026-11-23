@@ -4781,8 +4781,8 @@ var require_websocket = __commonJS({
     "use strict";
     var EventEmitter2 = __require("events");
     var https = __require("https");
-    var http = __require("http");
-    var net = __require("net");
+    var http2 = __require("http");
+    var net2 = __require("net");
     var tls = __require("tls");
     var { randomBytes: randomBytes5, createHash: createHash6 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
@@ -5336,7 +5336,7 @@ var require_websocket = __commonJS({
       }
       const defaultPort = isSecure ? 443 : 80;
       const key = randomBytes5(16).toString("base64");
-      const request = isSecure ? https.request : http.request;
+      const request = isSecure ? https.request : http2.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -5539,12 +5539,12 @@ var require_websocket = __commonJS({
     }
     function netConnect(options) {
       options.path = options.socketPath;
-      return net.connect(options);
+      return net2.connect(options);
     }
     function tlsConnect(options) {
       options.path = void 0;
       if (!options.servername && options.servername !== "") {
-        options.servername = net.isIP(options.host) ? "" : options.host;
+        options.servername = net2.isIP(options.host) ? "" : options.host;
       }
       return tls.connect(options);
     }
@@ -5832,7 +5832,7 @@ var require_websocket_server = __commonJS({
   "node_modules/.pnpm/ws@8.22.0/node_modules/ws/lib/websocket-server.js"(exports, module) {
     "use strict";
     var EventEmitter2 = __require("events");
-    var http = __require("http");
+    var http2 = __require("http");
     var { Duplex } = __require("stream");
     var { createHash: createHash6 } = __require("crypto");
     var extension2 = require_extension();
@@ -5913,8 +5913,8 @@ var require_websocket_server = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http.createServer((req, res) => {
-            const body = http.STATUS_CODES[426];
+          this._server = http2.createServer((req, res) => {
+            const body = http2.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -6203,7 +6203,7 @@ var require_websocket_server = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http.STATUS_CODES[code];
+      message = message || http2.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -6212,7 +6212,7 @@ var require_websocket_server = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http2.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -6229,7 +6229,7 @@ var require_websocket_server = __commonJS({
 });
 
 // src/index.ts
-import path30 from "node:path";
+import path32 from "node:path";
 
 // src/shell/log-line.ts
 var MAX_LOG_VALUE_CHARS = 256;
@@ -7228,10 +7228,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path31) {
-  if (!path31)
+function getElementAtPath(obj, path33) {
+  if (!path33)
     return obj;
-  return path31.reduce((acc, key) => acc?.[key], obj);
+  return path33.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -7571,11 +7571,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path31, issues) {
+function prefixIssues(path33, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path31);
+    iss.path.unshift(path33);
     return iss;
   });
 }
@@ -8037,16 +8037,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path31 = []) => {
+  const processError = (error63, path33 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path33, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path33, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path33, ...issue2.path]);
       } else {
-        const fullpath = [...path31, ...issue2.path];
+        const fullpath = [...path33, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8085,17 +8085,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result2 = { errors: [] };
-  const processError = (error63, path31 = []) => {
+  const processError = (error63, path33 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path31, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path33, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path33, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path31, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path33, ...issue2.path]);
       } else {
-        const fullpath = [...path31, ...issue2.path];
+        const fullpath = [...path33, ...issue2.path];
         if (fullpath.length === 0) {
           result2.errors.push(mapper(issue2));
           continue;
@@ -8134,8 +8134,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path31 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path31) {
+  const path33 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path33) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25273,13 +25273,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path31 = ref.slice(1).split("/").filter(Boolean);
-  if (path31.length === 0) {
+  const path33 = ref.slice(1).split("/").filter(Boolean);
+  if (path33.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path31[0] === defsKey) {
-    const key = path31[1] === void 0 ? void 0 : decodeJSONPointerSegment(path31[1]);
+  if (path33[0] === defsKey) {
+    const key = path33[1] === void 0 ? void 0 : decodeJSONPointerSegment(path33[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.150" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.151" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -30357,9 +30357,9 @@ function createPairFlow(deps) {
     log("client unpaired", { reissued: Boolean(code) });
   }
   function noteRateLimited(retryAfterMs) {
-    const wait = retryAfterMs ?? PAIR_RATE_LIMIT_BACKOFF_MS;
-    pairRateLimitedUntil = Math.max(pairRateLimitedUntil, clock.now() + wait);
-    log("relay rate limited us", { waitMs: wait });
+    const wait4 = retryAfterMs ?? PAIR_RATE_LIMIT_BACKOFF_MS;
+    pairRateLimitedUntil = Math.max(pairRateLimitedUntil, clock.now() + wait4);
+    log("relay rate limited us", { waitMs: wait4 });
   }
   function resetRateLimitAndRetryOwed() {
     pairRateLimitedUntil = 0;
@@ -35050,12 +35050,12 @@ function clientReportHandler() {
     });
     request.on("end", () => {
       try {
-        const path31 = __require("node:path");
-        const fs8 = __require("node:fs");
-        const dir = path31.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
-        fs8.mkdirSync(dir, { recursive: true, mode: 448 });
-        fs8.writeFileSync(
-          path31.join(dir, "client-report.json"),
+        const path33 = __require("node:path");
+        const fs9 = __require("node:fs");
+        const dir = path33.join(process.env.HOME ?? "", ".dsh", "dsh-remote-control");
+        fs9.mkdirSync(dir, { recursive: true, mode: 448 });
+        fs9.writeFileSync(
+          path33.join(dir, "client-report.json"),
           `${JSON.stringify({ at: Date.now(), bytes: size, body: Buffer.concat(chunks).toString("utf8").slice(0, 4096) })}
 `,
           { mode: 384 }
@@ -39765,7 +39765,7 @@ function startGroups(ctx, input2) {
 }
 
 // src/websearch/start.ts
-import path23 from "node:path";
+import path25 from "node:path";
 
 // src/websearch/extra.ts
 var KESEN_INDEX_URL = "https://kesen.realtimerendering.com/";
@@ -39904,12 +39904,12 @@ function parseGrepAppHits(json11, limit) {
     const record2 = asRecord(item);
     if (record2 === void 0) continue;
     const repo = rawOf(record2.repo);
-    const path31 = rawOf(record2.path);
-    if (repo === "" && path31 === "") continue;
+    const path33 = rawOf(record2.path);
+    if (repo === "" && path33 === "") continue;
     const content = asRecord(record2.content);
     const snippet = asText(content === void 0 ? void 0 : content.snippet);
     const parsed = parseGrepSnippet(snippet);
-    hits.push({ repo, path: path31, line: parsed.line, code: parsed.code });
+    hits.push({ repo, path: path33, line: parsed.line, code: parsed.code });
     if (hits.length >= limit) break;
   }
   return { hits, total };
@@ -40574,7 +40574,7 @@ var OPENALEX_API = "https://api.openalex.org/works";
 var ARXIV_API = "http://export.arxiv.org/api/query";
 var DBLP_API = "https://dblp.org/search/publ/api";
 var GITHUB_API = "https://api.github.com";
-var SEARCH_ENGINES = ["auto", "bing", "sogou"];
+var SEARCH_ENGINES = ["auto", "bing", "sogou", "doubao"];
 var PAPER_SOURCES = ["openalex", "arxiv", "dblp"];
 var PAPER_SOURCE_ORDER = ["arxiv", "openalex", "dblp"];
 var REPO_SORTS = ["stars", "updated", "forks"];
@@ -40742,6 +40742,30 @@ function formatSearch(query, engine, hits) {
     lines.push(index + 1 + ". " + hit.title + (hit.snippet === "" ? "" : " \u2014 " + hit.snippet));
     lines.push("   " + hit.url);
   });
+  return lines.join("\n");
+}
+function formatWebAi(query, result2, count) {
+  const site = result2.site === "" ? "\u7F51\u9875\u8C46\u5305" : result2.site;
+  const seconds = (Math.max(0, result2.elapsedMs) / 1e3).toFixed(1);
+  const lines = ["\u641C\u7D22\u300C" + query + "\u300D\uFF1A" + site + " \u7684\u56DE\u7B54\uFF08" + seconds + "s\uFF09", ""];
+  lines.push(result2.answer.trim() === "" ? "\uFF08\u8C46\u5305\u8FD9\u6B21\u4E00\u4E2A\u5B57\u90FD\u6CA1\u7ED9\uFF0C\u53EF\u80FD\u662F\u9875\u9762\u6539\u7248\u6216\u88AB\u9650\u6D41\uFF09" : result2.answer.trim());
+  const seen = /* @__PURE__ */ new Set();
+  const cites = (result2.citations ?? []).filter((one) => {
+    const url2 = String(one?.url ?? "").trim();
+    if (url2 === "" || seen.has(url2)) return false;
+    seen.add(url2);
+    return true;
+  }).slice(0, count);
+  if (cites.length > 0) {
+    lines.push("", "\u6765\u6E90\uFF08" + cites.length + "\uFF09\uFF1A");
+    cites.forEach((one, index) => {
+      lines.push(index + 1 + ". " + inlineText(one.title) + " \u2014 " + one.url);
+    });
+  } else {
+    lines.push("", "\u6765\u6E90\uFF1A\u8C46\u5305\u8FD9\u6B21\u6CA1\u7ED9\u94FE\u63A5\uFF08\u522B\u628A\u4E0A\u9762\u7684\u56DE\u7B54\u5F53\u6210\u6709\u51FA\u5904\u7684\u68C0\u7D22\u7ED3\u679C\u6765\u5F15\u7528\uFF09");
+  }
+  if (result2.partial) lines.push("", '\uFF08\u6CE8\u610F\uFF1A\u6CA1\u7B49\u5230"\u7B54\u5B8C"\u5C31\u8D85\u65F6\u8FD4\u56DE\u4E86\uFF0C\u4E0A\u9762\u53EA\u662F\u5DF2\u62FF\u5230\u7684\u90E8\u5206\uFF09');
+  if (result2.truncated) lines.push("", "\uFF08\u56DE\u7B54\u592A\u957F\uFF0C\u5DF2\u622A\u65AD\uFF09");
   return lines.join("\n");
 }
 function parseOpenAlex(payload, limit) {
@@ -40926,6 +40950,23 @@ function buildWebsearchTools(deps) {
     const key = engine + "|" + count + "|" + query;
     const cached2 = cache.get(key);
     if (cached2 !== void 0) return cached2;
+    if (engine === "doubao") {
+      const brain = deps.webAi;
+      if (!brain) {
+        throw new Error(
+          "\u8FD9\u53F0\u4E3B\u673A\u7684\u300C\u7F51\u9875\u8C46\u5305\u300D\u5F15\u64CE\u6CA1\u6302\u4E0A\uFF08probe.webai \u4F1A\u5199\u539F\u56E0\uFF09\uFF1A\u5148\u786E\u8BA4\u672C\u673A Edge/Chrome \u5728\u3001\u5E76\u4E14\u7528\u8BC6\u56FE\u90A3\u8FB9\u7684\u767B\u5F55\u6309\u94AE\u767B\u8FC7\u4E00\u6B21\u7F51\u9875\u7248\u8C46\u5305\uFF1B\u6216\u8005\u6539\u7528 engine=auto\uFF08Bing/Sogou\uFF09\u3002"
+        );
+      }
+      const result2 = await brain.search(query, { timeoutMs: 9e4 });
+      const text = formatWebAi(query, result2, count);
+      cache.set(key, text);
+      deps.log("\u8054\u7F51\u641C\u7D22\uFF08\u8C46\u5305\u7F51\u9875\u7248\uFF09", {
+        elapsedMs: result2.elapsedMs,
+        citations: result2.citations.length,
+        partial: result2.partial
+      });
+      return text;
+    }
     const order = engine === "auto" ? ["bing", "sogou"] : [engine];
     const failures = [];
     for (const name2 of order) {
@@ -41113,7 +41154,7 @@ function buildWebsearchTools(deps) {
   return [
     {
       name: "web_search",
-      description: "\u8054\u7F51\u641C\u7F51\u9875\uFF08Bing \u4E3B\uFF0C\u5931\u8D25\u9000 Sogou\uFF09\u3002\u6BCF\u6761\u7ED3\u679C\u4E24\u884C\uFF1A\u6807\u9898 \u2014 \u6458\u8981 / URL\u3002\ncount \u9ED8\u8BA4 8\uFF081~20\uFF09\uFF1Bengine \u9ED8\u8BA4 auto\uFF0C\u4E5F\u53EF\u4EE5\u9489\u6B7B bing \u6216 sogou\u3002\n\u540C\u4E00 query 5 \u5206\u949F\u5185\u8D70\u7F13\u5B58\u3002\u8981\u8BBA\u6587\u7528 paper_search\uFF0C\u8981\u4EE3\u7801\u4ED3\u5E93\u7528 repo_search\uFF0C\u4E0D\u8981\u62FF\u5B83\u786C\u51D1\u3002",
+      description: "\u8054\u7F51\u641C\u7F51\u9875\u3002\u9ED8\u8BA4\u8D70\u641C\u7D22\u5F15\u64CE\uFF08Bing \u4E3B\uFF0C\u5931\u8D25\u9000 Sogou\uFF09\uFF0C\u6BCF\u6761\u7ED3\u679C\u4E24\u884C\uFF1A\u6807\u9898 \u2014 \u6458\u8981 / URL\u3002\nengine=auto\uFF08\u9ED8\u8BA4\uFF09/ bing / sogou\uFF1Bengine=doubao = \u62FF\u672C\u673A\u5DF2\u767B\u5F55\u7684\u7F51\u9875\u7248\u8C46\u5305\u5F53\u641C\u7D22\u5F15\u64CE\uFF1A\u5B83\u4F1A\u81EA\u5DF1\u4E0A\u7F51\u627E\uFF0C\u7ED9\u4F60\u4E00\u6BB5\u6574\u5408\u540E\u7684\u56DE\u7B54 + \u5B83\u7ED9\u7684\u6765\u6E90\u94FE\u63A5\uFF08\u767D\u5AD6\u3001\u4E0D\u82B1 key\uFF09\u3002\ndoubao \u6863\u8981\u767B\u5F55\u6001\u3001\u6162\uFF08\u51E0\u5341\u79D2\uFF09\u800C\u4E14\u4E0D\u8FDB auto\uFF1A\u60F3\u8981\u300C\u4E00\u4E2A\u7B54\u6848 / \u5BF9\u6BD4 / \u603B\u7ED3\u300D\u65F6\u624D\u7528\u5B83\uFF1B\u60F3\u8981\u300C\u4E00\u5806\u53EF\u70B9\u5F00\u7684\u94FE\u63A5\u300D\u4ECD\u7528 auto\u3002\u8C46\u5305\u6CA1\u7ED9\u94FE\u63A5\u65F6\u8F93\u51FA\u4F1A\u660E\u8BF4\uFF0C\u522B\u628A\u5B83\u7684\u56DE\u7B54\u5F53\u6709\u51FA\u5904\u7684\u4E8B\u5B9E\u5F15\u7528\u3002\ncount \u9ED8\u8BA4 8\uFF081~20\uFF0Cdoubao \u6863\u7528\u5B83\u9650\u5236\u6765\u6E90\u6761\u6570\uFF09\uFF1B\u540C\u4E00 query 5 \u5206\u949F\u5185\u8D70\u7F13\u5B58\u3002\u8981\u8BBA\u6587\u7528 paper_search\uFF0C\u8981\u4EE3\u7801\u4ED3\u5E93\u7528 repo_search\uFF0C\u4E0D\u8981\u62FF\u5B83\u786C\u51D1\u3002",
       parameters: {
         type: "object",
         properties: {
@@ -41122,7 +41163,7 @@ function buildWebsearchTools(deps) {
           engine: {
             type: "string",
             enum: SEARCH_ENGINES,
-            description: "auto\uFF08\u9ED8\u8BA4\uFF0C\u5148 Bing \u518D Sogou\uFF09/ bing / sogou\u3002"
+            description: "auto\uFF08\u9ED8\u8BA4\uFF0C\u5148 Bing \u518D Sogou\uFF09/ bing / sogou / doubao\uFF08\u7F51\u9875\u7248\u8C46\u5305\u5F53\u641C\u7D22\u5F15\u64CE\uFF0C\u9700\u5DF2\u767B\u5F55\u3001\u6162\u3001\u7ED9\u7684\u662F\u6574\u5408\u7B54\u6848\u52A0\u6765\u6E90\uFF09\u3002"
           }
         },
         required: ["query"]
@@ -41232,13 +41273,911 @@ function buildWebsearchTools(deps) {
   ];
 }
 
-// src/websearch/skill.ts
-import { existsSync as existsSync4, readFileSync as readFileSync9 } from "node:fs";
+// src/websearch/webai/service.ts
+import fs8 from "node:fs";
+import os4 from "node:os";
+import path23 from "node:path";
+
+// src/websearch/webai/driver.ts
+import { spawn as spawn2, execFileSync } from "node:child_process";
+import http from "node:http";
+import net from "node:net";
 import path22 from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync8, writeFileSync as writeFileSync5 } from "node:fs";
+
+// src/websearch/webai/types.ts
+var WebAiError = class extends Error {
+  status;
+  constructor(message, status = 0) {
+    super(message);
+    this.name = "WebAiError";
+    this.status = status;
+  }
+};
+
+// src/websearch/webai/driver.ts
+function browserCandidates(platform = process.platform) {
+  if (platform === "win32") {
+    return [
+      "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+      "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+    ];
+  }
+  if (platform === "darwin") {
+    return [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+    ];
+  }
+  return ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/microsoft-edge"];
+}
+function browserMissingReason() {
+  return "\u627E\u4E0D\u5230 Edge/Chrome\uFF08\u627E\u8FC7\u5E38\u89C1\u5B89\u88C5\u8DEF\u5F84\uFF09\uFF1A\u88C5\u4E00\u4E2A Edge\uFF0C\u6216\u7528\u73AF\u5883\u53D8\u91CF DAFEIYU_WEBAI_BROWSER \u6307\u5B9A msedge.exe \u7684\u5B8C\u6574\u8DEF\u5F84";
+}
+var BROWSER_ENV_KEYS = ["DAFEIYU_WEBAI_BROWSER", "DAFEIYU_WEBVISION_BROWSER"];
+function resolveBrowser(options = {}) {
+  const exists = options.exists ?? ((file2) => existsSync4(file2));
+  const env = options.env ?? process.env;
+  const explicit = String(options.explicit ?? "").trim();
+  if (explicit !== "") {
+    if (exists(explicit)) return { ok: true, exe: explicit };
+    return {
+      ok: false,
+      reason: "\u6307\u5B9A\u7684\u6D4F\u89C8\u5668\u4E0D\u5B58\u5728\uFF1A" + explicit + "\uFF08\u6539\u6210\u4E00\u4E2A\u771F\u5B9E\u5B58\u5728\u7684 msedge.exe / chrome.exe \u8DEF\u5F84\uFF09"
+    };
+  }
+  for (const key of BROWSER_ENV_KEYS) {
+    const value = String(env[key] ?? "").trim();
+    if (value === "") continue;
+    if (exists(value)) return { ok: true, exe: value };
+    return {
+      ok: false,
+      reason: "\u73AF\u5883\u53D8\u91CF " + key + " \u6307\u7684\u6D4F\u89C8\u5668\u4E0D\u5B58\u5728\uFF1A" + value + "\uFF08\u6539\u6210\u771F\u5B9E\u8DEF\u5F84\uFF0C\u6216\u5220\u6389\u8FD9\u4E2A\u53D8\u91CF\uFF09"
+    };
+  }
+  for (const candidate of options.candidates ?? browserCandidates()) {
+    if (exists(candidate)) return { ok: true, exe: candidate };
+  }
+  return { ok: false, reason: browserMissingReason() };
+}
+var wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function killTree(pid, log) {
+  try {
+    if (process.platform === "win32") {
+      spawn2("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+    } else {
+      process.kill(-pid, "SIGKILL");
+    }
+  } catch (error62) {
+    log("\u6740\u6D4F\u89C8\u5668\u8FDB\u7A0B\u6811\u5931\u8D25", { pid, reason: String(error62?.message ?? error62) });
+  }
+}
+async function killBrowsersUsingProfile(profileDir, log) {
+  if (!existsSync4(profileDir)) return 0;
+  try {
+    if (process.platform === "win32") {
+      const escaped = profileDir.replace(/'/g, "''");
+      const script = [
+        "$target = '" + escaped + "'",
+        `$hit = Get-CimInstance Win32_Process -Filter "Name='msedge.exe' OR Name='chrome.exe'" |`,
+        "  Where-Object { $_.CommandLine -and $_.CommandLine.Contains($target) }",
+        "$n = 0",
+        "foreach ($p in $hit) { try { taskkill /PID $p.ProcessId /T /F 2>$null | Out-Null; $n++ } catch { } }",
+        "Write-Output $n"
+      ].join("\n");
+      const out = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+        encoding: "utf8",
+        timeout: 15e3,
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      const killed = Number.parseInt(String(out).trim(), 10);
+      if (Number.isFinite(killed) && killed > 0) log("\u6E05\u6389\u4E86\u5360\u7740 profile \u7684\u6D4F\u89C8\u5668\u8FDB\u7A0B", { profileDir, killed });
+      return Number.isFinite(killed) ? killed : 0;
+    }
+    execFileSync("pkill", ["-f", profileDir], { stdio: "ignore", timeout: 1e4 });
+    return 1;
+  } catch {
+    return 0;
+  }
+}
+function startParentWatchdog(browserPid, log) {
+  const timer = setInterval(() => {
+    try {
+      process.kill(browserPid, 0);
+    } catch {
+      clearInterval(timer);
+      return;
+    }
+    if (process.ppid === 1) {
+      clearInterval(timer);
+      killTree(browserPid, log);
+    }
+  }, 5e3);
+  timer.unref?.();
+  return timer;
+}
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close(() => port > 0 ? resolve(port) : reject(new Error("\u62FF\u4E0D\u5230\u7A7A\u95F2\u7AEF\u53E3")));
+    });
+  });
+}
+function getJson(url2, timeoutMs = 2e3) {
+  return new Promise((resolve, reject) => {
+    const request = http.get(url2, { timeout: timeoutMs }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => {
+        try {
+          resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+        } catch (error62) {
+          reject(error62);
+        }
+      });
+    });
+    request.on("timeout", () => request.destroy(new Error("CDP \u63A2\u6D4B\u8D85\u65F6")));
+    request.on("error", reject);
+  });
+}
+async function launchWebAiBrowser(options) {
+  const log = options.log ?? (() => void 0);
+  const lookup = resolveBrowser({ explicit: options.executable });
+  if (!lookup.ok) throw new WebAiError(lookup.reason, 0);
+  const headless = options.headless !== false;
+  mkdirSync8(options.profileDir, { recursive: true });
+  if (options.killStale !== false) {
+    const killed = await killBrowsersUsingProfile(options.profileDir, log);
+    if (killed > 0) await wait(400);
+  }
+  const port = await freePort();
+  const args = [
+    headless ? "--headless=new" : "--start-maximized",
+    headless ? "--window-size=1920,1080" : "",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--no-service-autorun",
+    "--disable-session-crashed-bubble",
+    "--hide-crash-restore-bubble",
+    "--disable-restore-session-state",
+    "--noerrdialogs",
+    "--disable-features=Translate,OptimizationHints,msSyncConsent,SigninInterception",
+    "--mute-audio",
+    "--hide-scrollbars",
+    "--remote-debugging-port=" + port,
+    "--user-data-dir=" + options.profileDir,
+    "--lang=zh-CN",
+    "about:blank"
+  ];
+  const child = spawn2(lookup.exe, args, {
+    stdio: "ignore",
+    windowsHide: headless,
+    cwd: options.profileDir
+  });
+  if (typeof child.pid === "number") startParentWatchdog(child.pid, log);
+  let closed = false;
+  let watchdog;
+  let socketRef;
+  const cleanup = async () => {
+    if (closed) return;
+    closed = true;
+    if (watchdog) clearInterval(watchdog);
+    try {
+      await Promise.race([
+        socketRef !== void 0 && socketRef.readyState === 1 ? (socketRef.send(JSON.stringify({ id: -1, method: "Browser.close" })), Promise.resolve()) : Promise.resolve(),
+        wait(2e3)
+      ]);
+      for (let i = 0; i < 40; i += 1) {
+        if (!child.pid) break;
+        try {
+          process.kill(child.pid, 0);
+        } catch {
+          break;
+        }
+        await wait(100);
+      }
+    } catch {
+    }
+    if (typeof child.pid === "number") killTree(child.pid, log);
+    await wait(150);
+  };
+  const readyTimeout = options.readyTimeoutMs ?? 25e3;
+  const deadline = Date.now() + readyTimeout;
+  let target;
+  const isUsablePage = (row) => row.type === "page" && typeof row.webSocketDebuggerUrl === "string" && (row.url === "about:blank" || /^https?:/i.test(row.url ?? ""));
+  while (Date.now() < deadline) {
+    try {
+      const list = await getJson("http://127.0.0.1:" + port + "/json/list");
+      const rows = Array.isArray(list) ? list : [];
+      target = rows.find(isUsablePage);
+      if (target) break;
+      if (Date.now() > deadline - readyTimeout / 2) {
+        const any2 = rows.find((row) => row.type === "page" && typeof row.webSocketDebuggerUrl === "string");
+        if (any2) {
+          target = any2;
+          break;
+        }
+      }
+    } catch {
+    }
+    await wait(200);
+  }
+  if (!target?.webSocketDebuggerUrl) {
+    await cleanup();
+    throw new WebAiError(
+      "\u6D4F\u89C8\u5668\u6CA1\u8D77\u6765\uFF08\u7AEF\u53E3 " + port + "\uFF0C\u7B49\u4E86 " + Math.round(readyTimeout / 1e3) + " \u79D2\uFF09\uFF1A\u591A\u534A\u662F\u8FD9\u4E2A profile\uFF08" + options.profileDir + "\uFF09\u8FD8\u88AB\u522B\u7684 Edge \u8FDB\u7A0B\u5360\u7740\u2014\u2014\u63D2\u4EF6\u5DF2\u8BD5\u8FC7\u81EA\u52A8\u6E05\u7406\uFF1B\u4ECD\u5931\u8D25\u5C31\u624B\u52A8\u5173\u6389\u6240\u6709\u540C\u540D\u7A97\u53E3\u518D\u8BD5",
+      0
+    );
+  }
+  const WebSocketCtor = globalThis.WebSocket;
+  if (typeof WebSocketCtor !== "function") {
+    await cleanup();
+    throw new WebAiError("\u5BBF\u4E3B Node \u7248\u672C\u8FC7\u4F4E\uFF08\u6CA1\u6709\u5168\u5C40 WebSocket\uFF0C\u9700\u8981 22+\uFF09\uFF1A\u7F51\u9875\u7248\u641C\u7D22\u4E0D\u53EF\u7528", 0);
+  }
+  const socket = new WebSocketCtor(target.webSocketDebuggerUrl);
+  socketRef = socket;
+  let nextId = 1;
+  const pending2 = /* @__PURE__ */ new Map();
+  socket.addEventListener("message", (event) => {
+    let message;
+    try {
+      message = JSON.parse(String(event.data));
+    } catch {
+      return;
+    }
+    if (typeof message.id !== "number") return;
+    const waiter = pending2.get(message.id);
+    if (!waiter) return;
+    pending2.delete(message.id);
+    clearTimeout(waiter.timer);
+    if (message.error) waiter.reject(new Error(message.error.message ?? "CDP \u9519\u8BEF"));
+    else waiter.resolve(message.result);
+  });
+  socket.addEventListener("close", () => {
+    for (const [id, waiter] of pending2) {
+      pending2.delete(id);
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("CDP \u8FDE\u63A5\u65AD\u4E86\uFF08\u6D4F\u89C8\u5668\u88AB\u5173\u6389\uFF1F\uFF09"));
+    }
+  });
+  await new Promise((resolve, reject) => {
+    socket.addEventListener("open", () => resolve());
+    socket.addEventListener("error", () => reject(new Error("\u8FDE\u4E0D\u4E0A CDP WebSocket")));
+    setTimeout(() => reject(new Error("\u8FDE\u4E0D\u4E0A CDP WebSocket\uFF0810s\uFF09")), 1e4);
+  }).catch(async (error62) => {
+    await cleanup();
+    throw new WebAiError("\u8FDE\u4E0D\u4E0A\u6D4F\u89C8\u5668\u7684\u8C03\u8BD5\u7AEF\u53E3\uFF1A" + (error62?.message ?? "\u672A\u77E5\u539F\u56E0"), 0);
+  });
+  const call = (method, params, timeoutMs = 2e4) => {
+    const id = nextId++;
+    socket.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pending2.delete(id);
+        reject(new Error("CDP " + method + " \u8D85\u65F6\uFF08" + timeoutMs + "ms\uFF09"));
+      }, timeoutMs);
+      pending2.set(id, { resolve, reject, timer });
+    });
+  };
+  const evaluate = async (expression, timeoutMs = 3e4) => {
+    const result2 = await call("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true, userGesture: false }, timeoutMs);
+    if (result2?.exceptionDetails) {
+      const detail = result2.exceptionDetails.exception?.description ?? result2.exceptionDetails.text ?? "\u9875\u9762\u6267\u884C\u51FA\u9519";
+      throw new Error(String(detail).slice(0, 400));
+    }
+    return result2?.result?.value;
+  };
+  try {
+    await call("Page.enable", {}, 1e4).catch(() => void 0);
+    await call("Runtime.enable", {}, 1e4).catch(() => void 0);
+    await call("Network.enable", {}, 1e4).catch(() => void 0);
+  } catch {
+  }
+  if (headless) {
+    try {
+      const raw = await evaluate("navigator.userAgent", 5e3);
+      if (typeof raw === "string" && raw.includes("HeadlessChrome")) {
+        await call("Network.setUserAgentOverride", { userAgent: raw.replace("HeadlessChrome", "Chrome") }, 5e3);
+      }
+    } catch {
+    }
+  }
+  return {
+    port,
+    evaluate,
+    call,
+    async goto(url2, timeoutMs = 4e4) {
+      await call("Page.navigate", { url: url2 }, timeoutMs).catch(() => void 0);
+      const dl = Date.now() + timeoutMs;
+      while (Date.now() < dl) {
+        const state = await evaluate("document.readyState").catch(() => "loading");
+        if (state === "complete") return;
+        await wait(300);
+      }
+    },
+    async screenshot(file2) {
+      try {
+        const shot = await call("Page.captureScreenshot", { format: "png" }, 15e3);
+        if (shot?.data) writeFileSync5(file2, Buffer.from(shot.data, "base64"));
+      } catch {
+      }
+    },
+    async close() {
+      try {
+        socket.close();
+      } catch {
+      }
+      await cleanup();
+    }
+  };
+}
+function profileName(profileDir) {
+  return path22.basename(profileDir);
+}
+
+// src/websearch/webai/site.ts
+var DOUBAO_WEB_AI = {
+  id: "doubao",
+  label: "\u8C46\u5305",
+  homeUrl: "https://www.doubao.com/chat/",
+  loginUrl: "https://www.doubao.com/chat/",
+  editorSelector: ".ProseMirror",
+  answerSelectors: [
+    '[data-testid="message_text_content"]',
+    '[data-testid="receive_message"] [data-testid*="text"]',
+    ".flow-markdown-body",
+    '[data-testid="receive_message"]'
+  ],
+  busySelectors: ['[data-testid="stop_generation_button"]', '[aria-label*="\u505C\u6B62\u751F\u6210"]'],
+  citationSelectors: [
+    '[data-testid="search_result"]',
+    '[data-testid="reference_list"]',
+    '[data-testid="message_reference"]',
+    ".search-result-card"
+  ],
+  internalHosts: ["doubao.com", "doubao.cn"],
+  /*
+   * cookie 是**服务端认的证据**，没法"还没出现"——识图插件 2026-11-19 踩过：
+   * 首屏输入框先渲染、顶栏后渲染，只看 DOM 会把未登录判成已登录。
+   */
+  authCookies: { url: "https://www.doubao.com", names: ["sessionid", "sessionid_ss"] },
+  loginProbe: `(() => {
+    if (document.querySelector('[data-testid="to_login_button"]')) return false;
+    if (location.search.includes('from_logout')) return false;
+    return true;
+  })()`
+};
+function editorReadyExpression(spec) {
+  return `!!document.querySelector(${JSON.stringify(spec.editorSelector)})`;
+}
+function answerProbeExpression(spec) {
+  return `(() => {
+    const selectors = ${JSON.stringify(spec.answerSelectors)};
+    return selectors.map((sel) => {
+      const nodes = Array.from(document.querySelectorAll(sel));
+      return {
+        selector: sel,
+        texts: nodes.map((n) => ((n.innerText || n.textContent || '') + '').trim()),
+        htmls: nodes.map((n) => n.innerHTML || ''),
+      };
+    });
+  })()`;
+}
+function busyExpression(spec) {
+  return `(() => ${JSON.stringify(spec.busySelectors)}.some((sel) => !!document.querySelector(sel)))()`;
+}
+function anchorGroupsExpression(spec) {
+  return `(() => {
+    const selectors = ${JSON.stringify(spec.citationSelectors)};
+    return selectors.map((sel) => {
+      const anchors = [];
+      for (const node of Array.from(document.querySelectorAll(sel))) {
+        const found = [];
+        if (node.tagName === 'A' && node.getAttribute('href')) found.push(node);
+        for (const inner of Array.from(node.querySelectorAll('a[href]'))) found.push(inner);
+        for (const a of found) {
+          anchors.push({
+            title: ((a.innerText || a.textContent || '') + '').trim(),
+            url: a.href || a.getAttribute('href') || '',
+          });
+        }
+      }
+      return { selector: sel, anchors };
+    });
+  })()`;
+}
+function editorEmptyExpression(editorSelector) {
+  return `(() => {
+    const el = document.querySelector(${JSON.stringify(editorSelector)});
+    return el ? (el.innerText || '').trim() === '' : false;
+  })()`;
+}
+function chooseAnswer(probes, exclude = "") {
+  const skip = String(exclude ?? "").trim();
+  for (const probe of probes) {
+    if (!probe || !Array.isArray(probe.texts)) continue;
+    for (let i = probe.texts.length - 1; i >= 0; i -= 1) {
+      const text = String(probe.texts[i] ?? "").trim();
+      if (text === "" || skip !== "" && text === skip) continue;
+      return { text, html: String(probe.htmls[i] ?? ""), selector: probe.selector, index: i };
+    }
+  }
+  return { text: "", html: "", selector: "", index: -1 };
+}
+var DEFAULT_MIN_STABLE_MS = 1200;
+var DEFAULT_MIN_STABLE_SAMPLES = 3;
+function initialCompletion(now) {
+  return { text: "", stableSince: now, stableSamples: 0 };
+}
+function stepCompletion(previous, sample, now, rules = {}) {
+  const minStableMs = typeof rules.minStableMs === "number" && rules.minStableMs >= 0 ? rules.minStableMs : DEFAULT_MIN_STABLE_MS;
+  const minStableSamples = typeof rules.minStableSamples === "number" && rules.minStableSamples >= 1 ? Math.floor(rules.minStableSamples) : DEFAULT_MIN_STABLE_SAMPLES;
+  const text = String(sample.text ?? "").trim();
+  let state;
+  if (text === "") {
+    state = { text: "", stableSince: now, stableSamples: 0 };
+  } else if (text !== previous.text) {
+    state = { text, stableSince: now, stableSamples: 1 };
+  } else {
+    state = { text, stableSince: previous.stableSince, stableSamples: previous.stableSamples + 1 };
+  }
+  const busy = sample.busy === true;
+  const done = text !== "" && !busy && state.stableSamples >= minStableSamples && now - state.stableSince >= minStableMs;
+  return { state, done, busy };
+}
+var ENTITY_RE = /&(?:amp|lt|gt|quot|apos|nbsp|#\d+|#x[0-9a-f]+);/gi;
+function decodeHtmlText(text) {
+  return String(text ?? "").replace(ENTITY_RE, (entity) => {
+    const lower = entity.toLowerCase();
+    if (lower === "&amp;") return "&";
+    if (lower === "&lt;") return "<";
+    if (lower === "&gt;") return ">";
+    if (lower === "&quot;") return '"';
+    if (lower === "&apos;") return "'";
+    if (lower === "&nbsp;") return " ";
+    const numeric = /^&#(x[0-9a-f]+|\d+);$/i.exec(entity);
+    if (!numeric) return entity;
+    const raw = numeric[1] ?? "";
+    const code = raw.toLowerCase().startsWith("x") ? Number.parseInt(raw.slice(1), 16) : Number.parseInt(raw, 10);
+    if (!Number.isFinite(code) || code <= 0) return "";
+    try {
+      return String.fromCodePoint(code);
+    } catch {
+      return "";
+    }
+  });
+}
+function stripTags(html) {
+  return String(html ?? "").replace(/<[^>]*>/g, " ");
+}
+function cleanTitle(raw) {
+  return decodeHtmlText(stripTags(raw)).replace(/\s+/g, " ").trim();
+}
+function normalizeCitationUrl(raw) {
+  const value = decodeHtmlText(String(raw ?? "")).trim();
+  if (value === "") return void 0;
+  if (/^(?:javascript|data|mailto|tel|about|blob):/i.test(value)) return void 0;
+  let url2;
+  try {
+    url2 = new URL(value);
+  } catch {
+    return void 0;
+  }
+  if (url2.protocol !== "http:" && url2.protocol !== "https:") return void 0;
+  url2.hash = "";
+  const text = url2.toString();
+  return text.endsWith("/") ? text.slice(0, -1) : text;
+}
+function isInternalHost(host, internalHosts) {
+  const target = String(host ?? "").toLowerCase();
+  if (target === "") return true;
+  return internalHosts.some((raw) => {
+    const domain2 = String(raw ?? "").toLowerCase().replace(/^\.+/, "").trim();
+    if (domain2 === "") return false;
+    return target === domain2 || target.endsWith("." + domain2);
+  });
+}
+var ANCHOR_RE = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+var HREF_RE = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+function anchorsFromHtml(html) {
+  const source = String(html ?? "");
+  if (source === "") return [];
+  const out = [];
+  const pattern = new RegExp(ANCHOR_RE.source, "gi");
+  let match = pattern.exec(source);
+  while (match !== null) {
+    const attrs = match[1] ?? "";
+    const href = HREF_RE.exec(attrs);
+    const url2 = href ? href[1] ?? href[2] ?? href[3] ?? "" : "";
+    out.push({ title: cleanTitle(match[2] ?? ""), url: url2 });
+    match = pattern.exec(source);
+  }
+  return out;
+}
+function collectCitations(input2, spec = DOUBAO_WEB_AI) {
+  const raw = [];
+  for (const group of input2.groups ?? []) {
+    if (!group || !Array.isArray(group.anchors)) continue;
+    for (const anchor2 of group.anchors) raw.push(anchor2);
+  }
+  for (const anchor2 of anchorsFromHtml(input2.answerHtml ?? "")) raw.push(anchor2);
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const row of raw) {
+    const url2 = normalizeCitationUrl(row?.url ?? "");
+    if (url2 === void 0) continue;
+    let host = "";
+    try {
+      host = new URL(url2).host;
+    } catch {
+      continue;
+    }
+    if (isInternalHost(host, spec.internalHosts)) continue;
+    if (seen.has(url2)) continue;
+    seen.add(url2);
+    const title = cleanTitle(row?.title ?? "");
+    out.push({ title: title !== "" ? title : host, url: url2 });
+  }
+  return out;
+}
+var DEFAULT_MAX_CHARS = 12e3;
+function clipText(text, maxChars) {
+  const limit = typeof maxChars === "number" && Number.isFinite(maxChars) && maxChars > 0 ? Math.floor(maxChars) : DEFAULT_MAX_CHARS;
+  const value = String(text ?? "");
+  if (value.length <= limit) return { text: value, truncated: false };
+  return { text: value.slice(0, limit), truncated: true };
+}
+function answerBudgetMs(timeoutMs) {
+  const value = typeof timeoutMs === "number" && Number.isFinite(timeoutMs) ? timeoutMs : 0;
+  return Math.max(value, 2e4);
+}
+var PARTIAL_NOTE = "\u53EF\u80FD\u6CA1\u7B54\u5B8C";
+function notLoggedInHint(label = DOUBAO_WEB_AI.label) {
+  return `\u7F51\u9875\u7248${label}\u6CA1\u767B\u5F55\uFF1A\u5148\u5728\u8BC6\u56FE\u63D2\u4EF6\u91CC\u70B9\u300C\u767B\u5F55\u300D\uFF08vision_web_login(doubao)\uFF09\uFF0C\u6216\u7528\u8BBE\u7F6E\u9875\u7684\u767B\u5F55\u6309\u94AE\uFF0C\u767B\u5B8C\u518D\u8BD5\u3002`;
+}
+var wait2 = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function pollTrue(client, expression, timeoutMs, stepMs = 300) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const ok = await client.evaluate(expression).catch(() => false);
+    if (ok === true) return true;
+    await wait2(stepMs);
+  }
+  return false;
+}
+async function isLoggedIn(client, spec) {
+  let cookieVerdict;
+  try {
+    const result2 = await client.call(
+      "Network.getCookies",
+      { urls: [spec.authCookies.url] },
+      1e4
+    );
+    if (Array.isArray(result2?.cookies)) {
+      cookieVerdict = spec.authCookies.names.some(
+        (name2) => (result2.cookies ?? []).some((cookie) => cookie?.name === name2 && (cookie?.value ?? "") !== "")
+      );
+    }
+  } catch {
+  }
+  if (cookieVerdict === false) return false;
+  const settled = await pollTrue(client, editorReadyExpression(spec), 8e3);
+  if (!settled) return cookieVerdict === true;
+  const first = await client.evaluate(spec.loginProbe).catch(() => cookieVerdict === true);
+  if (first === true) return true;
+  await wait2(1500);
+  return client.evaluate(spec.loginProbe).catch(() => false);
+}
+async function typeInto(client, selector, text) {
+  return client.evaluate(`(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) return false;
+      el.focus();
+      const ok = document.execCommand('insertText', false, ${JSON.stringify(text)});
+      return ok !== false;
+    })()`).catch(() => false);
+}
+async function clearEditor(client, selector) {
+  return client.evaluate(`(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) return false;
+      el.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.execCommand('delete');
+      return true;
+    })()`).catch(() => false);
+}
+async function pressEnter(client) {
+  for (const type of ["rawKeyDown", "keyUp"]) {
+    await client.call("Input.dispatchKeyEvent", {
+      type,
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13
+    });
+  }
+}
+async function clickElement(client, selector) {
+  const box = await client.evaluate(`(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) return null;
+      el.scrollIntoView({ block: 'center' });
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    })()`).catch(() => null);
+  if (!box) return false;
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await client.call("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
+  }
+  return true;
+}
+async function probeLogin(client, spec) {
+  await client.goto(spec.loginUrl);
+  const ready = await pollTrue(client, editorReadyExpression(spec), 25e3);
+  if (!ready) return { loggedIn: false, url: spec.loginUrl };
+  const loggedIn = await isLoggedIn(client, spec);
+  const url2 = await client.evaluate("location.href").catch(() => spec.loginUrl);
+  return { loggedIn: loggedIn === true, url: typeof url2 === "string" ? url2 : spec.loginUrl };
+}
+
+// src/websearch/webai/service.ts
+var MIN_GAP_MS = 1500;
+var IDLE_CLOSE_MS = 5 * 6e4;
+var SAMPLE_MS = 600;
+var MAX_QUEUE = 2;
+var wait3 = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function webvisionRoot(dshHome) {
+  return path23.join(dshHome, "storages", "dsh-remote-dafeiyu", "webvision");
+}
+function resolveProfileDir(profileRoot, env = process.env) {
+  const explicit = String(profileRoot ?? "").trim();
+  if (explicit !== "") {
+    return path23.basename(explicit) === DOUBAO_WEB_AI.id ? explicit : path23.join(explicit, DOUBAO_WEB_AI.id);
+  }
+  const home = resolveDshHome(env);
+  const root = home === "" ? path23.join(os4.homedir(), ".dsh") : home;
+  return path23.join(webvisionRoot(root), DOUBAO_WEB_AI.id);
+}
+function buildSearchResult(input2) {
+  const clipped = clipText(input2.answer, input2.maxChars);
+  const partial2 = input2.deadlineHit === true;
+  return {
+    answer: clipped.text,
+    citations: Array.isArray(input2.citations) ? input2.citations : [],
+    site: typeof input2.site === "string" && input2.site !== "" ? input2.site : DOUBAO_WEB_AI.label,
+    elapsedMs: input2.elapsedMs,
+    truncated: clipped.truncated,
+    partial: partial2
+  };
+}
+function chineseReason(error62, fallback) {
+  const message = String(error62?.message ?? error62 ?? "").trim();
+  if (message === "") return fallback;
+  if (/[\u4e00-\u9fff]/.test(message)) return message;
+  return fallback + "\uFF1A" + message;
+}
+function createWebAiService(deps = {}) {
+  const log = deps.log ?? (() => void 0);
+  const profileDir = resolveProfileDir(deps.profileRoot);
+  const spec = DOUBAO_WEB_AI;
+  const runtime = { chain: Promise.resolve(), pending: 0, lastUsed: 0 };
+  let stopped = false;
+  const clearIdle = () => {
+    if (runtime.idleTimer !== void 0) {
+      clearTimeout(runtime.idleTimer);
+      runtime.idleTimer = void 0;
+    }
+  };
+  const scheduleIdleClose = () => {
+    clearIdle();
+    const timer = setTimeout(() => {
+      void closeBrowser();
+    }, IDLE_CLOSE_MS);
+    timer.unref?.();
+    runtime.idleTimer = timer;
+  };
+  const closeBrowser = async () => {
+    clearIdle();
+    const client = runtime.client;
+    runtime.client = void 0;
+    if (client) {
+      log("\u5173\u95ED\u7F51\u9875\u7248\u641C\u7D22\u6D4F\u89C8\u5668", { site: spec.label, profile: profileName(profileDir) });
+      await client.close().catch(() => void 0);
+    }
+  };
+  const ensureBrowser = async () => {
+    if (runtime.client) {
+      runtime.lastUsed = Date.now();
+      return runtime.client;
+    }
+    fs8.mkdirSync(profileDir, { recursive: true });
+    const client = await launchWebAiBrowser({ profileDir, headless: true, log });
+    runtime.client = client;
+    runtime.lastUsed = Date.now();
+    return client;
+  };
+  const runSerial = async (task) => {
+    if (runtime.pending >= MAX_QUEUE) {
+      throw new WebAiError(spec.label + "\u8FD8\u5728\u5904\u7406\u4E0A\u4E00\u4E2A\u8BF7\u6C42\uFF08\u7F51\u9875\u7248\u4E00\u6B21\u53EA\u80FD\u8DD1\u4E00\u4E2A\uFF09\uFF0C\u7B49\u5B83\u7B54\u5B8C\u518D\u8BD5", 429);
+    }
+    runtime.pending += 1;
+    const gap = Math.max(0, MIN_GAP_MS - (Date.now() - runtime.lastUsed));
+    const run = runtime.chain.catch(() => void 0).then(async () => {
+      if (stopped) throw new WebAiError("\u7F51\u9875\u7248\u641C\u7D22\u7684\u6D4F\u89C8\u5668\u5DF2\u7ECF\u5173\u6389\u4E86\uFF08\u63D2\u4EF6\u5728\u505C\u673A\uFF09\uFF1A\u91CD\u542F\u63D2\u4EF6\u540E\u518D\u8BD5", 0);
+      if (gap > 0) await wait3(gap);
+      try {
+        return await task();
+      } finally {
+        runtime.lastUsed = Date.now();
+        scheduleIdleClose();
+      }
+    }).finally(() => {
+      runtime.pending = Math.max(0, runtime.pending - 1);
+    });
+    runtime.chain = run.catch(() => void 0);
+    return run;
+  };
+  const runQuery = async (prompt, options) => {
+    const question = String(prompt ?? "").trim();
+    if (question === "") throw new WebAiError("\u7F51\u9875\u7248" + spec.label + "\u8981\u4E00\u4E2A\u975E\u7A7A\u7684 query\uFF08\u8BF4\u4E00\u4E0B\u8981\u67E5\u4EC0\u4E48\uFF09", 0);
+    const startedAt = Date.now();
+    return runSerial(async () => {
+      const client = await ensureBrowser();
+      await client.goto(spec.homeUrl);
+      const ready = await pollTrue(client, editorReadyExpression(spec), 25e3);
+      if (ready !== true) {
+        const loggedIn2 = await isLoggedIn(client, spec);
+        if (loggedIn2 !== true) throw new WebAiError(notLoggedInHint(spec.label), 401);
+        throw new WebAiError(
+          spec.label + "\u9875\u9762\u6CA1\u52A0\u8F7D\u51FA\u6765\uFF08\u627E\u4E0D\u5230\u8F93\u5165\u6846 " + spec.editorSelector + "\uFF09\uFF1A\u68C0\u67E5\u7F51\u7EDC\uFF0C\u6216\u524D\u7AEF\u6539\u7248\u540E\u66F4\u65B0\u9009\u62E9\u5668",
+          0
+        );
+      }
+      const loggedIn = await isLoggedIn(client, spec);
+      if (loggedIn !== true) throw new WebAiError(notLoggedInHint(spec.label), 401);
+      await clearEditor(client, spec.editorSelector);
+      const typed = await typeInto(client, spec.editorSelector, question);
+      if (typed !== true) throw new WebAiError(spec.label + "\u8F93\u5165\u6846\u62FF\u4E0D\u5230\u7126\u70B9\uFF08\u524D\u7AEF\u53EF\u80FD\u6539\u7248\u4E86\uFF09", 0);
+      const emptyProbe = editorEmptyExpression(spec.editorSelector);
+      let sent = false;
+      if (spec.sendSelector !== void 0 && spec.sendSelector !== "") {
+        sent = await clickElement(client, spec.sendSelector).catch(() => false);
+        if (sent) sent = await pollTrue(client, emptyProbe, 4e3);
+      }
+      if (!sent) {
+        await pressEnter(client);
+        sent = await pollTrue(client, emptyProbe, 4e3);
+      }
+      if (!sent) {
+        throw new WebAiError(spec.label + "\u6D88\u606F\u6CA1\u53D1\u51FA\u53BB\uFF08\u8F93\u5165\u6846\u91CC\u8FD8\u7559\u7740\u5B57\uFF09\uFF1A\u524D\u7AEF\u53EF\u80FD\u6539\u7248\uFF0C\u6216\u8FD9\u9897\u8D26\u53F7\u88AB\u9650\u5236\u4E86", 0);
+      }
+      const budget = answerBudgetMs(options.timeoutMs);
+      const answerDeadline = Date.now() + budget;
+      let state = initialCompletion(Date.now());
+      let lastHtml = "";
+      let deadlineHit = false;
+      for (; ; ) {
+        await wait3(SAMPLE_MS);
+        const probes = await client.evaluate(answerProbeExpression(spec)).catch(() => []);
+        const busy = await client.evaluate(busyExpression(spec)).catch(() => false);
+        const pick2 = chooseAnswer(Array.isArray(probes) ? probes : [], question);
+        if (pick2.html !== "") lastHtml = pick2.html;
+        const now = Date.now();
+        const step = stepCompletion(state, { text: pick2.text, busy: busy === true }, now);
+        state = step.state;
+        if (step.done) break;
+        if (now >= answerDeadline) {
+          deadlineHit = true;
+          break;
+        }
+      }
+      const answer = state.text.trim();
+      if (answer === "") {
+        const shot = path23.join(os4.tmpdir(), "dafeiyu-webai-" + Date.now() + ".png");
+        await client.screenshot(shot);
+        throw new WebAiError(
+          spec.label + "\u6CA1\u6709\u8FD4\u56DE\u53EF\u8BFB\u7684\u56DE\u7B54\uFF08\u7B49\u4E86 " + Math.round((Date.now() - startedAt) / 1e3) + " \u79D2\uFF09\uFF1A\u53EF\u80FD\u6CA1\u767B\u5F55\u3001\u88AB\u98CE\u63A7\uFF0C\u6216\u524D\u7AEF\u6539\u7248\u4E86\u3002\u622A\u56FE\uFF1A" + shot,
+          0
+        );
+      }
+      let groups = [];
+      try {
+        const rawGroups = await client.evaluate(anchorGroupsExpression(spec));
+        if (Array.isArray(rawGroups)) groups = rawGroups;
+      } catch {
+        groups = [];
+      }
+      const citations = collectCitations({ groups, answerHtml: lastHtml }, spec);
+      if (deadlineHit) log("\u7F51\u9875\u7248\u641C\u7D22\u8D85\u65F6\uFF0C\u8FD4\u56DE\u5DF2\u62FF\u5230\u7684\u90E8\u5206\uFF08" + PARTIAL_NOTE + "\uFF09", { chars: answer.length });
+      log("\u7F51\u9875\u7248\u641C\u7D22\u5B8C\u6210", {
+        site: spec.label,
+        chars: answer.length,
+        citations: citations.length,
+        elapsedMs: Date.now() - startedAt,
+        partial: deadlineHit
+      });
+      return buildSearchResult({
+        answer,
+        citations,
+        deadlineHit,
+        elapsedMs: Date.now() - startedAt,
+        maxChars: options.maxChars,
+        site: spec.label
+      });
+    });
+  };
+  return {
+    search(query, options) {
+      return runQuery(query, options ?? {});
+    },
+    async ask(input2) {
+      const result2 = await runQuery(String(input2?.prompt ?? ""), {
+        timeoutMs: input2?.timeoutMs,
+        maxChars: input2?.maxChars
+      });
+      return {
+        text: result2.answer,
+        site: result2.site,
+        elapsedMs: result2.elapsedMs,
+        truncated: result2.truncated,
+        partial: result2.partial
+      };
+    },
+    /**
+     * 登录态探测：只读，起一次无头浏览器判完就关。
+     *
+     * 有共享实例就复用（不关，那是别人正在用的）；否则自己起一个、判完关掉。
+     * 探测期间占着队列，避免和正在跑的问答抢同一个页面。
+     */
+    async status() {
+      if (runtime.pending >= MAX_QUEUE) {
+        return { loggedIn: false, profileDir, reason: spec.label + "\u8FD8\u5728\u56DE\u7B54\u4E0A\u4E00\u4E2A\u95EE\u9898\uFF0C\u7B49\u5B83\u8DD1\u5B8C\u518D\u63A2\u767B\u5F55\u6001" };
+      }
+      const shared = runtime.client;
+      try {
+        return await runSerial(async () => {
+          const client = shared !== void 0 ? shared : await ensureBrowser();
+          const probe = await probeLogin(client, spec);
+          if (probe.loggedIn === true) return { loggedIn: true, profileDir };
+          return { loggedIn: false, profileDir, reason: notLoggedInHint(spec.label) };
+        });
+      } catch (error62) {
+        return { loggedIn: false, profileDir, reason: chineseReason(error62, "\u63A2" + spec.label + "\u767B\u5F55\u6001\u6CA1\u6210") };
+      } finally {
+        if (shared === void 0) await closeBrowser().catch(() => void 0);
+      }
+    },
+    stop() {
+      stopped = true;
+      clearIdle();
+      const client = runtime.client;
+      runtime.client = void 0;
+      if (client) void client.close().catch(() => void 0);
+    }
+  };
+}
+
+// src/websearch/skill.ts
+import { existsSync as existsSync5, readFileSync as readFileSync9 } from "node:fs";
+import path24 from "node:path";
 function readWebsearchSkillBody(skillDir) {
   try {
-    const file2 = path22.join(skillDir, "SKILL.md");
-    if (existsSync4(file2)) {
+    const file2 = path24.join(skillDir, "SKILL.md");
+    if (existsSync5(file2)) {
       const text = readFileSync9(file2, "utf8");
       if (text.trim() !== "") return text;
     }
@@ -41474,7 +42413,7 @@ function websearchHandlers(deps) {
 // src/websearch/start.ts
 function startWebsearch(ctx, input2) {
   const probe = {};
-  const skillDir = path23.join(input2.packageRoot, "assets", "skills", "dafeiyu-websearch");
+  const skillDir = path25.join(input2.packageRoot, "assets", "skills", "dafeiyu-websearch");
   const configFile2 = input2.userConfigFile ?? resolveUserConfigFile(DEFAULT_CONFIG.statusFile);
   const now = input2.now ?? (() => Date.now());
   let toolsRegistered = false;
@@ -41496,10 +42435,41 @@ function startWebsearch(ctx, input2) {
     githubToken: (process.env.GITHUB_TOKEN ?? process.env.DSH_GITHUB_TOKEN ?? "").trim(),
     openAlexKey: (process.env.OPENALEX_API_KEY ?? process.env.DSH_OPENALEX_API_KEY ?? "").trim()
   });
+  let webAi;
+  let webAiFailure = "";
+  const ensureWebAi = () => {
+    if (webAi !== void 0) return webAi;
+    if (webAiFailure !== "") throw new Error(webAiFailure);
+    const home = String(input2.dshHome ?? "").trim();
+    if (home === "") {
+      webAiFailure = "\u7F51\u9875\u8C46\u5305\u5F15\u64CE\u4E0D\u53EF\u7528\uFF1A\u6CA1\u6709\u62FF\u5230 dshHome\uFF0C\u627E\u4E0D\u5230\u8BC6\u56FE\u90A3\u4EFD\u767B\u5F55 profile\uFF08\u6539\u7528 engine=auto\uFF09";
+      probe.webai = "no dshHome";
+      throw new Error(webAiFailure);
+    }
+    try {
+      webAi = createWebAiService({
+        log: input2.log,
+        profileRoot: path25.join(home, "storages", "dsh-remote-dafeiyu", "webvision")
+      });
+      probe.webai = "ready";
+      return webAi;
+    } catch (error62) {
+      const reason = String(error62?.message ?? error62).slice(0, 160);
+      webAiFailure = "\u7F51\u9875\u8C46\u5305\u5F15\u64CE\u8D77\u4E0D\u6765\uFF1A" + reason;
+      probe.webai = "start failed: " + reason.slice(0, 80);
+      input2.log("\u7F51\u9875\u8C46\u5305\u5F15\u64CE\u8D77\u4E0D\u6765\uFF08bing/sogou \u4E24\u6761\u5F15\u64CE\u4E0D\u53D7\u5F71\u54CD\uFF09", { message: reason.slice(0, 200) });
+      throw new Error(webAiFailure);
+    }
+  };
+  const webAiEngine = {
+    search: (query, options) => ensureWebAi().search(query, options)
+  };
+  probe.webai = "lazy\uFF08\u7B2C\u4E00\u6B21 engine=doubao \u624D\u8D77\u6D4F\u89C8\u5668\uFF09";
   const toolDeps = {
     guideBody: () => readWebsearchSkillBody(skillDir),
     log: input2.log,
-    readConfig: readTokens
+    readConfig: readTokens,
+    webAi: webAiEngine
   };
   const acceptTools = (value, via) => {
     if (toolsRegistered) return true;
@@ -41666,6 +42636,10 @@ function startWebsearch(ctx, input2) {
         if (routeTimer !== void 0) clearInterval(routeTimer);
       } catch {
       }
+      try {
+        webAi?.stop();
+      } catch {
+      }
       for (const dispose of disposers.splice(0)) {
         try {
           dispose();
@@ -41677,18 +42651,18 @@ function startWebsearch(ctx, input2) {
 }
 
 // src/skills/install.ts
-import { cpSync, existsSync as existsSync5, mkdirSync as mkdirSync8, readFileSync as readFileSync10, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync5 } from "node:fs";
-import path24 from "node:path";
+import { cpSync, existsSync as existsSync6, mkdirSync as mkdirSync9, readFileSync as readFileSync10, readdirSync as readdirSync4, rmSync, statSync as statSync3, writeFileSync as writeFileSync6 } from "node:fs";
+import path26 from "node:path";
 import { fileURLToPath } from "node:url";
 var SKILL_VERSION_FILE = ".dafeiyu-skill-version";
 function packageRoot() {
   try {
-    let candidate = path24.dirname(fileURLToPath(import.meta.url));
+    let candidate = path26.dirname(fileURLToPath(import.meta.url));
     for (let depth = 0; depth < 5; depth += 1) {
-      if (existsSync5(path24.join(candidate, "package.json")) && existsSync5(path24.join(candidate, "assets", "skills"))) {
+      if (existsSync6(path26.join(candidate, "package.json")) && existsSync6(path26.join(candidate, "assets", "skills"))) {
         return candidate;
       }
-      const parent = path24.dirname(candidate);
+      const parent = path26.dirname(candidate);
       if (parent === candidate) break;
       candidate = parent;
     }
@@ -41698,7 +42672,7 @@ function packageRoot() {
 }
 function packageVersion() {
   try {
-    const raw = readFileSync10(path24.join(packageRoot(), "package.json"), "utf8");
+    const raw = readFileSync10(path26.join(packageRoot(), "package.json"), "utf8");
     const parsed = JSON.parse(raw);
     return typeof parsed.version === "string" ? parsed.version : "unknown";
   } catch {
@@ -41709,7 +42683,7 @@ function fingerprint(dir) {
   const walk2 = (base, rel) => {
     let entries;
     try {
-      entries = readdirSync4(path24.join(base, rel), { withFileTypes: true });
+      entries = readdirSync4(path26.join(base, rel), { withFileTypes: true });
     } catch {
       return [];
     }
@@ -41719,7 +42693,7 @@ function fingerprint(dir) {
       if (entry.isDirectory()) out.push(...walk2(base, childRel));
       else {
         try {
-          out.push(`${childRel}:${statSync3(path24.join(base, childRel)).size}`);
+          out.push(`${childRel}:${statSync3(path26.join(base, childRel)).size}`);
         } catch {
           out.push(`${childRel}:?`);
         }
@@ -41732,21 +42706,21 @@ function fingerprint(dir) {
 function installBundledSkills(deps) {
   let entries;
   try {
-    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path24.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync5(path24.join(entry.dir, "SKILL.md")));
+    entries = readdirSync4(deps.assetsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => ({ name: entry.name, dir: path26.join(deps.assetsRoot, entry.name) })).filter((entry) => existsSync6(path26.join(entry.dir, "SKILL.md")));
   } catch (error62) {
     return { ok: false, installed: [], reason: `missing-asset: ${String(error62?.message ?? error62)}` };
   }
   if (entries.length === 0) return { ok: false, installed: [], reason: `no-skill-under: ${deps.assetsRoot}` };
   const installed = [];
   for (const entry of entries) {
-    const target = path24.join(deps.dshHome, "skills", entry.name);
-    const stamp = path24.join(target, SKILL_VERSION_FILE);
+    const target = path26.join(deps.dshHome, "skills", entry.name);
+    const stamp = path26.join(target, SKILL_VERSION_FILE);
     try {
-      if (existsSync5(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
-      mkdirSync8(path24.dirname(target), { recursive: true });
-      if (existsSync5(target)) rmSync(target, { recursive: true, force: true });
+      if (existsSync6(stamp) && fingerprint(entry.dir) === fingerprint(target)) continue;
+      mkdirSync9(path26.dirname(target), { recursive: true });
+      if (existsSync6(target)) rmSync(target, { recursive: true, force: true });
       cpSync(entry.dir, target, { recursive: true });
-      writeFileSync5(stamp, `${deps.version}
+      writeFileSync6(stamp, `${deps.version}
 `, "utf8");
       installed.push(entry.name);
     } catch (error62) {
@@ -41764,7 +42738,7 @@ function installPackagedSkills(deps) {
   try {
     return installBundledSkills({
       dshHome: deps.dshHome,
-      assetsRoot: path24.join(packageRoot(), "assets", "skills"),
+      assetsRoot: path26.join(packageRoot(), "assets", "skills"),
       version: packageVersion(),
       log: deps.log
     });
@@ -41774,9 +42748,9 @@ function installPackagedSkills(deps) {
 }
 
 // src/extensions/service.ts
-import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync6, readFileSync as readFileSync11, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync6 } from "node:fs";
-import path25 from "node:path";
+import { spawn as spawn3 } from "node:child_process";
+import { existsSync as existsSync7, readFileSync as readFileSync11, renameSync as renameSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync7 } from "node:fs";
+import path27 from "node:path";
 
 // src/extensions/registry.ts
 var EXTENSIONS = [
@@ -41887,25 +42861,25 @@ function verdictFor(host, entry) {
   }
   return { level: "ok", message: "" };
 }
-function detectHostVersion(profileDir, fs8) {
+function detectHostVersion(profileDir, fs9) {
   const roots = ["dsh-app-boot", "dsh-official-bundles", "dsh-base"];
   for (const name2 of roots) {
     const file2 = [profileDir, "node_modules", "@deepseek-ai", name2, "package.json"].join("\\");
-    const version2 = readPackageVersion(file2, fs8);
+    const version2 = readPackageVersion(file2, fs9);
     if (version2 !== void 0) return version2;
   }
   const scopeDir = [profileDir, "node_modules", "@deepseek-ai"].join("\\");
-  if (typeof fs8.readdirSync !== "function") return void 0;
+  if (typeof fs9.readdirSync !== "function") return void 0;
   let names = [];
   try {
-    names = fs8.readdirSync(scopeDir);
+    names = fs9.readdirSync(scopeDir);
   } catch {
     return void 0;
   }
   const counts = /* @__PURE__ */ new Map();
   for (const name2 of names) {
     if (!name2.startsWith("dsh-")) continue;
-    const version2 = readPackageVersion([scopeDir, name2, "package.json"].join("\\"), fs8);
+    const version2 = readPackageVersion([scopeDir, name2, "package.json"].join("\\"), fs9);
     if (version2 === void 0) continue;
     counts.set(version2, (counts.get(version2) ?? 0) + 1);
   }
@@ -41919,17 +42893,17 @@ function detectHostVersion(profileDir, fs8) {
   }
   return best;
 }
-function readPackageVersion(file2, fs8) {
+function readPackageVersion(file2, fs9) {
   try {
-    if (!fs8.existsSync(file2)) return void 0;
-    const parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
+    if (!fs9.existsSync(file2)) return void 0;
+    const parsed = JSON.parse(fs9.readFileSync(file2, "utf8"));
     return typeof parsed?.version === "string" && parsed.version.trim() !== "" ? parsed.version.trim() : void 0;
   } catch {
     return void 0;
   }
 }
-function buildCompatReport(profileDir, fs8) {
-  const host = detectHostVersion(profileDir, fs8);
+function buildCompatReport(profileDir, fs9) {
+  const host = detectHostVersion(profileDir, fs9);
   const packages = COMPAT.map((entry) => {
     const verdict = verdictFor(host, entry);
     return { packageName: entry.packageName, label: entry.label, level: verdict.level, message: verdict.message };
@@ -41951,25 +42925,25 @@ function isExtensionAction(value) {
   return typeof value === "string" && EXTENSION_ACTIONS.includes(value);
 }
 var nodeFs = {
-  existsSync: (file2) => existsSync6(file2),
+  existsSync: (file2) => existsSync7(file2),
   // 包一层而不是直接传引用：node 的 readFileSync 是重载，直接传会被 TS 判成 Buffer 那个签名。
   readFileSync: (file2, encoding) => readFileSync11(file2, encoding),
-  writeFileSync: (file2, data, encoding) => writeFileSync6(file2, data, encoding),
+  writeFileSync: (file2, data, encoding) => writeFileSync7(file2, data, encoding),
   renameSync: (from, to) => renameSync2(from, to),
   unlinkSync: (file2) => unlinkSync2(file2)
 };
 function profilePackageFile(profileDir) {
-  return path25.join(profileDir, "package.json");
+  return path27.join(profileDir, "package.json");
 }
 function asRecord3(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
-function readProfilePackage(profileDir, fs8 = nodeFs) {
+function readProfilePackage(profileDir, fs9 = nodeFs) {
   const file2 = profilePackageFile(profileDir);
-  if (!fs8.existsSync(file2)) return { kind: "missing", file: file2 };
+  if (!fs9.existsSync(file2)) return { kind: "missing", file: file2 };
   let text;
   try {
-    text = fs8.readFileSync(file2, "utf8");
+    text = fs9.readFileSync(file2, "utf8");
   } catch (error62) {
     return { kind: "broken", file: file2, message: `\u8BFB\u4E0D\u51FA\u6765\uFF1A${String(error62?.message ?? error62).slice(0, 160)}` };
   }
@@ -41992,13 +42966,13 @@ function dependenciesOf(doc) {
   return asRecord3(doc.dependencies);
 }
 function installedPackageFile(profileDir, packageName) {
-  return path25.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
+  return path27.join(profileDir, "node_modules", ...packageName.split("/"), "package.json");
 }
-function readInstalledVersion(profileDir, spec, fs8) {
+function readInstalledVersion(profileDir, spec, fs9) {
   const file2 = installedPackageFile(profileDir, spec.packageName);
-  if (!fs8.existsSync(file2)) return void 0;
+  if (!fs9.existsSync(file2)) return void 0;
   try {
-    const parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
+    const parsed = JSON.parse(fs9.readFileSync(file2, "utf8"));
     const version2 = asRecord3(parsed).version;
     return typeof version2 === "string" && version2 !== "" ? version2 : void 0;
   } catch {
@@ -42006,11 +42980,11 @@ function readInstalledVersion(profileDir, spec, fs8) {
   }
 }
 function readExtensionStatus(profileDir, spec, options = {}) {
-  const fs8 = options.fs ?? nodeFs;
-  const read = readProfilePackage(profileDir, fs8);
+  const fs9 = options.fs ?? nodeFs;
+  const read = readProfilePackage(profileDir, fs9);
   const doc = read.kind === "ok" ? read.doc : {};
   const hasDependency = typeof dependenciesOf(doc)[spec.packageName] === "string";
-  const installed = hasDependency && fs8.existsSync(installedPackageFile(profileDir, spec.packageName));
+  const installed = hasDependency && fs9.existsSync(installedPackageFile(profileDir, spec.packageName));
   const enabled = bundlesOf(doc).includes(spec.packageName);
   const status = {
     id: spec.id,
@@ -42019,11 +42993,11 @@ function readExtensionStatus(profileDir, spec, options = {}) {
     installed,
     enabled
   };
-  const version2 = installed ? readInstalledVersion(profileDir, spec, fs8) : void 0;
+  const version2 = installed ? readInstalledVersion(profileDir, spec, fs9) : void 0;
   if (version2 !== void 0) status.version = version2;
   if (options.pendingRestart?.has(spec.id) === true) status.needsRestart = true;
   try {
-    const report = buildCompatReport(profileDir, fs8);
+    const report = buildCompatReport(profileDir, fs9);
     status.compat = verdictFor(report.host, entryOf(spec.packageName));
   } catch {
     status.compat = { level: "warn", message: "\u517C\u5BB9\u6027\u5224\u65AD\u5931\u8D25\uFF08\u5DF2\u5FFD\u7565\uFF0C\u6309\u672A\u9A8C\u8BC1\u5904\u7406\uFF09\u3002" };
@@ -42093,40 +43067,40 @@ function verifyWrites(doc, writes, spec) {
   if (writes.removeBundle === true && bundles.includes(spec.packageName)) return "bundles \u91CC\u6CA1\u79FB\u9664\u5B83";
   return void 0;
 }
-function restoreFile(file2, originalText, fs8) {
+function restoreFile(file2, originalText, fs9) {
   try {
     const tmp = `${file2}.dafeiyu-restore-${Date.now()}.tmp`;
-    fs8.writeFileSync(tmp, originalText, "utf8");
-    fs8.renameSync(tmp, file2);
+    fs9.writeFileSync(tmp, originalText, "utf8");
+    fs9.renameSync(tmp, file2);
     return true;
   } catch {
     try {
-      fs8.writeFileSync(file2, originalText, "utf8");
+      fs9.writeFileSync(file2, originalText, "utf8");
       return true;
     } catch {
       return false;
     }
   }
 }
-function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs8 = nodeFs) {
+function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs9 = nodeFs) {
   const text = `${JSON.stringify(nextDoc, null, 2)}
 `;
   const tmp = `${file2}.dafeiyu-${Date.now()}.tmp`;
   try {
     try {
-      fs8.writeFileSync(`${file2}.bak`, originalText, "utf8");
+      fs9.writeFileSync(`${file2}.bak`, originalText, "utf8");
     } catch (error62) {
       return { ok: false, message: `\u5907\u4EFD\u5931\u8D25\uFF0C\u6CA1\u6709\u52A8 profile\uFF1A${String(error62?.message ?? error62).slice(0, 160)}` };
     }
-    fs8.writeFileSync(tmp, text, "utf8");
-    fs8.renameSync(tmp, file2);
+    fs9.writeFileSync(tmp, text, "utf8");
+    fs9.renameSync(tmp, file2);
     let parsed;
     try {
-      parsed = JSON.parse(fs8.readFileSync(file2, "utf8"));
+      parsed = JSON.parse(fs9.readFileSync(file2, "utf8"));
     } catch (error62) {
-      const restored = restoreFile(file2, originalText, fs8);
+      const restored = restoreFile(file2, originalText, fs9);
       try {
-        fs8.unlinkSync?.(tmp);
+        fs9.unlinkSync?.(tmp);
       } catch {
       }
       return {
@@ -42137,7 +43111,7 @@ function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs8 = n
     }
     const mismatch = verifyWrites(asRecord3(parsed), writes, spec);
     if (mismatch !== void 0) {
-      const restored = restoreFile(file2, originalText, fs8);
+      const restored = restoreFile(file2, originalText, fs9);
       return {
         ok: false,
         rolledBack: restored,
@@ -42146,9 +43120,9 @@ function writeProfilePackage(file2, nextDoc, originalText, writes, spec, fs8 = n
     }
     return { ok: true };
   } catch (error62) {
-    const restored = restoreFile(file2, originalText, fs8);
+    const restored = restoreFile(file2, originalText, fs9);
     try {
-      fs8.unlinkSync?.(tmp);
+      fs9.unlinkSync?.(tmp);
     } catch {
     }
     return {
@@ -42163,8 +43137,8 @@ function pnpmInstallArgs(pnpmScript) {
   return [pnpmScript, "install"];
 }
 function resolveRuntimeDir(env = process.env, options = {}) {
-  const exists = options.exists ?? existsSync6;
-  const hasPnpm = (dir) => exists(path25.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
+  const exists = options.exists ?? existsSync7;
+  const hasPnpm = (dir) => exists(path27.join(dir, "dependencies", "pnpm", "bin", "pnpm.mjs"));
   const candidates = [];
   const explicit = (env.DSH_RUNTIME_DIR ?? "").trim();
   if (explicit !== "") candidates.push(explicit);
@@ -42172,17 +43146,17 @@ function resolveRuntimeDir(env = process.env, options = {}) {
   if (installDir !== "") {
     let current = installDir;
     for (let depth = 0; depth < 8; depth += 1) {
-      const parent = path25.dirname(current);
+      const parent = path27.dirname(current);
       if (parent === current) break;
       current = parent;
-      if (path25.basename(current).toLowerCase() === "resources") {
-        candidates.push(path25.join(current, "runtime", "primary-runtime"), path25.join(current, "runtime"));
+      if (path27.basename(current).toLowerCase() === "resources") {
+        candidates.push(path27.join(current, "runtime", "primary-runtime"), path27.join(current, "runtime"));
         break;
       }
     }
   }
   const resources = (options.resourcesPath ?? process.resourcesPath ?? "").trim();
-  if (resources !== "") candidates.push(path25.join(resources, "runtime", "primary-runtime"), path25.join(resources, "runtime"));
+  if (resources !== "") candidates.push(path27.join(resources, "runtime", "primary-runtime"), path27.join(resources, "runtime"));
   for (const dir of candidates) if (hasPnpm(dir)) return dir;
   return void 0;
 }
@@ -42200,9 +43174,9 @@ function runPnpmInstall(input2) {
   if (runtimeDir === void 0) {
     return Promise.resolve({ ok: false, message: "\u627E\u4E0D\u5230\u5BBF\u4E3B\u81EA\u5E26\u7684 pnpm\uFF08\u8FD0\u884C\u65F6\u76EE\u5F55\u672A\u5B9A\u4F4D\uFF09\uFF0C\u6CA1\u6CD5\u5B89\u88C5\uFF1B\u8BF7\u7528\u684C\u9762\u7248\u5B89\u88C5\u5668\u91CD\u88C5\u540E\u518D\u8BD5" });
   }
-  const pnpmScript = path25.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
-  const nodeExe = path25.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
-  const useBundledNode = existsSync6(nodeExe);
+  const pnpmScript = path27.join(runtimeDir, "dependencies", "pnpm", "bin", "pnpm.mjs");
+  const nodeExe = path27.join(runtimeDir, "dependencies", "node", "bin", process.platform === "win32" ? "node.exe" : "node");
+  const useBundledNode = existsSync7(nodeExe);
   const command = useBundledNode ? nodeExe : process.execPath;
   const env = useBundledNode ? { ...process.env } : { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
   return new Promise((resolve) => {
@@ -42216,7 +43190,7 @@ function runPnpmInstall(input2) {
     };
     let child;
     try {
-      child = spawn2(command, pnpmInstallArgs(pnpmScript), {
+      child = spawn3(command, pnpmInstallArgs(pnpmScript), {
         cwd: input2.profileDir,
         env,
         windowsHide: true,
@@ -42257,15 +43231,15 @@ var ACTION_VERB = {
   uninstall: "\u5DF2\u5378\u8F7D"
 };
 async function applyAction(profileDir, spec, action, options = {}) {
-  const fs8 = options.fs ?? nodeFs;
-  const read = readProfilePackage(profileDir, fs8);
+  const fs9 = options.fs ?? nodeFs;
+  const read = readProfilePackage(profileDir, fs9);
   if (read.kind === "missing") {
     return { ok: false, changed: false, needsRestart: false, message: `\u627E\u4E0D\u5230 profile \u7684 package.json\uFF08${read.file}\uFF09` };
   }
   if (read.kind === "broken") {
     return { ok: false, changed: false, needsRestart: false, message: `profile \u7684 package.json \u8BFB\u4E0D\u51FA\u6765\uFF1A${read.message}\uFF08\u5148\u4FEE\u597D\u5B83\uFF0C\u8FD9\u91CC\u4E0D\u8986\u76D6\u574F\u6587\u4EF6\uFF09` };
   }
-  const status = readExtensionStatus(profileDir, spec, { fs: fs8 });
+  const status = readExtensionStatus(profileDir, spec, { fs: fs9 });
   if (action === "install" && status.compat?.level === "block") {
     options.log?.("\u6269\u5C55\u5B89\u88C5\u88AB\u517C\u5BB9\u6027\u62E6\u4E0B", { id: spec.id, message: status.compat.message });
     return { ok: false, changed: false, needsRestart: false, message: status.compat.message };
@@ -42280,7 +43254,7 @@ async function applyAction(profileDir, spec, action, options = {}) {
     return { ok: true, changed: false, needsRestart: false, message: plan.message };
   }
   const nextDoc = applyWrites(read.doc, plan.writes, spec);
-  const written = writeProfilePackage(read.file, nextDoc, read.text, plan.writes, spec, fs8);
+  const written = writeProfilePackage(read.file, nextDoc, read.text, plan.writes, spec, fs9);
   if (!written.ok) {
     options.log?.("\u6269\u5C55 profile \u5199\u5165\u5931\u8D25", { id: spec.id, action, message: written.message ?? "" });
     return { ok: false, changed: false, needsRestart: false, message: written.message };
@@ -42289,7 +43263,7 @@ async function applyAction(profileDir, spec, action, options = {}) {
     const runner = options.runPnpm ?? runPnpmInstall;
     const result2 = await runner({ profileDir, timeoutMs: options.timeoutMs ?? PNPM_TIMEOUT_MS });
     if (!result2.ok) {
-      const restored = restoreFile(read.file, read.text, fs8);
+      const restored = restoreFile(read.file, read.text, fs9);
       options.log?.("\u6269\u5C55 pnpm \u5931\u8D25\uFF0Cprofile \u5DF2\u56DE\u6EDA", { id: spec.id, action, message: result2.message });
       return {
         ok: false,
@@ -42300,7 +43274,7 @@ async function applyAction(profileDir, spec, action, options = {}) {
     }
   }
   options.pendingRestart?.add(spec.id);
-  const after = readExtensionStatus(profileDir, spec, { fs: fs8, pendingRestart: options.pendingRestart });
+  const after = readExtensionStatus(profileDir, spec, { fs: fs9, pendingRestart: options.pendingRestart });
   options.log?.("\u6269\u5C55\u52A8\u4F5C\u5B8C\u6210\uFF08\u9700\u91CD\u542F\u751F\u6548\uFF09", { id: spec.id, action, version: after.version ?? "" });
   return {
     ok: true,
@@ -42312,12 +43286,12 @@ async function applyAction(profileDir, spec, action, options = {}) {
   };
 }
 function createExtensionsService(deps) {
-  const fs8 = deps.fs ?? nodeFs;
+  const fs9 = deps.fs ?? nodeFs;
   const pendingRestart = deps.pendingRestart ?? /* @__PURE__ */ new Set();
   return {
     profileDir: deps.profileDir,
     list() {
-      return readExtensions(deps.profileDir, { fs: fs8, pendingRestart });
+      return readExtensions(deps.profileDir, { fs: fs9, pendingRestart });
     },
     async act(id, action) {
       const spec = findExtension(id);
@@ -42328,7 +43302,7 @@ function createExtensionsService(deps) {
         return { ok: false, changed: false, needsRestart: false, message: `\u4E0D\u652F\u6301\u7684\u52A8\u4F5C\uFF1A${String(action ?? "").slice(0, 40)}` };
       }
       return applyAction(deps.profileDir, spec, action, {
-        fs: fs8,
+        fs: fs9,
         runPnpm: deps.runPnpm,
         log: deps.log,
         pendingRestart,
@@ -42337,11 +43311,11 @@ function createExtensionsService(deps) {
     }
   };
 }
-function resolveProfileDir(env = process.env, dshHome) {
+function resolveProfileDir2(env = process.env, dshHome) {
   const explicit = (env.DSH_PROFILE_DIR ?? "").trim();
   if (explicit !== "") return explicit;
   const profile = (env.DSH_PROFILE ?? "").trim() || "desktop";
-  return path25.join(dshHome, "profiles", profile);
+  return path27.join(dshHome, "profiles", profile);
 }
 
 // src/extensions/routes.ts
@@ -42947,12 +43921,12 @@ function startMemory(ctx, deps) {
 }
 
 // src/backup/service.ts
-import { existsSync as existsSync9, mkdirSync as mkdirSync10, readdirSync as readdirSync6, readFileSync as readFileSync14, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync8 } from "node:fs";
-import path28 from "node:path";
+import { existsSync as existsSync10, mkdirSync as mkdirSync11, readdirSync as readdirSync6, readFileSync as readFileSync14, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync9 } from "node:fs";
+import path30 from "node:path";
 
 // src/backup/config.ts
-import { existsSync as existsSync7, readFileSync as readFileSync12 } from "node:fs";
-import path26 from "node:path";
+import { existsSync as existsSync8, readFileSync as readFileSync12 } from "node:fs";
+import path28 from "node:path";
 var DEFAULT_BACKUP_CONFIG = {
   enabled: false,
   repoUrl: "",
@@ -42964,23 +43938,23 @@ var DEFAULT_BACKUP_CONFIG = {
   restoreBackupSuffix: "before-restore"
 };
 function backupDir(dshHome) {
-  return path26.join(dshHome, "dsh-backup-git");
+  return path28.join(dshHome, "dsh-backup-git");
 }
 function configFile(dshHome) {
-  return path26.join(backupDir(dshHome), "config.json");
+  return path28.join(backupDir(dshHome), "config.json");
 }
 function credentialFile(dshHome) {
-  return path26.join(backupDir(dshHome), "credential.json");
+  return path28.join(backupDir(dshHome), "credential.json");
 }
 function statusFile(dshHome) {
-  return path26.join(backupDir(dshHome), "status.json");
+  return path28.join(backupDir(dshHome), "status.json");
 }
 function workDir(dshHome) {
-  return path26.join(backupDir(dshHome), "work");
+  return path28.join(backupDir(dshHome), "work");
 }
 function readBackupConfig(dshHome) {
   const file2 = configFile(dshHome);
-  if (!existsSync7(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
+  if (!existsSync8(file2)) return { config: { ...DEFAULT_BACKUP_CONFIG } };
   let parsed;
   try {
     parsed = JSON.parse(readFileSync12(file2, "utf8"));
@@ -43096,7 +44070,7 @@ function writeBackupConfig(dshHome, config2) {
 }
 function readToken(dshHome) {
   const file2 = credentialFile(dshHome);
-  if (!existsSync7(file2)) return "";
+  if (!existsSync8(file2)) return "";
   try {
     const parsed = JSON.parse(readFileSync12(file2, "utf8"));
     return typeof parsed.token === "string" ? parsed.token.trim() : "";
@@ -43121,7 +44095,7 @@ function redactToken(token) {
 }
 
 // src/backup/git.ts
-import { spawn as spawn3, spawnSync } from "node:child_process";
+import { spawn as spawn4, spawnSync } from "node:child_process";
 var DEFAULT_TIMEOUT_MS = 12e4;
 var MAX_BUFFER = 32 * 1024 * 1024;
 function baseEnv(extra) {
@@ -43181,7 +44155,7 @@ function runGitAsync(args, options) {
     };
     let timer = setTimeout(() => void 0, 0);
     try {
-      const child = spawn3("git", args, {
+      const child = spawn4("git", args, {
         cwd: options.cwd,
         env: baseEnv(options.env),
         windowsHide: true,
@@ -43210,19 +44184,19 @@ function runGitAsync(args, options) {
 
 // src/backup/pack.ts
 import { createHash as createHash5 } from "node:crypto";
-import { existsSync as existsSync8, readdirSync as readdirSync5, readFileSync as readFileSync13, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync9, readdirSync as readdirSync5, readFileSync as readFileSync13, statSync as statSync4 } from "node:fs";
 import { chmod, copyFile, mkdir, readFile, readdir, rename, rm, stat as stat2, writeFile } from "node:fs/promises";
 import { hostname as hostname3 } from "node:os";
-import path27 from "node:path";
+import path29 from "node:path";
 function scanSessions(sessionsRoot) {
   const entries = [];
   for (const slug of safeDirs(sessionsRoot)) {
-    const slugDir = path27.join(sessionsRoot, slug);
+    const slugDir = path29.join(sessionsRoot, slug);
     for (const dirName of safeDirs(slugDir)) {
-      const sessionDir = path27.join(slugDir, dirName);
+      const sessionDir = path29.join(slugDir, dirName);
       for (const fileName of safeFiles(sessionDir)) {
         if (!isSessionFile(fileName)) continue;
-        const file2 = path27.join(sessionDir, fileName);
+        const file2 = path29.join(sessionDir, fileName);
         let stat3;
         try {
           stat3 = statSync4(file2);
@@ -43234,7 +44208,7 @@ function scanSessions(sessionsRoot) {
           dirName,
           fileName,
           file: file2,
-          relPath: path27.posix.join(slug, dirName, fileName),
+          relPath: path29.posix.join(slug, dirName, fileName),
           mtimeMs: stat3.mtimeMs,
           size: stat3.size
         });
@@ -43283,11 +44257,11 @@ function classify(input2) {
   return { hot: [...hot, ...revived], cooling, resting, revived };
 }
 async function buildHotTree(input2) {
-  const staging = path27.join(input2.stagingDir, "latest");
+  const staging = path29.join(input2.stagingDir, "latest");
   await resetDir(staging);
   const sessionList = [];
   for (const entry of input2.hot) {
-    const target = path27.join(staging, "sessions", entry.relPath);
+    const target = path29.join(staging, "sessions", entry.relPath);
     await copyFileFresh(entry.file, target);
     sessionList.push({
       key: sessionKey(entry),
@@ -43296,20 +44270,20 @@ async function buildHotTree(input2) {
       sha256: await sha256Of(entry.file)
     });
   }
-  const storages = await copyFlat(input2.storagesDir, path27.join(staging, "storages"));
+  const storages = await copyFlat(input2.storagesDir, path29.join(staging, "storages"));
   const profiles = [];
   if (input2.profileDir !== "") {
-    const target = path27.join(staging, "profiles", path27.basename(input2.profileDir));
+    const target = path29.join(staging, "profiles", path29.basename(input2.profileDir));
     for (const name2 of ["package.json", "cordis.patch.yml", "cordis.yml", "pnpm-workspace.yaml"]) {
-      const source = path27.join(input2.profileDir, name2);
-      if (!existsSync8(source)) continue;
-      await copyFileFresh(source, path27.join(target, name2));
+      const source = path29.join(input2.profileDir, name2);
+      if (!existsSync9(source)) continue;
+      await copyFileFresh(source, path29.join(target, name2));
       profiles.push(name2);
     }
   }
   let attachments = null;
   if (input2.includeAttachments) {
-    const counted = await copyTree(input2.attachmentsDir, path27.join(staging, "attachments"));
+    const counted = await copyTree(input2.attachmentsDir, path29.join(staging, "attachments"));
     if (counted.count > 0) attachments = counted;
   }
   const newestMtime = input2.hot.reduce((max, entry) => Math.max(max, entry.mtimeMs), 0);
@@ -43325,18 +44299,18 @@ async function buildHotTree(input2) {
     profiles,
     attachments
   };
-  await writeFile(path27.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
+  await writeFile(path29.join(staging, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}
 `, "utf8");
   return manifest;
 }
 async function buildArchiveTree(stagingDir, cooling) {
-  const root = path27.join(stagingDir, "archive");
+  const root = path29.join(stagingDir, "archive");
   let written = 0;
   let bytes = 0;
   const keys = [];
   for (const entry of cooling) {
-    const target = path27.join(root, entry.relPath);
-    if (existsSync8(target)) continue;
+    const target = path29.join(root, entry.relPath);
+    if (existsSync9(target)) continue;
     await copyFileFresh(entry.file, target);
     written += 1;
     bytes += entry.size;
@@ -43349,7 +44323,7 @@ async function resetDir(dir) {
   await mkdir(dir, { recursive: true });
 }
 async function removeDir(dir) {
-  if (!existsSync8(dir)) return;
+  if (!existsSync9(dir)) return;
   const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 120 };
   try {
     await rm(dir, options);
@@ -43381,7 +44355,7 @@ async function stripReadOnly(dir) {
     return;
   }
   for (const entry of entries) {
-    const full = path27.join(dir, entry.name);
+    const full = path29.join(dir, entry.name);
     if (entry.isDirectory()) {
       await stripReadOnly(full);
       await chmod(full, 493).catch(() => void 0);
@@ -43392,8 +44366,8 @@ async function stripReadOnly(dir) {
   }
 }
 async function copyFileFresh(source, target) {
-  await mkdir(path27.dirname(target), { recursive: true });
-  if (existsSync8(target)) {
+  await mkdir(path29.dirname(target), { recursive: true });
+  if (existsSync9(target)) {
     await chmod(target, 420).catch(() => void 0);
     await rm(target, { force: true }).catch(() => void 0);
   }
@@ -43401,25 +44375,25 @@ async function copyFileFresh(source, target) {
   await chmod(target, 420).catch(() => void 0);
 }
 async function copyFlat(sourceDir, targetDir) {
-  if (!existsSync8(sourceDir)) return [];
+  if (!existsSync9(sourceDir)) return [];
   const names = [];
   for (const name2 of safeFiles(sourceDir)) {
     if (!/\.json$/.test(name2)) continue;
-    await copyFileFresh(path27.join(sourceDir, name2), path27.join(targetDir, name2));
+    await copyFileFresh(path29.join(sourceDir, name2), path29.join(targetDir, name2));
     names.push(name2);
   }
   return names;
 }
 async function copyTree(sourceDir, targetDir) {
   const total = { count: 0, bytes: 0 };
-  if (!existsSync8(sourceDir)) return total;
+  if (!existsSync9(sourceDir)) return total;
   await walk(sourceDir, targetDir, total);
   return total;
 }
 async function walk(sourceDir, targetDir, total) {
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const source = path27.join(sourceDir, entry.name);
-    const target = path27.join(targetDir, entry.name);
+    const source = path29.join(sourceDir, entry.name);
+    const target = path29.join(targetDir, entry.name);
     if (entry.isDirectory()) {
       await walk(source, target, total);
       continue;
@@ -43451,12 +44425,12 @@ function safeHostname() {
   }
 }
 function findProfileDir(profilesRoot, packageNames) {
-  if (!existsSync8(profilesRoot)) return "";
+  if (!existsSync9(profilesRoot)) return "";
   let best = { dir: "", mtimeMs: 0 };
   for (const name2 of safeDirs(profilesRoot)) {
-    const dir = path27.join(profilesRoot, name2);
-    const manifest = path27.join(dir, "package.json");
-    if (!existsSync8(manifest)) continue;
+    const dir = path29.join(profilesRoot, name2);
+    const manifest = path29.join(dir, "package.json");
+    if (!existsSync9(manifest)) continue;
     try {
       const parsed = JSON.parse(readFileSync13(manifest, "utf8"));
       const bundles = Array.isArray(parsed.dsh?.profile?.bundles) ? parsed.dsh.profile.bundles : [];
@@ -43620,7 +44594,7 @@ var BackupService = class {
     this.status.running = true;
     try {
       const dirs = this.layout();
-      mkdirSync10(dirs.base, { recursive: true });
+      mkdirSync11(dirs.base, { recursive: true });
       const archiveRemote = await this.fetchBranch(dirs.archiveRepo, this.config.archiveBranch);
       const archivedKeys = archivedKeysFromLsTree(archiveRemote.stdout);
       const sessions = scanSessions(dirs.sessionsRoot);
@@ -43707,13 +44681,13 @@ var BackupService = class {
     return {
       base,
       work: workDir(this.deps.dshHome),
-      staging: path28.join(base, "staging"),
-      hotRepo: path28.join(workDir(this.deps.dshHome), "hot"),
-      archiveRepo: path28.join(workDir(this.deps.dshHome), "archive"),
-      sessionsRoot: path28.join(this.deps.dshHome, "sessions"),
-      storagesDir: path28.join(this.deps.dshHome, "storages"),
-      profilesRoot: path28.join(this.deps.dshHome, "profiles"),
-      attachmentsDir: path28.join(this.deps.dshHome, "attachments")
+      staging: path30.join(base, "staging"),
+      hotRepo: path30.join(workDir(this.deps.dshHome), "hot"),
+      archiveRepo: path30.join(workDir(this.deps.dshHome), "archive"),
+      sessionsRoot: path30.join(this.deps.dshHome, "sessions"),
+      storagesDir: path30.join(this.deps.dshHome, "storages"),
+      profilesRoot: path30.join(this.deps.dshHome, "profiles"),
+      attachmentsDir: path30.join(this.deps.dshHome, "attachments")
     };
   }
   /**
@@ -43735,8 +44709,8 @@ var BackupService = class {
     return runGitAsync(["ls-tree", "-r", "--name-only", "HEAD"], { cwd: repo, env: this.gitEnv() });
   }
   async prepareRepo(repo) {
-    mkdirSync10(repo, { recursive: true });
-    if (!existsSync9(path28.join(repo, ".git"))) {
+    mkdirSync11(repo, { recursive: true });
+    if (!existsSync10(path30.join(repo, ".git"))) {
       await runGitAsync(["init", "-q"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.name", "dsh-backup"], { cwd: repo, env: this.gitEnv() });
       await runGitAsync(["config", "user.email", "dsh-backup@localhost"], { cwd: repo, env: this.gitEnv() });
@@ -43756,8 +44730,8 @@ var BackupService = class {
     if (tracked.code !== 0) return { ok: false, reason: briefGitError(tracked), commit: "" };
     const keep = new Set(tracked.stdout.split("\n").map((line) => line.trim()).filter((line) => line !== ""));
     clearExceptGit(repo);
-    const source = path28.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
-    if (!existsSync9(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
+    const source = path30.join(this.layout().staging, branch === this.config.latestBranch ? "latest" : "archive");
+    if (!existsSync10(source)) return { ok: false, reason: "\u6682\u5B58\u76EE\u5F55\u662F\u7A7A\u7684\uFF08\u8FD9\u4E00\u6B65\u4E0D\u8BE5\u5931\u8D25\uFF09", commit: "" };
     await copyTree(source, repo);
     const added = await runGitAsync(["add", "-A"], { cwd: repo, env: this.gitEnv() });
     if (added.code !== 0) return { ok: false, reason: briefGitError(added), commit: "" };
@@ -43800,15 +44774,15 @@ var BackupService = class {
   }
   askpassScript() {
     const base = backupDir(this.deps.dshHome);
-    mkdirSync10(base, { recursive: true });
+    mkdirSync11(base, { recursive: true });
     if (process.platform === "win32") {
-      const file3 = path28.join(base, "askpass.cmd");
-      if (!existsSync9(file3)) writeFileSync8(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
+      const file3 = path30.join(base, "askpass.cmd");
+      if (!existsSync10(file3)) writeFileSync9(file3, "@echo off\r\n<NUL set /p =%DSH_BACKUP_TOKEN%\r\n", "utf8");
       return file3;
     }
-    const file2 = path28.join(base, "askpass.sh");
-    if (!existsSync9(file2)) {
-      writeFileSync8(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
+    const file2 = path30.join(base, "askpass.sh");
+    if (!existsSync10(file2)) {
+      writeFileSync9(file2, '#!/bin/sh\nprintf "%s" "$DSH_BACKUP_TOKEN"\n', { encoding: "utf8", mode: 448 });
     }
     return file2;
   }
@@ -43830,32 +44804,32 @@ var BackupService = class {
       await resetDir(staging);
       const latest = await this.fetchBranch(dirs.hotRepo, this.config.latestBranch);
       if (latest.code !== 0) return this.restoreDone(false, `\u62C9\u53D6\u5931\u8D25\uFF1A${briefGitError(latest)}`);
-      await copyTree(dirs.hotRepo, path28.join(staging, "latest"));
+      await copyTree(dirs.hotRepo, path30.join(staging, "latest"));
       const archiveRepoDir = dirs.archiveRepo;
       const archive = await this.fetchBranch(archiveRepoDir, this.config.archiveBranch);
       let archivedSessions = 0;
       if (archive.code === 0 && archive.stdout.trim() !== "") {
-        await copyTree(archiveRepoDir, path28.join(staging, "archive"));
-        archivedSessions = countSessionFiles(path28.join(staging, "archive"));
+        await copyTree(archiveRepoDir, path30.join(staging, "archive"));
+        archivedSessions = countSessionFiles(path30.join(staging, "archive"));
       }
       const stamp = new Date(this.now()).toISOString().replace(/[:.]/g, "-");
       const sessionsRoot = dirs.sessionsRoot;
-      const restoreLatest = path28.join(staging, "latest");
-      const restoredHot = existsSync9(path28.join(restoreLatest, "sessions")) ? countSessionFiles(path28.join(restoreLatest, "sessions")) : 0;
+      const restoreLatest = path30.join(staging, "latest");
+      const restoredHot = existsSync10(path30.join(restoreLatest, "sessions")) ? countSessionFiles(path30.join(restoreLatest, "sessions")) : 0;
       for (const name2 of ["sessions", "storages", "attachments"]) {
-        const target = path28.join(this.deps.dshHome, name2);
-        if (existsSync9(target)) {
+        const target = path30.join(this.deps.dshHome, name2);
+        if (existsSync10(target)) {
           renameSync3(target, `${target}.${this.config.restoreBackupSuffix}-${stamp}`);
         }
       }
-      await mergeTree(path28.join(restoreLatest, "sessions"), sessionsRoot);
-      await mergeTree(path28.join(restoreLatest, "storages"), path28.join(this.deps.dshHome, "storages"));
-      if (existsSync9(path28.join(restoreLatest, "attachments"))) {
-        await mergeTree(path28.join(restoreLatest, "attachments"), path28.join(this.deps.dshHome, "attachments"));
+      await mergeTree(path30.join(restoreLatest, "sessions"), sessionsRoot);
+      await mergeTree(path30.join(restoreLatest, "storages"), path30.join(this.deps.dshHome, "storages"));
+      if (existsSync10(path30.join(restoreLatest, "attachments"))) {
+        await mergeTree(path30.join(restoreLatest, "attachments"), path30.join(this.deps.dshHome, "attachments"));
       }
-      await mergeTree(path28.join(staging, "archive"), sessionsRoot);
-      const profiles = path28.join(restoreLatest, "profiles");
-      if (existsSync9(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
+      await mergeTree(path30.join(staging, "archive"), sessionsRoot);
+      const profiles = path30.join(restoreLatest, "profiles");
+      if (existsSync10(profiles)) await mergeProfiles(profiles, dirs.profilesRoot);
       return this.restoreDone(
         true,
         `\u6062\u590D\u4E86 ${restoredHot} \u4E2A\u70ED\u4F1A\u8BDD + ${archivedSessions} \u4E2A\u5F52\u6863\u4F1A\u8BDD\uFF0C\u91CD\u542F\u98DE\u9C7C\u540E\u751F\u6548\uFF08\u65E7\u76EE\u5F55\u5DF2\u6539\u540D\u4E3A *-${this.config.restoreBackupSuffix}-${stamp}\uFF09`
@@ -43891,36 +44865,36 @@ ${result2.stdout}`.toLowerCase();
 function clearExceptGit(repo) {
   for (const entry of readdirSync6(repo, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
-    const target = path28.join(repo, entry.name);
+    const target = path30.join(repo, entry.name);
     rmSync3(target, { recursive: true, force: true });
   }
 }
 async function mergeTree(source, target) {
-  if (!existsSync9(source)) return;
+  if (!existsSync10(source)) return;
   for (const entry of readdirSync6(source, { withFileTypes: true })) {
-    const from = path28.join(source, entry.name);
-    const to = path28.join(target, entry.name);
+    const from = path30.join(source, entry.name);
+    const to = path30.join(target, entry.name);
     if (entry.isDirectory()) {
-      mkdirSync10(to, { recursive: true });
+      mkdirSync11(to, { recursive: true });
       await mergeTree(from, to);
       continue;
     }
     if (!entry.isFile()) continue;
-    if (existsSync9(to)) continue;
-    mkdirSync10(target, { recursive: true });
+    if (existsSync10(to)) continue;
+    mkdirSync11(target, { recursive: true });
     await copyFileFresh(from, to);
   }
 }
 async function mergeProfiles(source, profilesRoot) {
-  if (!existsSync9(profilesRoot)) return;
+  if (!existsSync10(profilesRoot)) return;
   for (const entry of readdirSync6(source, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const from = path28.join(source, entry.name);
-    const to = path28.join(profilesRoot, entry.name);
-    if (!existsSync9(to)) continue;
+    const from = path30.join(source, entry.name);
+    const to = path30.join(profilesRoot, entry.name);
+    if (!existsSync10(to)) continue;
     for (const file2 of readdirSync6(from, { withFileTypes: true })) {
       if (!file2.isFile()) continue;
-      await copyFileFresh(path28.join(from, file2.name), path28.join(to, file2.name));
+      await copyFileFresh(path30.join(from, file2.name), path30.join(to, file2.name));
     }
   }
 }
@@ -43934,12 +44908,12 @@ function countSessionFiles(root) {
       return;
     }
     for (const entry of entries) {
-      const full = path28.join(dir, entry.name);
+      const full = path30.join(dir, entry.name);
       if (entry.isDirectory()) walk2(full);
       else if (/^session.*\.jsonl(\.zstd)?$/.test(entry.name)) count += 1;
     }
   };
-  if (existsSync9(root)) walk2(root);
+  if (existsSync10(root)) walk2(root);
   return count;
 }
 function formatBytes(bytes) {
@@ -43950,7 +44924,7 @@ function formatBytes(bytes) {
 
 // src/shell/claim-token.ts
 import { readFileSync as readFileSync15 } from "node:fs";
-import path29 from "node:path";
+import path31 from "node:path";
 var CLAIM_PATH = "/api/claim-token";
 var CLAIMED_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 var CLAIM_TIMEOUT_MS = 8e3;
@@ -43980,8 +44954,8 @@ function claimUrlFor(serverUrl) {
   return url2.toString();
 }
 function resolveHostTokenFile(statusFile2) {
-  const base = statusFile2 ? path29.dirname(statusFile2) : dataDir();
-  return path29.join(base, HOST_TOKEN_FILE);
+  const base = statusFile2 ? path31.dirname(statusFile2) : dataDir();
+  return path31.join(base, HOST_TOKEN_FILE);
 }
 function readStoredHostToken(file2, serverUrl, hostId, log) {
   if (!file2) return void 0;
@@ -43995,12 +44969,12 @@ function readStoredHostToken(file2, serverUrl, hostId, log) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    log?.("host-token file is not JSON, ignoring it", { file: path29.basename(file2) });
+    log?.("host-token file is not JSON, ignoring it", { file: path31.basename(file2) });
     return void 0;
   }
   const shape = storedSchema.safeParse(parsed);
   if (!shape.success) {
-    log?.("host-token file has an unknown shape, ignoring it", { file: path29.basename(file2) });
+    log?.("host-token file has an unknown shape, ignoring it", { file: path31.basename(file2) });
     return void 0;
   }
   if (shape.data.serverUrl !== serverUrl) {
@@ -44039,7 +45013,7 @@ function writeStoredHostToken(file2, entry, log) {
     hostId: entry.hostId
   };
   try {
-    ensureSecureDir(path29.dirname(file2));
+    ensureSecureDir(path31.dirname(file2));
     writeSecure(file2, JSON.stringify(body, null, 2) + "\n");
     return true;
   } catch (error62) {
@@ -44222,7 +45196,7 @@ function applyInner(ctx, injected, clock) {
   const config2 = readConfig(injected, process.env, userOverrides);
   const oneShot = createOneShotTimers(clock);
   const status = new StatusFile(config2.statusFile, clock);
-  const hostId = resolveHostId(config2.statusFile ? path30.dirname(config2.statusFile) : "", config2.hostId);
+  const hostId = resolveHostId(config2.statusFile ? path32.dirname(config2.statusFile) : "", config2.hostId);
   const hostTokenFile = resolveHostTokenFile(config2.statusFile);
   const envToken = (config2.hostTokenEnv ? process.env[config2.hostTokenEnv] ?? "" : "").trim();
   const patchToken = typeof injected?.hostToken === "string" ? injected.hostToken.trim() : "";
@@ -44245,7 +45219,7 @@ function applyInner(ctx, injected, clock) {
     if (stored) {
       claimedToken = stored;
       claimedForUrl = config2.serverUrl;
-      log("host token restored from disk", { file: path30.basename(hostTokenFile), tokenLength: stored.length });
+      log("host token restored from disk", { file: path32.basename(hostTokenFile), tokenLength: stored.length });
     } else {
       claimState = "pending";
     }
@@ -44794,7 +45768,7 @@ function applyInner(ctx, injected, clock) {
           claim: claimState,
           claimReason: claimState === "failed" ? claimReason : "",
           claimStatus: claimState === "failed" ? claimStatus : 0,
-          file: hostTokenFile ? path30.basename(hostTokenFile) : "",
+          file: hostTokenFile ? path32.basename(hostTokenFile) : "",
           heals: healTotal,
           healFailedInRow: healAttempts,
           healReason
@@ -44982,7 +45956,7 @@ function applyInner(ctx, injected, clock) {
     config2.hostToken = fresh.hostToken;
     return { ok: true };
   };
-  const dshHome = config2.statusFile !== "" ? path30.dirname(path30.dirname(config2.statusFile)) : path30.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
+  const dshHome = config2.statusFile !== "" ? path32.dirname(path32.dirname(config2.statusFile)) : path32.join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".dsh");
   let backup;
   try {
     backup = new BackupService({ dshHome, log });
@@ -45296,7 +46270,9 @@ function applyInner(ctx, injected, clock) {
       packageRoot: packageRoot(),
       log,
       // 设置页「搜索」栏与「进阶」栏写**同一份** user-config.json：路径只有一个真源，传进去。
-      userConfigFile
+      userConfigFile,
+      // 网页豆包引擎（web_search 的 engine=doubao）要复用识图插件那份登录 profile。
+      dshHome
     });
   } catch (error62) {
     websearchHandle = void 0;
@@ -45318,7 +46294,7 @@ function applyInner(ctx, injected, clock) {
   let extensionsHandle;
   try {
     extensionsHandle = startExtensions(ctx, {
-      profileDir: resolveProfileDir(process.env, resolveDshHome(process.env)),
+      profileDir: resolveProfileDir2(process.env, resolveDshHome(process.env)),
       log
     });
   } catch (error62) {
