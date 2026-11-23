@@ -29,6 +29,16 @@ export interface SubagentRouteDeps {
   debug?: () => unknown
   /** 把提示段推送到所有在线会话（一次性上下文；用户按钮触发）。 */
   pushGuidance?: (which: 'subagent' | 'xyq' | 'both', sessionId?: string, mode?: string) => Promise<GuidancePushResult>
+  /**
+   * 往某个会话塞一句话（**自动归档的回执**用）。
+   *
+   * 为什么要它：面板自动归档之后，那些子代理从 `list_agents` 里消失了，
+   * 而主 agent 手上还记着名字、继续 `send_message` 派活 —— 发出去没人跑，就是「啥也没干」。
+   * 这里投一句「我替你收了 N 个，要接着用先 unarchive」，主 agent 下一轮才看得见。
+   * 只对**自动归档**（body.auto === true）触发；用户手动点的、主 agent 自己归档的都不打扰。
+   * 拿不到在线 agent 时不报错（算尽力而为），原因写日志。
+   */
+  notify?: (sessionId: string, text: string) => Promise<unknown> | unknown
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
 }
 
@@ -124,9 +134,14 @@ export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
       json(response, 501, { ok: false, error: '主机这一代不支持归档' })
       return
     }
-    let body: { sessionId?: unknown; ids?: unknown; archived?: unknown }
+    let body: { sessionId?: unknown; ids?: unknown; archived?: unknown; auto?: unknown }
     try {
-      body = JSON.parse(await readBody(request)) as { sessionId?: unknown; ids?: unknown; archived?: unknown }
+      body = JSON.parse(await readBody(request)) as {
+        sessionId?: unknown
+        ids?: unknown
+        archived?: unknown
+        auto?: unknown
+      }
     } catch {
       json(response, 400, { ok: false, error: '请求体不是合法 JSON' })
       return
@@ -165,6 +180,28 @@ export function subagentsArchiveHandler(deps: SubagentRouteDeps) {
       // 现在：顶层带第一条失败原因，并且逐条写日志（最多记 10 条，别让一次批量刷满日志）。
       for (const row of failedRows.slice(0, 10)) {
         deps.log('子代理归档失败', { sessionId: row.sessionId, message: row.message ?? '内核没给原因', archived })
+      }
+      /*
+       * 自动归档的回执（2026-11-23 用户报「重启回来子代理被归档了、主 agent 还在按名字派活」）。
+       * 只对 auto 批次、且确实收掉了人才说一句：手动归档是用户/主 agent 自己点的，不需要回声。
+       */
+      const doneIds = results.filter((row) => row.ok).map((row) => row.sessionId)
+      const parent = typeof body.sessionId === 'string' ? body.sessionId.trim() : ''
+      if (archived && body.auto === true && doneIds.length > 0 && parent !== '') {
+        const text =
+          '【派活助手·自动归档】面板刚自动归档了 ' + String(doneIds.length) + ' 个「真的闲置超过阈值」的子代理：' +
+          doneIds.slice(0, 12).join('、') +
+          (doneIds.length > 12 ? '… 等 ' + String(doneIds.length) + ' 个' : '') +
+          '。它们已经不在 list_agents 的正常列表里了——要接着用，先 subagent_archive({ ids: [...], unarchive: true }) 放回来再派活，' +
+          '别对着名字一直 send_message（发出去没人跑）。'
+        try {
+          if (deps.notify) await Promise.resolve(deps.notify(parent, text))
+          else deps.log('自动归档：这台主机没有 notify 通道，回执没送到父会话', { count: doneIds.length })
+        } catch (error) {
+          deps.log('自动归档回执投递失败（归档本身已生效）', {
+            message: String((error as Error)?.message ?? error).slice(0, 120),
+          })
+        }
       }
       json(response, failed === 0 ? 200 : 207, {
         ok: failed === 0,

@@ -16,7 +16,7 @@
  */
 import { resolveHostUrl } from './host-url.js'
 import { makeDraggable } from './draggable.js'
-import { isStale, subagentTimeText } from '../subagents/idle.js'
+import { isAutoArchiveCandidate, isStale, subagentTimeText } from '../subagents/idle.js'
 
 export interface SubagentRow {
   id: string
@@ -267,9 +267,16 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
    */
   let autoArchiveTimer: ReturnType<typeof setInterval> | undefined
   let autoArchiveOn = false
+  /*
+   * 冷静期（2026-11-23）：定时器刚挂上时，宿主可能刚重启、活动记录还是空的。
+   * 头 WARMUP 内一拍都不动手，等进程先攒到几个活动样本 —— 配合严格判据，重启竞态才算真封住。
+   */
+  const AUTO_ARCHIVE_WARMUP_MS = 3 * 60 * 1000
+  let autoArchiveArmedAt = 0
 
   const autoArchiveTick = async (): Promise<void> => {
     if (!autoArchiveOn) return
+    if (autoArchiveArmedAt > 0 && Date.now() - autoArchiveArmedAt < AUTO_ARCHIVE_WARMUP_MS) return
     try {
       if ((globalThis as { document?: { hidden?: boolean } }).document?.hidden === true) return
     } catch {
@@ -288,15 +295,21 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       }
       if (answer.ok !== true || !Array.isArray(answer.items)) return
       if (typeof answer.config?.idleWarnMs === 'number') idleWarnMs = answer.config.idleWarnMs
+      /*
+       * 自动归档只收「本进程真的见过活动、之后又闲置超阈值」的（isAutoArchiveCandidate）。
+       * 2026-11-23 用户报「重启回来子代理全被归档」：重启后宿主没有活动记录，idleMs 退化成
+       * now-createdAt（只是下界），用 isStale 判会把刚干过活的也收走 —— 主 agent 还在按名字派活，
+       * 发出去没人跑。下界一律不动手，标黄/建议归档照旧。
+       */
       const ids = answer.items
-        .filter((row) => row.archived !== true && row.status !== 'running' && isStale(row, idleWarnMs))
+        .filter((row) => row.archived !== true && isAutoArchiveCandidate(row, idleWarnMs))
         .map((row) => String(row.id))
         .filter((id) => id !== '')
       if (ids.length === 0) return
       await fetch(resolveHostUrl('/api/dsh-remote-dafeiyu/subagents/archive'), {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-drc-pair': '1' },
-        body: JSON.stringify({ sessionId: current, ids, archived: true }),
+        body: JSON.stringify({ sessionId: current, ids, archived: true, auto: true }),
       })
     } catch {
       /* 后台维护失败就等下一拍，不打扰用户 */
@@ -306,6 +319,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   const applyAutoArchive = (on: boolean): void => {
     autoArchiveOn = on
     if (on && autoArchiveTimer === undefined) {
+      autoArchiveArmedAt = Date.now()
       autoArchiveTimer = setInterval(() => void autoArchiveTick(), AUTO_ARCHIVE_MS)
     } else if (!on && autoArchiveTimer !== undefined) {
       clearInterval(autoArchiveTimer)

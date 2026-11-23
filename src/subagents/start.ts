@@ -73,6 +73,41 @@ export function startSubagents(
       return undefined
     }
   })
+  /**
+   * 往一个**在线**会话塞一句话（自动归档的回执用，见 `routes.ts` 的 `notify`）。
+   *
+   * 为什么不复用 pusher：pusher 的正文带「以上规范由插件推送」那层壳，那是给提示段用的；
+   * 这里要说的是「我刚替你收了 N 个子代理」，壳套错了反而让人看不懂。
+   * 拿不到在线 agent（父会话没加载）就是尽力而为：写日志，不抛。
+   */
+  const notifySession = async (sessionId: string, text: string): Promise<void> => {
+    if (sessionId === '' || text === '') return
+    let service: unknown
+    try {
+      service = ctx.get?.('agents', true)
+    } catch {
+      service = undefined
+    }
+    const list = service && typeof (service as { list?: unknown }).list === 'function'
+      ? ((service as { list: () => unknown[] }).list() ?? [])
+      : []
+    const agent = (Array.isArray(list) ? list : []).find(
+      (one) => typeof (one as { id?: unknown })?.id === 'string' && (one as { id: string }).id === sessionId,
+    ) as { inject?: (input: unknown) => unknown } | undefined
+    if (!agent || typeof agent.inject !== 'function') {
+      probe.notify = probe.notify ?? 'no-live-agent（父会话不在线，自动归档只进了日志）'
+      input.log('自动归档回执没送到：父会话此刻没有在线 agent', { sessionId })
+      return
+    }
+    agent.inject({
+      id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
+        ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+      role: 'user',
+      content: [{ type: 'text', text }],
+      source: { kind: 'user' },
+    })
+    probe.notify = 'injected'
+  }
   // ── 提示段 ──
   const xyqConfigFile = resolveXyqConfigFile(input.dshHome)
   const guidanceTexts: Record<'subagent' | 'xyq', string> = {
@@ -87,6 +122,7 @@ export function startSubagents(
   const deps: SubagentRouteDeps = {
     ...input,
     config: configFace,
+    notify: notifySession,
     guidanceText: () => subagentGuidance(config.mode),
     pushGuidance: async (which: 'subagent' | 'xyq' | 'both', sessionId?: string, mode?: string): Promise<GuidancePushResult> => {
       const merged: GuidancePushResult = { total: 0, pushed: 0, failed: 0, errors: [] }

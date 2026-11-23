@@ -125,6 +125,52 @@ test('归档全部成功：200、ok:true，且不带 message 键（别让客户�
   assert.equal(d.logs.length, 0, '成功路径不写失败日志')
 })
 
+
+test('自动归档（auto:true）：必须给父会话投一句回执，别让主 agent 蒙在鼓里（2026-11-23）', async () => {
+  const notes: Array<{ sessionId: string; text: string }> = []
+  const base = deps(async () => ({ ok: true }))
+  const d = {
+    ...base,
+    notify: (sessionId: string, text: string) => {
+      notes.push({ sessionId, text })
+    },
+  }
+  const { res } = response()
+  await subagentsArchiveHandler(d)(
+    request(HEADERS, JSON.stringify({ sessionId: 'parent-1', ids: ['a', 'b'], archived: true, auto: true })),
+    res,
+  )
+  assert.equal(notes.length, 1, '自动归档没有回执：主 agent 还会按名字继续派活，发出去没人跑')
+  assert.equal(notes[0]!.sessionId, 'parent-1', '回执要投给父会话，别投错人')
+  assert.match(notes[0]!.text, /自动归档/)
+  assert.match(notes[0]!.text, /unarchive/, '回执要给出怎么放回来')
+})
+
+test('手动归档（没有 auto 标记）：不许给父会话塞消息（用户自己点的，不需要回声）', async () => {
+  let called = 0
+  const base = deps(async () => ({ ok: true }))
+  const d = { ...base, notify: () => { called += 1 } }
+  const { res } = response()
+  await subagentsArchiveHandler(d)(request(HEADERS, JSON.stringify({ sessionId: 'parent-1', ids: ['a'] })), res)
+  assert.equal(called, 0)
+})
+
+test('自动归档回执投递失败：归档本身不算失败，但要写一行日志', async () => {
+  const base = deps(async () => ({ ok: true }))
+  const d = {
+    ...base,
+    notify: () => {
+      throw new Error('no live agent')
+    },
+  }
+  const { res, reply } = response()
+  await subagentsArchiveHandler(d)(request(HEADERS, JSON.stringify({ sessionId: 'parent-1', ids: ['a'], auto: true })), res)
+  assert.equal(reply().status, 200, '回执没送到不该让归档结果变红')
+  assert.ok(
+    base.logs.some((row) => row.message.includes('回执投递失败')),
+    '投递失败要留痕：否则「主 agent 没收到」这件事永远查不出来',
+  )
+})
 test('归档抛异常：也要变成该条的 message（不是整条路由 500 把原因吞掉）', async () => {
   const d = deps(async () => {
     throw new Error('kernel exploded')

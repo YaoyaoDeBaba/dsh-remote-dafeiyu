@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createServicesKernel, isoOfTime, type ServicesBundle } from '../src/platform/carrier-services.js'
-import { formatDuration, isStale, subagentTimeText } from '../src/subagents/idle.js'
+import { formatDuration, isAutoArchiveCandidate, isStale, subagentTimeText } from '../src/subagents/idle.js'
 import { readSubagentsConfig, writeSubagentsConfig } from '../src/subagents/config.js'
 import { createGuidancePusher } from '../src/subagents/pusher.js'
 import { startSubagents } from '../src/subagents/start.js'
@@ -220,6 +220,26 @@ test('活着的子代理走快路：console 头的 createdAt 就够，不必去�
   const port = kernel(bundle)
   await port.listSubagents!('session-p')
   assert.equal(scans, 0, 'catalog + sessions.list 都给了 createdAt 时，一次持久化扫描都不该发')
+})
+
+test('自动归档只收「真见过活动」的：只有创建时间的下界一律不动手（2026-11-23 重启竞态）', () => {
+  /*
+   * 真机现场：用户让主 agent 暂停所有子代理 → 重启 DSH → 回来一看全被归档了。
+   * 根因是重启后宿主没有活动记录，`idleMs` 退化成 now-createdAt 并标 `idleBasis:'created'`——
+   * 那只是下界，用它自动归档会把「5 分钟前还在干活、只是创建于 3 小时前」的一起收走。
+   */
+  const WARN = 7_200_000
+  assert.equal(
+    isAutoArchiveCandidate({ status: 'idle', idleMs: 9_999_999, idleBasis: 'created' }, WARN),
+    false,
+    '下界不能用来归档：重启后刚干完活的子代理会被立刻收走',
+  )
+  assert.equal(isAutoArchiveCandidate({ status: 'idle', idleMs: 9_999_999, idleBasis: 'activity' }, WARN), true)
+  assert.equal(isAutoArchiveCandidate({ status: 'idle', idleMs: 1_000, idleBasis: 'activity' }, WARN), false, '没到阈值不许收')
+  assert.equal(isAutoArchiveCandidate({ status: 'running', idleMs: 9_999_999, idleBasis: 'activity' }, WARN), false, '正在跑的不许收')
+  assert.equal(isAutoArchiveCandidate({ status: 'idle' }, WARN), false, '不知道闲置多久的不许收')
+  // 标黄那条规则不变：下界仍然可以提示「建议归档」，收不收是人 / 主 agent 的事
+  assert.equal(isStale({ status: 'idle', idleMs: 9_999_999, idleBasis: 'created' }, WARN), true)
 })
 
 test('formatDuration / isStale：不知道闲置多久时不标黄、不叫建议归档', () => {

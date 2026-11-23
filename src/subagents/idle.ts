@@ -53,6 +53,24 @@ export function isStale(row: SubagentTimeRow, warnMs: number): boolean {
 }
 
 /**
+ * 能不能被**自动归档**（面板那每 5 分钟一拍用的就是这条）。
+ *
+ * 比 `isStale` 严一档，理由是真机上踩过（2026-11-23 用户报「重启回来子代理全被归档了」）：
+ * 重启后宿主内存里的 `lastActivityAt` 是空的，`idleMs` 会退化成 `now - createdAt` 并标
+ * `idleBasis:'created'` —— 那只是**下界**（"至少创建了这么久"），根本不是"闲置了这么久"。
+ * 拿它去自动归档，结果是：刚重启、5 分钟前还在干活的子代理，因为创建于 3 小时前就被收走；
+ * 而主 agent 手上还记着名字、继续 send_message 派活 —— 发出去没人跑，就是"啥也没干"。
+ *
+ * 所以自动归档只认**本进程真的见过活动、之后又闲置超阈值**的那一种（`idleBasis === 'activity'`）。
+ * 只有创建时间的一律不动手：标黄照旧、"建议归档"照旧，但收不收是人 / 主 agent 的决定。
+ */
+export function isAutoArchiveCandidate(row: SubagentTimeRow, warnMs: number): boolean {
+  if (row.status === 'running') return false
+  if (row.idleBasis !== 'activity') return false
+  return typeof row.idleMs === 'number' && Number.isFinite(row.idleMs) && row.idleMs >= warnMs
+}
+
+/**
  * 卡片上那一行时间。
  *
  * 三句话必须分得开（这是 2026-11-13 修的那个症状）：
