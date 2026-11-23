@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.152" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.153" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37450,7 +37450,7 @@ function explainMissingSession() {
 function buildHandoffTools(deps) {
   const make = (kind) => ({
     name: kind === "rebirth" ? "handoff_rebirth" : "handoff_branch",
-    description: kind === "rebirth" ? '\u628A**\u5F53\u524D\u4F1A\u8BDD**\u4E00\u952E\u8F6C\u751F\uFF1A\u8BA9\u672C\u4F1A\u8BDD\u5199\u4E00\u4EFD\u4EA4\u63A5\u6587\u6863\uFF0C\u7136\u540E\u5728**\u65B0\u4F1A\u8BDD**\u91CC\u63A5\u7740\u5E72\u3002\n\u4EC0\u4E48\u65F6\u5019\u7528\uFF1A\u4E0A\u4E0B\u6587\u5FEB\u6EE1\u4E86 / \u8981\u628A\u4E00\u4EF6\u957F\u671F\u7684\u4E8B\u4EA4\u51FA\u53BB / \u7528\u6237\u8BF4"\u4F60\u81EA\u5DF1\u8F6C\u751F"\u3002\n**\u4F60\uFF08agent\uFF09\u53EF\u4EE5\u76F4\u63A5\u53D1\u8D77\uFF0C\u4E0D\u9700\u8981\u7528\u6237\u70B9\u4EFB\u4F55\u6309\u94AE**\u3002\n`note` \u6700\u7701\u94B1\uFF1A\u5199 3 \u6761\u4EE5\u5185\u2014\u2014**\u4E3A\u4EC0\u4E48\u73B0\u5728\u8F6C\u3001\u54EA\u4E9B\u6D3B\u5DF2\u7ECF\u5E72\u5B8C\u522B\u91CD\u505A\u3001\u63A5\u624B\u8005\u7B2C\u4E00\u6B65\u6572\u4EC0\u4E48**\uFF08\u539F\u6837\u8FDB\u4EA4\u63A5\u6587\u6863\uFF09\u3002\n\u8C03\u7528\u540E\u4F1A\u6536\u5230\u4E00\u6761"\u5199\u4EA4\u63A5\u6587\u6863"\u7684\u6307\u4EE4\uFF1A\u5FC5\u987B\u6309\u5B83\u5199\u5B8C\u5E76\u8C03 `record_memory`\uFF0C\u4E0D\u8BB8\u534A\u8DEF\u505C\uFF1B\u5BBF\u4E3B\u7B49\u6587\u4EF6\u51FA\u73B0\u540E\u518D\u5EFA\u65B0\u4F1A\u8BDD\u3001\u6295\u9012\u7B2C\u4E00\u53E5\u3002\n**\u515C\u5E95**\uFF1A\u672C\u5DE5\u5177\u4E0D\u53EF\u7528\u65F6\uFF0C\u6539\u7528 `schedule_create`\uFF08`target: new_once` + \u4E00\u6B21\u6027 rrule\uFF09\uFF0C\u628A"\u8BFB\u4EA4\u63A5\u6587\u6863\u3001\u63A5\u624B"\u4F5C\u4E3A\u6295\u9012\u5230\u65B0\u4F1A\u8BDD\u7684\u7B2C\u4E00\u6761\u6307\u4EE4\u2014\u2014\u6548\u679C\u7B49\u4EF7\u3001\u4E0D\u4F9D\u8D56\u672C\u63D2\u4EF6\u3002' : '\u628A**\u5F53\u524D\u4F1A\u8BDD**\u4E00\u952E\u5206\u8EAB\uFF1A\u590D\u5236\u4E0A\u4E0B\u6587\u6210**\u65B0\u4F1A\u8BDD**\uFF0C\u4E24\u8FB9\u5E76\u884C\u5E72\u6D3B\u3001\u4E92\u4E0D\u5F71\u54CD\u3002\n**\u4F60\uFF08agent\uFF09\u53EF\u4EE5\u76F4\u63A5\u53D1\u8D77\uFF0C\u4E0D\u9700\u8981\u7528\u6237\u70B9\u4EFB\u4F55\u6309\u94AE**\u2014\u2014\u7528\u6237\u8BF4"\u4F60\u81EA\u5DF1\u5206\u8EAB"\u65F6\uFF0C\u5C31\u662F\u8BA9\u4F60\u8C03\u8FD9\u4E2A\u5DE5\u5177\u3002\n`note` \u5FC5\u586B\uFF1A\u5206\u8EAB\u8BE5\u5148\u5E72\u4EC0\u4E48\u3001\u505A\u5B8C\u600E\u4E48\u7B97\u5B8C\uFF1B\u5426\u5219\u5206\u51FA\u53BB\u7684\u4F1A\u8BDD\u4E0D\u77E5\u9053\u81EA\u5DF1\u7684\u804C\u8D23\u3002\n`boundary` \u5F3A\u70C8\u5EFA\u8BAE\u586B\uFF1A\u672C\u4F53\u6B63\u5728\u6539\u7684\u6587\u4EF6/\u76EE\u5F55\u3001\u672C\u4F53\u6B63\u5728\u8DD1\u7684\u540E\u53F0\u4EFB\u52A1\u2014\u2014\u5206\u8EAB\u4E0D\u8BB8\u78B0\uFF0C\u78B0\u4E86\u4E24\u8FB9\u4E00\u8D77\u6539\u540C\u4E00\u4E2A\u6587\u4EF6\u3002\n\u8C03\u7528\u540E\u4F1A\u6536\u5230\u4E00\u6761"\u5199\u4EA4\u63A5\u6587\u6863"\u7684\u6307\u4EE4\uFF0C\u5FC5\u987B\u6309\u5B83\u5199\u5B8C\u5E76\u8C03 `record_memory`\u3002\u8FD4\u56DE `jobId`\u3002\n**\u515C\u5E95**\uFF1A\u540C\u4E0A\uFF0C\u672C\u5DE5\u5177\u4E0D\u53EF\u7528\u65F6\u6539\u7528 `schedule_create`\uFF08`target: new_once`\uFF09\u6295\u9012\u7B2C\u4E00\u6761\u6307\u4EE4\u3002',
+    description: kind === "rebirth" ? '\u628A**\u5F53\u524D\u4F1A\u8BDD**\u4E00\u952E\u8F6C\u751F\uFF1A\u8BA9\u672C\u4F1A\u8BDD\u5199\u4E00\u4EFD\u4EA4\u63A5\u6587\u6863\uFF0C\u7136\u540E\u5728**\u65B0\u4F1A\u8BDD**\u91CC\u63A5\u7740\u5E72\u3002\n\u4EC0\u4E48\u65F6\u5019\u7528\uFF1A\u4E0A\u4E0B\u6587\u5FEB\u6EE1\u4E86 / \u8981\u628A\u4E00\u4EF6\u957F\u671F\u7684\u4E8B\u4EA4\u51FA\u53BB / \u7528\u6237\u8BF4"\u4F60\u81EA\u5DF1\u8F6C\u751F"\u3002\n**\u4F60\uFF08agent\uFF09\u53EF\u4EE5\u76F4\u63A5\u53D1\u8D77\uFF0C\u4E0D\u9700\u8981\u7528\u6237\u70B9\u4EFB\u4F55\u6309\u94AE**\u3002\n`note` \u6700\u7701\u94B1\uFF1A\u5199 3 \u6761\u4EE5\u5185\u2014\u2014**\u4E3A\u4EC0\u4E48\u73B0\u5728\u8F6C\u3001\u54EA\u4E9B\u6D3B\u5DF2\u7ECF\u5E72\u5B8C\u522B\u91CD\u505A\u3001\u63A5\u624B\u8005\u7B2C\u4E00\u6B65\u6572\u4EC0\u4E48**\uFF08\u539F\u6837\u8FDB\u4EA4\u63A5\u6587\u6863\uFF09\u3002\n\u8C03\u7528\u540E\u4F1A\u6536\u5230\u4E00\u6761"\u5199\u4EA4\u63A5\u6587\u6863"\u7684\u6307\u4EE4\uFF1A\u5FC5\u987B\u6309\u5B83\u5199\u5B8C\u5E76\u8C03 `record_memory`\uFF0C\u4E0D\u8BB8\u534A\u8DEF\u505C\uFF1B\u5BBF\u4E3B\u7B49\u6587\u4EF6\u51FA\u73B0\u540E\u518D\u5EFA\u65B0\u4F1A\u8BDD\u3001\u6295\u9012\u7B2C\u4E00\u53E5\u3002\n**\u515C\u5E95**\uFF1A\u672C\u5DE5\u5177\u4E0D\u53EF\u7528\u65F6\uFF0C\u6539\u7528 `schedule_create`\uFF08`target: new_once` + \u4E00\u6B21\u6027 rrule\uFF09\uFF0C\u628A"\u8BFB\u4EA4\u63A5\u6587\u6863\u3001\u63A5\u624B"\u4F5C\u4E3A\u6295\u9012\u5230\u65B0\u4F1A\u8BDD\u7684\u7B2C\u4E00\u6761\u6307\u4EE4\u2014\u2014\u6548\u679C\u7B49\u4EF7\u3001\u4E0D\u4F9D\u8D56\u672C\u63D2\u4EF6\u3002' : '\u628A**\u5F53\u524D\u4F1A\u8BDD**\u4E00\u952E\u5206\u8EAB\uFF1A\u590D\u5236\u4E0A\u4E0B\u6587\u6210**\u65B0\u4F1A\u8BDD**\uFF0C\u4E24\u8FB9\u5E76\u884C\u5E72\u6D3B\u3001\u4E92\u4E0D\u5F71\u54CD\u3002\n**\u4F60\uFF08agent\uFF09\u53EF\u4EE5\u76F4\u63A5\u53D1\u8D77\uFF0C\u4E0D\u9700\u8981\u7528\u6237\u70B9\u4EFB\u4F55\u6309\u94AE**\u2014\u2014\u7528\u6237\u8BF4"\u4F60\u81EA\u5DF1\u5206\u8EAB"\u65F6\uFF0C\u5C31\u662F\u8BA9\u4F60\u8C03\u8FD9\u4E2A\u5DE5\u5177\u3002\n`note` **\u5FC5\u586B\uFF0C\u5C31\u662F\u8FD9\u6761\u5206\u8EAB\u7684\u804C\u8D23**\uFF1A\u5B83\u53EA\u5E72\u8FD9\u4E00\u4EF6\u4E8B\u3001\u5E72\u5230\u600E\u4E48\u7B97\u5B8C\u3002\n\u5728\u7FA4\u91CC\u53D1\u8D77\u65F6\uFF0C\u6574\u6761\u94FE\u5B50\u4F1A\u81EA\u52A8\u8D70\u5B8C\uFF082026-11-23\uFF09\uFF1A**\u901A\u77E5\u7FA4 \u2192 \u5EFA\u5206\u8EAB\u5E76\u6539\u540D <\u672C\u4F53\u540D>\u5206\u8EABN \u2192 \u628A note \u5F53\u804C\u8D23\u5199\u8FDB\u5B83\u7684\u7FA4\u8EAB\u4EFD \u2192 \u8FCE\u65B0\u5E7F\u64AD**\u3002\u672C\u4F53**\u4E0D\u9000\u7FA4\u3001\u4E0D\u4EA4\u7FA4\u4E3B**\u2014\u2014\u5206\u8EAB\u662F\u6DFB\u4EBA\u624B\uFF0C\u4E0D\u662F\u63A5\u73ED\u3002\n`boundary` \u5F3A\u70C8\u5EFA\u8BAE\u586B\uFF1A\u672C\u4F53\u6B63\u5728\u6539\u7684\u6587\u4EF6/\u76EE\u5F55\u3001\u672C\u4F53\u6B63\u5728\u8DD1\u7684\u540E\u53F0\u4EFB\u52A1\u2014\u2014\u5206\u8EAB\u4E0D\u8BB8\u78B0\uFF0C\u78B0\u4E86\u4E24\u8FB9\u4E00\u8D77\u6539\u540C\u4E00\u4E2A\u6587\u4EF6\u3002\n\u8C03\u7528\u540E\u4F1A\u6536\u5230\u4E00\u6761"\u5199\u4EA4\u63A5\u6587\u6863"\u7684\u6307\u4EE4\uFF0C\u5FC5\u987B\u6309\u5B83\u5199\u5B8C\u5E76\u8C03 `record_memory`\u3002\u8FD4\u56DE `jobId`\u3002\n**\u515C\u5E95**\uFF1A\u540C\u4E0A\uFF0C\u672C\u5DE5\u5177\u4E0D\u53EF\u7528\u65F6\u6539\u7528 `schedule_create`\uFF08`target: new_once`\uFF09\u6295\u9012\u7B2C\u4E00\u6761\u6307\u4EE4\u3002',
     parameters: {
       type: "object",
       properties: {
@@ -38032,6 +38032,29 @@ function createHandoffService(deps) {
     }
     return value;
   };
+  const nextBranchGen = (base) => {
+    const file2 = path18.join(deps.handoffDir, "branch-gen.json");
+    let map2 = {};
+    try {
+      map2 = JSON.parse(readFileSync6(file2, "utf8"));
+    } catch {
+      map2 = {};
+    }
+    const value = Number(map2[base] ?? 0) + 1;
+    map2[base] = value;
+    try {
+      writeFileSync3(file2, JSON.stringify(map2, null, 2) + "\n", "utf8");
+    } catch {
+    }
+    return value;
+  };
+  const stripGenSuffix = (title) => title.replace(/\s*(?:转世|分身)\d+$/, "").trim();
+  const ROLE_MAX = 24;
+  const roleFromDuty = (duty) => {
+    const flat = String(duty ?? "").replace(/\s+/g, " ").trim();
+    if (flat === "") return "";
+    return flat.length > ROLE_MAX ? flat.slice(0, ROLE_MAX) + "\u2026" : flat;
+  };
   const probeFile = (filePath) => {
     try {
       if (!existsSync(filePath)) return "pending";
@@ -38081,7 +38104,7 @@ function createHandoffService(deps) {
       });
     }
   };
-  const handoverGroup = async (job, childId) => {
+  const handoverGroup = async (job, plan, childId) => {
     const h = deps.groupHandover;
     if (h === void 0) return void 0;
     let spot;
@@ -38092,20 +38115,23 @@ function createHandoffService(deps) {
     }
     if (spot === void 0) return void 0;
     const notes = [];
-    try {
-      touch(job, { message: "\u7B49\u5F85\u300C\u524D\u4E16\u2194\u8F6C\u4E16\u300D\u628A\u6587\u6863\u7F3A\u53E3\u8865\u9F50\u2026" });
-      const gapNote = await waitGapsCleared(childId);
-      if (gapNote !== void 0) notes.push(gapNote);
-    } catch (error62) {
-      notes.push("\u7B49\u7F3A\u53E3\u65F6\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    if (job.kind !== "branch") {
+      try {
+        touch(job, { message: "\u7B49\u5F85\u300C\u524D\u4E16\u2194\u8F6C\u4E16\u300D\u628A\u6587\u6863\u7F3A\u53E3\u8865\u9F50\u2026" });
+        const gapNote = await waitGapsCleared(childId);
+        if (gapNote !== void 0) notes.push(gapNote);
+      } catch (error62) {
+        notes.push("\u7B49\u7F3A\u53E3\u65F6\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+      }
     }
+    const isBranch = job.kind === "branch";
     let title;
     try {
       const parentTitle = String(await deps.sessionTitle?.(job.sessionId) ?? "").trim();
       const rename2 = deps.renameSession;
       if (parentTitle !== "" && rename2 !== void 0) {
-        const base = parentTitle.replace(/\s*转世\d+$/, "").trim();
-        const next = base + "\u8F6C\u4E16" + String(nextRebirthGen(base));
+        const base = stripGenSuffix(parentTitle);
+        const next = isBranch ? base + "\u5206\u8EAB" + String(nextBranchGen(base)) : base + "\u8F6C\u4E16" + String(nextRebirthGen(base));
         const renamed = await rename2(childId, next);
         if (renamed.ok) title = next;
         else notes.push("\u6539\u540D\u5931\u8D25\uFF1A" + String(renamed.message ?? "\u672A\u77E5\u539F\u56E0"));
@@ -38113,42 +38139,45 @@ function createHandoffService(deps) {
     } catch (error62) {
       notes.push("\u6539\u540D\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
     }
+    const duty = roleFromDuty(plan.note ?? "");
+    const role = isBranch ? duty : String(spot.role ?? "").trim();
     let invitedOk = false;
     try {
       const invited = await h.invite(spot.groupId, [childId]);
       invitedOk = invited.ok;
       if (!invited.ok) notes.push("\u62C9\u7FA4\u5931\u8D25\uFF1A" + String(invited.message ?? "\u672A\u77E5\u539F\u56E0"));
       else {
-        if (typeof spot.role === "string" && spot.role.trim() !== "") h.setRole(spot.groupId, childId, spot.role.trim());
-        if (spot.isOwner) h.setOwner(spot.groupId, childId);
+        if (role !== "") h.setRole(spot.groupId, childId, role);
+        if (spot.isOwner && !isBranch) h.setOwner(spot.groupId, childId);
       }
     } catch (error62) {
       notes.push("\u62C9\u7FA4\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
     }
     if (!invitedOk) {
+      const childPin = (title ?? childId) + "\uFF08" + childId.replace(/^session-/, "").slice(0, 8) + "\uFF09";
+      const why = String(notes.find((note) => note.startsWith("\u62C9\u7FA4")) ?? "\u539F\u56E0\u672A\u77E5");
+      const text = isBranch ? "\u3010\u5206\u8EAB\u6CA1\u8FDB\u7FA4 \xB7 " + spot.groupName + "\u3011\n\u5206\u8EAB\u5DF2\u7ECF\u5EFA\u597D\u4E86\uFF0C\u4F46**\u6CA1\u80FD\u628A TA \u62C9\u8FDB\u7FA4**\uFF08" + why + "\uFF09\u3002\n\u6211\u8FD9\u8FB9\u7167\u5E38\u5E72\u6D3B\uFF1B\u817E\u51FA\u4E00\u4E2A\u4F4D\u7F6E\u540E\u518D\u62C9\u4E00\u6B21\uFF1A" + childPin + "\u3002" : "\u3010\u4EA4\u63A5\u672A\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u8F6C\u4E16\u5DF2\u7ECF\u5EFA\u597D\u4E86\uFF0C\u4F46**\u6CA1\u80FD\u628A TA \u62C9\u8FDB\u7FA4**\uFF08" + why + "\uFF09\u3002\n\u6211\u5148\u7559\u5728\u7FA4\u91CC\u7EE7\u7EED\u9876\uFF0C\u8BF7\u817E\u51FA\u4E00\u4E2A\u4F4D\u7F6E\u540E\u518D\u62C9\u4E00\u6B21\uFF1A" + childPin + "\u3002";
       try {
-        await h.post(
-          spot.groupId,
-          job.sessionId,
-          "\u3010\u4EA4\u63A5\u672A\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u8F6C\u4E16\u5DF2\u7ECF\u5EFA\u597D\u4E86\uFF0C\u4F46**\u6CA1\u80FD\u628A TA \u62C9\u8FDB\u7FA4**\uFF08" + String(notes.find((note) => note.startsWith("\u62C9\u7FA4")) ?? "\u539F\u56E0\u672A\u77E5") + "\uFF09\u3002\n\u6211\u5148\u7559\u5728\u7FA4\u91CC\u7EE7\u7EED\u9876\uFF0C\u8BF7\u817E\u51FA\u4E00\u4E2A\u4F4D\u7F6E\u540E\u518D\u62C9\u4E00\u6B21\uFF1A" + (title ?? childId) + "\uFF08" + childId.replace(/^session-/, "").slice(0, 8) + "\uFF09\u3002",
-          spot.recipients
-        );
+        await h.post(spot.groupId, job.sessionId, text, spot.recipients);
       } catch {
       }
       return notes.join("\uFF1B");
     }
     const childLabel = (title ?? childId) + "\uFF08" + childId.replace(/^session-/, "").slice(0, 8) + "\uFF09";
-    const done = spot.isOwner ? "\u3010\u4EA4\u63A5\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u5DF2\u5B8C\u6210\u8F6C\u4E16\u4EA4\u63A5 \u2192 \u540E\u7EED\u6211\u7684\u5DE5\u4F5C\u7531 " + childLabel + " \u63A5\u624B\uFF0C\u7FA4\u4E3B\u5DF2\u4E00\u5E76\u8F6C\u7ED9\u4ED6\u3002" : "\u3010\u4EA4\u63A5\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u5DF2\u5B8C\u6210\u8F6C\u4E16\u4EA4\u63A5 \u2192 \u540E\u7EED\u6211\u7684\u5DE5\u4F5C\u7531 " + childLabel + " \u63A5\u624B\u3002";
+    const selfPin = job.sessionId.replace(/^session-/, "").slice(0, 8);
+    const done = isBranch ? "\u3010\u8FCE\u65B0 \xB7 " + spot.groupName + "\u3011\n" + childLabel + " \u5DF2\u8FDB\u7FA4\uFF0C\u8D1F\u8D23\uFF1A" + (duty === "" ? roleFromDuty(plan.note ?? "") + "" : duty) + "\u3002\n\u5B83\u4E0D\u662F\u6765\u63A5\u73ED\u7684\u2014\u2014\u672C\u4F53\uFF08" + selfPin + "\uFF09\u7EE7\u7EED\u5E72\u539F\u6765\u7684\u6D3B\uFF0C\u8FD9\u6761\u5206\u652F\u5F52\u5B83\u3002" : spot.isOwner ? "\u3010\u4EA4\u63A5\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u5DF2\u5B8C\u6210\u8F6C\u4E16\u4EA4\u63A5 \u2192 \u540E\u7EED\u6211\u7684\u5DE5\u4F5C\u7531 " + childLabel + " \u63A5\u624B\uFF0C\u7FA4\u4E3B\u5DF2\u4E00\u5E76\u8F6C\u7ED9\u4ED6\u3002" : "\u3010\u4EA4\u63A5\u5B8C\u6210 \xB7 " + spot.groupName + "\u3011\n\u5DF2\u5B8C\u6210\u8F6C\u4E16\u4EA4\u63A5 \u2192 \u540E\u7EED\u6211\u7684\u5DE5\u4F5C\u7531 " + childLabel + " \u63A5\u624B\u3002";
     try {
       const posted = await h.post(spot.groupId, job.sessionId, done, spot.recipients);
       if (!posted.ok) notes.push("\u7FA4\u5E7F\u64AD\u5931\u8D25\uFF1A" + String(posted.message ?? "\u672A\u77E5\u539F\u56E0"));
     } catch (error62) {
       notes.push("\u7FA4\u5E7F\u64AD\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
     }
-    try {
-      h.remove(spot.groupId, job.sessionId);
-    } catch (error62) {
-      notes.push("\u9000\u7FA4\u5931\u8D25\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+    if (!isBranch) {
+      try {
+        h.remove(spot.groupId, job.sessionId);
+      } catch (error62) {
+        notes.push("\u9000\u7FA4\u5931\u8D25\uFF1A" + String(error62?.message ?? error62).slice(0, 80));
+      }
     }
     return notes.length === 0 ? void 0 : notes.join("\uFF1B");
   };
@@ -38196,14 +38225,15 @@ function createHandoffService(deps) {
     }
     let handoverNote;
     try {
-      handoverNote = await handoverGroup(job, created.sessionId);
+      handoverNote = await handoverGroup(job, plan, created.sessionId);
     } catch (error62) {
       handoverNote = "\u7FA4\u4EA4\u63A5\u629B\u9519\uFF1A" + String(error62?.message ?? error62).slice(0, 100);
     }
+    const doneText = job.kind === "branch" ? "\u5206\u8EAB\u5DF2\u5EFA\u597D\uFF08\u804C\u8D23\u5DF2\u5199\u8FDB\u5B83\u7B2C\u4E00\u53E5\uFF09" : "\u4EA4\u63A5\u5B8C\u6210\uFF0C\u65B0\u4F1A\u8BDD\u5DF2\u62A5\u5230\uFF08\u7B49\u4F60\u70B9\u5934\uFF09";
     finish(
       job.id,
       "done",
-      handoverNote === void 0 ? "\u4EA4\u63A5\u5B8C\u6210\uFF0C\u65B0\u4F1A\u8BDD\u5DF2\u62A5\u5230\uFF08\u7B49\u4F60\u70B9\u5934\uFF09" : "\u4EA4\u63A5\u5B8C\u6210\uFF0C\u4F46\u7FA4\u4EA4\u63A5\u6709\u9057\u7559\uFF1A" + handoverNote
+      handoverNote === void 0 ? doneText : doneText + "\uFF0C\u4F46\u7FA4\u4EA4\u63A5\u6709\u9057\u7559\uFF1A" + handoverNote
     );
   };
   const watch = (job, plan) => {
@@ -38312,7 +38342,8 @@ function createHandoffService(deps) {
       };
       const spot = deps.groupHandover?.locate(id);
       if (spot !== void 0 && deps.groupHandover !== void 0) {
-        const announce = spot.isOwner ? "\u3010\u8F6C\u751F\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u8981\u8F6C\u751F\u4E86\uFF08\u4E0A\u4E0B\u6587\u8D85\u8F7D\uFF09\uFF1A\u5148\u5199\u4EA4\u63A5\u6587\u6863\uFF0C\u8F6C\u4E16\u8D77\u6765\u540E\u6211\u4F1A\u628A\u7FA4\u4E3B\u548C\u8EAB\u4EFD\u4E00\u5E76\u4EA4\u7ED9\u4ED6\u3002\n\u4EA4\u63A5\u5B8C\u6210\u524D\u8FD9\u6761\u7FA4\u7167\u5E38\u8FD0\u4F5C\uFF0C\u5206\u5DE5\u7167\u65E7\u7531\u6211\u4E0B\u3002" : "\u3010\u8F6C\u751F\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u7684\u4E0A\u4E0B\u6587\u5DF2\u8D85\u8F7D \u2192 \u5C06\u8F6C\u751F\u4EA4\u63A5\u7ED9\u4E0B\u4E00\u4E16 \u2192 \u7A0D\u540E\u5C06\u6211\u7684\u8F6C\u4E16\u62C9\u8FDB\u7FA4\u3002\n\u4EA4\u63A5\u671F\u95F4\u6211\u7684\u7FA4\u6D88\u606F\u53EF\u80FD\u8FDF\u7F13\uFF0C\u6025\u4E8B\u8BF7\u76F4\u63A5 @ \u6211\u3002";
+        const dutyNow = roleFromDuty(trimmedNote);
+        const announce = kind === "branch" ? "\u3010\u5206\u8EAB\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u8981\u6D3E\u4E00\u4E2A\u5206\u8EAB\u53BB\u505A\uFF1A" + (dutyNow === "" ? "\uFF08\u804C\u8D23\u5F85\u8865\uFF09" : dutyNow) + "\u3002\n\u672C\u4F53\u7EE7\u7EED\u5E72\u539F\u6765\u7684\u6D3B\uFF0C\u5206\u8EAB\u5EFA\u597D\u540E\u6211\u628A\u5B83\u62C9\u8FDB\u7FA4\u3002" : spot.isOwner ? "\u3010\u8F6C\u751F\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u8981\u8F6C\u751F\u4E86\uFF08\u4E0A\u4E0B\u6587\u8D85\u8F7D\uFF09\uFF1A\u5148\u5199\u4EA4\u63A5\u6587\u6863\uFF0C\u8F6C\u4E16\u8D77\u6765\u540E\u6211\u4F1A\u628A\u7FA4\u4E3B\u548C\u8EAB\u4EFD\u4E00\u5E76\u4EA4\u7ED9\u4ED6\u3002\n\u4EA4\u63A5\u5B8C\u6210\u524D\u8FD9\u6761\u7FA4\u7167\u5E38\u8FD0\u4F5C\uFF0C\u5206\u5DE5\u7167\u65E7\u7531\u6211\u4E0B\u3002" : "\u3010\u8F6C\u751F\u9884\u544A \xB7 " + spot.groupName + "\u3011\n\u6211\u7684\u4E0A\u4E0B\u6587\u5DF2\u8D85\u8F7D \u2192 \u5C06\u8F6C\u751F\u4EA4\u63A5\u7ED9\u4E0B\u4E00\u4E16 \u2192 \u7A0D\u540E\u5C06\u6211\u7684\u8F6C\u4E16\u62C9\u8FDB\u7FA4\u3002\n\u4EA4\u63A5\u671F\u95F4\u6211\u7684\u7FA4\u6D88\u606F\u53EF\u80FD\u8FDF\u7F13\uFF0C\u6025\u4E8B\u8BF7\u76F4\u63A5 @ \u6211\u3002";
         void deps.groupHandover.post(spot.groupId, id, announce, spot.recipients).catch(() => ({ ok: false }));
       }
       const direct = String(content ?? "").trim();
