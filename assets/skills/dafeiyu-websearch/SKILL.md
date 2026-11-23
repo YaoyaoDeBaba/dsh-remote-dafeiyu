@@ -1,6 +1,6 @@
 ---
 name: dafeiyu-websearch
-description: 用 web_search / paper_search / paper_read / repo_search / code_search / graphics_papers / hn_search 联网查资料：网页、论文（arXiv 为主，OpenAlex/DBLP 替补）、论文全文、GitHub 仓库、跨仓库代码、图形学论文索引、HN 讨论。要查最新事实、找论文、读全文、找开源项目或代码时读这篇，里面写了各上游的限额与已知不可用项。
+description: 用 web_search / paper_search / paper_read / repo_search / code_search / graphics_papers / hn_search 联网查资料：网页、论文（arXiv 为主，OpenAlex/DBLP 替补）、论文全文、GitHub 仓库、跨仓库代码、图形学论文索引、HN 讨论。web_search 还有个 engine=doubao：拿本机已登录的网页版豆包当搜索引擎（白嫖、不花 key），返回整合答案 + 来源，适合「要一个答案」而不是「一堆链接」。要查最新事实、找论文、读全文、找开源项目或代码时读这篇，里面写了各上游的限额与已知不可用项。
 ---
 
 # 联网搜索：四个工具怎么选
@@ -44,6 +44,21 @@ web_search({ query: "DeepSeek V4 发布时间", count: 8, engine: "auto" })
   格式变了，那时把原文 URL 当证据用，别自己猜。
 - 同一 query + count + engine 的内存缓存 5 分钟：连着问同一件事不会重复打上游。
 - 单次请求 8 秒超时；429/5xx 退避重试一次。
+
+## web_search(engine: "doubao")：把网页版豆包当搜索引擎用
+
+```
+web_search({ query: "2026 年国产大模型价格谁最便宜", engine: "doubao" })
+```
+
+- 走的是**本机已登录的网页版豆包**（白嫖，不花 API key）：起一个无头浏览器、打字、回车、抽它答完的正文。
+- 登录态与识图插件**共用同一份 profile**（`<dshHome>/storages/dsh-remote-dafeiyu/webvision/doubao`）：
+  识图那边登过一次，这里就能直接用。没登录会抛中文错，照它说的先在识图插件里点登录。
+- 输出形态和 bing/sogou 不一样：**一段整合后的回答 + 它给的来源列表**，
+  不是一条条搜索页。它没给链接时输出会明说「别把上面的回答当成有出处的检索结果来引用」。
+- 慢（几十秒），`count` 在这里只用来限制来源条数。超时返回的部分会标「没等到答完」。
+- **不进 auto**：auto 仍然只走 Bing → Sogou。豆包依赖登录态和网页版改版，
+  所以只在你要「一个答案 / 对比 / 总结」时显式写 `engine: "doubao"`；要「一堆可点开的链接」还是 auto。
 
 ## paper_search
 

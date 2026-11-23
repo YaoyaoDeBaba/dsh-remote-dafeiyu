@@ -38,9 +38,27 @@ export const ARXIV_API = 'http://export.arxiv.org/api/query'
 export const DBLP_API = 'https://dblp.org/search/publ/api'
 export const GITHUB_API = 'https://api.github.com'
 
-/** web_search 的引擎档位。auto = 先 Bing、不行退 Sogou。 */
-export type SearchEngine = 'auto' | 'bing' | 'sogou'
-export const SEARCH_ENGINES: SearchEngine[] = ['auto', 'bing', 'sogou']
+/**
+ * web_search 的引擎档位。auto = 先 Bing、不行退 Sogou。
+ *
+ * `doubao` = **拿本机已登录的网页版豆包当搜索引擎用**（白嫖，不花 key，2026-11-23 用户拍的）：
+ * 做法与识图插件里「白嫖网页豆包」同一套（复用同一份登录 profile、无头浏览器 + CDP），
+ * 返回的是它整合后的一段回答 + 它自己给的来源链接，而不是 bing/sogou 那种一条条的搜索页。
+ * 因此它**不进 auto**：慢（几十秒）、依赖登录态，只在你明确要"一个答案"时才显式指定。
+ */
+export type SearchEngine = 'auto' | 'bing' | 'sogou' | 'doubao'
+export const SEARCH_ENGINES: SearchEngine[] = ['auto', 'bing', 'sogou', 'doubao']
+
+/**
+ * 「网页豆包当搜索引擎」的形状：**真源在 `webai/types.ts`**，这里只引用不重定义——
+ * 工具层与 service 层共用一份，sprite 那次「schema 支持、service 没转」的缺陷就没有落脚点。
+ */
+export type { WebAiCitation, WebAiSearchResult } from './webai/types.js'
+import type { WebAiSearchResult } from './webai/types.js'
+/** 工具层只要这一个方法（判据注入假实现时也只实现它）。 */
+export interface WebAiEngine {
+  search(query: string, options?: { timeoutMs?: number; maxChars?: number }): Promise<WebAiSearchResult>
+}
 /** paper_search 的数据源。 */
 export type PaperSource = 'openalex' | 'arxiv' | 'dblp'
 /** 显式指定时可用的源（不含 auto）。 */
@@ -308,6 +326,44 @@ export function formatSearch(query: string, engine: string, hits: SearchHit[]): 
   })
   return lines.join('\n')
 }
+
+/**
+ * `engine=doubao` 的输出：一段回答 + 它给的来源列表。
+ *
+ * 为什么不套 formatSearch 那个「标题 / URL」两行制：豆包返回的是**整合后的答案**，
+ * 硬拆成条目会把它自己的判断丢掉；而来源必须单独列，否则模型会把自己的话当成可引用的事实。
+ * 两种没答完的状态要明说（`partial` / `truncated`），不然模型会把半截回答当结论用。
+ */
+export function formatWebAi(query: string, result: WebAiSearchResult, count: number): string {
+  const site = result.site === '' ? '网页豆包' : result.site
+  const seconds = (Math.max(0, result.elapsedMs) / 1000).toFixed(1)
+  const lines: string[] = ['搜索「' + query + '」：' + site + ' 的回答（' + seconds + 's）', '']
+  lines.push(result.answer.trim() === '' ? '（豆包这次一个字都没给，可能是页面改版或被限流）' : result.answer.trim())
+  /*
+   * 去重放在**格式化这一层**，不只指望 service（站点抽取与格式化是两段代码，
+   * 任一段退化都会把同一 url 印两遍；用户看到的第一个数就是「来源（N）」，重复很显眼）。
+   */
+  const seen = new Set<string>()
+  const cites = (result.citations ?? [])
+    .filter((one) => {
+      const url = String(one?.url ?? '').trim()
+      if (url === '' || seen.has(url)) return false
+      seen.add(url)
+      return true
+    })
+    .slice(0, count)
+  if (cites.length > 0) {
+    lines.push('', '来源（' + cites.length + '）：')
+    cites.forEach((one, index) => {
+      lines.push((index + 1) + '. ' + inlineText(one.title) + ' — ' + one.url)
+    })
+  } else {
+    lines.push('', '来源：豆包这次没给链接（别把上面的回答当成有出处的检索结果来引用）')
+  }
+  if (result.partial) lines.push('', '（注意：没等到"答完"就超时返回了，上面只是已拿到的部分）')
+  if (result.truncated) lines.push('', '（回答太长，已截断）')
+  return lines.join('\n')
+}
 /** ---------------- 论文 ---------------- */
 
 export function parseOpenAlex(payload: unknown, limit: number): PaperHit[] {
@@ -560,6 +616,13 @@ export interface WebsearchToolDeps {
    * 不注入 = 只有环境变量，与加这个口子之前一模一样。
    */
   readConfig?: () => WebsearchTokens
+  /**
+   * 网页豆包引擎（`web_search(engine='doubao')` 的落点）。
+   *
+   * 由 `start.ts` 注入——它要起浏览器、读 profile，属于 node 侧；本文件是纯函数域。
+   * 不注入 = 只剩 bing/sogou，选 doubao 时抛中文原因（不静默换成别的引擎）。
+   */
+  webAi?: WebAiEngine
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -571,6 +634,24 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
     const key = engine + '|' + count + '|' + query
     const cached = cache.get(key)
     if (cached !== undefined) return cached
+    if (engine === 'doubao') {
+      const brain = deps.webAi
+      if (!brain) {
+        throw new Error(
+          '这台主机的「网页豆包」引擎没挂上（probe.webai 会写原因）：先确认本机 Edge/Chrome 在、' +
+          '并且用识图那边的登录按钮登过一次网页版豆包；或者改用 engine=auto（Bing/Sogou）。',
+        )
+      }
+      const result = await brain.search(query, { timeoutMs: 90_000 })
+      const text = formatWebAi(query, result, count)
+      cache.set(key, text)
+      deps.log('联网搜索（豆包网页版）', {
+        elapsedMs: result.elapsedMs,
+        citations: result.citations.length,
+        partial: result.partial,
+      })
+      return text
+    }
     const order: Array<'bing' | 'sogou'> = engine === 'auto' ? ['bing', 'sogou'] : [engine]
     const failures: string[] = []
     for (const name of order) {
@@ -797,9 +878,13 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
     {
       name: 'web_search',
       description:
-        '联网搜网页（Bing 主，失败退 Sogou）。每条结果两行：标题 — 摘要 / URL。\n' +
-        'count 默认 8（1~20）；engine 默认 auto，也可以钉死 bing 或 sogou。\n' +
-        '同一 query 5 分钟内走缓存。要论文用 paper_search，要代码仓库用 repo_search，不要拿它硬凑。',
+        '联网搜网页。默认走搜索引擎（Bing 主，失败退 Sogou），每条结果两行：标题 — 摘要 / URL。\n' +
+        'engine=auto（默认）/ bing / sogou；engine=doubao = 拿本机已登录的网页版豆包当搜索引擎：' +
+        '它会自己上网找，给你一段整合后的回答 + 它给的来源链接（白嫖、不花 key）。\n' +
+        'doubao 档要登录态、慢（几十秒）而且不进 auto：想要「一个答案 / 对比 / 总结」时才用它；' +
+        '想要「一堆可点开的链接」仍用 auto。豆包没给链接时输出会明说，别把它的回答当有出处的事实引用。\n' +
+        'count 默认 8（1~20，doubao 档用它限制来源条数）；同一 query 5 分钟内走缓存。' +
+        '要论文用 paper_search，要代码仓库用 repo_search，不要拿它硬凑。',
       parameters: {
         type: 'object',
         properties: {
@@ -808,7 +893,9 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
           engine: {
             type: 'string',
             enum: SEARCH_ENGINES,
-            description: 'auto（默认，先 Bing 再 Sogou）/ bing / sogou。',
+            description:
+              'auto（默认，先 Bing 再 Sogou）/ bing / sogou / doubao（网页版豆包当搜索引擎，' +
+              '需已登录、慢、给的是整合答案加来源）。',
           },
         },
         required: ['query'],

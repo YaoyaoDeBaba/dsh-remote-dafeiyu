@@ -1848,6 +1848,8 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       log,
       // 设置页「搜索」栏与「进阶」栏写**同一份** user-config.json：路径只有一个真源，传进去。
       userConfigFile,
+      // 网页豆包引擎（web_search 的 engine=doubao）要复用识图插件那份登录 profile。
+      dshHome,
     })
   } catch (error) {
     websearchHandle = undefined

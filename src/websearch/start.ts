@@ -35,7 +35,8 @@ import {
   type WebsearchOverrides,
 } from '../shell/user-config.js'
 import { buildExtraTools } from './extra.js'
-import { buildWebsearchTools, type WebsearchToolDeps } from './tools.js'
+import { buildWebsearchTools, type WebsearchToolDeps, type WebAiEngine } from './tools.js'
+import { createWebAiService, type WebAiService } from './webai/service.js'
 import { readWebsearchSkillBody } from './skill.js'
 import { runProbe } from './probe.js'
 import {
@@ -77,6 +78,14 @@ export interface WebsearchStartInput {
   userConfigFile?: string
   /** 落盘时间戳（判据要固定它）；默认 `Date.now`。 */
   now?: () => number
+  /**
+   * DSH 家目录。
+   *
+   * 用途只有一个：`web_search(engine='doubao')` 要复用**识图插件那份登录 profile**
+   * （`<dshHome>/storages/dsh-remote-dafeiyu/webvision`）——用户登一次，识图和搜索都能用。
+   * 不传 = 网页豆包引擎不可用（probe.webai 写原因），bing/sogou 两条引擎照常。
+   */
+  dshHome?: string
 }
 
 export function startWebsearch(ctx: LooseContext, input: WebsearchStartInput): WebsearchHandle {
@@ -109,10 +118,49 @@ export function startWebsearch(ctx: LooseContext, input: WebsearchStartInput): W
     openAlexKey: (process.env.OPENALEX_API_KEY ?? process.env.DSH_OPENALEX_API_KEY ?? '').trim(),
   })
 
+  /**
+   * 网页豆包引擎（`web_search(engine='doubao')` 的落点）：懒创建。
+   *
+   * 第一次真用它才起浏览器；起不来只写 probe.webai + 一行中文日志，
+   * **绝不把 bing/sogou 一起带走**（与 tools / webServer 两块软探测同一纪律）。
+   * profile 与识图插件共用，登录一次两边都能用。
+   */
+  let webAi: WebAiService | undefined
+  let webAiFailure = ''
+  const ensureWebAi = (): WebAiService => {
+    if (webAi !== undefined) return webAi
+    if (webAiFailure !== '') throw new Error(webAiFailure)
+    const home = String(input.dshHome ?? '').trim()
+    if (home === '') {
+      webAiFailure = '网页豆包引擎不可用：没有拿到 dshHome，找不到识图那份登录 profile（改用 engine=auto）'
+      probe.webai = 'no dshHome'
+      throw new Error(webAiFailure)
+    }
+    try {
+      webAi = createWebAiService({
+        log: input.log,
+        profileRoot: path.join(home, 'storages', 'dsh-remote-dafeiyu', 'webvision'),
+      })
+      probe.webai = 'ready'
+      return webAi
+    } catch (error) {
+      const reason = String((error as Error)?.message ?? error).slice(0, 160)
+      webAiFailure = '网页豆包引擎起不来：' + reason
+      probe.webai = 'start failed: ' + reason.slice(0, 80)
+      input.log('网页豆包引擎起不来（bing/sogou 两条引擎不受影响）', { message: reason.slice(0, 200) })
+      throw new Error(webAiFailure)
+    }
+  }
+  const webAiEngine: WebAiEngine = {
+    search: (query, options) => ensureWebAi().search(query, options),
+  }
+  probe.webai = 'lazy（第一次 engine=doubao 才起浏览器）'
+
   const toolDeps: WebsearchToolDeps = {
     guideBody: () => readWebsearchSkillBody(skillDir),
     log: input.log,
     readConfig: readTokens,
+    webAi: webAiEngine,
   }
 
   const acceptTools = (value: unknown, via: string): boolean => {
@@ -314,6 +362,11 @@ export function startWebsearch(ctx: LooseContext, input: WebsearchStartInput): W
       }
       try {
         if (routeTimer !== undefined) clearInterval(routeTimer)
+      } catch {
+        /* 停机不许抛 */
+      }
+      try {
+        webAi?.stop()
       } catch {
         /* 停机不许抛 */
       }

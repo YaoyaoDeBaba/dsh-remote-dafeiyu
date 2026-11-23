@@ -296,7 +296,8 @@ test('工具定义：六键齐全、output 是字符串渲染', () => {
   }
   // 枚举必须从 types 导出，别在 schema 里手写一份
   const engine = toolOf(tools, 'web_search').parameters.properties.engine
-  assert.deepEqual(engine.enum, ['auto', 'bing', 'sogou'])
+  // 2026-11-23：多了 doubao（网页版豆包当搜索引擎）。auto 仍只走 Bing → Sogou，豆包必须显式点名。
+  assert.deepEqual(engine.enum, ['auto', 'bing', 'sogou', 'doubao'])
   const source = toolOf(tools, 'paper_search').parameters.properties.source
   // auto 打头：默认先 arXiv，openalex / dblp 只做替补（2026-11-20 用户裁决）
   assert.deepEqual(source.enum, ['auto', 'openalex', 'arxiv', 'dblp'])
