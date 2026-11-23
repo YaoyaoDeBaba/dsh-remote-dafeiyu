@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.151" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.152" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -36536,6 +36536,19 @@ function subagentsArchiveHandler(deps) {
       for (const row of failedRows.slice(0, 10)) {
         deps.log("\u5B50\u4EE3\u7406\u5F52\u6863\u5931\u8D25", { sessionId: row.sessionId, message: row.message ?? "\u5185\u6838\u6CA1\u7ED9\u539F\u56E0", archived });
       }
+      const doneIds = results.filter((row) => row.ok).map((row) => row.sessionId);
+      const parent = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
+      if (archived && body.auto === true && doneIds.length > 0 && parent !== "") {
+        const text = "\u3010\u6D3E\u6D3B\u52A9\u624B\xB7\u81EA\u52A8\u5F52\u6863\u3011\u9762\u677F\u521A\u81EA\u52A8\u5F52\u6863\u4E86 " + String(doneIds.length) + " \u4E2A\u300C\u771F\u7684\u95F2\u7F6E\u8D85\u8FC7\u9608\u503C\u300D\u7684\u5B50\u4EE3\u7406\uFF1A" + doneIds.slice(0, 12).join("\u3001") + (doneIds.length > 12 ? "\u2026 \u7B49 " + String(doneIds.length) + " \u4E2A" : "") + "\u3002\u5B83\u4EEC\u5DF2\u7ECF\u4E0D\u5728 list_agents \u7684\u6B63\u5E38\u5217\u8868\u91CC\u4E86\u2014\u2014\u8981\u63A5\u7740\u7528\uFF0C\u5148 subagent_archive({ ids: [...], unarchive: true }) \u653E\u56DE\u6765\u518D\u6D3E\u6D3B\uFF0C\u522B\u5BF9\u7740\u540D\u5B57\u4E00\u76F4 send_message\uFF08\u53D1\u51FA\u53BB\u6CA1\u4EBA\u8DD1\uFF09\u3002";
+        try {
+          if (deps.notify) await Promise.resolve(deps.notify(parent, text));
+          else deps.log("\u81EA\u52A8\u5F52\u6863\uFF1A\u8FD9\u53F0\u4E3B\u673A\u6CA1\u6709 notify \u901A\u9053\uFF0C\u56DE\u6267\u6CA1\u9001\u5230\u7236\u4F1A\u8BDD", { count: doneIds.length });
+        } catch (error62) {
+          deps.log("\u81EA\u52A8\u5F52\u6863\u56DE\u6267\u6295\u9012\u5931\u8D25\uFF08\u5F52\u6863\u672C\u8EAB\u5DF2\u751F\u6548\uFF09", {
+            message: String(error62?.message ?? error62).slice(0, 120)
+          });
+        }
+      }
       json5(response, failed === 0 ? 200 : 207, {
         ok: failed === 0,
         ...failed === 0 ? {} : {
@@ -37040,6 +37053,31 @@ function startSubagents(ctx, input2) {
       return void 0;
     }
   });
+  const notifySession = async (sessionId, text) => {
+    if (sessionId === "" || text === "") return;
+    let service;
+    try {
+      service = ctx.get?.("agents", true);
+    } catch {
+      service = void 0;
+    }
+    const list = service && typeof service.list === "function" ? service.list() ?? [] : [];
+    const agent = (Array.isArray(list) ? list : []).find(
+      (one) => typeof one?.id === "string" && one.id === sessionId
+    );
+    if (!agent || typeof agent.inject !== "function") {
+      probe.notify = probe.notify ?? "no-live-agent\uFF08\u7236\u4F1A\u8BDD\u4E0D\u5728\u7EBF\uFF0C\u81EA\u52A8\u5F52\u6863\u53EA\u8FDB\u4E86\u65E5\u5FD7\uFF09";
+      input2.log("\u81EA\u52A8\u5F52\u6863\u56DE\u6267\u6CA1\u9001\u5230\uFF1A\u7236\u4F1A\u8BDD\u6B64\u523B\u6CA1\u6709\u5728\u7EBF agent", { sessionId });
+      return;
+    }
+    agent.inject({
+      id: globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+      role: "user",
+      content: [{ type: "text", text }],
+      source: { kind: "user" }
+    });
+    probe.notify = "injected";
+  };
   const xyqConfigFile = resolveXyqConfigFile(input2.dshHome);
   const guidanceTexts = {
     get subagent() {
@@ -37052,6 +37090,7 @@ function startSubagents(ctx, input2) {
   const deps = {
     ...input2,
     config: configFace,
+    notify: notifySession,
     guidanceText: () => subagentGuidance(config2.mode),
     pushGuidance: async (which, sessionId, mode) => {
       const merged = { total: 0, pushed: 0, failed: 0, errors: [] };
