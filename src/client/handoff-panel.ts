@@ -176,11 +176,12 @@ export function mountHandoffPanel(deps: HandoffPanelDeps): {
   const applyKind = (): void => {
     const branch = kind === 'branch'
     title.textContent = branch ? '🧬 一键分身' : '🐟 一键转生'
-    noteLabel.textContent = branch ? '分支任务（必填）：分身要去干什么' : '交接重点（选填）'
+    noteLabel.textContent = branch ? '职责（必填）：分身只干这一件事，干到怎么算完' : '交接重点（选填）'
     boundaryLabel.textContent = branch ? '边界：哪些东西不要碰（选填，但很推荐写）' : '边界：哪些东西不要碰（选填）'
     goBtn.textContent = branch ? '开始分身' : '开始交接'
     foot.textContent = branch
-      ? '分身继承本体的记忆与背景，但去干一条**独立的分支任务**；本体这条会话不受影响。新会话同样先「报到」。'
+      ? '分身继承本体的记忆与背景，去干一条独立的分支任务；本体这条会话不受影响。' +
+        '在群里发起时整条链子自动走完：通知群 → 建分身并改名「本体名分身N」 → 把职责写进它的群身份 → 迎新广播；本体不退群、不交群主。'
       : '流程：往当前会话注入写作指令 → 它自己写交接文档 → 新建会话 → 新会话先「报到」。旧会话不会自动归档，建议你确认后手动归档。'
   }
 

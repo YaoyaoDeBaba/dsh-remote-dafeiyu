@@ -171,6 +171,32 @@ function fakeGroupHandover(options: {
 
 const GOOD_DOC = "# 交接\n\n## 目标\n把交接文档写全。\n## 现状（做到哪一步）\n判据已过。\n## 已完成（不要重做）\n- 交接指令重写：src/handoff/prompt.ts:120\n## 未完成 / 下一步\n- 打开 src/handoff/service.ts 跑 node --test dist/tests/handoff.test.js，全绿算完成\n## 等用户拍板\n无\n## 后台在跑\n无\n## 边界（不要碰的东西）\n无\n## 长期记忆要点\n- 2026-11-17 交接文档在 D:/handoff/x.md\n## 关键决定与理由\n补写用打回，而不是重发整份指令。\n## 坑与教训（踩过的坑、被否掉的方案）\n无\n## 工作区与版本\n分支 release-main，脏文件 0。\n## 相关文件\nC:/work/proj/src/handoff/prompt.ts\n\nDAFEIYU_HANDOFF_OK: D:/handoff/x.md"
 
+
+/** 分身版合格文档：小节表与转生不同（多「本体背景」「分支任务」两节）。 */
+const BRANCH_DOC = [
+  '# 分身交接',
+  '',
+  '## 本体背景',
+  '本体在跑插件发版线，这条分身只负责 vision 域。',
+  '## 分支任务',
+  '- 把 vision 域路由做完全量测试：改 src/vision/routes.ts，跑 node --test dist/tests/vision.test.js，全绿算完。',
+  '## 边界（不要碰的东西）',
+  '- 本体正在改 src/websearch，分身不许碰。',
+  '## 后台在跑',
+  '无',
+  '## 长期记忆要点',
+  '- 2026-11-23 分身职责：vision 域路由测试。',
+  '## 关键决定与理由',
+  '分身与本体并行，边界按职责分。',
+  '## 坑与教训（踩过的坑、被否掉的方案）',
+  '无',
+  '## 工作区与版本',
+  '分支 release-main，脏文件 0。',
+  '## 相关文件',
+  'C:/work/proj/src/vision/routes.ts',
+  '',
+  'DAFEIYU_HANDOFF_OK: D:/handoff/branch.md',
+].join('\n')
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 
@@ -787,6 +813,92 @@ test('收件箱：来生问 → 送进前世；前世答 → 送回给来生；�
     assert.equal(failed.ok, false)
     assert.ok(String(failed.message ?? '').includes('不在线'), '要说清送不到，去问用户')
     assert.equal(failed.thread!.status, 'undeliverable')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+test('群交接：分身 → 预告写清职责、改名「本体名分身1」、职责当群身份、迎新广播，且本体不退群不接群主', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-branch-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: true, role: '插件大总管', others: ['session-2'] })
+    const renamed: Array<{ sessionId: string; title: string }> = []
+    const duty = '把 vision 域的路由做完全量测试'
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => '远程逗鱼4-插件大总管',
+      renameSession: async (sessionId, title) => {
+        renamed.push({ sessionId, title })
+        return { ok: true }
+      },
+      groupHandover: handover,
+    })
+    const service = createHandoffService(deps)
+    const started = await service.start('branch', 'session-abc', duty)
+    assert.equal(started.ok, true)
+
+    // S1：分身预告必须说清职责，且**不许**写成转生预告（群里会以为本体要走）
+    const announce = calls.find((call) => call.kind === 'post')
+    assert.ok(announce, '没发分身预告：群友只会看到突然多出一个会话')
+    assert.match(String(announce.text), /分身预告/)
+    assert.ok(String(announce.text).includes(duty), '预告里必须写清这条分身负责什么')
+    assert.ok(!/转生/.test(String(announce.text)), '分身不许说成转生')
+
+    writeFileSync(service.status(started.jobId!)!.filePath, BRANCH_DOC, 'utf8')
+    await wait(160)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done', String(job.message ?? ''))
+
+    assert.deepEqual(renamed, [{ sessionId: 'session-new-1', title: '远程逗鱼4-插件大总管分身1' }])
+    assert.deepEqual(calls.find((call) => call.kind === 'invite')?.ids, ['session-new-1'], '分身要进群，否则接不到群消息')
+    assert.equal(calls.find((call) => call.kind === 'setRole')?.role, duty, '分身的群身份就是用户填的职责')
+    assert.equal(calls.filter((call) => call.kind === 'setOwner').length, 0, '分身不接群主：群主是分派责任人，不是新增人力')
+
+    const welcome = calls.filter((call) => call.kind === 'post').find((call) => /【迎新/.test(String(call.text)))
+    assert.ok(welcome, '没迎新广播：群里不知道这个新人是来干什么的')
+    assert.match(String(welcome.text), /不是来接班的/, '必须说清本体还在，否则群里以为本体要走')
+    assert.match(String(welcome.text), /abc/, '要带本体短号，群友才认得出是谁派来的')
+    assert.equal(calls.filter((call) => call.kind === 'remove').length, 0, '分身不许退群：本体还要留在群里干活')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('分身与转世各自累加、互不串号；分身的分身也不许叠成「分身1分身1」', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-branch-gen-'))
+  try {
+    const { handover } = fakeGroupHandover({ isOwner: false, role: '本体', others: ['session-owner'] })
+    const renamed: string[] = []
+    let title = 'X'
+    let seq = 0
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => title,
+      renameSession: async (_sessionId, next) => {
+        renamed.push(next)
+        title = next
+        return { ok: true }
+      },
+      newSession: async () => ({ ok: true, sessionId: 'session-new-' + String(++seq) }),
+      groupHandover: handover,
+    })
+    const service = createHandoffService(deps)
+    try {
+      for (const step of [
+        { kind: 'branch' as const, from: 'session-abc', note: '干分支一' },
+        { kind: 'branch' as const, from: 'session-new-1', note: '干分支二' },
+        { kind: 'rebirth' as const, from: 'session-new-2', note: '接着干' },
+      ]) {
+        const started = await service.start(step.kind, step.from, step.note)
+        assert.equal(started.ok, true)
+        writeFileSync(service.status(started.jobId!)!.filePath, step.kind === 'branch' ? BRANCH_DOC : GOOD_DOC, 'utf8')
+        await wait(160)
+        assert.equal(service.status(started.jobId!)!.status, 'done', String(service.status(started.jobId!)!.message ?? ''))
+      }
+      assert.deepEqual(renamed, ['X分身1', 'X分身2', 'X转世1'], '分身与转世是两条序列，不许互相吃号')
+    } finally {
+      service.stop()
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

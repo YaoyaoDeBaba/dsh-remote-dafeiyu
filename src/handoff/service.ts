@@ -231,6 +231,41 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     return value
   }
 
+  /**
+   * 「<本体名>分身<N>」的序号（2026-11-23 用户拍板：分身与转生同一套按 base 累加）。
+   *
+   * 单独一份计数器（`branch-gen.json`），不跟转生共用：转世是「接班」，分身是「开一条新分支」，
+   * 两条序列混在一起会让人看不懂「分身3」是哪来的。本体已叫 `…分身K` 时同样先剥后缀。
+   */
+  const nextBranchGen = (base: string): number => {
+    const file = path.join(deps.handoffDir, 'branch-gen.json')
+    let map: Record<string, number> = {}
+    try {
+      map = JSON.parse(readFileSync(file, 'utf8')) as Record<string, number>
+    } catch {
+      map = {}
+    }
+    const value = Number(map[base] ?? 0) + 1
+    map[base] = value
+    try {
+      writeFileSync(file, JSON.stringify(map, null, 2) + '\n', 'utf8')
+    } catch {
+      /* 写不进去就用算出来的数，下次从 1 重新数——不会因此卡住分身 */
+    }
+    return value
+  }
+
+  /** 剥掉「转世N / 分身N」后缀：分身的分身、转世的转世都不许叠名字。 */
+  const stripGenSuffix = (title: string): string => title.replace(/\s*(?:转世|分身)\d+$/, '').trim()
+
+  /** 群身份最多这么长：群成员表只有一行，写不下整段职责。 */
+  const ROLE_MAX = 24
+  const roleFromDuty = (duty: string): string => {
+    const flat = String(duty ?? '').replace(/\s+/g, ' ').trim()
+    if (flat === '') return ''
+    return flat.length > ROLE_MAX ? flat.slice(0, ROLE_MAX) + '…' : flat
+  }
+
   const probeFile = (filePath: string): 'ok' | 'pending' | 'empty' => {
     try {
       if (!existsSync(filePath)) return 'pending'
@@ -302,12 +337,17 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     }
   }
   /**
-   * S4~S7 · 群交接（2026-11-20 方案，用户已拍板）：
-   * 重命名 → 拉群 → 复制身份（群主则转移）→ 群广播「后续由谁接手」→ 前世退群。
+   * S4~S7 · 群交接。两套语义**分开写**（2026-11-23 用户拍板：给「一键分身」也配一套）。
    *
-   * 顺序不能换：先改名再拉人，群成员表里一进来就是最终名字；先广播再退群，否则前世已经不在群里、发不出去。
+   * · 转生（rebirth）= 接班交接：改名 <base>转世N → 拉群 → 继承身份（群主则转移）→ 广播「后续由谁接手」→ 前世退群。
+   * · 分身（branch）= 添人手：改名 <base>分身N → 拉群 → **把用户填的职责当群身份** → 迎新广播（说清它只负责这条分支）→ **本体不退群**。
+   *
+   * 分身为什么不退群、也不接群主：本体还在干原来的活，退群等于把自己从群里删掉；
+   * 群主是「谁对分派负责」那个角色，分身只是新增人力，接过去会让分工乱套。
+   *
+   * 顺序不能换：先改名再拉人（成员表里一进来就是最终名字）；先广播再退群（否则那句话说都发不出去）。
    */
-  const handoverGroup = async (job: HandoffJob, childId: string): Promise<string | undefined> => {
+  const handoverGroup = async (job: HandoffJob, plan: HandoffPlan, childId: string): Promise<string | undefined> => {
     const h = deps.groupHandover
     if (h === undefined) return undefined
     let spot: ReturnType<NonNullable<typeof h.locate>>
@@ -319,23 +359,31 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     if (spot === undefined) return undefined
     const notes: string[] = []
 
-    // S3 先等缺口补齐（三条出路都不会无限等），再改名/拉群
-    try {
-      touch(job, { message: '等待「前世↔转世」把文档缺口补齐…' })
-      const gapNote = await waitGapsCleared(childId)
-      if (gapNote !== undefined) notes.push(gapNote)
-    } catch (error) {
-      notes.push('等缺口时抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+    /*
+     * S3 缺口闸**只给转生**：转世是来接班，文档缺口必须补完再改名拉群（群里才不会出现半个接手的人）。
+     * 分身没有这一步——它的职责由用户在 note 里写死了，没有「补问本体」的语义，等闸只会白拖几分钟。
+     */
+    if (job.kind !== 'branch') {
+      try {
+        touch(job, { message: '等待「前世↔转世」把文档缺口补齐…' })
+        const gapNote = await waitGapsCleared(childId)
+        if (gapNote !== undefined) notes.push(gapNote)
+      } catch (error) {
+        notes.push('等缺口时抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+      }
     }
 
-    // S4 重命名：<前世名>转世<N>
+    // S4 重命名：转生是 <前世名>转世N，分身是 <本体名>分身N（两条序列分开数）
+    const isBranch = job.kind === 'branch'
     let title: string | undefined
     try {
       const parentTitle = String((await deps.sessionTitle?.(job.sessionId)) ?? '').trim()
       const rename = deps.renameSession
       if (parentTitle !== '' && rename !== undefined) {
-        const base = parentTitle.replace(/\s*转世\d+$/, '').trim()
-        const next = base + '转世' + String(nextRebirthGen(base))
+        const base = stripGenSuffix(parentTitle)
+        const next = isBranch
+          ? base + '分身' + String(nextBranchGen(base))
+          : base + '转世' + String(nextRebirthGen(base))
         const renamed = await rename(childId, next)
         if (renamed.ok) title = next
         else notes.push('改名失败：' + String(renamed.message ?? '未知原因'))
@@ -344,15 +392,21 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       notes.push('改名抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
     }
 
-    // S5 拉群 + 身份 + 群主转移
+    /*
+     * S5 拉群 + 身份。两套：
+     * · 转生：继承前世身份（`spot.role`），群主则把群主一并交出去；
+     * · 分身：身份**就是用户填的职责**（群成员表里一眼看出它负责什么），群主不动。
+     */
+    const duty = roleFromDuty(plan.note ?? '')
+    const role = isBranch ? duty : String(spot.role ?? '').trim()
     let invitedOk = false
     try {
       const invited = await h.invite(spot.groupId, [childId])
       invitedOk = invited.ok
       if (!invited.ok) notes.push('拉群失败：' + String(invited.message ?? '未知原因'))
       else {
-        if (typeof spot.role === 'string' && spot.role.trim() !== '') h.setRole(spot.groupId, childId, spot.role.trim())
-        if (spot.isOwner) h.setOwner(spot.groupId, childId)
+        if (role !== '') h.setRole(spot.groupId, childId, role)
+        if (spot.isOwner && !isBranch) h.setOwner(spot.groupId, childId)
       }
     } catch (error) {
       notes.push('拉群抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
@@ -363,27 +417,33 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
      * 用户手动腾个位置再拉；要是这时把前世退了，群里就成了「没人接手」的空档。
      */
     if (!invitedOk) {
+      const childPin = (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）'
+      const why = String(notes.find((note) => note.startsWith('拉群')) ?? '原因未知')
+      const text = isBranch
+        ? '【分身没进群 · ' + spot.groupName + '】\n分身已经建好了，但**没能把 TA 拉进群**（' + why +
+          '）。\n我这边照常干活；腾出一个位置后再拉一次：' + childPin + '。'
+        : '【交接未完成 · ' + spot.groupName + '】\n转世已经建好了，但**没能把 TA 拉进群**（' + why +
+          '）。\n我先留在群里继续顶，请腾出一个位置后再拉一次：' + childPin + '。'
       try {
-        await h.post(
-          spot.groupId,
-          job.sessionId,
-          '【交接未完成 · ' + spot.groupName + '】\n转世已经建好了，但**没能把 TA 拉进群**（' +
-            String(notes.find((note) => note.startsWith('拉群')) ?? '原因未知') +
-            '）。\n我先留在群里继续顶，请腾出一个位置后再拉一次：' +
-            (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）。',
-          spot.recipients,
-        )
+        await h.post(spot.groupId, job.sessionId, text, spot.recipients)
       } catch {
         /* 说不上话也不影响上面的 notes 被带进 job.message */
       }
       return notes.join('；')
     }
 
-    // S6 群广播（发完再退群）
+    /*
+     * S6 群广播。转生说「谁接手」，分身说「来了个什么人、负责哪条分支」——
+     * 分身这条必须点明「本体还在、不是来接班的」，否则群里会以为本体要走了。
+     */
     const childLabel = (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）'
-    const done = spot.isOwner
-      ? '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手，群主已一并转给他。'
-      : '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手。'
+    const selfPin = job.sessionId.replace(/^session-/, '').slice(0, 8)
+    const done = isBranch
+      ? '【迎新 · ' + spot.groupName + '】\n' + childLabel + ' 已进群，负责：' + (duty === '' ? roleFromDuty(plan.note ?? '') + '' : duty) +
+        '。\n它不是来接班的——本体（' + selfPin + '）继续干原来的活，这条分支归它。'
+      : spot.isOwner
+        ? '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手，群主已一并转给他。'
+        : '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手。'
     try {
       const posted = await h.post(spot.groupId, job.sessionId, done, spot.recipients)
       if (!posted.ok) notes.push('群广播失败：' + String(posted.message ?? '未知原因'))
@@ -391,11 +451,16 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       notes.push('群广播抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
     }
 
-    // S7 前世退群（用户拍板：同一角色不留两个 agent）
-    try {
-      h.remove(spot.groupId, job.sessionId)
-    } catch (error) {
-      notes.push('退群失败：' + String((error as Error)?.message ?? error).slice(0, 80))
+    /*
+     * S7 前世退群——**只有转生有这一步**：同一角色不留两个 agent，@ 谁都会答。
+     * 分身不退：本体本来就要继续干原来的活，退群等于把自己删了。
+     */
+    if (!isBranch) {
+      try {
+        h.remove(spot.groupId, job.sessionId)
+      } catch (error) {
+        notes.push('退群失败：' + String((error as Error)?.message ?? error).slice(0, 80))
+      }
     }
 
     return notes.length === 0 ? undefined : notes.join('；')
@@ -453,14 +518,15 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     // S4~S7：群交接（不在群里就什么都不做）
     let handoverNote: string | undefined
     try {
-      handoverNote = await handoverGroup(job, created.sessionId)
+      handoverNote = await handoverGroup(job, plan, created.sessionId)
     } catch (error) {
       handoverNote = '群交接抛错：' + String((error as Error)?.message ?? error).slice(0, 100)
     }
+    const doneText = job.kind === 'branch' ? '分身已建好（职责已写进它第一句）' : '交接完成，新会话已报到（等你点头）'
     finish(
       job.id,
       'done',
-      handoverNote === undefined ? '交接完成，新会话已报到（等你点头）' : '交接完成，但群交接有遗留：' + handoverNote,
+      handoverNote === undefined ? doneText : doneText + '，但群交接有遗留：' + handoverNote,
     )
   }
 
@@ -598,9 +664,17 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
        */
       const spot = deps.groupHandover?.locate(id)
       if (spot !== undefined && deps.groupHandover !== undefined) {
-        const announce = spot.isOwner
-          ? '【转生预告 · ' + spot.groupName + '】\n我要转生了（上下文超载）：先写交接文档，转世起来后我会把群主和身份一并交给他。\n交接完成前这条群照常运作，分工照旧由我下。'
-          : '【转生预告 · ' + spot.groupName + '】\n我的上下文已超载 → 将转生交接给下一世 → 稍后将我的转世拉进群。\n交接期间我的群消息可能迟缓，急事请直接 @ 我。'
+        /*
+         * 分身（2026-11-23）：预告写清「要派谁去干什么」，但不许说成转生——
+         * 分身是添人手，本体继续在群里干活；写成转生预告，群友会以为本体要走了。
+         */
+        const dutyNow = roleFromDuty(trimmedNote)
+        const announce = kind === 'branch'
+          ? '【分身预告 · ' + spot.groupName + '】\n我要派一个分身去做：' + (dutyNow === '' ? '（职责待补）' : dutyNow) +
+            '。\n本体继续干原来的活，分身建好后我把它拉进群。'
+          : spot.isOwner
+            ? '【转生预告 · ' + spot.groupName + '】\n我要转生了（上下文超载）：先写交接文档，转世起来后我会把群主和身份一并交给他。\n交接完成前这条群照常运作，分工照旧由我下。'
+            : '【转生预告 · ' + spot.groupName + '】\n我的上下文已超载 → 将转生交接给下一世 → 稍后将我的转世拉进群。\n交接期间我的群消息可能迟缓，急事请直接 @ 我。'
         void deps.groupHandover.post(spot.groupId, id, announce, spot.recipients).catch(() => ({ ok: false }))
       }
 
