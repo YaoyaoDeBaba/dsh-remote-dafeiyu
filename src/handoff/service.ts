@@ -360,8 +360,12 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     const notes: string[] = []
 
     /*
-     * S3 缺口闸**只给转生**：转世是来接班，文档缺口必须补完再改名拉群（群里才不会出现半个接手的人）。
-     * 分身没有这一步——它的职责由用户在 note 里写死了，没有「补问本体」的语义，等闸只会白拖几分钟。
+     * S3 缺口闸——**转生要拦路，分身不拦**（2026-11-23 用户口径）。
+     *
+     * · 能力同源：分身照样能用收件箱（`handoff_ask` / `handoff_answer`）问本体补文档缺口，
+     *   第一句指令里就带着这条用法（见 prompt.ts 的「缺口分流 + 收件箱」）。这一步**不许剥夺**。
+     * · 区别只在**要不要等**：转世是来接班，缺口没补完就改名拉群，群里会出现半个接手的人，所以必须等；
+     *   分身是并行工，职责在 note 里已经写死，边干边问就行——先进群开工，缺口陆续补，绝不因为一条没答就不放行。
      */
     if (job.kind !== 'branch') {
       try {
@@ -522,7 +526,10 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     } catch (error) {
       handoverNote = '群交接抛错：' + String((error as Error)?.message ?? error).slice(0, 100)
     }
-    const doneText = job.kind === 'branch' ? '分身已建好（职责已写进它第一句）' : '交接完成，新会话已报到（等你点头）'
+    const doneText =
+      job.kind === 'branch'
+        ? '分身已建好并进群（职责写进第一句与群身份）；缺口它自己会 handoff_ask 问本体，不阻塞'
+        : '交接完成，新会话已报到（等你点头）'
     finish(
       job.id,
       'done',

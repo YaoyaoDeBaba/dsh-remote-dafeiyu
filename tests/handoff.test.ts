@@ -903,3 +903,46 @@ test('分身与转世各自累加、互不串号；分身的分身也不许叠�
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('分身不被缺口闸拦：有未答线程也照样先建会话进群（能力还在，只是不阻塞）', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-branch-nogate-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: true, others: ['session-2'] })
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => 'X',
+      renameSession: async () => ({ ok: true }),
+      groupHandover: handover,
+      // 缺口窗口压得很大：只要流程敢等闸，这条用例就会超时
+      gapGraceMs: 60_000,
+      gapQuietMs: 60_000,
+      gapMaxMs: 60_000,
+    })
+    const service = createHandoffService(deps)
+    // 转世 id 由 fakeDeps 固定为 session-new-1：先造一条「它问了、还没答」的线程
+    mkdirSync(path.join(dir, 'inbox'), { recursive: true })
+    writeFileSync(
+      path.join(dir, 'inbox', 't-open.json'),
+      JSON.stringify({
+        id: 't-open',
+        from: 'session-new-1',
+        to: 'session-abc',
+        question: '这条分支的历史为什么这么定？',
+        status: 'open',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }),
+      'utf8',
+    )
+    const started = await service.start('branch', 'session-abc', '干一条分支')
+    assert.equal(started.ok, true)
+    writeFileSync(service.status(started.jobId!)!.filePath, BRANCH_DOC, 'utf8')
+    await wait(200)
+    const job = service.status(started.jobId!)!
+    assert.equal(job.status, 'done', '分身被缺口闸拦住了：它应该边干边问，不能等闸')
+    assert.ok(calls.some((call) => call.kind === 'invite'), '分身必须先建好并进群，缺口再陆续补')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
