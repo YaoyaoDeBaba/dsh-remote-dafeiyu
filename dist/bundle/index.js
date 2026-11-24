@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.156" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.157" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -30511,7 +30511,11 @@ var SERVICE_NAMES = [
   "attachments",
   // 子代理目录（`ctx.subagents.listChildren/listDescendants`）：监视器要读官方 label
   // （内置 subagent 工具的 description 参数），而不是我们猜的会话标题。
-  "subagents"
+  "subagents",
+  // 预设注册表（`agentPresets.mount(agentCtx, id)`）：2026-11-24 取证——宿主的 resume
+  // **不读** `agentOptions.agentPreset`，preset 只能靠 `setup(agentCtx)` 里挂一次。
+  // 我们替宿主续跑会话时必须自己挂，否则 agent 的工具表只剩插件那批（shell/run_code 全没）。
+  "agentPresets"
 ];
 
 // src/core/carrier-probe.ts
@@ -32731,15 +32735,46 @@ function createServicesKernel(services, options) {
         message: `\u8BFB\u4E0D\u5230\u8FD9\u4E2A\u4F1A\u8BDD\u7684 agentPreset\uFF08${sessionId}\uFF09\uFF1A\u4E3A\u4E86\u4E0D\u628A\u5B83\u7684\u5DE5\u5177\uFF08shell / \u8BFB\u5199\u6587\u4EF6\uFF09\u6536\u8D70\uFF0C\u8FD9\u6B21\u4E0D\u7EED\u8DD1\u3002\u8BF7\u5148\u5728\u684C\u9762\u6253\u5F00\u8FD9\u6761\u4F1A\u8BDD\u968F\u4FBF\u53D1\u4E00\u53E5\u8BDD\uFF0C\u628A\u5B83\u6309\u6B63\u5E38\u8DEF\u5B50\u62C9\u8D77\u6765\uFF0C\u518D\u6765\u3002`
       };
     }
+    const presets = services.agentPresets;
+    const mount = fn(presets, "mount");
+    if (!mount) {
+      return {
+        ok: false,
+        message: "\u8FD9\u4E00\u4EE3\u5BBF\u4E3B\u62FF\u4E0D\u5230 agentPresets.mount\uFF1A\u7EED\u8DD1\u4F1A\u628A\u4F1A\u8BDD\u7684\u5DE5\u5177\uFF08shell / \u8BFB\u5199\u6587\u4EF6\uFF09\u6536\u8D70\uFF0C\u6240\u4EE5\u8FD9\u6B21\u4E0D\u7EED\u8DD1\u3002\u8BF7\u5728\u684C\u9762\u6253\u5F00\u8FD9\u6761\u4F1A\u8BDD\u53D1\u4E00\u53E5\u8BDD\uFF0C\u8BA9\u5B83\u6309\u5BBF\u4E3B\u7684\u6B63\u89C4\u8DEF\u5B50\u8D77\u6765\u3002"
+      };
+    }
     try {
-      await resume.call(services.agents, {
+      const resumed = await resume.call(services.agents, {
         resumeSessionId: sessionId,
         agentOptions: {
           provider: selection.provider,
-          model: selection.model,
-          agentPreset: preset
+          model: selection.model
+        },
+        // 与宿主 session-controller 同一条路：preset 在 setup 里 mount，之后才装配工具表。
+        setup: async (agentCtx2) => {
+          await mount.call(presets, agentCtx2, preset);
         }
       });
+      const composed = fn(presets, "composedPreset");
+      const agentCtx = resumed?.agent?.ctx;
+      if (composed && agentCtx !== void 0) {
+        try {
+          const now = String(await composed.call(presets, agentCtx) ?? "");
+          if (now !== preset) {
+            log("\u7EED\u8DD1\u540E preset \u6CA1\u6302\u4E0A\uFF0C\u5C31\u5730\u8865\u6302\u4E00\u6B21", { sessionId, want: preset, got: now });
+            await mount.call(presets, agentCtx, preset);
+            const again = String(await composed.call(presets, agentCtx) ?? "");
+            if (again !== preset) {
+              return {
+                ok: false,
+                message: `\u7EED\u8DD1\u540E preset \u4ECD\u7136\u662F\u300C${again || "\u7A7A"}\u300D\uFF08\u8981\u7684\u662F\u300C${preset}\u300D\uFF09\uFF1A\u8FD9\u6761\u4F1A\u8BDD\u7684\u5DE5\u5177\u53EF\u80FD\u4E0D\u5B8C\u6574\uFF0C\u8BF7\u5728\u684C\u9762\u6253\u5F00\u5B83\u53D1\u4E00\u53E5\u8BDD\u91CD\u5EFA\uFF0C\u6216\u7A0D\u540E\u91CD\u8BD5\u3002`
+              };
+            }
+          }
+        } catch (error62) {
+          log("\u7EED\u8DD1\u540E preset \u81EA\u68C0\u629B\u9519\uFF08\u4E0D\u963B\u65AD\uFF09", { sessionId, message: messageOf(error62).slice(0, 120) });
+        }
+      }
       return { ok: true };
     } catch (error62) {
       return { ok: false, message: `\u7EED\u8DD1\u4F1A\u8BDD\u5931\u8D25\uFF1A${messageOf(error62)}` };
@@ -38673,6 +38708,11 @@ import path19 from "node:path";
 var MAX_MEMBERS = 12;
 var MAX_MESSAGE_CHARS = 4e3;
 var MAX_DISPATCH_TARGETS = 5;
+var ECHO_GATE = "echo-gate";
+var DEFAULT_ROUND_TRIP_WINDOW_MS = 10 * 6e4;
+var DEFAULT_MAX_ROUND_TRIPS = 6;
+var ECHO_DISCIPLINE = "\u7FA4\u91CC\u770B\u8FC7\u7684\u6D88\u606F**\u4E0D\u9700\u8981\u6BCF\u6761\u90FD\u56DE**\uFF1A\u53EA\u6709\u2460\u6709\u65B0\u4FE1\u606F\u3001\u2461\u9700\u8981\u5BF9\u65B9\u52A8\u624B\u3001\u2462\u53D1\u73B0\u5BF9\u65B9\u7406\u89E3\u9519\u4E86\uFF0C\u624D group_post\uFF1B\u7EAF\u786E\u8BA4\uFF08\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u300C\u660E\u767D\u300D\uFF09\u4E00\u5F8B\u4E0D\u53D1\u2014\u2014\u4E24\u4E2A agent \u4E92\u76F8\u786E\u8BA4\u4F1A\u5F62\u6210\u6B7B\u5FAA\u73AF\u3002";
+var ECHO_DISCIPLINE_BRIEF = "\u53EA\u56DE\u6709\u4EF7\u503C\u7684\uFF1A\u6709\u65B0\u4FE1\u606F / \u8981\u5BF9\u65B9\u52A8\u624B / \u5BF9\u65B9\u7406\u89E3\u9519\u4E86\u624D group_post\uFF1B\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u8FD9\u7C7B\u786E\u8BA4\u522B\u53D1\u3002";
 function ensureDir2(dir) {
   try {
     mkdirSync7(dir, { recursive: true });
@@ -38752,7 +38792,8 @@ function deliveryText(group, from, text, others, titleOf, recipient, brief) {
     return [
       "\u3010\u7FA4 " + group.name + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
       text.trim(),
-      "\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel)
+      "\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel),
+      ECHO_DISCIPLINE_BRIEF
     ].join("\n");
   }
   return [
@@ -38761,6 +38802,7 @@ function deliveryText(group, from, text, others, titleOf, recipient, brief) {
     "",
     "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel),
     peers.length > 0 ? "\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF1A" + peers.join("\u3001") : "\u672C\u8F6E\u53EA\u6709\u4F60\u3002",
+    ECHO_DISCIPLINE,
     "\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u8BB0\u5F55\uFF08\u63D2\u4EF6\u53EA\u6295\u7ED9\u4F60\u88AB @ \u7684\u90E8\u5206\uFF09\u3002\u8981\u8BF4\u70B9\u4EC0\u4E48\u5C31\u8C03 group_post\uFF1AgroupId=" + group.id + "\uFF0Ctext \u5199\u6B63\u6587\uFF1B\u8981\u76F4\u63A5\u627E\u67D0\u4E2A\u6210\u5458\uFF0C\u628A to \u586B\u6210\u5BF9\u65B9\u7684\u77ED\u53F7\u6216\u4F1A\u8BDD id\u3002",
     group.ownerSessionId === void 0 ? "\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002" : "\u6C47\u62A5\u5BF9\u8C61\uFF1A\u7FA4\u4E3B " + (titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId)) + "\uFF08\u4F60\u7684 group_post \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF09\uFF1B\u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002"
   ].join("\n");
@@ -38776,6 +38818,7 @@ function joinNotice(group, titleOf) {
     "\xB7 \u6709\u4EBA @ \u4F60\u65F6\u4F60\u4F1A\u6536\u5230\u4E00\u6761\u72EC\u7ACB\u6D88\u606F\uFF0C\u5E26\u300C\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\u300D\u2014\u2014\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u5176\u4ED6\u6D88\u606F\uFF1B",
     "\xB7 \u56DE\u590D\u7528 group_post(groupId=" + group.id + ", text=...)\uFF0C**\u9996\u884C\u5199\u300C\u6458\u8981\uFF1A\u4E00\u53E5\u8BDD\u300D**\uFF08\u7FA4\u91CC\u53EA\u663E\u793A\u6458\u8981\uFF0C\u5168\u6587\u70B9\u5F00\u624D\u770B\uFF09\uFF1B",
     "\xB7 \u4E0D\u5E26 to \u65F6\u9ED8\u8BA4\u56DE\u7ED9\u7FA4\u4E3B\uFF08\u6C47\u62A5\u5BF9\u8C61\uFF09\uFF1Bto \u53EF\u4EE5\u586B\u5BF9\u65B9\u77ED\u53F7\u6216\u4F1A\u8BDD id\uFF1B",
+    "\xB7 " + ECHO_DISCIPLINE,
     "\xB7 \u60F3\u770B\u6700\u8FD1\u8BB0\u5F55\u7528 group_read(groupId=" + group.id + ")\u3002",
     "\xB7 \u5982\u679C\u4F60\u7684\u5DE5\u5177\u5217\u8868\u91CC\u6CA1\u6709 group_*\uFF08\u8001\u4F1A\u8BDD\uFF09\uFF0C\u7528 HTTP \u515C\u5E95\uFF1A\u628A\u4F60\u81EA\u5DF1\u7684\u4F1A\u8BDD id \u548C\u6B63\u6587 POST \u5230",
     "  <DSH Web GUI \u7684 origin>/plugins/dafeiyu-groups/agent-post\uFF08\u672C\u673A\u56DE\u73AF\uFF0C\u5E26 x-drc-pair: 1\uFF1B",
@@ -38838,11 +38881,47 @@ function createGroups(deps) {
     const uuid3 = globalThis.crypto?.randomUUID?.();
     return "g-" + (uuid3 ?? String(at) + Math.random().toString(36).slice(2, 8)).replace(/-/g, "").slice(0, 10);
   };
+  const roundTripWindowMs = deps.roundTripWindowMs ?? DEFAULT_ROUND_TRIP_WINDOW_MS;
+  const maxRoundTrips = deps.maxRoundTrips ?? DEFAULT_MAX_ROUND_TRIPS;
+  const roundTrips = /* @__PURE__ */ new Map();
+  const windowLabel = roundTripWindowMs % 6e4 === 0 ? roundTripWindowMs / 6e4 + " \u5206\u949F" : Math.round(roundTripWindowMs / 1e3) + " \u79D2";
+  const pairKey = (groupId, a, b) => groupId + "|" + (a <= b ? a + "|" + b : b + "|" + a);
+  const echoGateMessage = () => "\u4E92\u5439\u95F8\uFF1A\u8FD9\u4E00\u5BF9\u4F1A\u8BDD " + windowLabel + "\u5185\u5DF2\u5F80\u8FD4 " + maxRoundTrips + " \u6B21\uFF0C\u672C\u6B21\u4E0D\u6295\u9012";
+  const pruneTrips = (key, at) => {
+    const kept = (roundTrips.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs);
+    if (kept.length === 0) roundTrips.delete(key);
+    else roundTrips.set(key, kept);
+    return kept;
+  };
+  const resetRoundTrips = (groupId) => {
+    const prefix = groupId + "|";
+    for (const key of [...roundTrips.keys()]) {
+      if (key.startsWith(prefix)) roundTrips.delete(key);
+    }
+  };
   const deliverEach = async (group, from, text, targets, raw = false) => {
     const out = [];
     for (const target of targets) {
       if (target === from) continue;
       if (!group.members.some((member) => member.sessionId === target)) continue;
+      const pair = from === "user" || raw ? void 0 : pairKey(group.id, from, target);
+      if (pair !== void 0) {
+        const recent = pruneTrips(pair, now());
+        if (recent.length >= maxRoundTrips) {
+          const message = echoGateMessage();
+          deps.log(message, { id: group.id, from, to: target, roundTrips: recent.length });
+          append(group.id, {
+            at: now(),
+            kind: "system",
+            from: "system",
+            targets: [target],
+            text: "\u4E92\u5439\u95F8\uFF1A" + shortId2(from) + " \u2192 " + shortId2(target) + " \u7684\u6295\u9012\u88AB\u4E22\u5F03\uFF08\u8FD9\u4E00\u5BF9\u5728 " + windowLabel + "\u5185\u5DF2\u5F80\u8FD4 " + recent.length + " \u6B21\uFF0C\u4E0A\u9650 " + maxRoundTrips + "\uFF09",
+            skipped: ECHO_GATE
+          });
+          out.push({ sessionId: target, ok: true, message, skipped: ECHO_GATE });
+          continue;
+        }
+      }
       const ownerInvolved = group.ownerSessionId !== void 0 && (from === group.ownerSessionId || target === group.ownerSessionId);
       const key = group.id + "|" + from + "|" + target;
       const last = lastDeliveryAt.get(key);
@@ -38851,6 +38930,7 @@ function createGroups(deps) {
         continue;
       }
       lastDeliveryAt.set(key, now());
+      if (pair !== void 0) roundTrips.set(pair, [...pruneTrips(pair, now()), now()]);
       const brief = group.briefed?.[target] !== void 0;
       const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief);
       const result2 = await deps.deliver(target, body).catch((error62) => ({
@@ -39150,6 +39230,7 @@ function createGroups(deps) {
       if (kind === "agent" && from === owner && targets.length > MAX_DISPATCH_TARGETS && input2.raw !== true) {
         return { ok: false, message: "\u7FA4\u4E3B\u4E00\u6B21\u6700\u591A\u6D3E " + MAX_DISPATCH_TARGETS + " \u4E2A\u6D3B\uFF1A\u62C6\u6210\u51E0\u8F6E\u3002" };
       }
+      if (kind === "user") resetRoundTrips(group.id);
       const entry = {
         at: now(),
         kind,
@@ -39168,6 +39249,17 @@ function createGroups(deps) {
       const results = await deliverEach(group, kind === "user" ? "user" : from, body, targets, isDispatch || input2.raw === true);
       const failed = results.filter((row) => !row.ok);
       deps.log("\u7FA4\u6295\u9012", { id: group.id, targets: targets.length, failed: failed.length });
+      const gated = results.filter((row) => row.skipped === ECHO_GATE);
+      if (gated.length > 0) {
+        const message = gated[0].message ?? echoGateMessage();
+        return {
+          ok: true,
+          entry,
+          delivered: results.filter((row) => row.ok && row.skipped === void 0),
+          failed,
+          message: gated.length === results.length ? message : message + "\uFF08\u53E6\u6709 " + (results.length - gated.length) + " \u4E2A\u6536\u4EF6\u4EBA\u7167\u5E38\u6295\u9012\uFF09"
+        };
+      }
       return {
         ok: failed.length === 0,
         entry,
@@ -39313,7 +39405,7 @@ function buildGroupTools(deps) {
     },
     {
       name: "group_post",
-      description: "\u5F80\u7FA4\u91CC\u8BF4\u4E00\u53E5\uFF08\u8BB0\u7ED9\u7528\u6237\u770B\uFF09\u3002\u5E26 to \u5C31\u628A\u8FD9\u53E5\u8BDD**\u5355\u72EC\u6295\u7ED9\u90A3\u51E0\u4E2A\u4EBA**\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\uFF1B\u4E0D\u5E26 to \u53EA\u5165\u8BB0\u5F55\u3001\u4E0D\u6253\u6270\u4EBA\u3002\n\u7FA4\u91CC\u5176\u4ED6\u4EBA\u770B\u4E0D\u5230\u6574\u6BB5\u7FA4\u804A\u2014\u2014\u53EA\u6709\u4F60 @ \u7684\u4EBA\u4F1A\u6536\u5230\u8FD9\u6761\u3002\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002",
+      description: "\u5F80\u7FA4\u91CC\u8BF4\u4E00\u53E5\uFF08\u8BB0\u7ED9\u7528\u6237\u770B\uFF09\u3002\u5E26 to \u5C31\u628A\u8FD9\u53E5\u8BDD**\u5355\u72EC\u6295\u7ED9\u90A3\u51E0\u4E2A\u4EBA**\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\uFF1B\u4E0D\u5E26 to \u53EA\u5165\u8BB0\u5F55\u3001\u4E0D\u6253\u6270\u4EBA\u3002\n\u7FA4\u91CC\u5176\u4ED6\u4EBA\u770B\u4E0D\u5230\u6574\u6BB5\u7FA4\u804A\u2014\u2014\u53EA\u6709\u4F60 @ \u7684\u4EBA\u4F1A\u6536\u5230\u8FD9\u6761\u3002\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002\n**\u4E0D\u8981\u4E3A\u4E86\u56DE\u4E00\u53E5\u800C\u56DE**\uFF1A" + ECHO_DISCIPLINE + "\n\u540C\u4E00\u5BF9\u4F1A\u8BDD 10 \u5206\u949F\u5185 agent \u2194 agent \u5F80\u8FD4\u8D85\u8FC7 6 \u6B21\u540E\uFF0C\u63D2\u4EF6\u4F1A\u76F4\u63A5\u4E22\u5F03\u540E\u7EED\u6295\u9012\uFF08\u8FD4\u56DE\u300C\u4E92\u5439\u95F8\uFF1A\u2026\u672C\u6B21\u4E0D\u6295\u9012\u300D\uFF09\u2014\u2014\u770B\u5230\u8FD9\u53E5\u5C31\u8BF4\u660E\u8BE5\u505C\u4E0B\u4E86\uFF0C\u522B\u518D\u539F\u6837\u91CD\u53D1\u3002",
       parameters: {
         type: "object",
         properties: {
