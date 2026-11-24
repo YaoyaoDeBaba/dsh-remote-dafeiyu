@@ -103,6 +103,22 @@ export interface RuntimeHandle {
  * 配对策略是**只允许一台**（`onPeerJoined` 里新设备一来就作废旧的），所以正常情况下
  * 这里永远只有 0 或 1 条；留着这个上界是为了在"作废链路本身出问题"时不至于无界增长。
  */
+/**
+ * 群聊纪律的常驻正文（2026-11-24，方案 A）。
+ *
+ * 只在**收到群消息**时才适用——写死这一句，避免它污染没有群消息的会话。
+ * 完整纪律的真源仍是 `src/groups/service.ts` 的 ECHO_DISCIPLINE；这里是它的常驻版
+ * （尾巴里那份会按「段是否挂上」自动精简成一行，两者内容保持同义）。
+ */
+const GROUPS_SECTION_TEXT = [
+  '## 群聊纪律（仅在收到「【群 …】」消息时适用）',
+  '',
+  '- 看过的群消息**不需要每条都回**：只有 ① 有新信息、② 需要对方动手、③ 对方理解错了，才 group_post；「收到 / 好的 / 明白」这类确认一律不发。',
+  '- **首选形态：产物落盘 + 一句话**：结论写进文件，群里只发 `<路径> · <判据> · <结论一行>`；跨机（对方读不到你的盘）改成贴关键 3~5 行 + 路径。',
+  '- 决策 / 否决理由 / 在等谁拍板没有产物可落盘，这类仍要直接说。',
+  '- 说人话、说到点上：一条只装一个新信息或一个请求；不写「分析得很到位」「这个我认」「感谢反馈」这类客套与口头禅，不夸对方、不复述、不自我检讨。',
+  '- 机制层还有互吹闸：确认类消息 15 分钟内超过 3 条会被丢弃（记录里标 skipped=echo-gate，正文仍可用 group_read 捞回）。',
+].join('\n')
 const MAX_CONVERSATIONS = 64
 
 /**
@@ -1751,11 +1767,33 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
    * 内核没有顶层互发的 API，所以这条线只能走插件自己的投递口——和「前世↔来生收件箱」同一套。
    * 投递用 sendPrompt（空闲会话会被唤醒），失败原样回给发起方，不静默。
    */
+  /**
+   * 群聊纪律的常驻提示段（2026-11-24 方案 A）：挂上之后，群消息尾巴可以从「全文」降级成「一行」。
+   *
+   * 为什么还要保留尾巴（方案 C 的兜底）：段只在**会话装配**时渲染，老会话没重开就拿不到；
+   * 所以我们用正面证据决定尾巴长短——段没挂上就走老路（全文），挂上了才精简。
+   * 段正文里写明「仅在收到群消息时适用」，避免污染其它会话的提示词。
+   */
+  let groupsSectionReady = false
+  try {
+    const sp = ctx.get?.('systemPrompt', true) as
+      | { section?: (definition: { name: string; order: number; text: string }) => unknown }
+      | undefined
+    if (sp && typeof sp.section === 'function') {
+      sp.section({ name: 'dafeiyu:groups', order: 10095, text: GROUPS_SECTION_TEXT })
+      groupsSectionReady = true
+    }
+  } catch (error) {
+    log('群聊纪律段没挂上（消息尾巴会继续带全文，功能不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 160),
+    })
+  }
   try {
     groupsHandle = startGroups(ctx as never, {
       dshHome: resolveDshHome(process.env),
       log,
       packageRoot: packageRoot(),
+      sectionReady: () => groupsSectionReady,
       listSessions: async () => {
         const port = kernel
         const list = port?.listSessions

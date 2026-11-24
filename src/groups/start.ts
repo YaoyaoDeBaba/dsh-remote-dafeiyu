@@ -41,6 +41,8 @@ export interface GroupsStartInput {
   listSessions?: () => Promise<Array<{ id: string; title?: string; updatedAt?: string }>>
   /** 包根目录（读 assets/skills/dafeiyu-groups/SKILL.md）。 */
   packageRoot: string
+  /** 群聊纪律是否已挂成常驻 system 段（方案 A）：true 时消息尾巴精简成一行。 */
+  sectionReady?: () => boolean
 }
 
 export function startGroups(ctx: LooseContext, input: GroupsStartInput): GroupsHandle {
@@ -50,6 +52,7 @@ export function startGroups(ctx: LooseContext, input: GroupsStartInput): GroupsH
     dir: path.join(input.dshHome, 'storages', 'dsh-remote-dafeiyu', 'groups'),
     deliver: async (sessionId, text) => input.deliver(sessionId, text),
     ...(input.titleOf === undefined ? {} : { titleOf: input.titleOf }),
+    ...(input.sectionReady === undefined ? {} : { sectionReady: input.sectionReady }),
     log: input.log,
   })
 

@@ -20,6 +20,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
   createGroups,
+  deliveryText,
+  ECHO_DISCIPLINE,
+  ECHO_DISCIPLINE_BRIEF,
   ECHO_GATE,
   type GroupRecord,
 } from '../src/groups/service.js'
@@ -203,6 +206,23 @@ test('⑦ 硬上限：窗口内总往返 20 条后，连实质消息也拦（防
     }
     const blocked = await say(h.groups, id, 'session-a', 'session-b', '第 6 条：plan.json m5=2.0')
     assert.match(String(blocked.message), /硬上限/, '超过硬上限要拦，并说明是硬上限')
+  } finally {
+    rmSync(h.dir, { recursive: true, force: true })
+  }
+})
+
+test('⑧ 纪律已常驻 system 段时尾巴只剩一行；没挂上则仍带全文（方案 A+C 的兜底）', async () => {
+  const h = makeHarness()
+  try {
+    const id = makeGroup(h)
+    const group = h.groups.get(id) as GroupRecord
+    const titleOf = (sid: string) => '会话' + sid.slice(-1)
+    const full = deliveryText(group, 'session-a', '正文', ['session-b'], titleOf, 'session-b', false, false)
+    const short = deliveryText(group, 'session-a', '正文', ['session-b'], titleOf, 'session-b', false, true)
+    assert.ok(full.includes(ECHO_DISCIPLINE), '段没挂上时必须带完整纪律（不能赌它已经在了）')
+    assert.equal(short.includes(ECHO_DISCIPLINE), false, '段挂上之后不该再带长纪律')
+    assert.ok(short.includes(ECHO_DISCIPLINE_BRIEF), '精简后仍要保留那一行核心纪律')
+    assert.ok(short.includes('成员：'), '精简版仍要带成员表（协作对象需要）')
   } finally {
     rmSync(h.dir, { recursive: true, force: true })
   }

@@ -77,6 +77,12 @@ export interface GroupEntry {
 export interface GroupsDeps {
   /** 群目录（`<dshHome>/storages/dsh-remote-dafeiyu/groups`）。 */
   dir: string
+  /**
+   * 群聊纪律是否已作为**常驻 system 段**挂上（2026-11-24 方案 A）。
+   * true ⇒ 消息尾巴精简成一行（纪律已在系统提示里）；
+   * false / 未提供 ⇒ 走老路：每条带完整纪律（宁多花 token，也不赌它没挂上）。
+   */
+  sectionReady?: () => boolean
   /** 群主分工的等待上限（毫秒，默认 90 秒）：超时降级为直投被 @ 的人。 */
   dispatchTimeoutMs?: number
   /** 同一对会话之间的投递冷却（毫秒，默认 60 秒）：防来回刷屏。 */
@@ -253,12 +259,15 @@ export function deliveryText(
   recipient?: string,
   /** 第二次及以后：只带极短头部，不再复述工具用法（2026-11-19）。 */
   brief?: boolean,
+  /** 纪律已经是常驻 system 段了：尾巴可以精简（2026-11-24 方案 A）。 */
+  sectionReady?: boolean,
 ): string {
   const peers = others
     .filter((sessionId) => sessionId !== from && sessionId !== recipient)
     .map((sessionId) => titleOf?.(sessionId)?.trim() || shortId(sessionId))
   const ownerLabel = group.ownerSessionId === undefined ? '' : titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)
-  if (brief === true) {
+  // 段已常驻 ⇒ 不论第几次都只带一行；段没挂上 ⇒ 老老实实带全文（老方法）。
+  if (brief === true || sectionReady === true) {
     return [
       '【群 ' + group.name + ' · 来自 ' + (from === 'user' ? '用户' : shortId(from)) + '】',
       text.trim(),
@@ -447,6 +456,8 @@ export function createGroups(deps: GroupsDeps) {
     /** true = 原样投递（分工请求这种已经写好的整段话），不再套普通投递头。 */
     raw = false,
   ): Promise<DeliveryResult[]> => {
+    // 纪律是否已常驻为 system 段：决定这次尾巴的精简程度（2026-11-24 方案 A）
+    const sectionReady = deps.sectionReady?.() === true
     const out: DeliveryResult[] = []
     for (const target of targets) {
       if (target === from) continue
@@ -515,7 +526,9 @@ export function createGroups(deps: GroupsDeps) {
       }
       // 每个收件人一份正文：协作对象里不能出现他自己；第二次起只带极短头部。
       const brief = group.briefed?.[target] !== undefined
-      const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief)
+      const body = raw
+        ? text
+        : deliveryText(group, from, text, targets, titleOf, target, brief, sectionReady)
       const result = await deps.deliver(target, body).catch((error: unknown) => ({
         ok: false,
         message: String((error as Error)?.message ?? error),
