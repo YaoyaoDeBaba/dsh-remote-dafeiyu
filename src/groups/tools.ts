@@ -6,7 +6,7 @@
  * 只有 post（可以带 to 点名）。
  */
 import { resolveSessionId } from '../handoff/tools.js'
-import { shortId, type Groups } from './service.js'
+import { ECHO_DISCIPLINE, shortId, type Groups } from './service.js'
 
 const OUT = {
   schema: { type: 'string' },
@@ -123,7 +123,11 @@ export function buildGroupTools(deps: {
       name: 'group_post',
       description:
         '往群里说一句（记给用户看）。带 to 就把这句话**单独投给那几个人**（自己那份不重发）；不带 to 只入记录、不打扰人。\n' +
-        '群里其他人看不到整段群聊——只有你 @ 的人会收到这条。单条上限 4000 字。',
+        '群里其他人看不到整段群聊——只有你 @ 的人会收到这条。单条上限 4000 字。\n' +
+        '**不要为了回一句而回**：' +
+        ECHO_DISCIPLINE +
+        '\n同一对会话 10 分钟内 agent ↔ agent 往返超过 6 次后，插件会直接丢弃后续投递（返回「互吹闸：…本次不投递」）——' +
+        '看到这句就说明该停下了，别再原样重发。',
       parameters: {
         type: 'object',
         properties: {

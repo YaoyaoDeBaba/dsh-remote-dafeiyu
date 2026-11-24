@@ -55,6 +55,18 @@ export interface ServicesBundle {
   sessionQuery?: LooseObject
   agents?: LooseObject
   agentDefaultModel?: LooseObject
+  /**
+   * 预设注册表（宿主 `agentPresets`）。
+   *
+   * 为什么要接它（2026-11-24 取证，代价惨重）：宿主的 `resume()` **不读**
+   * `agentOptions.agentPreset`（`session-controller.agentOptions()` 里压根没这个字段，
+   * `assertAgentOptions` 也不校验）——preset 是「往 agent 的 ctx 上挂一个 cordis group」，
+   * 只能通过 `resume({ setup })` 里调 `agentPresets.mount(agentCtx, id)` 挂上去。
+   * 缺了这一步，resume 出来的 agent 工具表 = 宿主级工具注册表 = 插件那 30 多个工具，
+   * shell / run_code 全部消失，而且 `reuseLive` 会把这个坏 agent 当成"已经是好的"复用，
+   * 只有开新会话才能自愈。
+   */
+  agentPresets?: LooseObject
   workspaceRegistry?: LooseObject
   userQuestions?: LooseObject
   /**
@@ -2156,15 +2168,68 @@ export function createServicesKernel(services: ServicesBundle, options: Services
           '请先在桌面打开这条会话随便发一句话，把它按正常路子拉起来，再来。',
       }
     }
+    /*
+     * ★ preset 必须**挂上去**，不是当参数传（2026-11-24 真机取证，把 .140/.150 那两次「修」证伪了）。
+     *
+     * 宿主的 resume **不读** `agentOptions.agentPreset`：
+     *   · `session-controller.agentOptions()` 只有 provider / model / reasoningEffort；
+     *   · `dsh-agent-loop.assertAgentOptions()` 只校验 maxTokens，多余键静默丢弃。
+     * preset 的生效方式是「挂一个 cordis group 到 agent ctx 上」，唯一入口是
+     * `resume({ setup(agentCtx) })` 里调 `agentPresets.mount(agentCtx, id)`。
+     * 缺这一步 ⇒ 工具表 = 宿主级工具注册表 = 插件那 30 多个工具，shell/run_code 全没；
+     * 更糟的是 `reuseLive` 会把这个坏 agent 当成「已经是对的」复用，重启也救不回。
+     * 取证：12 条坏会话的断点全部紧跟一次 `agent/inbox/spliced`（群消息唤醒）。
+     */
+    const presets = services.agentPresets as LooseObject | undefined
+    const mount = fn(presets, 'mount')
+    if (!mount) {
+      return {
+        ok: false,
+        message:
+          '这一代宿主拿不到 agentPresets.mount：续跑会把会话的工具（shell / 读写文件）收走，' +
+          '所以这次不续跑。请在桌面打开这条会话发一句话，让它按宿主的正规路子起来。',
+      }
+    }
     try {
-      await resume.call(services.agents, {
+      const resumed = (await resume.call(services.agents, {
         resumeSessionId: sessionId,
         agentOptions: {
           provider: selection.provider,
           model: selection.model,
-          agentPreset: preset,
         },
-      })
+        // 与宿主 session-controller 同一条路：preset 在 setup 里 mount，之后才装配工具表。
+        setup: async (agentCtx: unknown) => {
+          await mount.call(presets, agentCtx, preset)
+        },
+      })) as { agent?: { ctx?: unknown } } | undefined
+      /*
+       * 续跑后自检（防增量）：宽严两档——
+       *   ① 宿主导出的 `composedPreset(agentCtx)` 与我们要的 preset 不一致 ⇒ 就地补挂一次；
+       *   ② 仍不一致就报错（宁可不投递，也不留一个只有插件工具的坏 agent 在内存里）。
+       * 没有 composedPreset（老宿主）就只记一行日志，不阻断。
+       */
+      const composed = fn(presets, 'composedPreset')
+      const agentCtx = resumed?.agent?.ctx
+      if (composed && agentCtx !== undefined) {
+        try {
+          const now = String((await composed.call(presets, agentCtx)) ?? '')
+          if (now !== preset) {
+            log('续跑后 preset 没挂上，就地补挂一次', { sessionId, want: preset, got: now })
+            await mount.call(presets, agentCtx, preset)
+            const again = String((await composed.call(presets, agentCtx)) ?? '')
+            if (again !== preset) {
+              return {
+                ok: false,
+                message:
+                  `续跑后 preset 仍然是「${again || '空'}」（要的是「${preset}」）：这条会话的工具可能不完整，` +
+                  '请在桌面打开它发一句话重建，或稍后重试。',
+              }
+            }
+          }
+        } catch (error) {
+          log('续跑后 preset 自检抛错（不阻断）', { sessionId, message: messageOf(error).slice(0, 120) })
+        }
+      }
       return { ok: true }
     } catch (error) {
       return { ok: false, message: `续跑会话失败：${messageOf(error)}` }

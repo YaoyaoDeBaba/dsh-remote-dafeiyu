@@ -35,6 +35,8 @@ import { platformPath } from './test-platform.js'
 
 interface Calls {
   resume: Array<Record<string, unknown>>
+  /** `agentPresets.mount(agentCtx, id)` 的调用记录（2026-11-24：preset 只能靠 mount 挂）。 */
+  mounts: Array<{ agentCtx: unknown; id: string }>
   unarchive: string[]
   followup: unknown[]
   steer: unknown[]
@@ -73,6 +75,8 @@ interface BundleOverrides {
   model?: { provider: string; model: string } | undefined
   /** 会话 header 里报的 agentPreset（有它才做续跑时透传的判据）。 */
   agentPreset?: string
+  /** 不给 agentPresets 服务（验「拿不到就拒绝续跑」）。 */
+  noPresets?: boolean
   /** 有 `sessionController.commands.prompt`（内核的完整入口）。 */
   promptFace?: boolean
   /** 只有 `attachments.admitPromptContent`（那座桥）。 */
@@ -91,6 +95,7 @@ function fixture(
 ): Fixture {
   const calls: Calls = {
     resume: [],
+    mounts: [],
     unarchive: [],
     followup: [],
     steer: [],
@@ -100,6 +105,7 @@ function fixture(
     archive: [],
   }
   const clock = new FakeClock()
+  let mountedPreset = ''
   const liveAgent: Record<string, unknown> = {
     followup: (message: unknown) => calls.followup.push(message),
     steer: (message: unknown) => calls.steer.push(message),
@@ -137,6 +143,22 @@ function fixture(
       const preset = overrides.agentPreset
       out.sessionQuery = {
         readSession: (id: string) => Promise.resolve({ session: { id, agentPreset: preset } }),
+      }
+    }
+    /*
+     * 预设注册表（2026-11-24 取证）：宿主的 resume 不读 agentOptions.agentPreset，
+     * preset 只能靠 setup 里 mount 挂上去。**所有用例都默认带**（有的用例自己改 sessionQuery，
+     * 不走 agentPreset 那条分支；不放在外面它们会因为「没有注册表」被误判成拒绝续跑）。
+     * noPresets 用来验「拿不到就拒绝续跑」那条。
+     */
+    if (overrides.noPresets !== true) {
+      out.agentPresets = {
+        mount: (agentCtx: unknown, id: string) => {
+          calls.mounts.push({ agentCtx, id })
+          mountedPreset = id
+          return Promise.resolve()
+        },
+        composedPreset: () => mountedPreset,
       }
     }
     if (overrides.promptFace) {
@@ -190,12 +212,10 @@ test('续跑必须透传 agentPreset：不带它，会话会掉出 ptc、工具�
   const kernel = f.kernel(f.bundle({ agentPreset: 'ptc' }))
   const ready = await kernel.ensureRunnable?.('ses_idle')
   assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
-  const request = f.calls.resume[0] as { agentOptions?: { agentPreset?: string } }
-  assert.equal(
-    request.agentOptions?.agentPreset,
-    'ptc',
-    'agentOptions 里没有 agentPreset：续起来的 agent 会掉出 preset，真机上表现为 shell/文件工具被收走',
-  )
+  // 2026-11-24：宿主不读 agentOptions.agentPreset，改判「setup 里真的 mount 了」。
+  const setup = (f.calls.resume[0] as { setup?: (ctx: unknown) => Promise<void> }).setup
+  await setup!({ fake: 'ctx' })
+  assert.equal(f.calls.mounts[0]?.id, 'ptc', '没挂 preset：续起来的 agent 会掉出 ptc，shell/文件工具被收走')
 })
 test('preset 现读要认两种形状：readSession 直接回裸描述符时也得读到 agentPreset（2026-11-20）', async () => {
   // 真机上 readSession 的返回形状见过两种：`{ session: {...} }` 与裸描述符。
@@ -208,12 +228,10 @@ test('preset 现读要认两种形状：readSession 直接回裸描述符时也�
   const kernel = f.kernel(services)
   const ready = await kernel.ensureRunnable?.('ses_idle')
   assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
-  const request = f.calls.resume[0] as { agentOptions?: { agentPreset?: string } }
-  assert.equal(
-    request.agentOptions?.agentPreset,
-    'standard',
-    '裸描述符形状没归一：preset 读成空，续起来的 agent 只有插件工具',
-  )
+  const setup = (f.calls.resume[0] as { setup?: (ctx: unknown) => Promise<void> }).setup
+  assert.equal(typeof setup, 'function', 'resume 没带 setup：preset 永远挂不上')
+  await setup!({ fake: 'ctx' })
+  assert.equal(f.calls.mounts[0]?.id, 'standard', '裸描述符形状没归一：preset 读成空，续起来的 agent 只有插件工具')
 })
 
 test('readSession 抛错时要退到 sessionQuery.listSessions 的 header 里找 preset（2026-11-20）', async () => {
@@ -228,12 +246,9 @@ test('readSession 抛错时要退到 sessionQuery.listSessions 的 header 里找
   const kernel = f.kernel(services)
   const ready = await kernel.ensureRunnable?.('ses_idle')
   assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
-  const request = f.calls.resume[0] as { agentOptions?: { agentPreset?: string } }
-  assert.equal(
-    request.agentOptions?.agentPreset,
-    'standard',
-    '第三道兜底没走：大日志上 readSession 一抛，preset 就丢了',
-  )
+  const setup = (f.calls.resume[0] as { setup?: (ctx: unknown) => Promise<void> }).setup
+  await setup!({ fake: 'ctx' })
+  assert.equal(f.calls.mounts[0]?.id, 'standard', '第三道兜底没走：大日志上 readSession 一抛，preset 就丢了')
 })
 
 test('三道都拿不到 preset 时必须拒绝续跑，不许按无 preset 硬续（2026-11-20 工具被收走的根因）', async () => {
@@ -3006,4 +3021,28 @@ test('手机读历史：来了新事件必须重新回放（宁可慢，也不�
   )
   await kernel.readHistory!('ses_1', { limit: 40 })
   assert.equal(reads, 2, '有新事件还回旧缓存：手机会少一条消息，比慢更糟')
+})
+
+test('续跑必须把 preset **挂上去**（setup → agentPresets.mount），不是当参数传（2026-11-24 取证）', async () => {
+  const f = fixture()
+  const kernel = f.kernel(f.bundle({ agentPreset: 'ptc' }))
+  const ready = await kernel.ensureRunnable?.('ses_idle')
+  assert.equal(ready?.ok, true, `续跑被拒：${JSON.stringify(ready)}`)
+  const request = f.calls.resume[0] as { setup?: unknown; agentOptions?: { agentPreset?: unknown } }
+  assert.equal(typeof request.setup, 'function', 'resume 没带 setup：宿主不会读 agentOptions.agentPreset，preset 永远挂不上')
+  assert.equal('agentPreset' in (request.agentOptions ?? {}), false, '别再把 preset 塞进 agentOptions——宿主静默忽略，只会误导下一个读者')
+  const agentCtx = { fake: 'agent-ctx' }
+  await (request.setup as (ctx: unknown) => Promise<void>)(agentCtx)
+  assert.equal(f.calls.mounts.length, 1, 'setup 里没有 mount：agent 的工具表会只剩插件那批（shell/run_code 全没）')
+  assert.equal(f.calls.mounts[0]!.id, 'ptc', '挂错 preset 等于没挂')
+  assert.equal(f.calls.mounts[0]!.agentCtx, agentCtx, '必须挂在宿主编出来的那个 agent ctx 上')
+})
+
+test('拿不到 agentPresets.mount 时必须拒绝续跑，不许裸 resume（否则工具被收走）', async () => {
+  const f = fixture()
+  const kernel = f.kernel(f.bundle({ agentPreset: 'ptc', noPresets: true }))
+  const ready = await kernel.ensureRunnable?.('ses_idle')
+  assert.equal(ready?.ok, false, '没有 agentPresets 还能续跑：agent 一定掉成插件工具集')
+  assert.match(String(ready?.message ?? ''), /agentPresets/, '拒绝原因要点名 agentPresets')
+  assert.equal(f.calls.resume.length, 0, '拒绝了还去 resume：那条拒绝就是空话')
 })

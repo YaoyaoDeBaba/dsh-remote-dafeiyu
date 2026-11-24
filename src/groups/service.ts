@@ -17,7 +17,10 @@
  * 1. 先落盘再投递：送失败还能 read 补发，不会凭空消失；
  * 2. 送不到不许静默：逐条带回 failed（谁没收到、为什么）；
  * 3. 只投给成员；上限 12 人、单条 4000 字；
- * 4. 投递正文带**当时的名单**与「怎么回复」——这就是成员「实时知道群里有谁」的唯一来源。
+ * 4. 投递正文带**当时的名单**与「怎么回复」——这就是成员「实时知道群里有谁」的唯一来源；
+ * 5. 互吹闸（2026-11-24）：同一对会话 10 分钟内 agent ↔ agent 往返超过 6 次，后面的投递直接丢——
+ *    2026-11-20 给「群主 ↔ 成员」豁免冷却之后，两个 agent 靠「收到」「好的」就能无限互吹；
+ *    用户发言清零整群的计数，用户来源的投递既不计也不闸。
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -62,6 +65,13 @@ export interface GroupEntry {
   text: string
   /** 给用户看的摘要（agent 回复才有）：首行「摘要：…」，解析不到取前 25 字。 */
   summary?: string
+  /**
+   * 这条投递被丢掉的标记（2026-11-24）：目前只有 'echo-gate'（互吹闸）。
+   *
+   * 留痕的意义：模型那边只知道「这次没投递」，用户事后想知道「为什么这条没送到」，
+   * 只能靠记录里这一行 —— 所以被闸掉也要写 jsonl，不能静默丢。
+   */
+  skipped?: string
 }
 
 export interface GroupsDeps {
@@ -71,6 +81,10 @@ export interface GroupsDeps {
   dispatchTimeoutMs?: number
   /** 同一对会话之间的投递冷却（毫秒，默认 60 秒）：防来回刷屏。 */
   cooldownMs?: number
+  /** 互吹闸的滑动窗口（毫秒，默认 10 分钟）：窗口内同一对会话的往返计数。 */
+  roundTripWindowMs?: number
+  /** 互吹闸的上限（默认 6 次）：窗口内同一对会话往返超过这个数，后续投递丢弃。 */
+  maxRoundTrips?: number
   /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
   deliver: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
   /** 会话标题（可注入；用于名单里显示名字，拿不到就用短号）。 */
@@ -83,12 +97,32 @@ export interface DeliveryResult {
   sessionId: string
   ok: boolean
   message?: string
+  /** 这次投递没真送出去的原因（目前只有 'echo-gate'）；ok 仍是 true——没送到不代表出错。 */
+  skipped?: string
 }
 
 export const MAX_MEMBERS = 12
 export const MAX_MESSAGE_CHARS = 4_000
 /** 群主一轮最多派几个活（防它一次把整群人点一遍）。 */
 export const MAX_DISPATCH_TARGETS = 5
+/** 互吹闸：被闸掉的投递在 jsonl 里的标记（事后查「为什么这条没送到」靠它）。 */
+export const ECHO_GATE = 'echo-gate'
+/** 互吹闸的默认窗口：10 分钟。 */
+export const DEFAULT_ROUND_TRIP_WINDOW_MS = 10 * 60_000
+/** 互吹闸的默认上限：同一对会话一个窗口内最多往返 6 次。 */
+export const DEFAULT_MAX_ROUND_TRIPS = 6
+/**
+ * 群聊纪律（2026-11-24）——**一份真源**：投递正文、入群通知、group_post 的工具描述都引它。
+ *
+ * 闸只能拦「已经超限」的那几条；这条纪律管的是**别产生**那些条。两件事缺一不可：
+ * 只上闸不改口径，模型会以为「被拦了就是运气不好，重发一次」。
+ */
+export const ECHO_DISCIPLINE =
+  '群里看过的消息**不需要每条都回**：只有①有新信息、②需要对方动手、③发现对方理解错了，才 group_post；' +
+  '纯确认（「收到」「好的」「明白」）一律不发——两个 agent 互相确认会形成死循环。'
+/** 极短头部用的两行版（第二次起不再复述整段纪律）。 */
+export const ECHO_DISCIPLINE_BRIEF =
+  '只回有价值的：有新信息 / 要对方动手 / 对方理解错了才 group_post；「收到」「好的」这类确认别发。'
 
 function ensureDir(dir: string): void {
   try {
@@ -203,6 +237,7 @@ export function deliveryText(
       '【群 ' + group.name + ' · 来自 ' + (from === 'user' ? '用户' : shortId(from)) + '】',
       text.trim(),
       '成员：' + rosterLine(group, titleOf) + (ownerLabel === '' ? '' : '｜群主 ' + ownerLabel),
+      ECHO_DISCIPLINE_BRIEF,
     ].join('\n')
   }
   return [
@@ -211,6 +246,7 @@ export function deliveryText(
     '',
     '群成员：' + rosterLine(group, titleOf) + (ownerLabel === '' ? '' : '｜群主 ' + ownerLabel),
     peers.length > 0 ? '本轮协作对象：' + peers.join('、') : '本轮只有你。',
+    ECHO_DISCIPLINE,
     '你看不到群里的整段记录（插件只投给你被 @ 的部分）。要说点什么就调 group_post：groupId=' +
       group.id +
       '，text 写正文；要直接找某个成员，把 to 填成对方的短号或会话 id。',
@@ -232,6 +268,7 @@ function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string 
     '· 有人 @ 你时你会收到一条独立消息，带「本轮协作对象」——你看不到群里的其他消息；',
     '· 回复用 group_post(groupId=' + group.id + ', text=...)，**首行写「摘要：一句话」**（群里只显示摘要，全文点开才看）；',
     '· 不带 to 时默认回给群主（汇报对象）；to 可以填对方短号或会话 id；',
+    '· ' + ECHO_DISCIPLINE,
     '· 想看最近记录用 group_read(groupId=' + group.id + ')。',
     '· 如果你的工具列表里没有 group_*（老会话），用 HTTP 兜底：把你自己的会话 id 和正文 POST 到',
     '  <DSH Web GUI 的 origin>/plugins/dafeiyu-groups/agent-post（本机回环，带 x-drc-pair: 1；',
@@ -318,6 +355,46 @@ export function createGroups(deps: GroupsDeps) {
     return 'g-' + (uuid ?? String(at) + Math.random().toString(36).slice(2, 8)).replace(/-/g, '').slice(0, 10)
   }
 
+  /*
+   * 互吹闸（2026-11-24）：同一对会话（A→B 与 B→A 算同一对）在一个窗口里的往返计数。
+   *
+   * 为什么需要它：2026-11-20 为了「群主刚派完活回一句被吞」，把群主 ↔ 成员从冷却里豁免了；
+   * 于是两个 agent 用「收到」「好的」「明白」就能互相刷一下午，两边的上下文一起烧光。
+   * 冷却治不了它——每个方向都没超过 60 秒一次，按「这一对在窗口里一共往返了几次」才判得出来。
+   *
+   * 计数口径：
+   * - 只数 agent → agent；用户来源（from === 'user'）的投递既不计也不闸；
+   * - 成品通告（raw：转生预告 / 交接完成）也不计不闸——那是真要送到的一次性交代，闸掉就丢事；
+   * - 用户往群里发一条 ⇒ 该群**所有对**的计数清零（用户重新开了一轮话题）；
+   * - 滑动窗口：早于 windowMs 的时刻自然滚出去，不用额外的定时器。
+   */
+  const roundTripWindowMs = deps.roundTripWindowMs ?? DEFAULT_ROUND_TRIP_WINDOW_MS
+  const maxRoundTrips = deps.maxRoundTrips ?? DEFAULT_MAX_ROUND_TRIPS
+  const roundTrips = new Map<string, number[]>()
+  const windowLabel =
+    roundTripWindowMs % 60_000 === 0
+      ? roundTripWindowMs / 60_000 + ' 分钟'
+      : Math.round(roundTripWindowMs / 1000) + ' 秒'
+  /** 归一化的对：A|B 与 B|A 必须落到同一个 key 上。 */
+  const pairKey = (groupId: string, a: string, b: string): string =>
+    groupId + '|' + (a <= b ? a + '|' + b : b + '|' + a)
+  const echoGateMessage = (): string =>
+    '互吹闸：这一对会话 ' + windowLabel + '内已往返 ' + maxRoundTrips + ' 次，本次不投递'
+  /** 把窗口外的旧时刻滚掉，返回窗口内还留着的时刻表。 */
+  const pruneTrips = (key: string, at: number): number[] => {
+    const kept = (roundTrips.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs)
+    if (kept.length === 0) roundTrips.delete(key)
+    else roundTrips.set(key, kept)
+    return kept
+  }
+  /** 用户发言：这个群所有对的计数清零。 */
+  const resetRoundTrips = (groupId: string): void => {
+    const prefix = groupId + '|'
+    for (const key of [...roundTrips.keys()]) {
+      if (key.startsWith(prefix)) roundTrips.delete(key)
+    }
+  }
+
   const deliverEach = async (
     group: GroupRecord,
     from: string,
@@ -331,7 +408,43 @@ export function createGroups(deps: GroupsDeps) {
       if (target === from) continue
       if (!group.members.some((member) => member.sessionId === target)) continue
       /*
-       * 冷却：只防「成员 ↔ 成员」来回刷屏（2026-11-20 真机：群主刚派完活回一句，被 60 秒冷却吞了）。
+       * ① 互吹闸（2026-11-24）：这一对在窗口里已经往返够了，就**不投递**。
+       *
+       * 冷却对群主 ↔ 成员是豁免的（见下面那条注释），所以群主和成员之间的「收到 ↔ 好的」
+       * 只能靠这里拦。丢弃不等于出错：ok 仍是 true，记录照写（带 skipped='echo-gate'），
+       * 并把「为什么这条没送到」原样带回给调用方。
+       */
+      const pair = from === 'user' || raw ? undefined : pairKey(group.id, from, target)
+      if (pair !== undefined) {
+        const recent = pruneTrips(pair, now())
+        if (recent.length >= maxRoundTrips) {
+          const message = echoGateMessage()
+          deps.log(message, { id: group.id, from, to: target, roundTrips: recent.length })
+          append(group.id, {
+            at: now(),
+            kind: 'system',
+            from: 'system',
+            targets: [target],
+            text:
+              '互吹闸：' +
+              shortId(from) +
+              ' → ' +
+              shortId(target) +
+              ' 的投递被丢弃（这一对在 ' +
+              windowLabel +
+              '内已往返 ' +
+              recent.length +
+              ' 次，上限 ' +
+              maxRoundTrips +
+              '）',
+            skipped: ECHO_GATE,
+          })
+          out.push({ sessionId: target, ok: true, message, skipped: ECHO_GATE })
+          continue
+        }
+      }
+      /*
+       * ② 冷却：只防「成员 ↔ 成员」来回刷屏（2026-11-20 真机：群主刚派完活回一句，被 60 秒冷却吞了）。
        *
        * 群主是调度通道——它和成员之间的往返是主链路，不能被节流；
        * 真正有死循环风险的是「A ↔ B 互回」，那里留着冷却。
@@ -345,6 +458,8 @@ export function createGroups(deps: GroupsDeps) {
         continue
       }
       lastDeliveryAt.set(key, now())
+      // ③ 放行：这一对记一笔往返（冷却跳过的不记——那条没真送到，不该占互吹闸的额度）。
+      if (pair !== undefined) roundTrips.set(pair, [...pruneTrips(pair, now()), now()])
       // 每个收件人一份正文：协作对象里不能出现他自己；第二次起只带极短头部。
       const brief = group.briefed?.[target] !== undefined
       const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief)
@@ -724,6 +839,9 @@ export function createGroups(deps: GroupsDeps) {
         return { ok: false, message: '群主一次最多派 ' + MAX_DISPATCH_TARGETS + ' 个活：拆成几轮。' }
       }
 
+      // 用户往群里发一条 ⇒ 这个群所有对的往返计数清零（用户重新开了一轮话题，闸不该记旧账）
+      if (kind === 'user') resetRoundTrips(group.id)
+
       const entry: GroupEntry = {
         at: now(),
         kind,
@@ -746,6 +864,25 @@ export function createGroups(deps: GroupsDeps) {
       const results = await deliverEach(group, kind === 'user' ? 'user' : from, body, targets, isDispatch || input.raw === true)
       const failed = results.filter((row) => !row.ok)
       deps.log('群投递', { id: group.id, targets: targets.length, failed: failed.length })
+      /*
+       * 有投递被互吹闸丢掉（2026-11-24）：ok 保持 true（这不是错误，是被纪律拦下的），
+       * message 直接说清「哪一对、多少分钟内、往返了几次」——模型读到它才知道该闭嘴，
+       * 而不是当成一次随机失败重发一遍。
+       */
+      const gated = results.filter((row) => row.skipped === ECHO_GATE)
+      if (gated.length > 0) {
+        const message = gated[0]!.message ?? echoGateMessage()
+        return {
+          ok: true,
+          entry,
+          delivered: results.filter((row) => row.ok && row.skipped === undefined),
+          failed,
+          message:
+            gated.length === results.length
+              ? message
+              : message + '（另有 ' + (results.length - gated.length) + ' 个收件人照常投递）',
+        }
+      }
       return {
         ok: failed.length === 0,
         entry,

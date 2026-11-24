@@ -42,4 +42,8 @@ export const SERVICE_NAMES = [
   // 子代理目录（`ctx.subagents.listChildren/listDescendants`）：监视器要读官方 label
   // （内置 subagent 工具的 description 参数），而不是我们猜的会话标题。
   'subagents',
+  // 预设注册表（`agentPresets.mount(agentCtx, id)`）：2026-11-24 取证——宿主的 resume
+  // **不读** `agentOptions.agentPreset`，preset 只能靠 `setup(agentCtx)` 里挂一次。
+  // 我们替宿主续跑会话时必须自己挂，否则 agent 的工具表只剩插件那批（shell/run_code 全没）。
+  'agentPresets',
 ]
