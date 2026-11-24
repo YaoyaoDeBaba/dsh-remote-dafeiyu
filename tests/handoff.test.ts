@@ -97,6 +97,10 @@ function fakeDeps(over: Partial<HandoffDeps> = {}) {
     gapGraceMs: 30,
     gapQuietMs: 30,
     gapMaxMs: 400,
+    // 分身的时序闸同理（2026-11-24）：默认 45s/20s/180s，判据里必须压小
+    branchQuietMs: 30,
+    branchGraceMs: 40,
+    branchSettleMaxMs: 400,
     ...over,
   }
   return { deps, calls }
@@ -913,7 +917,10 @@ test('分身不被缺口闸拦：有未答线程也照样先建会话进群（�
       sessionTitle: async () => 'X',
       renameSession: async () => ({ ok: true }),
       groupHandover: handover,
-      // 缺口窗口压得很大：只要流程敢等闸，这条用例就会超时
+      // 分身走的是「时序闸」而不是转生那道拦路闸：三个窗口压到几十毫秒，验的是「到点就走」。
+      branchQuietMs: 30,
+      branchGraceMs: 40,
+      branchSettleMaxMs: 150,
       gapGraceMs: 60_000,
       gapQuietMs: 60_000,
       gapMaxMs: 60_000,
@@ -939,8 +946,54 @@ test('分身不被缺口闸拦：有未答线程也照样先建会话进群（�
     writeFileSync(service.status(started.jobId!)!.filePath, BRANCH_DOC, 'utf8')
     await wait(200)
     const job = service.status(started.jobId!)!
-    assert.equal(job.status, 'done', '分身被缺口闸拦住了：它应该边干边问，不能等闸')
+    assert.equal(job.status, 'done', '分身被时序闸拦死了：它只该让一让，到点必须放行')
     assert.ok(calls.some((call) => call.kind === 'invite'), '分身必须先建好并进群，缺口再陆续补')
+    service.stop()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('分身时序闸：还在和本体对缺口时**先不拉群**，等它安静下来才改名进群（2026-11-24 用户报消息串了）', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-handoff-branch-settle-'))
+  try {
+    const { handover, calls } = fakeGroupHandover({ isOwner: true, others: ['session-2'] })
+    const { deps } = fakeDeps({
+      handoffDir: dir,
+      sessionTitle: async () => 'X',
+      renameSession: async () => ({ ok: true }),
+      groupHandover: handover,
+      // 安静窗 100ms、上限 2s：既能验证「问答期间不拉群」，又不会让用例等太久
+      branchQuietMs: 100,
+      branchGraceMs: 5_000,
+      branchSettleMaxMs: 2_000,
+    })
+    const service = createHandoffService(deps)
+    const threadPath = path.join(dir, 'inbox', 't-open.json')
+    mkdirSync(path.join(dir, 'inbox'), { recursive: true })
+    const thread = {
+      id: 't-open',
+      from: 'session-new-1',
+      to: 'session-abc',
+      question: '这条分支的边界为什么不包含 src/x？',
+      status: 'open',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+    writeFileSync(threadPath, JSON.stringify(thread), 'utf8')
+    const started = await service.start('branch', 'session-abc', '干一条分支')
+    assert.equal(started.ok, true)
+    writeFileSync(service.status(started.jobId!)!.filePath, BRANCH_DOC, 'utf8')
+    await wait(150)
+    assert.equal(
+      calls.filter((call) => call.kind === 'invite').length,
+      0,
+      '它还在跟本体对一个没答的缺口，就把人拉进群了——这正是「两边互相递消息」的来源',
+    )
+    // 本体答了：安静窗走完之后才该进群
+    writeFileSync(threadPath, JSON.stringify({ ...thread, status: 'answered', answer: '因为那段归本体', updatedAt: Date.now() }), 'utf8')
+    await wait(260)
+    assert.equal(calls.filter((call) => call.kind === 'invite').length, 1, '问答安静下来之后必须进群，否则分身永远在门外')
     service.stop()
   } finally {
     rmSync(dir, { recursive: true, force: true })

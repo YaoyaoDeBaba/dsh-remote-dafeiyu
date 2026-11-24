@@ -103,6 +103,16 @@ export interface HandoffDeps {
   gapGraceMs?: number
   /** 缺口等待硬上限（默认 5 分钟）：到点放行并把剩余未答写进 job.message。 */
   gapMaxMs?: number
+  /**
+   * 分身的「时序闸」三个窗口（2026-11-24 用户口径）。
+   *
+   * 分身是并行的：第一句就让它读文档、发现缺口 handoff_ask 问本体。如果这时已经把它拉进群，
+   * 本体↔分身在收件箱里问答、群里又开始互相派活，消息就串了。所以拉群/迎新要等它**首轮静下来**。
+   * 与转生那道闸的区别：转生必须补完缺口；分身只是等一阵，到点就走（缺口进群后可以继续补）。
+   */
+  branchQuietMs?: number
+  branchGraceMs?: number
+  branchSettleMaxMs?: number
   /** 等待交接文档落盘的轮询间隔（毫秒）。 */
   pollMs?: number
   /** 等待上限（毫秒）。 */
@@ -337,6 +347,50 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     }
   }
   /**
+   * 分身的时序闸（2026-11-24）：等它首轮交接（读文档 / 问本体）安静下来，再改名拉群。
+   *
+   * 三条出路，任何一条到点都放行（绝不无限等）：
+   *   · 提过问、都答完、之后安静 `branchQuietMs` → 放行；
+   *   · 一个问题都没提、过了 `branchGraceMs` → 放行（说明它不需要问）；
+   *   · 撞上限 `branchSettleMaxMs` → 放行，把「还有几个没答」写进 job.message。
+   *
+   * 与 `waitGapsCleared` 刻意分开：那个是**拦路**（缺口不补完不许走），这个只是**让一让**——
+   * 分身的职责在 note 里写死了，问答可以进群之后继续，卡太死就变成用户干等。
+   */
+  const waitBranchSettled = async (childId: string): Promise<string | undefined> => {
+    const inboxDir = path.join(deps.handoffDir, 'inbox')
+    const quietMs = deps.branchQuietMs ?? 20_000
+    const graceMs = deps.branchGraceMs ?? 45_000
+    const maxMs = deps.branchSettleMaxMs ?? 180_000
+    const pollMs = deps.pollMs ?? 1_000
+    const startedAt = now()
+    let lastActivity = 0
+    let answered = 0
+    for (;;) {
+      const threads = listThreads(inboxDir).filter((thread) => thread.from === childId)
+      const open = threads.filter((thread) => thread.status === 'open').length
+      answered = threads.filter((thread) => thread.status === 'answered').length
+      if (threads.length > 0) lastActivity = Math.max(...threads.map((thread) => thread.updatedAt))
+      const elapsed = now() - startedAt
+      if (open === 0 && threads.length > 0 && now() - lastActivity >= quietMs) return undefined
+      if (threads.length === 0 && elapsed >= graceMs) return undefined
+      if (elapsed >= maxMs) {
+        if (open === 0) {
+          return '分身首轮问答已答完（' + String(answered) + ' 个），但没等满安静窗口就拉群了'
+        }
+        return '分身还有 ' + String(open) + ' 个缺口没答就拉群了（已答 ' + String(answered) + ' 个），进群后它会继续问本体'
+      }
+      await new Promise((resolve) => {
+        const timer = setTimeout(resolve, pollMs)
+        try {
+          ;(timer as { unref?: () => void }).unref?.()
+        } catch {
+          /* 环境没有 unref 就算了 */
+        }
+      })
+    }
+  }
+  /**
    * S4~S7 · 群交接。两套语义**分开写**（2026-11-23 用户拍板：给「一键分身」也配一套）。
    *
    * · 转生（rebirth）= 接班交接：改名 <base>转世N → 拉群 → 继承身份（群主则转移）→ 广播「后续由谁接手」→ 前世退群。
@@ -374,6 +428,18 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
         if (gapNote !== undefined) notes.push(gapNote)
       } catch (error) {
         notes.push('等缺口时抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
+      }
+    } else {
+      /*
+       * 分身：**先让一让再拉群**（2026-11-24 用户报：一边跟本体交接、一边就被拉进群，两边消息串了）。
+       * 等的是「首轮交接安静下来」，不是「缺口全补完」——到点就走，缺口进群后继续问。
+       */
+      try {
+        touch(job, { message: '等分身把首轮交接（读文档 / 问本体）收一收，再拉进群…' })
+        const settleNote = await waitBranchSettled(childId)
+        if (settleNote !== undefined) notes.push(settleNote)
+      } catch (error) {
+        notes.push('等分身收尾时抛错：' + String((error as Error)?.message ?? error).slice(0, 80))
       }
     }
 
