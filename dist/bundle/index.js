@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.159" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.160" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38709,8 +38709,9 @@ var MAX_MEMBERS = 12;
 var MAX_MESSAGE_CHARS = 4e3;
 var MAX_DISPATCH_TARGETS = 5;
 var ECHO_GATE = "echo-gate";
-var DEFAULT_ROUND_TRIP_WINDOW_MS = 10 * 6e4;
-var DEFAULT_MAX_ROUND_TRIPS = 6;
+var DEFAULT_ROUND_TRIP_WINDOW_MS = 15 * 6e4;
+var DEFAULT_MAX_ROUND_TRIPS = 3;
+var DEFAULT_HARD_MAX_TRIPS = 20;
 var ECHO_DISCIPLINE = "\u7FA4\u91CC\u770B\u8FC7\u7684\u6D88\u606F**\u4E0D\u9700\u8981\u6BCF\u6761\u90FD\u56DE**\uFF1A\u53EA\u6709\u2460\u6709\u65B0\u4FE1\u606F\u3001\u2461\u9700\u8981\u5BF9\u65B9\u52A8\u624B\u3001\u2462\u53D1\u73B0\u5BF9\u65B9\u7406\u89E3\u9519\u4E86\uFF0C\u624D group_post\uFF1B\u7EAF\u786E\u8BA4\uFF08\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u300C\u660E\u767D\u300D\uFF09\u4E00\u5F8B\u4E0D\u53D1\u2014\u2014\u4E24\u4E2A agent \u4E92\u76F8\u786E\u8BA4\u4F1A\u5F62\u6210\u6B7B\u5FAA\u73AF\u3002\n\u8981\u53D1\u5C31**\u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A**\uFF1A\u4E00\u6761\u6D88\u606F\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF0C\u5220\u6389\u6240\u6709\u94FA\u57AB\u3002\n**\u7981\u6B62\u53E3\u5934\u7985\u4E0E\u5BA2\u5957**\uFF08\u5B83\u4EEC\u4E0D\u7B97\u4FE1\u606F\uFF0C\u53EA\u4F1A\u903C\u5BF9\u65B9\u518D\u56DE\u4E00\u6761\uFF09\uFF1A\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u4F60\u8BF4\u5F97\u5BF9\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\u300C\u6211\u5148\u8BF4\u660E\u4E00\u4E0B\u300D\u300C\u603B\u7ED3\u4E00\u4E0B\u300D\u300C\u5982\u4E0A\u6240\u8FF0\u300D\u8FD9\u7C7B\u4E00\u5F8B\u4E0D\u5199\uFF1B\n\u4E5F\u522B\u5938\u5BF9\u65B9\u3001\u522B\u590D\u8FF0\u5BF9\u65B9\u521A\u8BF4\u8FC7\u7684\u8BDD\u3001\u522B\u5199\u81EA\u6211\u68C0\u8BA8\u3002\u53D1\u4E4B\u524D\u81EA\u68C0\uFF0C**\u4E24\u79CD\u5408\u683C\u5F62\u6001\uFF0C\u5360\u4E00\u6837\u5C31\u80FD\u53D1**\uFF1A\n  \xB7 **\u8BF7\u6C42**\u2014\u2014\u5199\u6E05\u300C\u8C01\u8981\u505A\u4EC0\u4E48 / \u6539\u54EA\u4E2A\u6587\u4EF6 / \u600E\u4E48\u7B97\u5B8C\u6210\u300D\uFF1B\n  \xB7 **\u7ED3\u679C**\u2014\u2014\u7ED9\u51FA\u53EF\u6838\u5BF9\u7684\u65B0\u4FE1\u606F\uFF1A\u7ED3\u8BBA\u3001\u6570\u503C\u3001\u5224\u636E\u901A\u8FC7\u6570\u3001\u7248\u672C/commit\u3001\u72B6\u6001\u53D8\u5316\uFF08\u5E26\u4E0A\u65F6\u95F4\u548C\u6765\u6E90\uFF09\u3002\n\u4E24\u6837\u90FD\u62FF\u4E0D\u51FA\u6765\u7684\uFF08\u53EA\u5269\u611F\u53D7\u3001\u590D\u8FF0\u3001\u5BA2\u5957\u3001\u786E\u8BA4\uFF09\uFF0C\u624D\u662F\u4E0D\u8BE5\u53D1\u7684\u90A3\u6761\u3002\u7ED3\u679C\u56DE\u590D**\u4E0D\u7528**\u786C\u51D1\u300C\u6539\u54EA\u4E2A\u6587\u4EF6\u300D\u2014\u2014\u62A5\u4E86\u7ED3\u8BBA\u548C\u6570\u5B57\u5C31\u591F\u3002";
 var ECHO_DISCIPLINE_BRIEF = "\u53EA\u56DE\u6709\u4EF7\u503C\u7684\uFF1A\u6709\u65B0\u4FE1\u606F / \u8981\u5BF9\u65B9\u52A8\u624B / \u5BF9\u65B9\u7406\u89E3\u9519\u4E86\u624D group_post\uFF1B\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u8FD9\u7C7B\u786E\u8BA4\u522B\u53D1\u3002\u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A\uFF1A\u4E00\u6761\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF0C\u4E0D\u5199\u5BA2\u5957\u4E0E\u53E3\u5934\u7985\uFF08\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\uFF09\uFF0C\u4E5F\u4E0D\u5938\u5BF9\u65B9\u3001\u4E0D\u590D\u8FF0\u3001\u4E0D\u81EA\u6211\u68C0\u8BA8\u3002\u53D1\u4E4B\u524D\u5360\u4E00\u6837\uFF1A\u8BF7\u6C42\uFF08\u8C01\u505A\u4EC0\u4E48/\u6539\u54EA/\u600E\u4E48\u7B97\u5B8C\uFF09\u6216\u7ED3\u679C\uFF08\u7ED3\u8BBA+\u6570\u5B57/\u5224\u636E/\u7248\u672C\uFF09\u3002\u7ED3\u679C\u56DE\u590D\u4E0D\u7528\u786C\u51D1\u6587\u4EF6\u3002";
 function ensureDir2(dir) {
@@ -38884,19 +38885,29 @@ function createGroups(deps) {
   const roundTripWindowMs = deps.roundTripWindowMs ?? DEFAULT_ROUND_TRIP_WINDOW_MS;
   const maxRoundTrips = deps.maxRoundTrips ?? DEFAULT_MAX_ROUND_TRIPS;
   const roundTrips = /* @__PURE__ */ new Map();
+  const tripsAll = /* @__PURE__ */ new Map();
+  const hardMaxTrips = deps.hardMaxTrips ?? DEFAULT_HARD_MAX_TRIPS;
+  const isAckLike = (text) => {
+    const flat = String(text ?? "").replace(/\s+/g, "").trim();
+    if (flat === "") return true;
+    if (flat.length > 24) return false;
+    return /^(收到|好的|好|明白|了解|知道了|谢谢|感谢|多谢|同意|可以|行|嗯|对|对的|是的|没问题|ok|okay|👍|👌|✅)/i.test(flat);
+  };
   const windowLabel = roundTripWindowMs % 6e4 === 0 ? roundTripWindowMs / 6e4 + " \u5206\u949F" : Math.round(roundTripWindowMs / 1e3) + " \u79D2";
   const pairKey = (groupId, a, b) => groupId + "|" + (a <= b ? a + "|" + b : b + "|" + a);
   const echoGateMessage = () => "\u4E92\u5439\u95F8\uFF1A\u8FD9\u4E00\u5BF9\u4F1A\u8BDD " + windowLabel + "\u5185\u5DF2\u5F80\u8FD4 " + maxRoundTrips + " \u6B21\uFF0C\u672C\u6B21\u4E0D\u6295\u9012";
-  const pruneTrips = (key, at) => {
-    const kept = (roundTrips.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs);
-    if (kept.length === 0) roundTrips.delete(key);
-    else roundTrips.set(key, kept);
+  const pruneTrips = (map2, key, at) => {
+    const kept = (map2.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs);
+    if (kept.length === 0) map2.delete(key);
+    else map2.set(key, kept);
     return kept;
   };
   const resetRoundTrips = (groupId) => {
     const prefix = groupId + "|";
-    for (const key of [...roundTrips.keys()]) {
-      if (key.startsWith(prefix)) roundTrips.delete(key);
+    for (const map2 of [roundTrips, tripsAll]) {
+      for (const key of [...map2.keys()]) {
+        if (key.startsWith(prefix)) map2.delete(key);
+      }
     }
   };
   const deliverEach = async (group, from, text, targets, raw = false) => {
@@ -38906,16 +38917,20 @@ function createGroups(deps) {
       if (!group.members.some((member) => member.sessionId === target)) continue;
       const pair = from === "user" || raw ? void 0 : pairKey(group.id, from, target);
       if (pair !== void 0) {
-        const recent = pruneTrips(pair, now());
-        if (recent.length >= maxRoundTrips) {
-          const message = echoGateMessage();
-          deps.log(message, { id: group.id, from, to: target, roundTrips: recent.length });
+        const ack = isAckLike(text);
+        const ackCount = pruneTrips(roundTrips, pair, now()).length;
+        const allCount = pruneTrips(tripsAll, pair, now()).length;
+        const overAck = ack && ackCount >= maxRoundTrips;
+        const overHard = allCount >= hardMaxTrips;
+        if (overAck || overHard) {
+          const message = overHard ? "\u4E92\u5439\u95F8\uFF1A\u8FD9\u4E00\u5BF9\u4F1A\u8BDD " + windowLabel + "\u5185\u603B\u5F80\u8FD4 " + allCount + " \u6B21\uFF08\u786C\u4E0A\u9650 " + hardMaxTrips + "\uFF09\uFF0C\u672C\u6B21\u4E0D\u6295\u9012" : echoGateMessage();
+          deps.log(message, { id: group.id, from, to: target, ackCount, allCount, overHard });
           append(group.id, {
             at: now(),
             kind: "system",
             from: "system",
             targets: [target],
-            text: "\u4E92\u5439\u95F8\uFF1A" + shortId2(from) + " \u2192 " + shortId2(target) + " \u7684\u6295\u9012\u88AB\u4E22\u5F03\uFF08\u8FD9\u4E00\u5BF9\u5728 " + windowLabel + "\u5185\u5DF2\u5F80\u8FD4 " + recent.length + " \u6B21\uFF0C\u4E0A\u9650 " + maxRoundTrips + "\uFF09",
+            text: "\u4E92\u5439\u95F8\uFF1A" + shortId2(from) + " \u2192 " + shortId2(target) + " \u7684\u6295\u9012\u88AB\u4E22\u5F03\uFF08" + (overHard ? windowLabel + "\u5185\u603B\u5F80\u8FD4 " + allCount + " \u6B21\uFF0C\u786C\u4E0A\u9650 " + hardMaxTrips : windowLabel + "\u5185\u786E\u8BA4\u7C7B " + ackCount + " \u6761\uFF0C\u4E0A\u9650 " + maxRoundTrips) + "\uFF1B\u6B63\u6587\u5DF2\u5B58\u8FDB\u8BB0\u5F55\uFF0C\u53EF\u7528 group_read \u67E5\u770B\uFF09",
             skipped: ECHO_GATE
           });
           out.push({ sessionId: target, ok: true, message, skipped: ECHO_GATE });
@@ -38930,7 +38945,11 @@ function createGroups(deps) {
         continue;
       }
       lastDeliveryAt.set(key, now());
-      if (pair !== void 0) roundTrips.set(pair, [...pruneTrips(pair, now()), now()]);
+      if (pair !== void 0) {
+        const at = now();
+        tripsAll.set(pair, [...pruneTrips(tripsAll, pair, at), at]);
+        if (isAckLike(text)) roundTrips.set(pair, [...pruneTrips(roundTrips, pair, at), at]);
+      }
       const brief = group.briefed?.[target] !== void 0;
       const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief);
       const result2 = await deps.deliver(target, body).catch((error62) => ({
@@ -39405,7 +39424,7 @@ function buildGroupTools(deps) {
     },
     {
       name: "group_post",
-      description: "\u5F80\u7FA4\u91CC\u8BF4\u4E00\u53E5\uFF08\u8BB0\u7ED9\u7528\u6237\u770B\uFF09\u3002\u5E26 to \u5C31\u628A\u8FD9\u53E5\u8BDD**\u5355\u72EC\u6295\u7ED9\u90A3\u51E0\u4E2A\u4EBA**\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\uFF1B\u4E0D\u5E26 to \u53EA\u5165\u8BB0\u5F55\u3001\u4E0D\u6253\u6270\u4EBA\u3002\n\u7FA4\u91CC\u5176\u4ED6\u4EBA\u770B\u4E0D\u5230\u6574\u6BB5\u7FA4\u804A\u2014\u2014\u53EA\u6709\u4F60 @ \u7684\u4EBA\u4F1A\u6536\u5230\u8FD9\u6761\u3002\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002\n**\u4E0D\u8981\u4E3A\u4E86\u56DE\u4E00\u53E5\u800C\u56DE**\uFF1A" + ECHO_DISCIPLINE + "\n\u540C\u4E00\u5BF9\u4F1A\u8BDD 10 \u5206\u949F\u5185 agent \u2194 agent \u5F80\u8FD4\u8D85\u8FC7 6 \u6B21\u540E\uFF0C\u63D2\u4EF6\u4F1A\u76F4\u63A5\u4E22\u5F03\u540E\u7EED\u6295\u9012\uFF08\u8FD4\u56DE\u300C\u4E92\u5439\u95F8\uFF1A\u2026\u672C\u6B21\u4E0D\u6295\u9012\u300D\uFF09\u2014\u2014\u770B\u5230\u8FD9\u53E5\u5C31\u8BF4\u660E\u8BE5\u505C\u4E0B\u4E86\uFF0C\u522B\u518D\u539F\u6837\u91CD\u53D1\u3002",
+      description: "\u5F80\u7FA4\u91CC\u8BF4\u4E00\u53E5\uFF08\u8BB0\u7ED9\u7528\u6237\u770B\uFF09\u3002\u5E26 to \u5C31\u628A\u8FD9\u53E5\u8BDD**\u5355\u72EC\u6295\u7ED9\u90A3\u51E0\u4E2A\u4EBA**\uFF08\u81EA\u5DF1\u90A3\u4EFD\u4E0D\u91CD\u53D1\uFF09\uFF1B\u4E0D\u5E26 to \u53EA\u5165\u8BB0\u5F55\u3001\u4E0D\u6253\u6270\u4EBA\u3002\n\u7FA4\u91CC\u5176\u4ED6\u4EBA\u770B\u4E0D\u5230\u6574\u6BB5\u7FA4\u804A\u2014\u2014\u53EA\u6709\u4F60 @ \u7684\u4EBA\u4F1A\u6536\u5230\u8FD9\u6761\u3002\u5355\u6761\u4E0A\u9650 4000 \u5B57\u3002\n**\u4E0D\u8981\u4E3A\u4E86\u56DE\u4E00\u53E5\u800C\u56DE**\uFF1A" + ECHO_DISCIPLINE + "\n\u540C\u4E00\u5BF9\u4F1A\u8BDD 10 \u5206\u949F\u5185 agent \u2194 agent \u8FDE\u7EED\u786E\u8BA4\u7C7B\uFF08\u6536\u5230/\u597D\u7684/\u660E\u767D\uFF09\u8D85\u8FC7 3 \u6761\u540E\uFF0C\u63D2\u4EF6\u4F1A\u76F4\u63A5\u4E22\u5F03\u540E\u7EED\u6295\u9012\uFF08\u8FD4\u56DE\u300C\u4E92\u5439\u95F8\uFF1A\u2026\u672C\u6B21\u4E0D\u6295\u9012\u300D\uFF09\u2014\u2014\u770B\u5230\u8FD9\u53E5\u5C31\u8BF4\u660E\u8BE5\u505C\u4E0B\u4E86\uFF0C\u522B\u518D\u539F\u6837\u91CD\u53D1\u3002",
       parameters: {
         type: "object",
         properties: {
