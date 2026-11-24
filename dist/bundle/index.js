@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.161" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.162" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38786,10 +38786,10 @@ function summarize(text) {
   const flat = raw.replace(/\s+/g, " ").trim();
   return flat.slice(0, 25);
 }
-function deliveryText(group, from, text, others, titleOf, recipient, brief) {
+function deliveryText(group, from, text, others, titleOf, recipient, brief, sectionReady) {
   const peers = others.filter((sessionId) => sessionId !== from && sessionId !== recipient).map((sessionId) => titleOf?.(sessionId)?.trim() || shortId2(sessionId));
   const ownerLabel = group.ownerSessionId === void 0 ? "" : titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId);
-  if (brief === true) {
+  if (brief === true || sectionReady === true) {
     return [
       "\u3010\u7FA4 " + group.name + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
       text.trim(),
@@ -38911,6 +38911,7 @@ function createGroups(deps) {
     }
   };
   const deliverEach = async (group, from, text, targets, raw = false) => {
+    const sectionReady = deps.sectionReady?.() === true;
     const out = [];
     for (const target of targets) {
       if (target === from) continue;
@@ -38951,7 +38952,7 @@ function createGroups(deps) {
         if (isAckLike(text)) roundTrips.set(pair, [...pruneTrips(roundTrips, pair, at), at]);
       }
       const brief = group.briefed?.[target] !== void 0;
-      const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief);
+      const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief, sectionReady);
       const result2 = await deps.deliver(target, body).catch((error62) => ({
         ok: false,
         message: String(error62?.message ?? error62)
@@ -39849,6 +39850,7 @@ function startGroups(ctx, input2) {
     dir: path21.join(input2.dshHome, "storages", "dsh-remote-dafeiyu", "groups"),
     deliver: async (sessionId, text) => input2.deliver(sessionId, text),
     ...input2.titleOf === void 0 ? {} : { titleOf: input2.titleOf },
+    ...input2.sectionReady === void 0 ? {} : { sectionReady: input2.sectionReady },
     log: input2.log
   });
   let toolsRegistered = false;
@@ -46112,6 +46114,15 @@ async function claimHostToken(deps) {
 }
 
 // src/index.ts
+var GROUPS_SECTION_TEXT = [
+  "## \u7FA4\u804A\u7EAA\u5F8B\uFF08\u4EC5\u5728\u6536\u5230\u300C\u3010\u7FA4 \u2026\u3011\u300D\u6D88\u606F\u65F6\u9002\u7528\uFF09",
+  "",
+  "- \u770B\u8FC7\u7684\u7FA4\u6D88\u606F**\u4E0D\u9700\u8981\u6BCF\u6761\u90FD\u56DE**\uFF1A\u53EA\u6709 \u2460 \u6709\u65B0\u4FE1\u606F\u3001\u2461 \u9700\u8981\u5BF9\u65B9\u52A8\u624B\u3001\u2462 \u5BF9\u65B9\u7406\u89E3\u9519\u4E86\uFF0C\u624D group_post\uFF1B\u300C\u6536\u5230 / \u597D\u7684 / \u660E\u767D\u300D\u8FD9\u7C7B\u786E\u8BA4\u4E00\u5F8B\u4E0D\u53D1\u3002",
+  "- **\u9996\u9009\u5F62\u6001\uFF1A\u4EA7\u7269\u843D\u76D8 + \u4E00\u53E5\u8BDD**\uFF1A\u7ED3\u8BBA\u5199\u8FDB\u6587\u4EF6\uFF0C\u7FA4\u91CC\u53EA\u53D1 `<\u8DEF\u5F84> \xB7 <\u5224\u636E> \xB7 <\u7ED3\u8BBA\u4E00\u884C>`\uFF1B\u8DE8\u673A\uFF08\u5BF9\u65B9\u8BFB\u4E0D\u5230\u4F60\u7684\u76D8\uFF09\u6539\u6210\u8D34\u5173\u952E 3~5 \u884C + \u8DEF\u5F84\u3002",
+  "- \u51B3\u7B56 / \u5426\u51B3\u7406\u7531 / \u5728\u7B49\u8C01\u62CD\u677F\u6CA1\u6709\u4EA7\u7269\u53EF\u843D\u76D8\uFF0C\u8FD9\u7C7B\u4ECD\u8981\u76F4\u63A5\u8BF4\u3002",
+  "- \u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A\uFF1A\u4E00\u6761\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF1B\u4E0D\u5199\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\u8FD9\u7C7B\u5BA2\u5957\u4E0E\u53E3\u5934\u7985\uFF0C\u4E0D\u5938\u5BF9\u65B9\u3001\u4E0D\u590D\u8FF0\u3001\u4E0D\u81EA\u6211\u68C0\u8BA8\u3002",
+  "- \u673A\u5236\u5C42\u8FD8\u6709\u4E92\u5439\u95F8\uFF1A\u786E\u8BA4\u7C7B\u6D88\u606F 15 \u5206\u949F\u5185\u8D85\u8FC7 3 \u6761\u4F1A\u88AB\u4E22\u5F03\uFF08\u8BB0\u5F55\u91CC\u6807 skipped=echo-gate\uFF0C\u6B63\u6587\u4ECD\u53EF\u7528 group_read \u635E\u56DE\uFF09\u3002"
+].join("\n");
 var MAX_CONVERSATIONS = 64;
 var APPLY_COUNT = { n: 0 };
 var systemClock = DEFAULT_SYSTEM_CLOCK;
@@ -47208,11 +47219,24 @@ function applyInner(ctx, injected, clock) {
     });
   }
   softProbe.handoff = handoffHandle?.probe;
+  let groupsSectionReady = false;
+  try {
+    const sp = ctx.get?.("systemPrompt", true);
+    if (sp && typeof sp.section === "function") {
+      sp.section({ name: "dafeiyu:groups", order: 10095, text: GROUPS_SECTION_TEXT });
+      groupsSectionReady = true;
+    }
+  } catch (error62) {
+    log("\u7FA4\u804A\u7EAA\u5F8B\u6BB5\u6CA1\u6302\u4E0A\uFF08\u6D88\u606F\u5C3E\u5DF4\u4F1A\u7EE7\u7EED\u5E26\u5168\u6587\uFF0C\u529F\u80FD\u4E0D\u53D7\u5F71\u54CD\uFF09", {
+      message: String(error62?.message ?? error62).slice(0, 160)
+    });
+  }
   try {
     groupsHandle = startGroups(ctx, {
       dshHome: resolveDshHome(process.env),
       log,
       packageRoot: packageRoot(),
+      sectionReady: () => groupsSectionReady,
       listSessions: async () => {
         const port = kernel;
         const list = port?.listSessions;
