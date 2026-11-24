@@ -60,9 +60,10 @@ import { startSubagents, type SubagentsHandle } from './subagents/start.js'
 // 一键转生 / 一键分身（0.9.0.53）：三条回环路由 + 一个作业管理器。
 import { startHandoff, type HandoffHandle } from './handoff/start.js'
 import { startGroups, type GroupsHandle } from './groups/start.js'
-// 联网搜索（2026-11-20）：五个工具（web_search / paper_search / paper_read / repo_search /
+// 联网搜索（2026-11-20）：五个工具（web_search_fy / paper_search / paper_read / repo_search /
 // websearch_guide），只软探测 tools 服务，没有路由也没有后台任务。
 import { startWebsearch, type WebsearchHandle } from './websearch/start.js'
+import { startRelayHost, type RelayHostHandle } from './relayhost/start.js'
 // 序列帧精灵图（0.9.0.55 → 2026-11-16 搬去独立包 `dsh-dev-kit-dafeiyu`）：20 个工具、
 // 工具页 `/plugins/dafeiyu-sprite/`、skill 安装器全在那边；它自己领房间 `sprite`（order60）。
 // 本体只保留"铺内置 skill"这一件事（见下面 `installPackagedSkills`）：那个批量安装器
@@ -1159,6 +1160,8 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     groups: softProbe.groups ?? { started: 'no' },
     // 联网搜索的软探测（2026-11-20）：tools 挂没挂上、本机有没有 fetch，都在这两格里。
     websearch: softProbe.websearch ?? { started: 'no' },
+    // 本机中继（2026-11-24）：service / routes / autostart 三格，一眼看出「点不动」卡在哪一步。
+    relayhost: softProbe.relayhost ?? { started: 'no' },
       // token 永远不出现真值；这条有测试锁住。
       hostToken: undefined,
       // ⚠️ 读**生效值**（可能是认领来的那一枚），不是 `config.hostToken` ——
@@ -1381,6 +1384,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     subagents?: Record<string, string>
     groups?: Record<string, string>
     websearch?: Record<string, string>
+    relayhost?: Record<string, string>
   } = {}
 
   const carrier = createCarrierProbe({
@@ -1836,7 +1840,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
   softProbe.groups = groupsHandle?.probe
 
   /**
-   * 联网搜索（2026-11-20）：web_search / paper_search / paper_read / repo_search / websearch_guide。
+   * 联网搜索（2026-11-20）：web_search_fy / paper_search / paper_read / repo_search / websearch_guide。
    *
    * 只有一块软探测（tools），起不来就是"模型手上没这几个工具"，远控/识图/拉群一行都不受影响。
    * 探测结果（fetch 有没有、tools 挂上几个）进 softProbe，状态快照里能直接看到。
@@ -1848,7 +1852,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       log,
       // 设置页「搜索」栏与「进阶」栏写**同一份** user-config.json：路径只有一个真源，传进去。
       userConfigFile,
-      // 网页豆包引擎（web_search 的 engine=doubao）要复用识图插件那份登录 profile。
+      // 网页豆包引擎（web_search_fy 的 engine=doubao）要复用识图插件那份登录 profile。
       dshHome,
     })
   } catch (error) {
@@ -1858,6 +1862,35 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
     })
   }
   softProbe.websearch = websearchHandle?.probe
+
+  /**
+   * 本机中继（2026-11-24）：一键部署 + 随宿主自启。
+   *
+   * 与别的域同一套纪律：整段包 try，起不来只是少一个能力（手机连不上自建中继），
+   * 远控/搜索/群/转生一行都不受影响。**下载与起进程都发生在按钮点击或自启那一刻**，
+   * 插件加载本身不联网、不起子进程。
+   */
+  let relayHostHandle: RelayHostHandle | undefined
+  try {
+    relayHostHandle = startRelayHost(ctx as never, {
+      dshHome,
+      log,
+      readConfig: () => ({
+        ...(typeof config.serverUrl === 'string' && config.serverUrl !== '' ? { serverUrl: config.serverUrl } : {}),
+        ...(typeof config.hostToken === 'string' && config.hostToken !== '' ? { hostToken: config.hostToken } : {}),
+      }),
+      // 写配置走同一个口子（先重读再合并），别拿内存快照去拼——那条注释在 saveUserOverrides 上面。
+      writeConfig: (patch) => {
+        saveUserOverrides(patch)
+      },
+    })
+  } catch (error) {
+    relayHostHandle = undefined
+    log('本机中继起不来（远控/其它功能不受影响）', {
+      message: String((error as Error)?.message ?? error).slice(0, 200),
+    })
+  }
+  softProbe.relayhost = relayHostHandle?.probe
 
   /**
    * 内置 skill 落成 DSH skill（2026-11-16 从 `startSprite` 里搬出来）。
@@ -1987,6 +2020,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
       // 联网搜索只剩一个轮询定时器，同样要停（不然它能活过停机继续找 tools）。
       try {
         websearchHandle?.stop()
+  relayHostHandle?.stop()
       } catch {
         /* 停机动作不许拖住停机 */
       }

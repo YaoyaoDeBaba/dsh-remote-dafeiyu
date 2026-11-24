@@ -323,7 +323,7 @@ export function truncateText(text: string, maxChars: number): { text: string; to
 }
 
 /**
- * 带 TTL 的小缓存（web_search 的「同一 query 5 分钟」用）。
+ * 带 TTL 的小缓存（web_search_fy 的「同一 query 5 分钟」用）。
  * 有上限：搜索词是模型生成的，不设界就是一个吃内存的洞。
  */
 export interface TtlCache<T> {

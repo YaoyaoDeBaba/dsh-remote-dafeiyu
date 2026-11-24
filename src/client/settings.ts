@@ -935,6 +935,100 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
    * 标题降成列标题 —— 折叠区标题统一叫「本机设置」，因为这一块是"这台机器的配置"，
    * 「进阶」两个字吓走过人（用户原话：「我该不该动它」）。
    */
+  /* ── 本机中继：一键部署（2026-11-24 用户要的）─────────────────────────
+   *
+   * 为什么放在「中继」这一栏里：它干的就是把「中继地址」那一项填好——
+   * 用户在同一个地方看到「地址填什么」和「懒得填就用一键部署」。
+   *
+   * 三条纪律：
+   *   ① 部署/停止都是写操作，必须带 `x-drc-pair` 头（与其它写路由同一条 CSRF 判据）；
+   *   ② 状态**只读**（不触发下载、不起进程），打开这一页才刷新一次，失败不弹窗只写一行；
+   *   ③ 部署完必须提示「重启 Harness 才生效」——中继地址与口令是建连时读一次的，不说用户会以为没成功。
+   */
+  const RELAY_STATUS_ROUTE = '/api/dsh-remote-dafeiyu/relayhost/status'
+  const RELAY_DEPLOY_ROUTE = '/api/dsh-remote-dafeiyu/relayhost/deploy'
+  const RELAY_STOP_ROUTE = '/api/dsh-remote-dafeiyu/relayhost/stop'
+  const RELAY_AUTOSTART_ROUTE = '/api/dsh-remote-dafeiyu/relayhost/autostart'
+
+  const buildRelayHostBox = (): HTMLElement => {
+    const wrap = doc.createElement('div')
+    wrap.setAttribute('data-role', 'relay-host')
+    const stateLine = text('p', 'drc-adv-note', '正在读取本机中继状态…')
+    const note = text('p', 'drc-adv-note', '')
+    const draw = (body: LooseAnswer): void => {
+      const state = typeof body.state === 'string' ? body.state : 'unknown'
+      const port = typeof body.port === 'number' ? body.port : 8787
+      const url = typeof body.serverUrl === 'string' ? body.serverUrl : ''
+      const labels: Record<string, string> = {
+        'not-installed': '未安装（还没下过官方产物）',
+        stopped: '已停止',
+        starting: '正在启动',
+        running: '运行中',
+        failed: '失败',
+      }
+      const health = (body.health ?? {}) as { hosts?: unknown; clients?: unknown }
+      const live = state === 'running'
+        ? ' · 已连主机 ' + String(health.hosts ?? 0) + ' / 手机 ' + String(health.clients ?? 0)
+        : ''
+      stateLine.textContent =
+        '中继：' + (labels[state] ?? state) + '（端口 ' + String(port) + '）' +
+        (state === 'running' && url !== '' ? ' ' + url : '') + live
+      if (state === 'failed' && typeof body.problem === 'string') note.textContent = body.problem
+      else if (body.configured === true) note.textContent = '已写进插件配置；重启 Harness 后生效（地址与口令是建连时读一次）。'
+      else note.textContent = '部署后会把中继地址与口令写进插件配置，重启 Harness 生效。手机要能访问这个地址（同局域网或 Tailscale）。'
+    }
+    const refresh = async (): Promise<void> => {
+      const answer = await call(RELAY_STATUS_ROUTE, { method: 'GET' })
+      if (answer.status === 0) {
+        stateLine.textContent = '中继：读不到状态（这一代宿主没有 relayhost 路由）'
+        return
+      }
+      draw(answer.body)
+    }
+    const deploy = async (): Promise<void> => {
+      stateLine.textContent = '正在下载官方中继并启动（首次约 1~2 分钟）…'
+      const answer = await call(RELAY_DEPLOY_ROUTE, { method: 'POST', headers: MARKER })
+      draw(answer.body)
+      if (answer.ok !== true && typeof answer.body.problem !== 'string') note.textContent = '部署没成功：看宿主日志（relayhost）'
+    }
+    const stop = async (): Promise<void> => {
+      const answer = await call(RELAY_STOP_ROUTE, { method: 'POST', headers: MARKER })
+      draw(answer.body)
+    }
+    /*
+     * 随宿主自启（2026-11-24 用户要的「开机自启」）。
+     * 语义是「DSH 起来时顺手把中继拉起来」——中继单独活着没有意义，它只服务这台 DSH。
+     */
+    const autoId = `${SETTINGS_ID}-relay-autostart`
+    const autoInput = doc.createElement('input')
+    autoInput.id = autoId
+    autoInput.setAttribute('type', 'checkbox')
+    const autoLabel = text('label', 'drc-adv-note', '随 Harness 自动启动')
+    autoLabel.setAttribute('for', autoId)
+    const autoRow = doc.createElement('div')
+    // 假 DOM 夹具（client-bundle.test.ts）只认 appendChild：append 在那边不是函数，写了会在判据里抛。
+    autoRow.appendChild(autoInput)
+    autoRow.appendChild(autoLabel)
+    const loadAutostart = async (): Promise<void> => {
+      const answer = await call(RELAY_AUTOSTART_ROUTE, { method: 'GET' })
+      ;(autoInput as HTMLInputElement).checked = answer.body.enabled === true
+    }
+    autoInput.addEventListener('change', () => {
+      void call(RELAY_AUTOSTART_ROUTE, {
+        method: 'POST',
+        headers: { ...MARKER, 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: (autoInput as HTMLInputElement).checked }),
+      })
+    })
+    wrap.appendChild(text('h4', 'drc-col-title', '本机中继（一键部署）'))
+    wrap.appendChild(stateLine)
+    wrap.appendChild(actionRow(button('一键部署', () => void deploy(), 'primary'), button('停止', () => void stop())))
+    wrap.appendChild(autoRow)
+    wrap.appendChild(note)
+    void refresh()
+    void loadAutostart()
+    return wrap
+  }
   const buildAdvancedColumn = (): HTMLElement => {
     const section = doc.createElement('div')
     section.className = 'drc-col'
@@ -990,6 +1084,8 @@ export function buildSettingsSection(root: Element, deps: PillDeps): () => void 
     advNote = text('p', 'drc-adv-note', '')
     advNote.setAttribute('data-kind', '')
     section.appendChild(advNote)
+    /* 一键部署本机中继：放在「中继」这一栏最末，跟它要写的两项（地址/口令）在同一个视野里。 */
+    section.appendChild(buildRelayHostBox())
     return section
   }
 

@@ -80,7 +80,7 @@ test('engine=doubao 走注入的引擎，并且结果进缓存（同一 query �
         },
       },
     },
-    'web_search',
+    'web_search_fy',
   )
   const first = await tool.execute({ query: '谁最便宜', engine: 'doubao' })
   assert.match(first, /豆包说/)
@@ -90,7 +90,7 @@ test('engine=doubao 走注入的引擎，并且结果进缓存（同一 query �
 })
 
 test('engine=doubao 但引擎没挂上：抛中文原因，不静默换引擎冒充搜索结果', async () => {
-  const tool = toolNamed({ guideBody: () => '', log: noLog }, 'web_search')
+  const tool = toolNamed({ guideBody: () => '', log: noLog }, 'web_search_fy')
   await assert.rejects(
     () => tool.execute({ query: '谁最便宜', engine: 'doubao' }),
     (error: Error) => {

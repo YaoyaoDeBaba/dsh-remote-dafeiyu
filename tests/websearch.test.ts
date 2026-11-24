@@ -278,7 +278,7 @@ test('工具定义：六键齐全、output 是字符串渲染', () => {
   assert.equal(tools.length, 5)
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ['web_search', 'paper_search', 'paper_read', 'repo_search', 'websearch_guide'],
+    ['web_search_fy', 'paper_search', 'paper_read', 'repo_search', 'websearch_guide'],
   )
   for (const tool of tools) {
     for (const key of ['name', 'description', 'parameters', 'output', 'timeoutMs', 'execute']) {
@@ -295,21 +295,21 @@ test('工具定义：六键齐全、output 是字符串渲染', () => {
     assert.equal(typeof tool.execute, 'function')
   }
   // 枚举必须从 types 导出，别在 schema 里手写一份
-  const engine = toolOf(tools, 'web_search').parameters.properties.engine
+  const engine = toolOf(tools, 'web_search_fy').parameters.properties.engine
   // 2026-11-23：多了 doubao（网页版豆包当搜索引擎）。auto 仍只走 Bing → Sogou，豆包必须显式点名。
   assert.deepEqual(engine.enum, ['auto', 'bing', 'sogou', 'doubao'])
   const source = toolOf(tools, 'paper_search').parameters.properties.source
   // auto 打头：默认先 arXiv，openalex / dblp 只做替补（2026-11-20 用户裁决）
   assert.deepEqual(source.enum, ['auto', 'openalex', 'arxiv', 'dblp'])
 })
-test('web_search：Bing 被验证页拦下时退 Sogou，并说明为什么换', async () => {
+test('web_search_fy：Bing 被验证页拦下时退 Sogou，并说明为什么换', async () => {
   const fetchStub = stubFetch((url) =>
     url.includes('cn.bing.com')
       ? { body: '<html><body>请完成安全验证：请输入验证码</body></html>' }
       : { body: SOGOU_HTML },
   )
   const tools = makeTools(fetchStub.impl)
-  const text = await toolOf(tools, 'web_search').execute({ query: '小鲸鱼', count: 2 })
+  const text = await toolOf(tools, 'web_search_fy').execute({ query: '小鲸鱼', count: 2 })
   assert.ok(text.includes('搜狗结果一'), '回退后要拿到 Sogou 的结果')
   assert.ok(text.includes('Sogou（回退）'), '标题里要标出用了回退引擎')
   assert.ok(text.includes('Bing 回了验证/拦截页'), '要说清换引擎的原因')
@@ -317,11 +317,11 @@ test('web_search：Bing 被验证页拦下时退 Sogou，并说明为什么换',
   assert.equal(fetchStub.calls.length, 2, '先 Bing 再 Sogou，各一次')
 })
 
-test('web_search：两个引擎都失败要抛中文原因，不许返回空', async () => {
+test('web_search_fy：两个引擎都失败要抛中文原因，不许返回空', async () => {
   const fetchStub = stubFetch(() => ({ status: 503, body: 'busy' }))
   const tools = makeTools(fetchStub.impl)
   await assert.rejects(
-    () => toolOf(tools, 'web_search').execute({ query: 'x' }),
+    () => toolOf(tools, 'web_search_fy').execute({ query: 'x' }),
     (error: Error) => {
       assert.ok(error.message.includes('联网搜索没成'), '要说明整体失败：' + error.message)
       assert.ok(/Bing|Sogou/.test(error.message), '要说清是哪个引擎失败')
@@ -331,17 +331,17 @@ test('web_search：两个引擎都失败要抛中文原因，不许返回空', a
   )
 })
 
-test('web_search：空 query 抛中文，且不碰网络', async () => {
+test('web_search_fy：空 query 抛中文，且不碰网络', async () => {
   const fetchStub = stubFetch(() => ({ body: BING_HTML }))
   const tools = makeTools(fetchStub.impl)
-  await assert.rejects(() => toolOf(tools, 'web_search').execute({ query: '   ' }), /搜索词不能为空/)
+  await assert.rejects(() => toolOf(tools, 'web_search_fy').execute({ query: '   ' }), /搜索词不能为空/)
   assert.equal(fetchStub.calls.length, 0)
 })
 
-test('web_search：同一 query 5 分钟内走缓存，只打一次上游', async () => {
+test('web_search_fy：同一 query 5 分钟内走缓存，只打一次上游', async () => {
   const fetchStub = stubFetch(() => ({ body: BING_HTML }))
   const tools = makeTools(fetchStub.impl)
-  const tool = toolOf(tools, 'web_search')
+  const tool = toolOf(tools, 'web_search_fy')
   const first = await tool.execute({ query: '缓存测试' })
   const second = await tool.execute({ query: '缓存测试' })
   assert.equal(first, second)
@@ -577,7 +577,7 @@ test('八个工具一起注册：核心五个 + 定向三个，名字不许撞�
       'paper_read',
       'paper_search',
       'repo_search',
-      'web_search',
+      'web_search_fy',
       'websearch_guide',
     ].sort(),
     '少一个或多一个都会让模型看不到那个工具，且没有任何报错',

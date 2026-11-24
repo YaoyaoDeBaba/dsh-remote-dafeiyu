@@ -81,7 +81,7 @@ export interface WebsearchStartInput {
   /**
    * DSH 家目录。
    *
-   * 用途只有一个：`web_search(engine='doubao')` 要复用**识图插件那份登录 profile**
+   * 用途只有一个：`web_search_fy(engine='doubao')` 要复用**识图插件那份登录 profile**
    * （`<dshHome>/storages/dsh-remote-dafeiyu/webvision`）——用户登一次，识图和搜索都能用。
    * 不传 = 网页豆包引擎不可用（probe.webai 写原因），bing/sogou 两条引擎照常。
    */
@@ -119,7 +119,7 @@ export function startWebsearch(ctx: LooseContext, input: WebsearchStartInput): W
   })
 
   /**
-   * 网页豆包引擎（`web_search(engine='doubao')` 的落点）：懒创建。
+   * 网页豆包引擎（`web_search_fy(engine='doubao')` 的落点）：懒创建。
    *
    * 第一次真用它才起浏览器；起不来只写 probe.webai + 一行中文日志，
    * **绝不把 bing/sogou 一起带走**（与 tools / webServer 两块软探测同一纪律）。
@@ -173,7 +173,7 @@ export function startWebsearch(ctx: LooseContext, input: WebsearchStartInput): W
     }
     try {
       /*
-       * 核心五个（web_search / paper_search / paper_read / repo_search / websearch_guide）
+       * 核心五个（web_search_fy / paper_search / paper_read / repo_search / websearch_guide）
        * + 三个定向检索（code_search / graphics_papers / hn_search）。
        * extra 那几个是独立文件、零依赖，由这里合并注册——它的作者没碰本文件，避免抢同一个文件。
        */
@@ -250,7 +250,7 @@ export function startWebsearch(ctx: LooseContext, input: WebsearchStartInput): W
   /**
    * 「测一下」：现建一份工具表（带同一套 deps，含刚保存的 token），真跑一次。
    * 每次点都重建而不是复用 `acceptTools` 里那份：那一份的 `register` 已经交给宿主，
-   * 而且 web_search 有 5 分钟缓存——"测一下"必须打真网，不许吃到缓存。
+   * 而且 web_search_fy 有 5 分钟缓存——"测一下"必须打真网，不许吃到缓存。
    */
   const probeUpstream = (kind: 'github' | 'arxiv' | 'web') =>
     runProbe([...buildWebsearchTools({ ...toolDeps, cache: undefined }), ...buildExtraTools()], kind)

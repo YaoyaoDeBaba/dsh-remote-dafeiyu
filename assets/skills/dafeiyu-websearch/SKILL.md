@@ -1,12 +1,12 @@
 ---
 name: dafeiyu-websearch
-description: 用 web_search / paper_search / paper_read / repo_search / code_search / graphics_papers / hn_search 联网查资料：网页、论文（arXiv 为主，OpenAlex/DBLP 替补）、论文全文、GitHub 仓库、跨仓库代码、图形学论文索引、HN 讨论。web_search 还有个 engine=doubao：拿本机已登录的网页版豆包当搜索引擎（白嫖、不花 key），返回整合答案 + 来源，适合「要一个答案」而不是「一堆链接」。要查最新事实、找论文、读全文、找开源项目或代码时读这篇，里面写了各上游的限额与已知不可用项。
+description: 用 web_search_fy / paper_search / paper_read / repo_search / code_search / graphics_papers / hn_search 联网查资料：网页、论文（arXiv 为主，OpenAlex/DBLP 替补）、论文全文、GitHub 仓库、跨仓库代码、图形学论文索引、HN 讨论。web_search_fy 还有个 engine=doubao：拿本机已登录的网页版豆包当搜索引擎（白嫖、不花 key），返回整合答案 + 来源，适合「要一个答案」而不是「一堆链接」。要查最新事实、找论文、读全文、找开源项目或代码时读这篇，里面写了各上游的限额与已知不可用项。
 ---
 
 # 联网搜索：四个工具怎么选
 
 > 这一页是给 **agent** 看的操作说明，不是给用户看的介绍。
-> 工具名就是入口：搜网页 web_search、搜论文 paper_search、读正文 paper_read、找仓库 repo_search。
+> 工具名就是入口：搜网页 web_search_fy、搜论文 paper_search、读正文 paper_read、找仓库 repo_search。
 
 ## 主力与替补（2026-11-20 用户裁决）
 
@@ -18,7 +18,7 @@ description: 用 web_search / paper_search / paper_read / repo_search / code_sea
 
 | 你想干什么 | 用哪个 | 备注 |
 |---|---|---|
-| 查一个事实/新闻/官网/文档页 | web_search | Bing 主、Sogou 回退；返回标题+摘要+真实 URL |
+| 查一个事实/新闻/官网/文档页 | web_search_fy | Bing 主、Sogou 回退；返回标题+摘要+真实 URL |
 | 找学术论文（默认） | `paper_search` 不写 source（= auto） | 先 arXiv（稳定），失败自动退 openalex / dblp |
 | 需要被引数 | `paper_search(source: 'openalex')` | **替补**：无 key 时共享 0.10 美元/天，常 429 |
 | 找最新预印本（ML/CV/物理） | paper_search（arxiv） | 有摘要前 200 字，通常比会议正式版更早 |
@@ -26,13 +26,13 @@ description: 用 web_search / paper_search / paper_read / repo_search / code_sea
 | 读论文/网页正文 | paper_read | arXiv 链接会自动换成 ar5iv 的 HTML 全文 |
 | 找开源项目/参考实现 | repo_search | GitHub REST，无需 key |
 
-**别拿 web_search 硬凑论文和仓库**：搜索引擎的结果页链接经常是聚合站/镜像，
+**别拿 web_search_fy 硬凑论文和仓库**：搜索引擎的结果页链接经常是聚合站/镜像，
 paper_search、repo_search 走的是官方 API，字段（年份、被引、星数）才可信。
 
-## web_search
+## web_search_fy
 
 ```
-web_search({ query: "DeepSeek V4 发布时间", count: 8, engine: "auto" })
+web_search_fy({ query: "DeepSeek V4 发布时间", count: 8, engine: "auto" })
 ```
 
 - query 必填，空字符串会被拒（工具会抛中文错，不是静默返回空）。
@@ -45,10 +45,10 @@ web_search({ query: "DeepSeek V4 发布时间", count: 8, engine: "auto" })
 - 同一 query + count + engine 的内存缓存 5 分钟：连着问同一件事不会重复打上游。
 - 单次请求 8 秒超时；429/5xx 退避重试一次。
 
-## web_search(engine: "doubao")：把网页版豆包当搜索引擎用
+## web_search_fy(engine: "doubao")：把网页版豆包当搜索引擎用
 
 ```
-web_search({ query: "2026 年国产大模型价格谁最便宜", engine: "doubao" })
+web_search_fy({ query: "2026 年国产大模型价格谁最便宜", engine: "doubao" })
 ```
 
 - 走的是**本机已登录的网页版豆包**（白嫖，不花 API key）：起一个无头浏览器、打字、回车、抽它答完的正文。
@@ -148,5 +148,5 @@ repo_search({ query: "vector database", language: "rust", min_stars: 500, sort: 
 2. 摘要只代表搜索页给的那句话，**不是全文结论**——要下判断先 paper_read 读正文。
 3. 搜不到就说搜不到：工具抛的中文错（被拦 / 0 条 / 解析失败）原样转述给用户，
    不要用「据我所知」补一段看起来像搜过的话。
-4. 一次没成就别硬刷：web_search 有 5 分钟缓存，连续重试只会拿同一份缓存/同一张验证页。
+4. 一次没成就别硬刷：web_search_fy 有 5 分钟缓存，连续重试只会拿同一份缓存/同一张验证页。
    换个关键词、换 engine、或换工具（论文/仓库）才是有效动作。

@@ -552,7 +552,7 @@ export function buildExtraTools(overrides: ExtraToolOverrides = {}): Array<Recor
         '何时用：想找某个 API/函数/配置项在真实项目里怎么写（例：requestAnimationFrame 的循环写法、某个构建配置字段）。\n' +
         '返回：仓库/路径:行号 + 命中那一行代码（裁到 120 字）。limit 默认 6，上限 20。\n' +
         'language 可选（TypeScript / Python / Rust…），只做服务端过滤，大小写写错会过滤成空。\n' +
-        '注意：grep.app 常被限流，429 时会自动等 1.5 秒重试一次；仍失败会直接报「暂时被限流」，这时别硬重试，改用 repo_search 或 web_search。',
+        '注意：grep.app 常被限流，429 时会自动等 1.5 秒重试一次；仍失败会直接报「暂时被限流」，这时别硬重试，改用 repo_search 或 web_search_fy。',
       parameters: {
         type: 'object',
         properties: {

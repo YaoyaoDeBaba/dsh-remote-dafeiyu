@@ -11,7 +11,7 @@
  * 这段逻辑要在**不联网**的判据里验（成功一行、失败中文、非法 kind），
  * 所以它只认"一个工具表 + 一个 execute"，不认 http、不认配置。
  */
-/** 三种可测的对象。`github` 走 repo_search、`arxiv` 走 paper_search、`web` 走 web_search。 */
+/** 三种可测的对象。`github` 走 repo_search、`arxiv` 走 paper_search、`web` 走 web_search_fy。 */
 export type WebsearchProbeKind = 'github' | 'arxiv' | 'web'
 
 export const WEBSEARCH_PROBE_KINDS: readonly WebsearchProbeKind[] = ['github', 'arxiv', 'web']
@@ -42,7 +42,7 @@ export function firstLine(text: unknown, max: number = PROBE_SUMMARY_MAX): strin
 const PROBE_PLAN: Record<WebsearchProbeKind, { label: string; tools: string[]; args: Record<string, unknown> }> = {
   github: { label: 'GitHub', tools: ['repo_search'], args: { query: PROBE_QUERY, limit: 1 } },
   arxiv: { label: 'arXiv', tools: ['paper_search'], args: { query: PROBE_QUERY, source: 'arxiv', limit: 1 } },
-  web: { label: '联网搜索', tools: ['web_search'], args: { query: PROBE_QUERY, count: 1 } },
+  web: { label: '联网搜索', tools: ['web_search_fy'], args: { query: PROBE_QUERY, count: 1 } },
 }
 
 type ToolLike = {

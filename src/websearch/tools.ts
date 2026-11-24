@@ -1,5 +1,5 @@
 /**
- * websearch/tools —— 联网搜索的四个工具（web_search / paper_search / paper_read / repo_search）
+ * websearch/tools —— 联网搜索的四个工具（web_search_fy / paper_search / paper_read / repo_search）
  * 外加一个 websearch_guide 兜底。
  *
  * 设计取舍（为什么这么切）：
@@ -39,7 +39,7 @@ export const DBLP_API = 'https://dblp.org/search/publ/api'
 export const GITHUB_API = 'https://api.github.com'
 
 /**
- * web_search 的引擎档位。auto = 先 Bing、不行退 Sogou。
+ * web_search_fy 的引擎档位。auto = 先 Bing、不行退 Sogou。
  *
  * `doubao` = **拿本机已登录的网页版豆包当搜索引擎用**（白嫖，不花 key，2026-11-23 用户拍的）：
  * 做法与识图插件里「白嫖网页豆包」同一套（复用同一份登录 profile、无头浏览器 + CDP），
@@ -604,7 +604,7 @@ export interface WebsearchToolDeps {
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
   /** 测试注入；生产走全局 fetch。 */
   fetchImpl?: FetchLike
-  /** web_search 的 5 分钟缓存（测试可注入固定 now）。 */
+  /** web_search_fy 的 5 分钟缓存（测试可注入固定 now）。 */
   cache?: TtlCache<string>
   /** 判据用的显式 token（生产不传，优先级最高）。 */
   githubToken?: string
@@ -617,7 +617,7 @@ export interface WebsearchToolDeps {
    */
   readConfig?: () => WebsearchTokens
   /**
-   * 网页豆包引擎（`web_search(engine='doubao')` 的落点）。
+   * 网页豆包引擎（`web_search_fy(engine='doubao')` 的落点）。
    *
    * 由 `start.ts` 注入——它要起浏览器、读 profile，属于 node 侧；本文件是纯函数域。
    * 不注入 = 只剩 bing/sogou，选 doubao 时抛中文原因（不静默换成别的引擎）。
@@ -876,8 +876,10 @@ export function buildWebsearchTools(deps: WebsearchToolDeps): Array<Record<strin
 
   return [
     {
-      name: 'web_search',
+      name: 'web_search_fy',
       description:
+        '（大肥鱼版联网搜索。名字带 _fy 是为了不和宿主内置的同名 web_search 撞车——撞车时内置那条会盖掉这条，' +
+        '于是 engine=doubao 就永远用不上。两个都可用，但只有这个有网页豆包档。）\n' +
         '联网搜网页。默认走搜索引擎（Bing 主，失败退 Sogou），每条结果两行：标题 — 摘要 / URL。\n' +
         'engine=auto（默认）/ bing / sogou；engine=doubao = 拿本机已登录的网页版豆包当搜索引擎：' +
         '它会自己上网找，给你一段整合后的回答 + 它给的来源链接（白嫖、不花 key）。\n' +
