@@ -83,8 +83,10 @@ export interface GroupsDeps {
   cooldownMs?: number
   /** 互吹闸的滑动窗口（毫秒，默认 10 分钟）：窗口内同一对会话的往返计数。 */
   roundTripWindowMs?: number
-  /** 互吹闸的上限（默认 6 次）：窗口内同一对会话往返超过这个数，后续投递丢弃。 */
+  /** 互吹闸的「确认类」上限（默认 3 条）：窗口内同一对确认类消息超过这个数，后续投递丢弃。 */
   maxRoundTrips?: number
+  /** 硬上限（默认 20 条）：窗口内**任何**往返超过这个数，无论内容一律闸（防死循环）。 */
+  hardMaxTrips?: number
   /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
   deliver: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
   /** 会话标题（可注入；用于名单里显示名字，拿不到就用短号）。 */
@@ -107,10 +109,18 @@ export const MAX_MESSAGE_CHARS = 4_000
 export const MAX_DISPATCH_TARGETS = 5
 /** 互吹闸：被闸掉的投递在 jsonl 里的标记（事后查「为什么这条没送到」靠它）。 */
 export const ECHO_GATE = 'echo-gate'
-/** 互吹闸的默认窗口：10 分钟。 */
-export const DEFAULT_ROUND_TRIP_WINDOW_MS = 10 * 60_000
-/** 互吹闸的默认上限：同一对会话一个窗口内最多往返 6 次。 */
-export const DEFAULT_MAX_ROUND_TRIPS = 6
+/** 互吹闸的默认窗口：15 分钟。 */
+export const DEFAULT_ROUND_TRIP_WINDOW_MS = 15 * 60_000
+/**
+ * 互吹闸的默认上限：同一对会话一个窗口里最多 **3 条确认类**消息（收到/好的/明白/👌…）。
+ *
+ * 2026-11-24 真机反馈：原来按「所有往返」计数（6 次），把两条**带干货**的消息（一个计划文件、
+ * 一条确定性修法）也一起丢了——闸太严会误杀协作。现在只数确认类；实质消息（带数字/路径/命令/长文）
+ * 不计入，交给下面的硬上限兜底。
+ */
+export const DEFAULT_MAX_ROUND_TRIPS = 3
+/** 硬上限：同一对在窗口里**任何**往返超过这么多条，无论内容一律闸（防死循环）。 */
+export const DEFAULT_HARD_MAX_TRIPS = 20
 /**
  * 群聊纪律（2026-11-24）——**一份真源**：投递正文、入群通知、group_post 的工具描述都引它。
  *
@@ -382,7 +392,23 @@ export function createGroups(deps: GroupsDeps) {
    */
   const roundTripWindowMs = deps.roundTripWindowMs ?? DEFAULT_ROUND_TRIP_WINDOW_MS
   const maxRoundTrips = deps.maxRoundTrips ?? DEFAULT_MAX_ROUND_TRIPS
+  /** 确认类消息的时刻表（只用来判「确认类超预算」）。 */
   const roundTrips = new Map<string, number[]>()
+  /** 全部往返的时刻表（只用来判硬上限，防死循环）。 */
+  const tripsAll = new Map<string, number[]>()
+  const hardMaxTrips = deps.hardMaxTrips ?? DEFAULT_HARD_MAX_TRIPS
+  /**
+   * 这条是不是「确认类」：短（≤24 字）且命中确认词表。
+   *
+   * 只有确认类才占「互吹预算」——实质消息（计划文件、修法、判据数字）不该被闸误杀
+   * （2026-11-24 真机：有两条带干货的消息被 6 次上限吞了）。
+   */
+  const isAckLike = (text: string): boolean => {
+    const flat = String(text ?? '').replace(/\s+/g, '').trim()
+    if (flat === '') return true
+    if (flat.length > 24) return false
+    return /^(收到|好的|好|明白|了解|知道了|谢谢|感谢|多谢|同意|可以|行|嗯|对|对的|是的|没问题|ok|okay|👍|👌|✅)/i.test(flat)
+  }
   const windowLabel =
     roundTripWindowMs % 60_000 === 0
       ? roundTripWindowMs / 60_000 + ' 分钟'
@@ -393,17 +419,19 @@ export function createGroups(deps: GroupsDeps) {
   const echoGateMessage = (): string =>
     '互吹闸：这一对会话 ' + windowLabel + '内已往返 ' + maxRoundTrips + ' 次，本次不投递'
   /** 把窗口外的旧时刻滚掉，返回窗口内还留着的时刻表。 */
-  const pruneTrips = (key: string, at: number): number[] => {
-    const kept = (roundTrips.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs)
-    if (kept.length === 0) roundTrips.delete(key)
-    else roundTrips.set(key, kept)
+  const pruneTrips = (map: Map<string, number[]>, key: string, at: number): number[] => {
+    const kept = (map.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs)
+    if (kept.length === 0) map.delete(key)
+    else map.set(key, kept)
     return kept
   }
   /** 用户发言：这个群所有对的计数清零。 */
   const resetRoundTrips = (groupId: string): void => {
     const prefix = groupId + '|'
-    for (const key of [...roundTrips.keys()]) {
-      if (key.startsWith(prefix)) roundTrips.delete(key)
+    for (const map of [roundTrips, tripsAll]) {
+      for (const key of [...map.keys()]) {
+        if (key.startsWith(prefix)) map.delete(key)
+      }
     }
   }
 
@@ -428,10 +456,17 @@ export function createGroups(deps: GroupsDeps) {
        */
       const pair = from === 'user' || raw ? undefined : pairKey(group.id, from, target)
       if (pair !== undefined) {
-        const recent = pruneTrips(pair, now())
-        if (recent.length >= maxRoundTrips) {
-          const message = echoGateMessage()
-          deps.log(message, { id: group.id, from, to: target, roundTrips: recent.length })
+        const ack = isAckLike(text)
+        const ackCount = pruneTrips(roundTrips, pair, now()).length
+        const allCount = pruneTrips(tripsAll, pair, now()).length
+        // 确认类才占「互吹预算」；实质消息只受硬上限约束（2026-11-24：6 次一刀切会误杀干货）
+        const overAck = ack && ackCount >= maxRoundTrips
+        const overHard = allCount >= hardMaxTrips
+        if (overAck || overHard) {
+          const message = overHard
+            ? '互吹闸：这一对会话 ' + windowLabel + '内总往返 ' + allCount + ' 次（硬上限 ' + hardMaxTrips + '），本次不投递'
+            : echoGateMessage()
+          deps.log(message, { id: group.id, from, to: target, ackCount, allCount, overHard })
           append(group.id, {
             at: now(),
             kind: 'system',
@@ -442,13 +477,11 @@ export function createGroups(deps: GroupsDeps) {
               shortId(from) +
               ' → ' +
               shortId(target) +
-              ' 的投递被丢弃（这一对在 ' +
-              windowLabel +
-              '内已往返 ' +
-              recent.length +
-              ' 次，上限 ' +
-              maxRoundTrips +
-              '）',
+              ' 的投递被丢弃（' +
+              (overHard
+                ? windowLabel + '内总往返 ' + allCount + ' 次，硬上限 ' + hardMaxTrips
+                : windowLabel + '内确认类 ' + ackCount + ' 条，上限 ' + maxRoundTrips) +
+              '；正文已存进记录，可用 group_read 查看）',
             skipped: ECHO_GATE,
           })
           out.push({ sessionId: target, ok: true, message, skipped: ECHO_GATE })
@@ -471,7 +504,11 @@ export function createGroups(deps: GroupsDeps) {
       }
       lastDeliveryAt.set(key, now())
       // ③ 放行：这一对记一笔往返（冷却跳过的不记——那条没真送到，不该占互吹闸的额度）。
-      if (pair !== undefined) roundTrips.set(pair, [...pruneTrips(pair, now()), now()])
+      if (pair !== undefined) {
+        const at = now()
+        tripsAll.set(pair, [...pruneTrips(tripsAll, pair, at), at])
+        if (isAckLike(text)) roundTrips.set(pair, [...pruneTrips(roundTrips, pair, at), at])
+      }
       // 每个收件人一份正文：协作对象里不能出现他自己；第二次起只带极短头部。
       const brief = group.briefed?.[target] !== undefined
       const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief)
