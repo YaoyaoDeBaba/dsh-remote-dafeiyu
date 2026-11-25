@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.163" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.164" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -39140,7 +39140,32 @@ function createGroups(deps) {
       }
       return { ok: notified.every((row) => row.ok), notified };
     },
-    /** 设置某个成员的身份（只在用户侧改；agent 只能读）。 */
+    /**
+     * 改群名（2026-11-25 用户 v2 需求⑤）。
+     *
+     * 规则：1~40 字、去首尾空白、不允许空串；改完写一条 system 记录（群里能看到谁改的），
+     * 并**给所有成员投一条极短通知**——否则群成员的消息头里还是旧群名，对不上。
+     */
+    renameGroup(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message };
+      const group = alive.group;
+      const next = String(input2.name ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+      if (next === "") return { ok: false, message: "\u7FA4\u540D\u4E0D\u80FD\u4E3A\u7A7A" };
+      if (next === group.name) return { ok: true, group };
+      const before = group.name;
+      group.name = next;
+      group.updatedAt = now();
+      save(group);
+      append(group.id, {
+        at: now(),
+        kind: "system",
+        from: "system",
+        text: "\u7FA4\u540D\uFF1A\u300C" + before + "\u300D\u2192\u300C" + next + "\u300D" + (input2.by === void 0 ? "" : "\uFF08" + shortId2(input2.by) + "\uFF09")
+      });
+      return { ok: true, group };
+    },
+    /** 设置某个成员的身份（用户可在面板改；agent 走 group_set_role 工具，权限由调用方把关）。 */
     setMemberRole(input2) {
       const alive = live(input2.id);
       if (alive.group === void 0) return { ok: false, message: alive.message };
@@ -39479,6 +39504,55 @@ function buildGroupTools(deps) {
       }
     },
     {
+      name: "group_rename",
+      description: "\u6539\u7FA4\u540D\uFF081~40 \u5B57\uFF09\u3002\u53EA\u5E94\u7531**\u7FA4\u4E3B**\u8C03\u7528\uFF1A\u7FA4\u540D\u4F1A\u51FA\u73B0\u5728\u6BCF\u4E2A\u6210\u5458\u4E0B\u4E00\u6B21\u6536\u5230\u7684\u6D88\u606F\u5934\u91CC\u3002\n\u6539\u5B8C\u5199\u4E00\u6761 system \u8BB0\u5F55\uFF08\u7FA4\u91CC\u80FD\u770B\u5230\u65E7\u540D\u2192\u65B0\u540D\uFF09\uFF0C\u4E0D\u5F71\u54CD\u5386\u53F2\u8BB0\u5F55\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          name: { type: "string", description: "\u65B0\u7FA4\u540D\uFF0C1~40 \u5B57\u3002" }
+        },
+        required: ["groupId", "name"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args) {
+        const input2 = args ?? {};
+        const groupId = asString(input2.groupId);
+        const group = deps.groups.get(groupId);
+        if (group === void 0) return JSON.stringify({ ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" });
+        return JSON.stringify(deps.groups.renameGroup({ id: groupId, name: asString(input2.name) }));
+      }
+    },
+    {
+      name: "group_set_role",
+      description: "\u7ED9\u7FA4\u6210\u5458\u5199/\u6539\u300C\u8EAB\u4EFD\u5907\u6CE8\u300D\uFF08\u226420 \u5B57\uFF0C\u4F8B\u5982\u300C\u524D\u7AEF\u4E3B\u7A0B\u300D\u300C\u53EA\u8BFB\u8C03\u8BD5\u53E3\u300D\uFF09\u3002\u53EA\u5E94\u7531**\u7FA4\u4E3B**\u8C03\u7528\u3002\n\u4F20\u7A7A\u5B57\u7B26\u4E32 = \u6E05\u7A7A\u5907\u6CE8\u3002\u5907\u6CE8\u53EA\u5F71\u54CD\u663E\u793A\u4E0E\u6D88\u606F\u5934\u4E0A\u7684\u8EAB\u4EFD\u6807\u6CE8\uFF0C\u4E0D\u6539\u4EFB\u4F55\u6743\u9650\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          sessionId: { type: "string", description: "\u6210\u5458\u7684\u4F1A\u8BDD id \u6216\u77ED\u53F7\u3002" },
+          role: { type: "string", description: "\u65B0\u8EAB\u4EFD\u5907\u6CE8\uFF0C\u226420 \u5B57\uFF1B\u7A7A\u5B57\u7B26\u4E32 = \u6E05\u7A7A\u3002" }
+        },
+        required: ["groupId", "sessionId"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args) {
+        const input2 = args ?? {};
+        const groupId = asString(input2.groupId);
+        const group = deps.groups.get(groupId);
+        let target = asString(input2.sessionId);
+        if (group !== void 0 && !group.members.some((member) => member.sessionId === target)) {
+          const hit = group.members.find((member) => shortId2(member.sessionId) === target);
+          if (hit !== void 0) target = hit.sessionId;
+        }
+        return JSON.stringify(
+          deps.groups.setMemberRole({ id: groupId, sessionId: target, role: asString(input2.role) })
+        );
+      }
+    },
+    {
       name: "group_remove",
       description: "\u628A\u67D0\u4E2A\u6210\u5458\u79FB\u51FA\u7FA4\uFF1A\u4ED6\u672C\u4EBA\u4F1A\u6536\u5230\u300C\u672C\u7FA4\u5BF9\u4F60\u4E0D\u518D\u53EF\u7528\u300D\uFF0C\u5176\u4F59\u6210\u5458\u6536\u5230\u300CXX \u79BB\u5F00\u4E86\u672C\u7FA4\u300D\u3002",
       parameters: {
@@ -39562,6 +39636,7 @@ var GROUPS_LEAVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/leave";
 var GROUPS_REMOVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/remove";
 var GROUPS_OWNER_ROUTE = "/api/dsh-remote-dafeiyu/groups/owner";
 var GROUPS_ROLE_ROUTE = "/api/dsh-remote-dafeiyu/groups/role";
+var GROUPS_RENAME_ROUTE = "/api/dsh-remote-dafeiyu/groups/rename";
 var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
 var GROUPS_AGENT_POST_ROUTE = "/plugins/dafeiyu-groups/agent-post";
@@ -39806,6 +39881,16 @@ function groupsHandlers(deps) {
           id: String(body.groupId ?? ""),
           sessionId: String(body.sessionId ?? ""),
           role: String(body.role ?? "")
+        })
+      )
+    },
+    {
+      path: GROUPS_RENAME_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.renameGroup({
+          id: String(body.groupId ?? ""),
+          name: String(body.name ?? ""),
+          ...typeof body.sessionId === "string" && body.sessionId !== "" ? { by: body.sessionId } : {}
         })
       )
     },
