@@ -224,6 +224,16 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
    * 前世本身已叫 `…转世K` 时先剥掉后缀再算，避免出现 `转世1转世1`。
    */
   const nextRebirthGen = (base: string): number => {
+    /*
+     * 2026-11-25 真机 bug：连续两次转生都叫「…转世1」。
+     * 原因是计数器**写不进去**（handoffDir 当时不存在），而写入失败被 catch 静默吞掉，
+     * 于是每次读到的都是空表 → 永远返回 1。现在写之前先建目录，失败也留痕。
+     */
+    try {
+      mkdirSync(deps.handoffDir, { recursive: true })
+    } catch {
+      /* 建不出来就是真写不进去，下面那段会留痕 */
+    }
     const file = path.join(deps.handoffDir, 'rebirth-gen.json')
     let map: Record<string, number> = {}
     try {
@@ -235,8 +245,11 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     map[base] = value
     try {
       writeFileSync(file, JSON.stringify(map, null, 2) + '\n', 'utf8')
-    } catch {
-      /* 写不进去就用算出来的数，下次会重新从 1 开始——不会因此卡住转生 */
+    } catch (error) {
+      deps.log?.(
+        '转生序号写盘失败：下次会重新从 1 开始（这是 2026-11-25「总叫转世1」的根因）：' +
+          String((error as Error)?.message ?? error).slice(0, 120),
+      )
     }
     return value
   }
@@ -248,6 +261,11 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
    * 两条序列混在一起会让人看不懂「分身3」是哪来的。本体已叫 `…分身K` 时同样先剥后缀。
    */
   const nextBranchGen = (base: string): number => {
+    try {
+      mkdirSync(deps.handoffDir, { recursive: true })
+    } catch {
+      /* 同上 */
+    }
     const file = path.join(deps.handoffDir, 'branch-gen.json')
     let map: Record<string, number> = {}
     try {
