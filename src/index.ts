@@ -1816,7 +1816,7 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
        * 入群通知就一直躺着——表现是"agent 不知道自己进群了，得用户喊一声"。
        * 与转生/收件箱同一套：正在跑 → agent.inject 排队；空闲/冷 → sendPrompt 等于替用户按下发送。
        */
-      deliver: async (sessionId, text) => {
+      deliver: async (sessionId, text, images) => {
         /*
          * 先**确保会话能跑**（2026-11-20 真机）：
          * 成员空闲久了会被宿主卸载，这时 sendPrompt 直接失败——
@@ -1844,7 +1844,9 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
         const agent = (Array.isArray(list) ? list : []).find(
           (row) => !!row && typeof (row as { id?: unknown }).id === 'string' && (row as { id: string }).id === sessionId,
         ) as { inject?: (input: unknown) => unknown; status?: unknown } | undefined
-        if (agent && typeof agent.inject === 'function' && agent.status === 'running') {
+        /* 带图时不走 inject（2026-11-25 需求⑥）：图片要走内核 attachment 准入，交给 sendPrompt。 */
+const hasImages = Array.isArray(images) && images.length > 0
+if (!hasImages && agent && typeof agent.inject === 'function' && agent.status === 'running') {
           try {
             agent.inject({
               id: (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID?.()
@@ -1862,7 +1864,16 @@ function applyInner(ctx: LooseContext, injected: Partial<PluginConfig>, clock: C
         const send = port?.sendPrompt
         if (!port || !send) return { ok: false, message: '主机这一代不支持发消息（没有 sendPrompt）' }
         try {
-          const sent = await send.call(port, sessionId, text)
+          const sent = hasImages
+            ? await (
+                send as unknown as (
+                  this: unknown,
+                  id: string,
+                  body: string,
+                  images: ReadonlyArray<{ data: string; mimeType: string }>,
+                ) => Promise<{ ok: boolean; message?: string }>
+              ).call(port, sessionId, text, images)
+            : await send.call(port, sessionId, text)
           return sent.ok ? { ok: true } : { ok: false, message: sent.message ?? '这个会话现在接不了消息' }
         } catch (error) {
           return { ok: false, message: String((error as Error)?.message ?? error).slice(0, 160) }

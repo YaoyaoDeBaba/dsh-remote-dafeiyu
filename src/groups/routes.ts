@@ -240,6 +240,8 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
           kind: 'user',
           text: String(body.text ?? ''),
           targets: Array.isArray(body.targets) ? body.targets.map((id) => String(id)) : [],
+          // 图（2026-11-25 需求⑥）：data URL 数组，服务端负责落盘 + 附加 attachment
+          ...(Array.isArray(body.images) ? { images: body.images.map((one) => String(one)) } : {}),
         }),
       ),
     },

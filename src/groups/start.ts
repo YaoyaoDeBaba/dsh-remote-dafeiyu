@@ -33,8 +33,12 @@ export interface GroupsHandle {
 export interface GroupsStartInput {
   dshHome: string
   log: (message: string, fields?: Record<string, string | number | boolean | undefined>) => void
-  /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
-  deliver: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
+  /** 把一段文本（可带图，2026-11-25 需求⑥）送进某个会话（插件层 sendPrompt）。 */
+  deliver: (
+    sessionId: string,
+    text: string,
+    images?: ReadonlyArray<{ data: string; mimeType: string }>,
+  ) => Promise<{ ok: boolean; message?: string }>
   /** 会话标题（名单里显示名字用，可选）。 */
   titleOf?: (sessionId: string) => string | undefined
   /** 候选会话（面板拉人用，可选）。 */

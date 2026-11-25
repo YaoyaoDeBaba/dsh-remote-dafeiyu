@@ -25,6 +25,12 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
+/** 群消息里的图（2026-11-25 需求⑥）：base64 原文 + mime；落盘与路径由路由层负责。 */
+export interface GroupImage {
+  data: string
+  mimeType: string
+}
+
 export interface GroupMember {
   sessionId: string
   /** 界面上显示用的名字（可选；面板拿会话标题填）。 */
@@ -100,7 +106,17 @@ export interface GroupsDeps {
   /** 硬上限（默认 20 条）：窗口内**任何**往返超过这个数，无论内容一律闸（防死循环）。 */
   hardMaxTrips?: number
   /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
-  deliver: (sessionId: string, text: string) => Promise<{ ok: boolean; message?: string }>
+  /**
+   * 把一段文本（可带图）送进某个会话。
+   *
+   * images 是**可选**：老宿主/老载具不带图时行为与以前完全一样；
+   * 带图时投递方（index.ts 的 deliver）要把它转成内核认的 attachment 块。
+   */
+  deliver: (
+    sessionId: string,
+    text: string,
+    images?: ReadonlyArray<GroupImage>,
+  ) => Promise<{ ok: boolean; message?: string }>
   /** 会话标题（可注入；用于名单里显示名字，拿不到就用短号）。 */
   titleOf?: (sessionId: string) => string | undefined
   now?: () => number
@@ -163,6 +179,49 @@ export const ECHO_DISCIPLINE_BRIEF =
   '说人话、说到点上：一条只装一个新信息或一个请求，不写客套与口头禅（「分析得很到位」「这个我认」「感谢反馈」），' +
   '也不夸对方、不复述、不自我检讨。' +
   '发之前占一样：请求（谁做什么/改哪/怎么算完）或结果（结论+数字/判据/版本）。结果回复不用硬凑文件。'
+
+/**
+ * 把 data URL 图落盘（2026-11-25 需求⑥）。
+ *
+ * 三条限制照用户口径：**最多 3 张、单张 ≤5MB**；超出直接拒（宁可不发，也别把群记录/上下文撑爆）。
+ * 返回：给 agent 的绝对路径列表 + 给 deliver 的 base64 列表。
+ */
+/** 群图片落盘根目录（`<groups 目录>/images`）：createGroups 时绑定一次。 */
+let imagesRoot = ''
+function imagesDirRoot(): string {
+  return imagesRoot
+}
+
+function saveImages(
+  groupId: string,
+  images: ReadonlyArray<string> | undefined,
+): { ok: true; paths: string[]; images: GroupImage[] } | { ok: false; message: string } {
+  const list = (images ?? []).filter((one) => typeof one === 'string' && one.trim() !== '')
+  if (list.length === 0) return { ok: true, paths: [], images: [] }
+  if (list.length > 3) return { ok: false, message: '一条消息最多带 3 张图。' }
+  const dir = path.join(imagesDirRoot(), groupId)
+  ensureDir(dir)
+  const paths: string[] = []
+  const out: GroupImage[] = []
+  for (const [index, raw] of list.entries()) {
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/.exec(String(raw).trim())
+    if (match === null) return { ok: false, message: '第 ' + (index + 1) + ' 张不是 png/jpeg/webp 的 data URL' }
+    const mimeType = match[1]!
+    const base64 = match[2]!.replace(/\s+/g, '')
+    const bytes = Math.floor((base64.length * 3) / 4)
+    if (bytes > 5 * 1024 * 1024) return { ok: false, message: '第 ' + (index + 1) + ' 张超过 5MB' }
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg'
+    const file = path.join(dir, Date.now() + '-' + index + '.' + ext)
+    try {
+      writeFileSync(file, Buffer.from(base64, 'base64'))
+    } catch (error) {
+      return { ok: false, message: '图片落盘失败：' + String((error as Error)?.message ?? error).slice(0, 120) }
+    }
+    paths.push(file)
+    out.push({ data: base64, mimeType })
+  }
+  return { ok: true, paths, images: out }
+}
 
 function ensureDir(dir: string): void {
   try {
@@ -373,6 +432,8 @@ export function unavailableNotice(group: GroupRecord, reason: 'dissolved' | 'rem
 export function createGroups(deps: GroupsDeps) {
   const now = deps.now ?? (() => Date.now())
   const titleOf = deps.titleOf
+  // 群图片落在 `<groups 目录>/images/<群id>/`（saveImages 是模块级函数，靠这个指针拿根目录）
+  imagesRoot = path.join(deps.dir, 'images')
 
   const save = (group: GroupRecord): boolean => {
     ensureDir(deps.dir)
@@ -463,6 +524,8 @@ export function createGroups(deps: GroupsDeps) {
     targets: string[],
     /** true = 原样投递（分工请求这种已经写好的整段话），不再套普通投递头。 */
     raw = false,
+    /** 随这条消息一起发的图（2026-11-25 需求⑥）：原样交给 deliver，由它转成内核 attachment。 */
+    images?: ReadonlyArray<GroupImage>,
   ): Promise<DeliveryResult[]> => {
     // 纪律是否已常驻为 system 段：决定这次尾巴的精简程度（2026-11-24 方案 A）
     const sectionReady = deps.sectionReady?.() === true
@@ -537,7 +600,7 @@ export function createGroups(deps: GroupsDeps) {
       const body = raw
         ? text
         : deliveryText(group, from, text, targets, titleOf, target, brief, sectionReady)
-      const result = await deps.deliver(target, body).catch((error: unknown) => ({
+      const result = await deps.deliver(target, body, images).catch((error: unknown) => ({
         ok: false,
         message: String((error as Error)?.message ?? error),
       }))
@@ -972,6 +1035,13 @@ export function createGroups(deps: GroupsDeps) {
       kind?: EntryKind
       /** true = 原样投递（转生预告/交接完成这种已写好的整段话），不套普通投递头。 */
       raw?: boolean
+      /**
+       * 随消息一起发的图（2026-11-25 需求⑥）：**data URL 数组**，最多 3 张、单张 ≤5MB。
+       *
+       * 服务端负责：解码 → 落盘到 `<群目录>/images/<群id>/<时间戳>-<n>.<ext>` → 把路径追加进正文
+       * （agent 侧「当文件用」靠这一行）→ 再把 base64 交给 deliver 转成内核 attachment（「看得到」靠这块）。
+       */
+      images?: ReadonlyArray<string>
     }): Promise<{
       ok: boolean
       entry?: GroupEntry
@@ -1043,7 +1113,20 @@ export function createGroups(deps: GroupsDeps) {
       if (isDispatch) armDispatch(group, asked, text)
 
       if (targets.length === 0) return { ok: true, entry }
-      const results = await deliverEach(group, kind === 'user' ? 'user' : from, body, targets, isDispatch || input.raw === true)
+      /* 图：解码 + 落盘 + 在正文末尾给路径（「看到」靠 attachment，「当文件用」靠这行路径）。 */
+      const saved = saveImages(group.id, input.images)
+      if (saved.ok !== true) return { ok: false, message: saved.message }
+      const bodyWithFiles =
+        saved.paths.length === 0
+          ? body
+          : body + '\n\n附件（已落盘，可直接读）:\n' + saved.paths.map((one) => '· ' + one).join('\n')
+      const results = await deliverEach(
+        group,
+        kind === 'user' ? 'user' : from,
+        bodyWithFiles,
+        targets,
+        isDispatch || input.raw === true,
+        saved.images,)
       const failed = results.filter((row) => !row.ok)
       deps.log('群投递', { id: group.id, targets: targets.length, failed: failed.length })
       /*
