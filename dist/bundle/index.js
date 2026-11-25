@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.164" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.165" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38712,6 +38712,7 @@ var ECHO_GATE = "echo-gate";
 var DEFAULT_ROUND_TRIP_WINDOW_MS = 15 * 6e4;
 var DEFAULT_MAX_ROUND_TRIPS = 3;
 var DEFAULT_HARD_MAX_TRIPS = 20;
+var AVATAR_CREDIT_LIMIT = 60;
 var ECHO_DISCIPLINE = "\u7FA4\u91CC\u770B\u8FC7\u7684\u6D88\u606F**\u4E0D\u9700\u8981\u6BCF\u6761\u90FD\u56DE**\uFF1A\u53EA\u6709\u2460\u6709\u65B0\u4FE1\u606F\u3001\u2461\u9700\u8981\u5BF9\u65B9\u52A8\u624B\u3001\u2462\u53D1\u73B0\u5BF9\u65B9\u7406\u89E3\u9519\u4E86\uFF0C\u624D group_post\uFF1B\u7EAF\u786E\u8BA4\uFF08\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u300C\u660E\u767D\u300D\uFF09\u4E00\u5F8B\u4E0D\u53D1\u2014\u2014\u4E24\u4E2A agent \u4E92\u76F8\u786E\u8BA4\u4F1A\u5F62\u6210\u6B7B\u5FAA\u73AF\u3002\n\u8981\u53D1\u5C31**\u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A**\uFF1A\u4E00\u6761\u6D88\u606F\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF0C\u5220\u6389\u6240\u6709\u94FA\u57AB\u3002\n**\u7981\u6B62\u53E3\u5934\u7985\u4E0E\u5BA2\u5957**\uFF08\u5B83\u4EEC\u4E0D\u7B97\u4FE1\u606F\uFF0C\u53EA\u4F1A\u903C\u5BF9\u65B9\u518D\u56DE\u4E00\u6761\uFF09\uFF1A\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u4F60\u8BF4\u5F97\u5BF9\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\u300C\u6211\u5148\u8BF4\u660E\u4E00\u4E0B\u300D\u300C\u603B\u7ED3\u4E00\u4E0B\u300D\u300C\u5982\u4E0A\u6240\u8FF0\u300D\u8FD9\u7C7B\u4E00\u5F8B\u4E0D\u5199\uFF1B\n\u4E5F\u522B\u5938\u5BF9\u65B9\u3001\u522B\u590D\u8FF0\u5BF9\u65B9\u521A\u8BF4\u8FC7\u7684\u8BDD\u3001\u522B\u5199\u81EA\u6211\u68C0\u8BA8\u3002\u53D1\u4E4B\u524D\u81EA\u68C0\uFF0C**\u4E24\u79CD\u5408\u683C\u5F62\u6001\uFF0C\u5360\u4E00\u6837\u5C31\u80FD\u53D1**\uFF1A\n  \xB7 **\u8BF7\u6C42**\u2014\u2014\u5199\u6E05\u300C\u8C01\u8981\u505A\u4EC0\u4E48 / \u6539\u54EA\u4E2A\u6587\u4EF6 / \u600E\u4E48\u7B97\u5B8C\u6210\u300D\uFF1B\n  \xB7 **\u7ED3\u679C**\u2014\u2014\u7ED9\u51FA\u53EF\u6838\u5BF9\u7684\u65B0\u4FE1\u606F\uFF1A\u7ED3\u8BBA\u3001\u6570\u503C\u3001\u5224\u636E\u901A\u8FC7\u6570\u3001\u7248\u672C/commit\u3001\u72B6\u6001\u53D8\u5316\uFF08\u5E26\u4E0A\u65F6\u95F4\u548C\u6765\u6E90\uFF09\u3002\n\u4E24\u6837\u90FD\u62FF\u4E0D\u51FA\u6765\u7684\uFF08\u53EA\u5269\u611F\u53D7\u3001\u590D\u8FF0\u3001\u5BA2\u5957\u3001\u786E\u8BA4\uFF09\uFF0C\u624D\u662F\u4E0D\u8BE5\u53D1\u7684\u90A3\u6761\u3002\u7ED3\u679C\u56DE\u590D**\u4E0D\u7528**\u786C\u51D1\u300C\u6539\u54EA\u4E2A\u6587\u4EF6\u300D\u2014\u2014\u62A5\u4E86\u7ED3\u8BBA\u548C\u6570\u5B57\u5C31\u591F\u3002\n**\u9996\u9009\u5F62\u6001\uFF1A\u4EA7\u7269\u843D\u76D8 + \u4E00\u53E5\u8BDD**\uFF082026-11-24\uFF09\uFF1A\u628A\u7ED3\u8BBA\u5199\u8FDB\u6587\u4EF6\uFF0C\u7FA4\u91CC\u53EA\u53D1 `\xB7 <\u6587\u4EF6\u8DEF\u5F84> \xB7 <\u5224\u636E> \xB7 <\u7ED3\u8BBA\u4E00\u884C>`\uFF0C\u5BF9\u65B9\u6309\u9700\u8BFB\u6587\u4EF6\u3001\u4E0D\u9010\u6761\u56DE\u5E16\u2014\u2014\u65E2\u4E0D\u5360\u786E\u8BA4\u9884\u7B97\uFF0C\u4E5F\u7701\u6389\u4E00\u534A\u5F80\u8FD4\u3002\u524D\u63D0\uFF1A\u53CC\u65B9\u5171\u4EAB\u6587\u4EF6\u7CFB\u7EDF\uFF1B**\u8DE8\u673A**\uFF08\u5BF9\u65B9\u8BFB\u4E0D\u5230\u4F60\u7684\u76D8\uFF09\u5C31\u6539\u6210\u300C\u8D34\u5173\u952E 3~5 \u884C + \u8DEF\u5F84\u300D\u3002\u6CE8\u610F\uFF1A\u51B3\u7B56\u3001\u5426\u51B3\u7406\u7531\u3001\u5728\u7B49\u8C01\u62CD\u677F**\u6CA1\u6709\u4EA7\u7269\u53EF\u843D\u76D8**\uFF0C\u8FD9\u7C7B\u4ECD\u8981\u76F4\u63A5\u5199\u5728\u7FA4\u91CC\u3002";
 var ECHO_DISCIPLINE_BRIEF = "\u53EA\u56DE\u6709\u4EF7\u503C\u7684\uFF1A\u6709\u65B0\u4FE1\u606F / \u8981\u5BF9\u65B9\u52A8\u624B / \u5BF9\u65B9\u7406\u89E3\u9519\u4E86\u624D group_post\uFF1B\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u8FD9\u7C7B\u786E\u8BA4\u522B\u53D1\u3002\u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A\uFF1A\u4E00\u6761\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF0C\u4E0D\u5199\u5BA2\u5957\u4E0E\u53E3\u5934\u7985\uFF08\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\uFF09\uFF0C\u4E5F\u4E0D\u5938\u5BF9\u65B9\u3001\u4E0D\u590D\u8FF0\u3001\u4E0D\u81EA\u6211\u68C0\u8BA8\u3002\u53D1\u4E4B\u524D\u5360\u4E00\u6837\uFF1A\u8BF7\u6C42\uFF08\u8C01\u505A\u4EC0\u4E48/\u6539\u54EA/\u600E\u4E48\u7B97\u5B8C\uFF09\u6216\u7ED3\u679C\uFF08\u7ED3\u8BBA+\u6570\u5B57/\u5224\u636E/\u7248\u672C\uFF09\u3002\u7ED3\u679C\u56DE\u590D\u4E0D\u7528\u786C\u51D1\u6587\u4EF6\u3002";
 function ensureDir2(dir) {
@@ -39185,6 +39186,75 @@ function createGroups(deps) {
       });
       return { ok: true, group };
     },
+    /**
+     * 头像积分记账（2026-11-25 需求④）：**每个 agent 60 积分**，记在本群目录的 `avatar-budget.json`。
+     *
+     * 口径（用户定的）：① 不结转、按 sessionId 记；② agent 转生后是新 sessionId ⇒ 自然重新计 60；
+     * ③ 这是**软预算**——真正的停止条件是 xyq 账号余额不足（agent 先查 xyq_balance）；
+     * ④ 小云雀账号每月 28 日重置，临近重置那几天把余额花掉是允许的。
+     */
+    spendAvatarCredits(input2) {
+      const limit = AVATAR_CREDIT_LIMIT;
+      const id = String(input2.sessionId ?? "").trim();
+      const spend = Math.max(0, Math.round(Number(input2.credits) || 0));
+      if (id === "") return { ok: false, used: 0, limit, message: "\u7F3A\u5C11 sessionId" };
+      const file2 = path19.join(deps.dir, "avatar-budget.json");
+      let map2 = {};
+      try {
+        map2 = JSON.parse(readFileSync7(file2, "utf8"));
+      } catch {
+        map2 = {};
+      }
+      const used = Number(map2[id] ?? 0);
+      if (spend > 0 && used + spend > limit) {
+        return {
+          ok: false,
+          used,
+          limit,
+          message: "\u5934\u50CF\u79EF\u5206\u9884\u7B97\u7528\u5B8C\uFF08" + used + "/" + limit + "\uFF09\uFF1A\u522B\u518D\u52A0\u7801\uFF0C\u6362\u66F4\u7701\u7684\u5C3A\u5BF8/\u6863\u4F4D\uFF0C\u6216\u5C31\u6B64\u6536\u624B"
+        };
+      }
+      if (spend > 0) {
+        map2[id] = used + spend;
+        try {
+          writeFileSync4(file2, JSON.stringify(map2, null, 2) + "\n", "utf8");
+        } catch {
+        }
+      }
+      return { ok: true, used: map2[id] ?? used, limit };
+    },
+    /**
+     * 设置成员头像（2026-11-25 需求④）。
+     *
+     * 只接受 data URL 且 ≤12KB——面板里是个 <img src>，直接内联最省事；超大图会让群记录膨胀，直接拒。
+     * 传空串 = 清空头像。
+     */
+    setMemberAvatar(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, message: alive.message };
+      const group = alive.group;
+      const member = group.members.find((row) => row.sessionId === input2.sessionId) ?? group.members.find((row) => shortId2(row.sessionId) === String(input2.sessionId ?? "").trim());
+      if (member === void 0) return { ok: false, message: "\u8FD9\u4E2A\u4EBA\u4E0D\u5728\u7FA4\u91CC\u3002" };
+      const avatar = String(input2.avatar ?? "").trim();
+      if (avatar === "") {
+        delete member.avatar;
+      } else {
+        if (!/^data:image\/(png|jpeg|webp);base64,/.test(avatar)) {
+          return { ok: false, message: "\u5934\u50CF\u5FC5\u987B\u662F data:image/png|jpeg|webp \u7684 base64 data URL" };
+        }
+        if (avatar.length > 12e3) return { ok: false, message: "\u5934\u50CF\u592A\u5927\uFF08>12KB\uFF09\uFF1A\u8BF7\u538B\u7F29\u5230 128\xD7128 \u5DE6\u53F3" };
+        member.avatar = avatar;
+      }
+      group.updatedAt = now();
+      save(group);
+      append(group.id, {
+        at: now(),
+        kind: "system",
+        from: "system",
+        text: shortId2(member.sessionId) + (avatar === "" ? " \u6E05\u7A7A\u4E86\u5934\u50CF" : " \u6362\u4E86\u5934\u50CF")
+      });
+      return { ok: true, group };
+    },
     /** 指定 / 更换群主（必须是群成员）。 */
     setOwner(input2) {
       const alive = live(input2.id);
@@ -39553,6 +39623,38 @@ function buildGroupTools(deps) {
       }
     },
     {
+      name: "group_set_avatar",
+      description: "\u7ED9**\u81EA\u5DF1**\uFF08\u6216\u6307\u5B9A\u6210\u5458\uFF09\u8BBE\u7F6E\u7FA4\u5934\u50CF\u3002\u53EA\u63A5\u53D7 data URL\uFF08`data:image/png|jpeg|webp;base64,...`\uFF09\uFF0C\u226412KB\uFF08\u7EA6 128\xD7128\uFF09\u3002\n**\u751F\u6210\u5934\u50CF\u7684\u89C4\u77E9**\uFF08\u7528\u6237\u5B9A\u7684\uFF09\uFF1A\u2460 \u53EA\u8D70\u300C\u5C0F\u4E91\u96C0\u300D\u7684**\u7ECF\u6D4E\u6863**\uFF0C\u4E0D\u8BB8\u5347\u6863\uFF1B\u2461 \u751F\u6210\u524D\u5148\u8C03 xyq_balance \u770B\u4F59\u989D\uFF0C**\u4F59\u989D\u4E0D\u8DB3\u5C31\u505C\u624B\u5E76\u5982\u5B9E\u62A5\u544A**\uFF0C\u4E0D\u91CD\u8BD5\uFF1B\u2462 \u6BCF\u4E2A agent \u7684\u79EF\u5206\u9884\u7B97\u662F 60\uFF08\u63D2\u4EF6\u4FA7\u8BB0\u8D26\uFF0C\u8F6C\u751F\u540E\u91CD\u7F6E\uFF09\uFF0C\u7D2F\u8BA1\u8D85\u4E86\u4F1A\u88AB\u62D2\uFF1B\u2463 \u5C0F\u4E91\u96C0\u8D26\u53F7\u6BCF\u6708 28 \u65E5\u91CD\u7F6E\u3001\u79EF\u5206\u4E0D\u7ED3\u8F6C\u2014\u2014\u4E34\u8FD1\u91CD\u7F6E\u90A3\u51E0\u5929\u628A\u4F59\u989D\u82B1\u5728\u5934\u50CF\u662F\u5141\u8BB8\u751A\u81F3\u9F13\u52B1\u7684\u3002\nspentCredits\uFF1A\u8FD9\u6B21\u751F\u6210\u82B1\u4E86\u591A\u5C11\u79EF\u5206\uFF08\u8BB0\u8D26\u7528\uFF0C\u4E0D\u586B\u6309 0 \u8BB0\uFF09\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          sessionId: { type: "string", description: "\u7ED9\u8C01\u8BBE\u5934\u50CF\uFF1B\u4E0D\u586B = \u81EA\u5DF1\uFF08\u8C03\u7528\u8005\uFF09\u3002" },
+          avatar: { type: "string", description: "data URL\uFF1B\u7A7A\u5B57\u7B26\u4E32 = \u6E05\u7A7A\u5934\u50CF\u3002" },
+          spentCredits: { type: "number", description: "\u8FD9\u6B21\u751F\u6210\u82B1\u4E86\u591A\u5C11\u79EF\u5206\uFF08\u9ED8\u8BA4 0\uFF09\u3002" }
+        },
+        required: ["groupId", "avatar"]
+      },
+      output: OUT3,
+      timeoutMs: 3e4,
+      async execute(args, exec) {
+        const input2 = args ?? {};
+        const groupId = asString(input2.groupId);
+        const group = deps.groups.get(groupId);
+        if (group === void 0) return JSON.stringify({ ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" });
+        let target = asString(input2.sessionId);
+        if (target === "") target = resolveSessionId(exec) ?? "";
+        if (target === "") {
+          return JSON.stringify({ ok: false, message: "\u89E3\u6790\u4E0D\u5230\u4F60\u7684\u4F1A\u8BDD id\uFF1A\u8BF7\u5728\u53C2\u6570\u91CC\u5E26 sessionId" });
+        }
+        const spend = Math.max(0, Math.round(Number(input2.spentCredits) || 0));
+        const budget = deps.groups.spendAvatarCredits({ sessionId: target, credits: spend });
+        if (budget.ok !== true) return JSON.stringify(budget);
+        const result2 = deps.groups.setMemberAvatar({ id: groupId, sessionId: target, avatar: asString(input2.avatar) });
+        return JSON.stringify({ ...result2, credits: { used: budget.used, limit: budget.limit } });
+      }
+    },
+    {
       name: "group_remove",
       description: "\u628A\u67D0\u4E2A\u6210\u5458\u79FB\u51FA\u7FA4\uFF1A\u4ED6\u672C\u4EBA\u4F1A\u6536\u5230\u300C\u672C\u7FA4\u5BF9\u4F60\u4E0D\u518D\u53EF\u7528\u300D\uFF0C\u5176\u4F59\u6210\u5458\u6536\u5230\u300CXX \u79BB\u5F00\u4E86\u672C\u7FA4\u300D\u3002",
       parameters: {
@@ -39637,6 +39739,7 @@ var GROUPS_REMOVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/remove";
 var GROUPS_OWNER_ROUTE = "/api/dsh-remote-dafeiyu/groups/owner";
 var GROUPS_ROLE_ROUTE = "/api/dsh-remote-dafeiyu/groups/role";
 var GROUPS_RENAME_ROUTE = "/api/dsh-remote-dafeiyu/groups/rename";
+var GROUPS_AVATAR_ROUTE = "/api/dsh-remote-dafeiyu/groups/avatar";
 var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
 var GROUPS_AGENT_POST_ROUTE = "/plugins/dafeiyu-groups/agent-post";
@@ -39881,6 +39984,16 @@ function groupsHandlers(deps) {
           id: String(body.groupId ?? ""),
           sessionId: String(body.sessionId ?? ""),
           role: String(body.role ?? "")
+        })
+      )
+    },
+    {
+      path: GROUPS_AVATAR_ROUTE,
+      handler: writeRoute(
+        (body) => deps.groups.setMemberAvatar({
+          id: String(body.groupId ?? ""),
+          sessionId: String(body.sessionId ?? ""),
+          avatar: String(body.avatar ?? "")
         })
       )
     },
