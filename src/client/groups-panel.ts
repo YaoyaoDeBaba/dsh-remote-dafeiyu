@@ -58,6 +58,7 @@ const DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 const OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 const ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
 const RENAME_ROUTE = '/api/dsh-remote-dafeiyu/groups/rename'
+const AVATAR_ROUTE = '/api/dsh-remote-dafeiyu/groups/avatar'
 const SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 const POLL_MS = 3_000
 
@@ -315,7 +316,30 @@ midHead.append(midName, renameBtn, midMeta)
   addMemberBtn.textContent = '+ 加人'
   addMemberBtn.title = '把会话拉进这个群'
   addMemberBtn.style.cssText = 'border:1px solid #dbe6fb;background:#fff;color:#1d4ed8;border-radius:7px;padding:1px 8px;font-size:11.5px;cursor:pointer;'
-  rightHead.append(rightTitle, addMemberBtn)
+  /*
+   * 群主一键「请各位自己设头像」（2026-11-25 需求④）：手动按钮，不自动——它会唤醒全体、耗 token。
+   */
+  const askAvatarBtn = doc.createElement('button')
+  askAvatarBtn.textContent = '设头像'
+  askAvatarBtn.title = '请全体成员给自己设头像（用小云雀，经济档，每人 60 积分）'
+  askAvatarBtn.style.cssText = 'border:1px solid #dbe6fb;background:#fff;color:#1d4ed8;border-radius:7px;padding:1px 8px;font-size:11.5px;cursor:pointer;'
+  askAvatarBtn.addEventListener('click', () => {
+    const group = current()
+    if (group === undefined) return
+    void (async () => {
+      const answer = await call(POST_ROUTE, {
+        groupId: group.id,
+        text:
+          '请各位给自己设一个群头像（用户要求）：用小云雀生成，**只走经济档**，生成前先 xyq_balance，余额不足就停手回报；' +
+          '你的预算是 60 积分（插件侧记账，转生重置）；生成后调 group_set_avatar({ groupId, avatar, spentCredits })' +
+          '（不填 sessionId 就是给自己设），图必须 ≤12KB（128×128）。设完回群里报：花了多少、剩余预算。',
+        targets: group.members.map((member) => member.sessionId),
+      })
+      hint.textContent = answer.ok === true ? '已通知全体成员去设头像' : '通知失败：' + String(answer.message ?? '未知原因')
+      await refresh()
+    })()
+  })
+  rightHead.append(rightTitle, askAvatarBtn, addMemberBtn)
   const mList = doc.createElement('div')
   mList.style.cssText = 'overflow:auto;flex:1;padding:6px;'
   right.append(rightHead, mList)
@@ -359,6 +383,50 @@ midHead.append(midName, renameBtn, midMeta)
   ovOk.style.cssText = 'border:0;border-radius:8px;background:#1d4ed8;color:#fff;padding:6px 14px;cursor:pointer;'
   ovFoot.append(ovCount, ovOk)
   overlay.append(ovHead, ovBody, ovFoot)
+
+  /*
+   * 头像上传（2026-11-25 需求④）：右键成员 →「设置头像…」→ 选图 → canvas 压到 128×128
+   * → 导出 data URL（≤12KB）→ POST /groups/avatar。
+   * 为什么在前端压：后端硬限 12KB，直接传原图必被拒；压完再传，用户不用自己找工具缩图。
+   */
+  const avatarPick = doc.createElement('input')
+  avatarPick.type = 'file'
+  avatarPick.accept = 'image/png,image/jpeg,image/webp'
+  avatarPick.style.cssText = 'display:none;'
+  let avatarTarget = ''
+  avatarPick.addEventListener('change', () => {
+    const files = (avatarPick as unknown as { files?: ArrayLike<File> }).files
+    if (files === undefined || files === null || files.length === 0) return
+    const file = files[0]!
+    const group = current()
+    if (group === undefined || avatarTarget === '') return
+    const reader = new (globalThis as unknown as { FileReader: new () => FileReader }).FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') return
+      const image = new (globalThis as unknown as { Image: new () => HTMLImageElement }).Image()
+      image.onload = () => {
+        const canvas = doc.createElement('canvas') as HTMLCanvasElement
+        canvas.width = 128
+        canvas.height = 128
+        const ctx2d = canvas.getContext('2d')
+        if (ctx2d === null) return
+        // 居中裁正方形再缩到 128，避免非方图被拉扁
+        const side = Math.min(image.width, image.height)
+        ctx2d.drawImage(image, (image.width - side) / 2, (image.height - side) / 2, side, side, 0, 0, 128, 128)
+        let dataUrl = canvas.toDataURL('image/png')
+        if (dataUrl.length > 12_000) dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+        void (async () => {
+          const answer = await call(AVATAR_ROUTE, { groupId: group.id, sessionId: avatarTarget, avatar: dataUrl })
+          hint.textContent = answer.ok === true ? '头像已更新' : '头像没设置上：' + String(answer.message ?? '未知原因')
+          await refresh()
+        })()
+      }
+      image.src = result
+    }
+    reader.readAsDataURL(file)
+    ;(avatarPick as unknown as { value: string }).value = ''
+  })
 
   /* 身份小窗 */
   const roleBox = doc.createElement('div')
@@ -687,6 +755,16 @@ midHead.append(midName, renameBtn, midMeta)
       roleInput.value = member?.role ?? ''
       roleBox.style.display = 'block'
       roleInput.focus()
+    })
+    mk('设置头像…', () => {
+      avatarTarget = sessionId
+      avatarPick.click()
+    })
+    mk('清除头像', () => {
+      void (async () => {
+        await call(AVATAR_ROUTE, { groupId: group.id, sessionId, avatar: '' })
+        await refresh()
+      })()
     })
     mk('移出本群', () => {
       void (async () => {
