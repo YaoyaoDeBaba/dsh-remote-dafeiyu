@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.168" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.169" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -39355,7 +39355,9 @@ function createGroups(deps) {
       const alive = live(input2.id);
       if (alive.group === void 0) return { ok: false, message: alive.message ?? "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\uFF08\u5148 group_create\uFF09\u3002" };
       const group = alive.group;
-      const text = String(input2.text ?? "").trim();
+      const rawText = String(input2.text ?? "").trim();
+      const hasImages = Array.isArray(input2.images) && input2.images.length > 0;
+      const text = rawText === "" && hasImages ? "\uFF08\u56FE\u7247\uFF09" : rawText;
       if (text === "") return { ok: false, message: "\u6D88\u606F\u4E0D\u80FD\u662F\u7A7A\u7684\u3002" };
       if (text.length > MAX_MESSAGE_CHARS) return { ok: false, message: "\u5355\u6761\u6700\u591A " + MAX_MESSAGE_CHARS + " \u5B57\uFF0C\u62C6\u5F00\u53D1\u3002" };
       const kind = input2.kind === "user" ? "user" : input2.kind === "system" ? "system" : "agent";
@@ -39796,13 +39798,14 @@ function rejected3(request) {
   if (!originIsLoopbackOrAbsent(request.headers.origin)) return "origin-not-trusted";
   return void 0;
 }
+var MAX_BODY_BYTES2 = 32 * 1024 * 1024;
 function readBody3(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     request.on("data", (chunk) => {
       size += chunk.byteLength;
-      if (size > 64 * 1024) {
+      if (size > MAX_BODY_BYTES2) {
         reject(new Error("\u8BF7\u6C42\u4F53\u592A\u5927"));
         request.destroy();
         return;
