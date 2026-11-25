@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.167" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.168" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -31759,7 +31759,7 @@ function createServicesKernel(services, options) {
   const historyEventsCache = /* @__PURE__ */ new Map();
   const historyReadInflight = /* @__PURE__ */ new Map();
   const CATALOG_TTL_MS = 2e3;
-  const CATALOG_FAIL_TTL_MS = 3e5;
+  const CATALOG_FAIL_TTL_MS = 3e3;
   const catalogCache = /* @__PURE__ */ new Map();
   let catalogDebug;
   function noteSubagentKnown(id, parent, invalidateCatalog = false) {
