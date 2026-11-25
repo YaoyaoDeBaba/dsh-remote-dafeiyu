@@ -601,7 +601,22 @@ midHead.append(midName, renameBtn, midMeta)
       return
     }
     for (const id of targets) {
-      chips.appendChild(el('span', 'border:1px solid #1d4ed8;background:#e8f0ff;color:#1d4ed8;border-radius:999px;padding:1px 8px;font-size:11.5px;', '@' + memberName(group, id)))
+      /*
+       * 每个被 @ 的人一颗可撤销的胶囊（2026-11-25 用户：@ 错人现在取消不掉）。
+       * 点 × 只从本轮 targets 里摘掉，不动群成员关系；摘空就回到提示态。
+       */
+      const chip = el('span', 'border:1px solid #1d4ed8;background:#e8f0ff;color:#1d4ed8;border-radius:999px;padding:1px 4px 1px 8px;font-size:11.5px;display:inline-flex;align-items:center;gap:4px;', '@' + memberName(group, id))
+      const off = doc.createElement('button')
+      off.textContent = '×'
+      off.title = '取消 @ ' + memberName(group, id)
+      off.style.cssText =
+        'border:0;background:rgba(29,78,216,.12);color:#1d4ed8;width:16px;height:16px;border-radius:50%;line-height:1;font-size:11px;cursor:pointer;padding:0;'
+      off.addEventListener('click', () => {
+        targets.delete(id)
+        renderChips()
+      })
+      chip.appendChild(off)
+      chips.appendChild(chip)
     }
   }
 
