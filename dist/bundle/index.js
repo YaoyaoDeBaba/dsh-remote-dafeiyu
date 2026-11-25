@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.165" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.166" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38715,6 +38715,37 @@ var DEFAULT_HARD_MAX_TRIPS = 20;
 var AVATAR_CREDIT_LIMIT = 60;
 var ECHO_DISCIPLINE = "\u7FA4\u91CC\u770B\u8FC7\u7684\u6D88\u606F**\u4E0D\u9700\u8981\u6BCF\u6761\u90FD\u56DE**\uFF1A\u53EA\u6709\u2460\u6709\u65B0\u4FE1\u606F\u3001\u2461\u9700\u8981\u5BF9\u65B9\u52A8\u624B\u3001\u2462\u53D1\u73B0\u5BF9\u65B9\u7406\u89E3\u9519\u4E86\uFF0C\u624D group_post\uFF1B\u7EAF\u786E\u8BA4\uFF08\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u300C\u660E\u767D\u300D\uFF09\u4E00\u5F8B\u4E0D\u53D1\u2014\u2014\u4E24\u4E2A agent \u4E92\u76F8\u786E\u8BA4\u4F1A\u5F62\u6210\u6B7B\u5FAA\u73AF\u3002\n\u8981\u53D1\u5C31**\u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A**\uFF1A\u4E00\u6761\u6D88\u606F\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF0C\u5220\u6389\u6240\u6709\u94FA\u57AB\u3002\n**\u7981\u6B62\u53E3\u5934\u7985\u4E0E\u5BA2\u5957**\uFF08\u5B83\u4EEC\u4E0D\u7B97\u4FE1\u606F\uFF0C\u53EA\u4F1A\u903C\u5BF9\u65B9\u518D\u56DE\u4E00\u6761\uFF09\uFF1A\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u4F60\u8BF4\u5F97\u5BF9\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\u300C\u6211\u5148\u8BF4\u660E\u4E00\u4E0B\u300D\u300C\u603B\u7ED3\u4E00\u4E0B\u300D\u300C\u5982\u4E0A\u6240\u8FF0\u300D\u8FD9\u7C7B\u4E00\u5F8B\u4E0D\u5199\uFF1B\n\u4E5F\u522B\u5938\u5BF9\u65B9\u3001\u522B\u590D\u8FF0\u5BF9\u65B9\u521A\u8BF4\u8FC7\u7684\u8BDD\u3001\u522B\u5199\u81EA\u6211\u68C0\u8BA8\u3002\u53D1\u4E4B\u524D\u81EA\u68C0\uFF0C**\u4E24\u79CD\u5408\u683C\u5F62\u6001\uFF0C\u5360\u4E00\u6837\u5C31\u80FD\u53D1**\uFF1A\n  \xB7 **\u8BF7\u6C42**\u2014\u2014\u5199\u6E05\u300C\u8C01\u8981\u505A\u4EC0\u4E48 / \u6539\u54EA\u4E2A\u6587\u4EF6 / \u600E\u4E48\u7B97\u5B8C\u6210\u300D\uFF1B\n  \xB7 **\u7ED3\u679C**\u2014\u2014\u7ED9\u51FA\u53EF\u6838\u5BF9\u7684\u65B0\u4FE1\u606F\uFF1A\u7ED3\u8BBA\u3001\u6570\u503C\u3001\u5224\u636E\u901A\u8FC7\u6570\u3001\u7248\u672C/commit\u3001\u72B6\u6001\u53D8\u5316\uFF08\u5E26\u4E0A\u65F6\u95F4\u548C\u6765\u6E90\uFF09\u3002\n\u4E24\u6837\u90FD\u62FF\u4E0D\u51FA\u6765\u7684\uFF08\u53EA\u5269\u611F\u53D7\u3001\u590D\u8FF0\u3001\u5BA2\u5957\u3001\u786E\u8BA4\uFF09\uFF0C\u624D\u662F\u4E0D\u8BE5\u53D1\u7684\u90A3\u6761\u3002\u7ED3\u679C\u56DE\u590D**\u4E0D\u7528**\u786C\u51D1\u300C\u6539\u54EA\u4E2A\u6587\u4EF6\u300D\u2014\u2014\u62A5\u4E86\u7ED3\u8BBA\u548C\u6570\u5B57\u5C31\u591F\u3002\n**\u9996\u9009\u5F62\u6001\uFF1A\u4EA7\u7269\u843D\u76D8 + \u4E00\u53E5\u8BDD**\uFF082026-11-24\uFF09\uFF1A\u628A\u7ED3\u8BBA\u5199\u8FDB\u6587\u4EF6\uFF0C\u7FA4\u91CC\u53EA\u53D1 `\xB7 <\u6587\u4EF6\u8DEF\u5F84> \xB7 <\u5224\u636E> \xB7 <\u7ED3\u8BBA\u4E00\u884C>`\uFF0C\u5BF9\u65B9\u6309\u9700\u8BFB\u6587\u4EF6\u3001\u4E0D\u9010\u6761\u56DE\u5E16\u2014\u2014\u65E2\u4E0D\u5360\u786E\u8BA4\u9884\u7B97\uFF0C\u4E5F\u7701\u6389\u4E00\u534A\u5F80\u8FD4\u3002\u524D\u63D0\uFF1A\u53CC\u65B9\u5171\u4EAB\u6587\u4EF6\u7CFB\u7EDF\uFF1B**\u8DE8\u673A**\uFF08\u5BF9\u65B9\u8BFB\u4E0D\u5230\u4F60\u7684\u76D8\uFF09\u5C31\u6539\u6210\u300C\u8D34\u5173\u952E 3~5 \u884C + \u8DEF\u5F84\u300D\u3002\u6CE8\u610F\uFF1A\u51B3\u7B56\u3001\u5426\u51B3\u7406\u7531\u3001\u5728\u7B49\u8C01\u62CD\u677F**\u6CA1\u6709\u4EA7\u7269\u53EF\u843D\u76D8**\uFF0C\u8FD9\u7C7B\u4ECD\u8981\u76F4\u63A5\u5199\u5728\u7FA4\u91CC\u3002";
 var ECHO_DISCIPLINE_BRIEF = "\u53EA\u56DE\u6709\u4EF7\u503C\u7684\uFF1A\u6709\u65B0\u4FE1\u606F / \u8981\u5BF9\u65B9\u52A8\u624B / \u5BF9\u65B9\u7406\u89E3\u9519\u4E86\u624D group_post\uFF1B\u300C\u6536\u5230\u300D\u300C\u597D\u7684\u300D\u8FD9\u7C7B\u786E\u8BA4\u522B\u53D1\u3002\u8BF4\u4EBA\u8BDD\u3001\u8BF4\u5230\u70B9\u4E0A\uFF1A\u4E00\u6761\u53EA\u88C5\u4E00\u4E2A\u65B0\u4FE1\u606F\u6216\u4E00\u4E2A\u8BF7\u6C42\uFF0C\u4E0D\u5199\u5BA2\u5957\u4E0E\u53E3\u5934\u7985\uFF08\u300C\u5206\u6790\u5F97\u5F88\u5230\u4F4D\u300D\u300C\u8FD9\u4E2A\u6211\u8BA4\u300D\u300C\u611F\u8C22\u53CD\u9988\u300D\uFF09\uFF0C\u4E5F\u4E0D\u5938\u5BF9\u65B9\u3001\u4E0D\u590D\u8FF0\u3001\u4E0D\u81EA\u6211\u68C0\u8BA8\u3002\u53D1\u4E4B\u524D\u5360\u4E00\u6837\uFF1A\u8BF7\u6C42\uFF08\u8C01\u505A\u4EC0\u4E48/\u6539\u54EA/\u600E\u4E48\u7B97\u5B8C\uFF09\u6216\u7ED3\u679C\uFF08\u7ED3\u8BBA+\u6570\u5B57/\u5224\u636E/\u7248\u672C\uFF09\u3002\u7ED3\u679C\u56DE\u590D\u4E0D\u7528\u786C\u51D1\u6587\u4EF6\u3002";
+var imagesRoot = "";
+function imagesDirRoot() {
+  return imagesRoot;
+}
+function saveImages(groupId, images) {
+  const list = (images ?? []).filter((one) => typeof one === "string" && one.trim() !== "");
+  if (list.length === 0) return { ok: true, paths: [], images: [] };
+  if (list.length > 3) return { ok: false, message: "\u4E00\u6761\u6D88\u606F\u6700\u591A\u5E26 3 \u5F20\u56FE\u3002" };
+  const dir = path19.join(imagesDirRoot(), groupId);
+  ensureDir2(dir);
+  const paths = [];
+  const out = [];
+  for (const [index, raw] of list.entries()) {
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/.exec(String(raw).trim());
+    if (match === null) return { ok: false, message: "\u7B2C " + (index + 1) + " \u5F20\u4E0D\u662F png/jpeg/webp \u7684 data URL" };
+    const mimeType = match[1];
+    const base643 = match[2].replace(/\s+/g, "");
+    const bytes = Math.floor(base643.length * 3 / 4);
+    if (bytes > 5 * 1024 * 1024) return { ok: false, message: "\u7B2C " + (index + 1) + " \u5F20\u8D85\u8FC7 5MB" };
+    const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+    const file2 = path19.join(dir, Date.now() + "-" + index + "." + ext);
+    try {
+      writeFileSync4(file2, Buffer.from(base643, "base64"));
+    } catch (error62) {
+      return { ok: false, message: "\u56FE\u7247\u843D\u76D8\u5931\u8D25\uFF1A" + String(error62?.message ?? error62).slice(0, 120) };
+    }
+    paths.push(file2);
+    out.push({ data: base643, mimeType });
+  }
+  return { ok: true, paths, images: out };
+}
 function ensureDir2(dir) {
   try {
     mkdirSync7(dir, { recursive: true });
@@ -38863,6 +38894,7 @@ function unavailableNotice(group, reason) {
 function createGroups(deps) {
   const now = deps.now ?? (() => Date.now());
   const titleOf = deps.titleOf;
+  imagesRoot = path19.join(deps.dir, "images");
   const save = (group) => {
     ensureDir2(deps.dir);
     try {
@@ -38911,7 +38943,7 @@ function createGroups(deps) {
       }
     }
   };
-  const deliverEach = async (group, from, text, targets, raw = false) => {
+  const deliverEach = async (group, from, text, targets, raw = false, images) => {
     const sectionReady = deps.sectionReady?.() === true;
     const out = [];
     for (const target of targets) {
@@ -38954,7 +38986,7 @@ function createGroups(deps) {
       }
       const brief = group.briefed?.[target] !== void 0;
       const body = raw ? text : deliveryText(group, from, text, targets, titleOf, target, brief, sectionReady);
-      const result2 = await deps.deliver(target, body).catch((error62) => ({
+      const result2 = await deps.deliver(target, body, images).catch((error62) => ({
         ok: false,
         message: String(error62?.message ?? error62)
       }));
@@ -39361,7 +39393,17 @@ function createGroups(deps) {
       if (kind === "agent" && from === owner && targets.length > 0) cancelDispatch(group.id);
       if (isDispatch) armDispatch(group, asked, text);
       if (targets.length === 0) return { ok: true, entry };
-      const results = await deliverEach(group, kind === "user" ? "user" : from, body, targets, isDispatch || input2.raw === true);
+      const saved = saveImages(group.id, input2.images);
+      if (saved.ok !== true) return { ok: false, message: saved.message };
+      const bodyWithFiles = saved.paths.length === 0 ? body : body + "\n\n\u9644\u4EF6\uFF08\u5DF2\u843D\u76D8\uFF0C\u53EF\u76F4\u63A5\u8BFB\uFF09:\n" + saved.paths.map((one) => "\xB7 " + one).join("\n");
+      const results = await deliverEach(
+        group,
+        kind === "user" ? "user" : from,
+        bodyWithFiles,
+        targets,
+        isDispatch || input2.raw === true,
+        saved.images
+      );
       const failed = results.filter((row) => !row.ok);
       deps.log("\u7FA4\u6295\u9012", { id: group.id, targets: targets.length, failed: failed.length });
       const gated = results.filter((row) => row.skipped === ECHO_GATE);
@@ -39925,7 +39967,9 @@ function groupsHandlers(deps) {
           from: "user",
           kind: "user",
           text: String(body.text ?? ""),
-          targets: Array.isArray(body.targets) ? body.targets.map((id) => String(id)) : []
+          targets: Array.isArray(body.targets) ? body.targets.map((id) => String(id)) : [],
+          // 图（2026-11-25 需求⑥）：data URL 数组，服务端负责落盘 + 附加 attachment
+          ...Array.isArray(body.images) ? { images: body.images.map((one) => String(one)) } : {}
         })
       )
     },
@@ -47455,7 +47499,7 @@ function applyInner(ctx, injected, clock) {
        * 入群通知就一直躺着——表现是"agent 不知道自己进群了，得用户喊一声"。
        * 与转生/收件箱同一套：正在跑 → agent.inject 排队；空闲/冷 → sendPrompt 等于替用户按下发送。
        */
-      deliver: async (sessionId, text) => {
+      deliver: async (sessionId, text, images) => {
         const ensure = kernel?.ensureRunnable;
         if (ensure) {
           try {
@@ -47475,7 +47519,8 @@ function applyInner(ctx, injected, clock) {
         const agent = (Array.isArray(list) ? list : []).find(
           (row) => !!row && typeof row.id === "string" && row.id === sessionId
         );
-        if (agent && typeof agent.inject === "function" && agent.status === "running") {
+        const hasImages = Array.isArray(images) && images.length > 0;
+        if (!hasImages && agent && typeof agent.inject === "function" && agent.status === "running") {
           try {
             agent.inject({
               id: globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
@@ -47492,7 +47537,7 @@ function applyInner(ctx, injected, clock) {
         const send = port?.sendPrompt;
         if (!port || !send) return { ok: false, message: "\u4E3B\u673A\u8FD9\u4E00\u4EE3\u4E0D\u652F\u6301\u53D1\u6D88\u606F\uFF08\u6CA1\u6709 sendPrompt\uFF09" };
         try {
-          const sent = await send.call(port, sessionId, text);
+          const sent = hasImages ? await send.call(port, sessionId, text, images) : await send.call(port, sessionId, text);
           return sent.ok ? { ok: true } : { ok: false, message: sent.message ?? "\u8FD9\u4E2A\u4F1A\u8BDD\u73B0\u5728\u63A5\u4E0D\u4E86\u6D88\u606F" };
         } catch (error62) {
           return { ok: false, message: String(error62?.message ?? error62).slice(0, 160) };
