@@ -845,7 +845,11 @@ test('群交接：分身 → 预告写清职责、改名「本体名分身1」�
     assert.ok(announce, '没发分身预告：群友只会看到突然多出一个会话')
     assert.match(String(announce.text), /分身预告/)
     assert.ok(String(announce.text).includes(duty), '预告里必须写清这条分身负责什么')
-    assert.ok(!/转生/.test(String(announce.text)), '分身不许说成转生')
+    // 2026-11-26：只读声明里必然出现「不需要转生 / 分身」，所以这里禁的是**说成转生**（写成转生预告），
+    // 而不是出现「转生」两个字。
+    assert.ok(!/转生预告/.test(String(announce.text)), '分身不许写成转生预告：群里会以为本体要走了')
+    assert.ok(!/我要转生/.test(String(announce.text)), '分身不许说「我要转生」：本体只是多派一个人手')
+    assert.ok(String(announce.text).includes('不需要转生'), '分身通知也要明说「不需要转生 / 分身」')
 
     writeFileSync(service.status(started.jobId!)!.filePath, BRANCH_DOC, 'utf8')
     await wait(160)

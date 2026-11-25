@@ -24,6 +24,8 @@ import {
 } from './prompt.js'
 import { checkHandoffDoc } from './doc-check.js'
 import { listThreads } from './inbox.js'
+// 群广播的「只读」格式只有一份真源（2026-11-26 用户口径：这类通知必须显式声明不是指令）
+import { peerActivityNotice } from '../groups/service.js'
 
 /**
  * 交接文档结构不合格时，最多"打回补写"几轮（2026-11-17）。
@@ -507,11 +509,17 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
     if (!invitedOk) {
       const childPin = (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）'
       const why = String(notes.find((note) => note.startsWith('拉群')) ?? '原因未知')
-      const text = isBranch
-        ? '【分身没进群 · ' + spot.groupName + '】\n分身已经建好了，但**没能把 TA 拉进群**（' + why +
-          '）。\n我这边照常干活；腾出一个位置后再拉一次：' + childPin + '。'
-        : '【交接未完成 · ' + spot.groupName + '】\n转世已经建好了，但**没能把 TA 拉进群**（' + why +
-          '）。\n我先留在群里继续顶，请腾出一个位置后再拉一次：' + childPin + '。'
+      /*
+       * 这条同样按「只读」发（2026-11-26）：它以前写着「请腾出一个位置」——群友会以为自己得动手。
+       * 位置是**用户**要腾的，通知里只交代现状。
+       */
+      const text = peerActivityNotice([
+        isBranch
+          ? '【分身没进群 · ' + spot.groupName + '】\n分身已经建好了，但**没能把 TA 拉进群**（' + why +
+            '）。\n本体这边照常干活；等群里有空位了会再拉一次：' + childPin + '。'
+          : '【交接未完成 · ' + spot.groupName + '】\n转世已经建好了，但**没能把 TA 拉进群**（' + why +
+            '）。\n前世先留在群里继续顶；等群里有空位了（需要用户腾）会再拉一次：' + childPin + '。',
+      ])
       try {
         await h.post(spot.groupId, job.sessionId, text, spot.recipients)
       } catch {
@@ -526,12 +534,18 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
      */
     const childLabel = (title ?? childId) + '（' + childId.replace(/^session-/, '').slice(0, 8) + '）'
     const selfPin = job.sessionId.replace(/^session-/, '').slice(0, 8)
-    const done = isBranch
-      ? '【迎新 · ' + spot.groupName + '】\n' + childLabel + ' 已进群，负责：' + (duty === '' ? roleFromDuty(plan.note ?? '') + '' : duty) +
-        '。\n它不是来接班的——本体（' + selfPin + '）继续干原来的活，这条分支归它。'
-      : spot.isOwner
-        ? '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手，群主已一并转给他。'
-        : '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手。'
+    /*
+     * 「后续由谁接手」这条就是最容易被误读的那类通知（2026-11-26 用户报）：
+     * 群友看到「已完成转世交接」会以为自己也得跟着转生。所以一律套「群友动态·只读」。
+     */
+    const done = peerActivityNotice([
+      isBranch
+        ? '【迎新 · ' + spot.groupName + '】\n' + childLabel + ' 已进群，负责：' + (duty === '' ? roleFromDuty(plan.note ?? '') + '' : duty) +
+          '。\n它不是来接班的——本体（' + selfPin + '）继续干原来的活，这条分支归它。'
+        : spot.isOwner
+          ? '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手，群主已一并转给他。'
+          : '【交接完成 · ' + spot.groupName + '】\n已完成转世交接 → 后续我的工作由 ' + childLabel + ' 接手。',
+    ])
     try {
       const posted = await h.post(spot.groupId, job.sessionId, done, spot.recipients)
       if (!posted.ok) notes.push('群广播失败：' + String(posted.message ?? '未知原因'))
@@ -760,12 +774,18 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
          * 分身是添人手，本体继续在群里干活；写成转生预告，群友会以为本体要走了。
          */
         const dutyNow = roleFromDuty(trimmedNote)
-        const announce = kind === 'branch'
-          ? '【分身预告 · ' + spot.groupName + '】\n我要派一个分身去做：' + (dutyNow === '' ? '（职责待补）' : dutyNow) +
-            '。\n本体继续干原来的活，分身建好后我把它拉进群。'
-          : spot.isOwner
-            ? '【转生预告 · ' + spot.groupName + '】\n我要转生了（上下文超载）：先写交接文档，转世起来后我会把群主和身份一并交给他。\n交接完成前这条群照常运作，分工照旧由我下。'
-            : '【转生预告 · ' + spot.groupName + '】\n我的上下文已超载 → 将转生交接给下一世 → 稍后将我的转世拉进群。\n交接期间我的群消息可能迟缓，急事请直接 @ 我。'
+        /*
+         * 预告也必须按「群友动态·只读」发（2026-11-26）：真机上群友会把「某某要转生了」
+         * 读成给自己的指令，跟着一起去转生。标记与三句声明由 peerActivityNotice 统一给。
+         */
+        const announce = peerActivityNotice([
+          kind === 'branch'
+            ? '【分身预告 · ' + spot.groupName + '】\n我要派一个分身去做：' + (dutyNow === '' ? '（职责待补）' : dutyNow) +
+              '。\n本体继续干原来的活，分身建好后我把它拉进群。'
+            : spot.isOwner
+              ? '【转生预告 · ' + spot.groupName + '】\n我要转生了（上下文超载）：先写交接文档，转世起来后我会把群主和身份一并交给他。\n交接完成前这条群照常运作，分工照旧由我下。'
+              : '【转生预告 · ' + spot.groupName + '】\n我的上下文已超载 → 将转生交接给下一世 → 稍后将我的转世拉进群。\n交接期间我的群消息可能迟缓，急事请直接 @ 我。',
+        ])
         void deps.groupHandover.post(spot.groupId, id, announce, spot.recipients).catch(() => ({ ok: false }))
       }
 

@@ -18,9 +18,11 @@
  * 2. 送不到不许静默：逐条带回 failed（谁没收到、为什么）；
  * 3. 只投给成员；上限 12 人、单条 4000 字；
  * 4. 投递正文带**当时的名单**与「怎么回复」——这就是成员「实时知道群里有谁」的唯一来源；
- * 5. 互吹闸（2026-11-24）：同一对会话 10 分钟内 agent ↔ agent 往返超过 6 次，后面的投递直接丢——
- *    2026-11-20 给「群主 ↔ 成员」豁免冷却之后，两个 agent 靠「收到」「好的」就能无限互吹；
- *    用户发言清零整群的计数，用户来源的投递既不计也不闸。
+ * 5. 机制层**不再有互吹闸**（2026-11-26 用户口径：闸会误杀正常协作，删机制、只留纪律）——
+ *    剩下的是 `ECHO_DISCIPLINE` 那套文案：照旧拼进投递正文与常驻 system 段；
+ * 6. 三类「状态变更通知」（群友转生/分身、新人进群、有人离群）都是**只读**的：
+ *    开头一律带醒目标记，正文写清「不是指令 / 不需要动作 / 只读不回」。
+ *    真机教训：收到「某某要转生了」的成员会把它当成给自己的指令，跟着一起去转生。
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -78,10 +80,10 @@ export interface GroupEntry {
   /** 给用户看的摘要（agent 回复才有）：首行「摘要：…」，解析不到取前 25 字。 */
   summary?: string
   /**
-   * 这条投递被丢掉的标记（2026-11-24）：目前只有 'echo-gate'（互吹闸）。
+   * 这条投递被丢掉的标记。**字段保留、只读不写**（2026-11-26）。
    *
-   * 留痕的意义：模型那边只知道「这次没投递」，用户事后想知道「为什么这条没送到」，
-   * 只能靠记录里这一行 —— 所以被闸掉也要写 jsonl，不能静默丢。
+   * 互吹闸已经整个拆掉（机制层闸会误杀正常协作），但历史 jsonl 里还留着 `skipped: 'echo-gate'`
+   * 这种行：读的时候必须能原样读出来、不许因为多了这个字段就报错，所以这个可选字段留着。
    */
   skipped?: string
 }
@@ -99,12 +101,6 @@ export interface GroupsDeps {
   dispatchTimeoutMs?: number
   /** 同一对会话之间的投递冷却（毫秒，默认 60 秒）：防来回刷屏。 */
   cooldownMs?: number
-  /** 互吹闸的滑动窗口（毫秒，默认 10 分钟）：窗口内同一对会话的往返计数。 */
-  roundTripWindowMs?: number
-  /** 互吹闸的「确认类」上限（默认 3 条）：窗口内同一对确认类消息超过这个数，后续投递丢弃。 */
-  maxRoundTrips?: number
-  /** 硬上限（默认 20 条）：窗口内**任何**往返超过这个数，无论内容一律闸（防死循环）。 */
-  hardMaxTrips?: number
   /** 把一段文本送进某个会话（插件层 sendPrompt）。 */
   /**
    * 把一段文本（可带图）送进某个会话。
@@ -127,7 +123,10 @@ export interface DeliveryResult {
   sessionId: string
   ok: boolean
   message?: string
-  /** 这次投递没真送出去的原因（目前只有 'echo-gate'）；ok 仍是 true——没送到不代表出错。 */
+  /**
+   * 这次投递没真送出去的原因（历史遗留：旧版本的互吹闸写 'echo-gate'）。
+   * 机制层现在不再闸任何投递，这个字段只为兼容旧记录保留。
+   */
   skipped?: string
 }
 
@@ -135,20 +134,43 @@ export const MAX_MEMBERS = 12
 export const MAX_MESSAGE_CHARS = 4_000
 /** 群主一轮最多派几个活（防它一次把整群人点一遍）。 */
 export const MAX_DISPATCH_TARGETS = 5
-/** 互吹闸：被闸掉的投递在 jsonl 里的标记（事后查「为什么这条没送到」靠它）。 */
-export const ECHO_GATE = 'echo-gate'
-/** 互吹闸的默认窗口：15 分钟。 */
-export const DEFAULT_ROUND_TRIP_WINDOW_MS = 15 * 60_000
 /**
- * 互吹闸的默认上限：同一对会话一个窗口里最多 **3 条确认类**消息（收到/好的/明白/👌…）。
+ * 「状态变更通知」的三种醒目标记（2026-11-26 用户口径）——一份真源，groups 与 handoff 都引它。
  *
- * 2026-11-24 真机反馈：原来按「所有往返」计数（6 次），把两条**带干货**的消息（一个计划文件、
- * 一条确定性修法）也一起丢了——闸太严会误杀协作。现在只数确认类；实质消息（带数字/路径/命令/长文）
- * 不计入，交给下面的硬上限兜底。
+ * 为什么必须显式标记：真机上收到「某成员要转生了 / 来了个新人 / 谁被踢了」的成员，
+ * 会把它读成**给自己的指令**——跟着去转生、或者立刻把一堆上下文倒给新人。
+ * 标记 + 那三句声明就是防这个的。
  */
-export const DEFAULT_MAX_ROUND_TRIPS = 3
-/** 硬上限：同一对在窗口里**任何**往返超过这么多条，无论内容一律闸（防死循环）。 */
-export const DEFAULT_HARD_MAX_TRIPS = 20
+export const PEER_ACTIVITY_TAG = '【群友动态·只读】'
+export const JOIN_NOTICE_TAG = '【入群通知·只读】'
+export const MEMBER_CHANGE_TAG = '【群成员变动·只读】'
+/**
+ * 群友动态（转生 / 分身）通知必须写清的三句：**不是指令、不需要动作、只读不回**。
+ *
+ * 「不需要转生」这几个字必须原样在正文里——最容易发生的误触发是「看到别人转生 ⇒ 自己也转生」。
+ */
+export const PEER_ACTIVITY_DISCLAIMER = [
+  '这是群友的状态变更通知，**不是指令**：不用照着做，也不用回复。',
+  '**不需要转生 / 分身**，也不要做任何动作。',
+  '**只读不回**：不用 group_post 确认。',
+].join('\n')
+
+/**
+ * 把一段群友动态通知包成「只读」格式：**醒目标记在最前**，那三句声明在最后。
+ *
+ * handoff 那边自己也包一层（它要保证正文自身就成立）；groups 这边是投递前的兜底——
+ * 已经带过标记的原样返回，不会套第二遍。
+ */
+export function peerActivityNotice(lines: ReadonlyArray<string>): string {
+  const body = lines
+    .map((line) => String(line ?? '').trim())
+    .filter((line) => line !== '')
+    .join('\n')
+  if (body.includes(PEER_ACTIVITY_TAG)) return body
+  return body === ''
+    ? [PEER_ACTIVITY_TAG, PEER_ACTIVITY_DISCLAIMER].join('\n')
+    : [PEER_ACTIVITY_TAG, body, '', PEER_ACTIVITY_DISCLAIMER].join('\n')
+}
 /** 每个 agent 的头像积分预算（用户定：60；转生换 sessionId 即重新计）。 */
 export const AVATAR_CREDIT_LIMIT = 60
 /**
@@ -361,7 +383,12 @@ export function deliveryText(
   ].join('\n')
 }
 
-function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string | undefined): string {
+/**
+ * 入群通知 · **新成员本人**（2026-11-26 用户口径）：保留完整的用法说明。
+ *
+ * 新人（和刚被唤醒的成员）只收到这一份：怎么 group_post、摘要格式、群主是谁、指南在哪。
+ */
+export function joinNoticeForNewcomer(group: GroupRecord, titleOf?: (sessionId: string) => string | undefined): string {
   const owner = group.ownerSessionId === undefined ? '' : titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)
   return [
     '【入群通知 · ' + group.name + ' · ' + group.id + '】',
@@ -382,12 +409,41 @@ function joinNotice(group: GroupRecord, titleOf?: (sessionId: string) => string 
   ].join('\n')
 }
 
-/** 成员变动通知（发给**全体**）：谁进来了 / 谁走了。 */
-export function memberNotice(group: GroupRecord, subject: string, action: '加入' | '离开', titleOf?: (sessionId: string) => string | undefined): string {
+/**
+ * 入群通知 · **老成员**（2026-11-26 用户口径）：标题带「·只读」，正文一句话。
+ *
+ * 真机现象：老人一收到「新人进群」就主动开交接，倒一堆上下文过去，新人反而被淹没。
+ * 所以这份通知**不带用法、不带分工请求**——等新人自己判断缺什么来问，再来答。
+ */
+export function joinNoticeForVeteran(
+  group: GroupRecord,
+  subject: string,
+  titleOf?: (sessionId: string) => string | undefined,
+): string {
   const who = titleOf?.(subject)?.trim() || shortId(subject)
   return [
+    JOIN_NOTICE_TAG,
     '【群 ' + group.name + ' · ' + group.id + '】',
-    who + action + '了本群。',
+    '新成员 ' + who + ' 已入群。**你不需要主动交接**；等新人自己判断缺什么来问你，再来答。',
+    '只读不回：不用回复、也不用确认。',
+  ].join('\n')
+}
+
+/**
+ * 成员变动通知（发给**留下的人**）：谁进来了 / 谁走了（2026-11-26 改「只读」口径）。
+ *
+ * · 「加入」= 老成员那份只读入群通知；
+ * · 「离开」= 标题【群成员变动·只读】，并写明「这是他/她的状态变更，只读不回，不用确认、不用补位」——
+ *   否则群里会刷一片「收到」。
+ */
+export function memberNotice(group: GroupRecord, subject: string, action: '加入' | '离开', titleOf?: (sessionId: string) => string | undefined): string {
+  const who = titleOf?.(subject)?.trim() || shortId(subject)
+  if (action === '加入') return joinNoticeForVeteran(group, subject, titleOf)
+  return [
+    MEMBER_CHANGE_TAG,
+    '【群 ' + group.name + ' · ' + group.id + '】',
+    who + ' 离开了本群（被移出，或自己退群）。',
+    '这是他/她的状态变更，**只读不回**：不用确认、不用补位。',
     '现在的成员：' + rosterLine(group, titleOf),
   ].join('\n')
 }
@@ -462,62 +518,11 @@ export function createGroups(deps: GroupsDeps) {
   }
 
   /*
-   * 互吹闸（2026-11-24）：同一对会话（A→B 与 B→A 算同一对）在一个窗口里的往返计数。
-   *
-   * 为什么需要它：2026-11-20 为了「群主刚派完活回一句被吞」，把群主 ↔ 成员从冷却里豁免了；
-   * 于是两个 agent 用「收到」「好的」「明白」就能互相刷一下午，两边的上下文一起烧光。
-   * 冷却治不了它——每个方向都没超过 60 秒一次，按「这一对在窗口里一共往返了几次」才判得出来。
-   *
-   * 计数口径：
-   * - 只数 agent → agent；用户来源（from === 'user'）的投递既不计也不闸；
-   * - 成品通告（raw：转生预告 / 交接完成）也不计不闸——那是真要送到的一次性交代，闸掉就丢事；
-   * - 用户往群里发一条 ⇒ 该群**所有对**的计数清零（用户重新开了一轮话题）；
-   * - 滑动窗口：早于 windowMs 的时刻自然滚出去，不用额外的定时器。
+   * 互吹闸（机制层）已于 2026-11-26 整个拆掉（用户口径：它把正常协作也误杀了）。
+   * 现在只剩两样：上面的投递冷却，以及 ECHO_DISCIPLINE 那套**纪律文案**
+   * （照旧拼进投递正文与常驻 system 段；纪律管「别产生那些消息」，机制不再丢投递）。
+   * GroupEntry.skipped / DeliveryResult.skipped 字段保留，只为读得懂历史 jsonl。
    */
-  const roundTripWindowMs = deps.roundTripWindowMs ?? DEFAULT_ROUND_TRIP_WINDOW_MS
-  const maxRoundTrips = deps.maxRoundTrips ?? DEFAULT_MAX_ROUND_TRIPS
-  /** 确认类消息的时刻表（只用来判「确认类超预算」）。 */
-  const roundTrips = new Map<string, number[]>()
-  /** 全部往返的时刻表（只用来判硬上限，防死循环）。 */
-  const tripsAll = new Map<string, number[]>()
-  const hardMaxTrips = deps.hardMaxTrips ?? DEFAULT_HARD_MAX_TRIPS
-  /**
-   * 这条是不是「确认类」：短（≤24 字）且命中确认词表。
-   *
-   * 只有确认类才占「互吹预算」——实质消息（计划文件、修法、判据数字）不该被闸误杀
-   * （2026-11-24 真机：有两条带干货的消息被 6 次上限吞了）。
-   */
-  const isAckLike = (text: string): boolean => {
-    const flat = String(text ?? '').replace(/\s+/g, '').trim()
-    if (flat === '') return true
-    if (flat.length > 24) return false
-    return /^(收到|好的|好|明白|了解|知道了|谢谢|感谢|多谢|同意|可以|行|嗯|对|对的|是的|没问题|ok|okay|👍|👌|✅)/i.test(flat)
-  }
-  const windowLabel =
-    roundTripWindowMs % 60_000 === 0
-      ? roundTripWindowMs / 60_000 + ' 分钟'
-      : Math.round(roundTripWindowMs / 1000) + ' 秒'
-  /** 归一化的对：A|B 与 B|A 必须落到同一个 key 上。 */
-  const pairKey = (groupId: string, a: string, b: string): string =>
-    groupId + '|' + (a <= b ? a + '|' + b : b + '|' + a)
-  const echoGateMessage = (): string =>
-    '互吹闸：这一对会话 ' + windowLabel + '内已往返 ' + maxRoundTrips + ' 次，本次不投递'
-  /** 把窗口外的旧时刻滚掉，返回窗口内还留着的时刻表。 */
-  const pruneTrips = (map: Map<string, number[]>, key: string, at: number): number[] => {
-    const kept = (map.get(key) ?? []).filter((stamp) => at - stamp < roundTripWindowMs)
-    if (kept.length === 0) map.delete(key)
-    else map.set(key, kept)
-    return kept
-  }
-  /** 用户发言：这个群所有对的计数清零。 */
-  const resetRoundTrips = (groupId: string): void => {
-    const prefix = groupId + '|'
-    for (const map of [roundTrips, tripsAll]) {
-      for (const key of [...map.keys()]) {
-        if (key.startsWith(prefix)) map.delete(key)
-      }
-    }
-  }
 
   const deliverEach = async (
     group: GroupRecord,
@@ -536,48 +541,7 @@ export function createGroups(deps: GroupsDeps) {
       if (target === from) continue
       if (!group.members.some((member) => member.sessionId === target)) continue
       /*
-       * ① 互吹闸（2026-11-24）：这一对在窗口里已经往返够了，就**不投递**。
-       *
-       * 冷却对群主 ↔ 成员是豁免的（见下面那条注释），所以群主和成员之间的「收到 ↔ 好的」
-       * 只能靠这里拦。丢弃不等于出错：ok 仍是 true，记录照写（带 skipped='echo-gate'），
-       * 并把「为什么这条没送到」原样带回给调用方。
-       */
-      const pair = from === 'user' || raw ? undefined : pairKey(group.id, from, target)
-      if (pair !== undefined) {
-        const ack = isAckLike(text)
-        const ackCount = pruneTrips(roundTrips, pair, now()).length
-        const allCount = pruneTrips(tripsAll, pair, now()).length
-        // 确认类才占「互吹预算」；实质消息只受硬上限约束（2026-11-24：6 次一刀切会误杀干货）
-        const overAck = ack && ackCount >= maxRoundTrips
-        const overHard = allCount >= hardMaxTrips
-        if (overAck || overHard) {
-          const message = overHard
-            ? '互吹闸：这一对会话 ' + windowLabel + '内总往返 ' + allCount + ' 次（硬上限 ' + hardMaxTrips + '），本次不投递'
-            : echoGateMessage()
-          deps.log(message, { id: group.id, from, to: target, ackCount, allCount, overHard })
-          append(group.id, {
-            at: now(),
-            kind: 'system',
-            from: 'system',
-            targets: [target],
-            text:
-              '互吹闸：' +
-              shortId(from) +
-              ' → ' +
-              shortId(target) +
-              ' 的投递被丢弃（' +
-              (overHard
-                ? windowLabel + '内总往返 ' + allCount + ' 次，硬上限 ' + hardMaxTrips
-                : windowLabel + '内确认类 ' + ackCount + ' 条，上限 ' + maxRoundTrips) +
-              '；正文已存进记录，可用 group_read 查看）',
-            skipped: ECHO_GATE,
-          })
-          out.push({ sessionId: target, ok: true, message, skipped: ECHO_GATE })
-          continue
-        }
-      }
-      /*
-       * ② 冷却：只防「成员 ↔ 成员」来回刷屏（2026-11-20 真机：群主刚派完活回一句，被 60 秒冷却吞了）。
+       * ① 冷却：只防「成员 ↔ 成员」来回刷屏（2026-11-20 真机：群主刚派完活回一句，被 60 秒冷却吞了）。
        *
        * 群主是调度通道——它和成员之间的往返是主链路，不能被节流；
        * 真正有死循环风险的是「A ↔ B 互回」，那里留着冷却。
@@ -591,12 +555,6 @@ export function createGroups(deps: GroupsDeps) {
         continue
       }
       lastDeliveryAt.set(key, now())
-      // ③ 放行：这一对记一笔往返（冷却跳过的不记——那条没真送到，不该占互吹闸的额度）。
-      if (pair !== undefined) {
-        const at = now()
-        tripsAll.set(pair, [...pruneTrips(tripsAll, pair, at), at])
-        if (isAckLike(text)) roundTrips.set(pair, [...pruneTrips(roundTrips, pair, at), at])
-      }
       // 每个收件人一份正文：协作对象里不能出现他自己；第二次起只带极短头部。
       const brief = group.briefed?.[target] !== undefined
       const body = raw
@@ -759,8 +717,9 @@ export function createGroups(deps: GroupsDeps) {
       if (added.length === 0) return { ok: true, group, added }
       const notified: DeliveryResult[] = []
       for (const id of added) {
-        // 新成员收到入群须知（名单 + 用法）；**其余全体**收到一条「XX 加入了本群」。
-        const joined = await deps.deliver(id, joinNotice(group, titleOf)).catch((error: unknown) => ({
+        // 新成员收到入群须知（名单 + 用法）；**其余全体**收到一份「入群通知·只读」
+        // （原来这里是「XX 加入了本群」的一句话，老成员一看就去交接，2026-11-26 改掉）。
+        const joined = await deps.deliver(id, joinNoticeForNewcomer(group, titleOf)).catch((error: unknown) => ({
           ok: false,
           message: String((error as Error)?.message ?? error),
         }))
@@ -804,7 +763,7 @@ export function createGroups(deps: GroupsDeps) {
       const notified: DeliveryResult[] = []
       for (const member of group.members) {
         if (member.sessionId === input.except) continue
-        const result = await deps.deliver(member.sessionId, joinNotice(group, titleOf)).catch((error: unknown) => ({
+        const result = await deps.deliver(member.sessionId, joinNoticeForNewcomer(group, titleOf)).catch((error: unknown) => ({
           ok: false,
           message: String((error as Error)?.message ?? error),
         }))
@@ -1096,9 +1055,6 @@ export function createGroups(deps: GroupsDeps) {
         return { ok: false, message: '群主一次最多派 ' + MAX_DISPATCH_TARGETS + ' 个活：拆成几轮。' }
       }
 
-      // 用户往群里发一条 ⇒ 这个群所有对的往返计数清零（用户重新开了一轮话题，闸不该记旧账）
-      if (kind === 'user') resetRoundTrips(group.id)
-
       const entry: GroupEntry = {
         at: now(),
         kind,
@@ -1125,34 +1081,23 @@ export function createGroups(deps: GroupsDeps) {
         saved.paths.length === 0
           ? body
           : body + '\n\n附件（已落盘，可直接读）:\n' + saved.paths.map((one) => '· ' + one).join('\n')
+      /*
+       * 成品通告（raw：转生/分身广播、交接完成）一律按「群友动态·只读」发（2026-11-26 用户口径）。
+       *
+       * 收件人最容易犯的错是把这类通知读成**给自己的指令**（看到别人转生，自己跟着也转）。
+       * handoff 那边自己也包了一层；这里是投递前的最后一道兜底——已带标记就不再套第二遍。
+       * 分工请求（isDispatch）是**真指令**，不能套这个头。
+       */
+      const outgoing = input.raw === true && !isDispatch ? peerActivityNotice([bodyWithFiles]) : bodyWithFiles
       const results = await deliverEach(
         group,
         kind === 'user' ? 'user' : from,
-        bodyWithFiles,
+        outgoing,
         targets,
         isDispatch || input.raw === true,
         saved.images,)
       const failed = results.filter((row) => !row.ok)
       deps.log('群投递', { id: group.id, targets: targets.length, failed: failed.length })
-      /*
-       * 有投递被互吹闸丢掉（2026-11-24）：ok 保持 true（这不是错误，是被纪律拦下的），
-       * message 直接说清「哪一对、多少分钟内、往返了几次」——模型读到它才知道该闭嘴，
-       * 而不是当成一次随机失败重发一遍。
-       */
-      const gated = results.filter((row) => row.skipped === ECHO_GATE)
-      if (gated.length > 0) {
-        const message = gated[0]!.message ?? echoGateMessage()
-        return {
-          ok: true,
-          entry,
-          delivered: results.filter((row) => row.ok && row.skipped === undefined),
-          failed,
-          message:
-            gated.length === results.length
-              ? message
-              : message + '（另有 ' + (results.length - gated.length) + ' 个收件人照常投递）',
-        }
-      }
       return {
         ok: failed.length === 0,
         entry,
