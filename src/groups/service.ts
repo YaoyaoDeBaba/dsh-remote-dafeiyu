@@ -1052,7 +1052,10 @@ export function createGroups(deps: GroupsDeps) {
       const alive = live(input.id)
       if (alive.group === undefined) return { ok: false, message: alive.message ?? '没有这个群（先 group_create）。' }
       const group = alive.group
-      const text = String(input.text ?? '').trim()
+      const rawText = String(input.text ?? '').trim()
+      const hasImages = Array.isArray(input.images) && input.images.length > 0
+      // 只发图（2026-11-25）：正文可以空，给个占位，别把带图消息判成空消息
+      const text = rawText === '' && hasImages ? '（图片）' : rawText
       if (text === '') return { ok: false, message: '消息不能是空的。' }
       if (text.length > MAX_MESSAGE_CHARS) return { ok: false, message: '单条最多 ' + MAX_MESSAGE_CHARS + ' 字，拆开发。' }
       const kind: EntryKind = input.kind === 'user' ? 'user' : input.kind === 'system' ? 'system' : 'agent'

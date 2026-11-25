@@ -751,7 +751,8 @@ midHead.append(midName, renameBtn, midMeta)
   sendBtn.addEventListener('click', () => {
     const group = current()
     const text = input.value.trim()
-    if (group === undefined || text === '') return
+    // 2026-11-25：只发图（不写文字）也要能发——以前 text 为空直接 return，表现就是「点发送没反应」
+    if (group === undefined || (text === '' && pendingImages.length === 0)) return
     sendBtn.disabled = true
     void (async () => {
       const images = [...pendingImages]

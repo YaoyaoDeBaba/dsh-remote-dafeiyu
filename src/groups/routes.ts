@@ -55,13 +55,22 @@ function rejected(request: IncomingMessage): string | undefined {
   return undefined
 }
 
+/**
+ * 请求体上限（2026-11-25 修「发图没反应」）：
+ *
+ * 原来是 64KB —— 只够文本。带图时 data URL 动辄几百 KB 到几 MB（3 张 ×5MB 上限，base64 约 20MB），
+ * 一超就 `请求体太大` 并 `request.destroy()`，浏览器侧表现就是「点了发送没反应」。
+ * 现在放到 32MB：**仍然只有回环 + x-drc-pair 守卫的路由才走这里**，不是对外开口子。
+ */
+const MAX_BODY_BYTES = 32 * 1024 * 1024
+
 function readBody(request: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
     let size = 0
     request.on('data', (chunk: Buffer) => {
       size += chunk.byteLength
-      if (size > 64 * 1024) {
+      if (size > MAX_BODY_BYTES) {
         reject(new Error('请求体太大'))
         request.destroy()
         return
