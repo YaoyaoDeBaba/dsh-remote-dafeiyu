@@ -84,8 +84,31 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   /* ── 外壳 ─────────────────────────────────────────────── */
   const panel = doc.createElement('div')
   panel.id = 'dafeiyu-groups-panel'
+  /*
+   * 尺寸（2026-11-25 用户：对标 QQ，窗口更大、可拖边界缩放）：
+   * - 默认放大到 980×700（视口小的时候按 96vw/84vh 收）；
+   * - `resize:both` 让浏览器自己给出右下角缩放手柄（比手搓拖拽稳，也不和 makeDraggable 抢事件）；
+   * - 尺寸持久化在 localStorage，下次打开还是上次的大小。
+   */
+  const SIZE_KEY = 'dafeiyu.groups.panelSize'
+  const readSize = (): { w?: number; h?: number } => {
+    try {
+      const raw = (globalThis as { localStorage?: Storage }).localStorage?.getItem(SIZE_KEY)
+      if (raw === null || raw === undefined) return {}
+      const parsed = JSON.parse(raw) as { w?: unknown; h?: unknown }
+      const w = typeof parsed.w === 'number' && parsed.w >= 520 ? Math.round(parsed.w) : undefined
+      const h = typeof parsed.h === 'number' && parsed.h >= 360 ? Math.round(parsed.h) : undefined
+      return { ...(w === undefined ? {} : { w }), ...(h === undefined ? {} : { h }) }
+    } catch {
+      return {}
+    }
+  }
+  const saved = readSize()
   panel.style.cssText =
-    'position:fixed;right:24px;bottom:80px;width:min(780px,95vw);height:min(560px,76vh);display:none;' +
+    'position:fixed;right:24px;bottom:80px;' +
+    'width:' + (saved.w === undefined ? 'min(980px,96vw)' : saved.w + 'px') + ';' +
+    'height:' + (saved.h === undefined ? 'min(700px,84vh)' : saved.h + 'px') + ';' +
+    'min-width:520px;min-height:360px;resize:both;display:none;' +
     'flex-direction:column;background:#fff;color:#1d3f8f;border:1px solid #c7d9f7;border-radius:14px;' +
     'box-shadow:0 18px 50px rgba(20,50,120,.24);z-index:2147483003;font-size:13px;overflow:hidden;box-sizing:border-box;'
 
@@ -139,14 +162,21 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   composer.style.cssText = 'position:relative;border-top:1px solid #dbe6fb;padding:8px 12px;background:#fff;flex:0 0 auto;'
   const chips = doc.createElement('div')
   chips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;'
+  /*
+   * ③ 输入区（2026-11-25 对标 QQ）：输入框加大、发送按钮**内嵌**在输入框右下角。
+   * 内嵌做法：外面套一个相对定位的壳，按钮绝对定位到右下，textarea 右侧留出按钮宽度
+   * —— 不做成 flex 行，是因为 QQ 那种“按钮压在输入区里、随输入区一起长高”的观感只有绝对定位能保持。
+   */
+  const inputWrap = doc.createElement('div')
+  inputWrap.style.cssText = 'position:relative;'
   const input = doc.createElement('textarea')
   input.placeholder = '说点什么：输入 @ 选择要通知的会话（多选即分工）'
   input.style.cssText =
-    'width:100%;box-sizing:border-box;min-height:56px;max-height:110px;resize:vertical;padding:8px 10px;' +
-    'border:1px solid #c7d9f7;border-radius:9px;font:inherit;color:#1d3f8f;'
+    'width:100%;box-sizing:border-box;min-height:96px;max-height:240px;resize:none;padding:10px 84px 10px 10px;' +
+    'border:1px solid #c7d9f7;border-radius:10px;font:inherit;color:#1d3f8f;line-height:1.5;'
   const atMenu = doc.createElement('div')
   atMenu.style.cssText =
-    'position:absolute;left:12px;bottom:112px;width:240px;max-height:190px;overflow:auto;background:#fff;' +
+    'position:absolute;left:0;bottom:100%;margin-bottom:6px;width:240px;max-height:220px;overflow:auto;background:#fff;' +
     'border:1px solid #c7d9f7;border-radius:9px;box-shadow:0 10px 24px rgba(20,50,120,.2);display:none;z-index:6;'
   const sendRow = doc.createElement('div')
   sendRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:6px;'
@@ -156,9 +186,12 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   hint.textContent = HINT
   const sendBtn = doc.createElement('button')
   sendBtn.textContent = '发送'
-  sendBtn.style.cssText = 'border:0;border-radius:9px;background:#1d4ed8;color:#fff;padding:6px 16px;cursor:pointer;'
-  sendRow.append(hint, sendBtn)
-  composer.append(chips, input, atMenu, sendRow)
+  sendBtn.style.cssText =
+    'position:absolute;right:8px;bottom:8px;border:0;border-radius:8px;background:#1d4ed8;color:#fff;' +
+    'padding:6px 16px;cursor:pointer;box-shadow:0 2px 6px rgba(29,78,216,.25);'
+  inputWrap.append(input, sendBtn, atMenu)
+  sendRow.append(hint)
+  composer.append(chips, inputWrap, sendRow)
   mid.append(midHead, msgs, composer)
 
   /* 右栏 */
@@ -282,6 +315,24 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   let strays: ReturnType<typeof setInterval> | undefined
   try {
     makeDraggable(panel, bar, 'groups')
+  /* 缩放后记住尺寸：浏览器原生 resize 不会给回调，靠 mouseup/尺寸变化兜住即可。 */
+  const saveSize = (): void => {
+    try {
+      const rect = panel.getBoundingClientRect()
+      if (rect.width < 400 || rect.height < 300) return
+      ;(globalThis as { localStorage?: Storage }).localStorage?.setItem(
+        SIZE_KEY,
+        JSON.stringify({ w: Math.round(rect.width), h: Math.round(rect.height) }),
+      )
+    } catch {
+      /* 存不进去就算了，下次用默认尺寸 */
+    }
+  }
+  try {
+    doc.addEventListener('mouseup', saveSize)
+  } catch {
+    /* 假 DOM（判据）没有 addEventListener：跳过持久化，不影响功能 */
+  }
   } catch {
     /* 拖动是增强项 */
   }
@@ -552,7 +603,20 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
       item.addEventListener('mousedown', (event) => {
         event.preventDefault()
         for (const id of row.ids) targets.add(id)
-        input.value = input.value.replace(/@[^@]*$/, '')
+        /*
+         * ② 只删掉光标前那段「@query」，**光标后面的内容原样保留**（2026-11-25 用户报：选人会把已打的字吃掉）。
+         * 以前是 `value.replace(/@[^@]*$/, '')`：正则锚在字符串末尾，等于把 @ 之后的整句都删了。
+         */
+        const caret = input.selectionStart ?? input.value.length
+        const before = input.value.slice(0, caret)
+        const after = input.value.slice(caret)
+        const cleaned = before.replace(/@[^@]*$/, '')
+        input.value = cleaned + after
+        try {
+          input.setSelectionRange(cleaned.length, cleaned.length)
+        } catch {
+          /* 假 DOM 没有 setSelectionRange 就算了 */
+        }
         renderChips()
         hideAt()
         input.focus()
