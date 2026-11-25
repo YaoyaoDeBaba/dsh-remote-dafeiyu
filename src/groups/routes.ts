@@ -182,6 +182,8 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
             members: group.members.map((member) => ({
               sessionId: member.sessionId,
               role: member.role,
+              // 头像（2026-11-25 需求④ 补漏）：列表投影里漏了 avatar，面板只能退回"远"字首字母
+              ...(typeof member.avatar === 'string' && member.avatar !== '' ? { avatar: member.avatar } : {}),
               // 名字优先级：成员自带的 label → 会话标题 → 短号（对用户显示的是名字，不是 id）
               name: member.label?.trim() || titles.get(member.sessionId)?.trim() || short(member.sessionId),
             })),
