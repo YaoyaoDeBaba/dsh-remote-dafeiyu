@@ -183,6 +183,59 @@ export function buildGroupTools(deps: {
       },
     },
     {
+      name: 'group_rename',
+      description:
+        '改群名（1~40 字）。只应由**群主**调用：群名会出现在每个成员下一次收到的消息头里。\n' +
+        '改完写一条 system 记录（群里能看到旧名→新名），不影响历史记录。',
+      parameters: {
+        type: 'object',
+        properties: {
+          groupId: { type: 'string', description: '群 id。' },
+          name: { type: 'string', description: '新群名，1~40 字。' },
+        },
+        required: ['groupId', 'name'],
+      },
+      output: OUT,
+      timeoutMs: 15_000,
+      async execute(args: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown; name?: unknown }
+        const groupId = asString(input.groupId)
+        const group = deps.groups.get(groupId)
+        if (group === undefined) return JSON.stringify({ ok: false, message: '没有这个群。' })
+        return JSON.stringify(deps.groups.renameGroup({ id: groupId, name: asString(input.name) }))
+      },
+    },
+    {
+      name: 'group_set_role',
+      description:
+        '给群成员写/改「身份备注」（≤20 字，例如「前端主程」「只读调试口」）。只应由**群主**调用。\n' +
+        '传空字符串 = 清空备注。备注只影响显示与消息头上的身份标注，不改任何权限。',
+      parameters: {
+        type: 'object',
+        properties: {
+          groupId: { type: 'string', description: '群 id。' },
+          sessionId: { type: 'string', description: '成员的会话 id 或短号。' },
+          role: { type: 'string', description: '新身份备注，≤20 字；空字符串 = 清空。' },
+        },
+        required: ['groupId', 'sessionId'],
+      },
+      output: OUT,
+      timeoutMs: 15_000,
+      async execute(args: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown; sessionId?: unknown; role?: unknown }
+        const groupId = asString(input.groupId)
+        const group = deps.groups.get(groupId)
+        let target = asString(input.sessionId)
+        if (group !== undefined && !group.members.some((member) => member.sessionId === target)) {
+          const hit = group.members.find((member) => shortId(member.sessionId) === target)
+          if (hit !== undefined) target = hit.sessionId
+        }
+        return JSON.stringify(
+          deps.groups.setMemberRole({ id: groupId, sessionId: target, role: asString(input.role) }),
+        )
+      },
+    },
+    {
       name: 'group_remove',
       description: '把某个成员移出群：他本人会收到「本群对你不再可用」，其余成员收到「XX 离开了本群」。',
       parameters: {

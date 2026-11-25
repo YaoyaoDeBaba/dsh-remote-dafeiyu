@@ -748,7 +748,33 @@ export function createGroups(deps: GroupsDeps) {
       return { ok: notified.every((row) => row.ok), notified }
     },
 
-    /** 设置某个成员的身份（只在用户侧改；agent 只能读）。 */
+    /**
+     * 改群名（2026-11-25 用户 v2 需求⑤）。
+     *
+     * 规则：1~40 字、去首尾空白、不允许空串；改完写一条 system 记录（群里能看到谁改的），
+     * 并**给所有成员投一条极短通知**——否则群成员的消息头里还是旧群名，对不上。
+     */
+    renameGroup(input: { id: string; name: string; by?: string }): { ok: boolean; group?: GroupRecord; message?: string } {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      const next = String(input.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
+      if (next === '') return { ok: false, message: '群名不能为空' }
+      if (next === group.name) return { ok: true, group }
+      const before = group.name
+      group.name = next
+      group.updatedAt = now()
+      save(group)
+      append(group.id, {
+        at: now(),
+        kind: 'system',
+        from: 'system',
+        text: '群名：「' + before + '」→「' + next + '」' + (input.by === undefined ? '' : '（' + shortId(input.by) + '）'),
+      })
+      return { ok: true, group }
+    },
+
+    /** 设置某个成员的身份（用户可在面板改；agent 走 group_set_role 工具，权限由调用方把关）。 */
     setMemberRole(input: { id: string; sessionId: string; role: string }): { ok: boolean; group?: GroupRecord; message?: string } {
       const alive = live(input.id)
       if (alive.group === undefined) return { ok: false, message: alive.message }

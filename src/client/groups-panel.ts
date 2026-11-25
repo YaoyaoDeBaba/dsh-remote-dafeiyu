@@ -55,6 +55,7 @@ const REMOVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/remove'
 const DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 const OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 const ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
+const RENAME_ROUTE = '/api/dsh-remote-dafeiyu/groups/rename'
 const SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 const POLL_MS = 3_000
 
@@ -155,7 +156,46 @@ export function mountGroupsPanel(deps: GroupsPanelDeps): { open: () => void; clo
   midName.style.fontWeight = '600'
   const midMeta = doc.createElement('span')
   midMeta.style.cssText = 'font-size:11.5px;color:#5b7bb5;'
-  midHead.append(midName, midMeta)
+  /*
+ * ⑤ 改名入口（2026-11-25）：中栏标题旁一颗 ✎，点了就地变输入框，回车/失焦保存。
+ * 不做弹窗：改群名是低频小动作，原地编辑比再开一层窗省事（对标 QQ 的「群名可点」）。
+ */
+const renameBtn = doc.createElement('button')
+renameBtn.textContent = '✎'
+renameBtn.title = '改群名'
+renameBtn.style.cssText = 'border:0;background:transparent;color:#1d4ed8;cursor:pointer;font-size:12px;padding:0 2px;'
+renameBtn.addEventListener('click', () => {
+  const group = current()
+  if (group === undefined) return
+  const box = doc.createElement('input')
+  box.type = 'text'
+  box.value = group.name
+  box.maxLength = 40
+  box.style.cssText = 'font:inherit;padding:2px 6px;border:1px solid #c7d9f7;border-radius:6px;min-width:120px;color:#1d3f8f;'
+  midName.style.display = 'none'
+  midHead.insertBefore(box, midName)
+  box.focus()
+  box.select()
+  let done = false
+  const finish = async (commit: boolean): Promise<void> => {
+    if (done) return
+    done = true
+    const next = box.value.trim()
+    box.remove()
+    midName.style.display = ''
+    if (commit && next !== '' && next !== group.name) {
+      await call(RENAME_ROUTE, { groupId: group.id, name: next })
+      await refresh()
+    }
+  }
+  box.addEventListener('keydown', (event) => {
+    const key = (event as { key?: string }).key
+    if (key === 'Enter') void finish(true)
+    if (key === 'Escape') void finish(false)
+  })
+  box.addEventListener('blur', () => void finish(true))
+})
+midHead.append(midName, renameBtn, midMeta)
   const msgs = doc.createElement('div')
   msgs.style.cssText = 'flex:1 1 0;min-height:0;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:9px;background:#fbfdff;min-width:0;'
   const composer = doc.createElement('div')
