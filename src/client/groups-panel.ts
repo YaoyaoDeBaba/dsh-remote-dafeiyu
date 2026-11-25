@@ -209,6 +209,70 @@ midHead.append(midName, renameBtn, midMeta)
    * 内嵌做法：外面套一个相对定位的壳，按钮绝对定位到右下，textarea 右侧留出按钮宽度
    * —— 不做成 flex 行，是因为 QQ 那种“按钮压在输入区里、随输入区一起长高”的观感只有绝对定位能保持。
    */
+  /*
+   * ⑥ 发图（2026-11-25）：隐藏 file input + 缩略图 chips。
+   * 限制前端先拦一次（≤3 张、≤5MB），后端还会再校验一次——两边都留，别信单边。
+   */
+  const MAX_IMAGES = 3
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+  const pendingImages: string[] = []
+  const imgChips = doc.createElement('div')
+  imgChips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;'
+  const fileInput = doc.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/png,image/jpeg,image/webp'
+  ;(fileInput as unknown as { multiple: boolean }).multiple = true
+  fileInput.style.cssText = 'display:none;'
+  const pickBtn = doc.createElement('button')
+  pickBtn.textContent = '图片'
+  pickBtn.title = '发图（最多 3 张，单张 ≤5MB）'
+  pickBtn.style.cssText =
+    'border:1px solid #c7d9f7;background:#fff;color:#1d4ed8;border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer;margin-bottom:6px;'
+  const renderImages = (): void => {
+    imgChips.replaceChildren()
+    pendingImages.forEach((dataUrl, index) => {
+      const wrap = doc.createElement('div')
+      wrap.style.cssText = 'position:relative;width:54px;height:54px;border-radius:8px;overflow:hidden;border:1px solid #c7d9f7;'
+      const thumb = doc.createElement('div')
+      thumb.style.cssText =
+        'width:100%;height:100%;background-image:url(' + JSON.stringify(dataUrl) + ');background-size:cover;background-position:center;'
+      const del = doc.createElement('button')
+      del.textContent = '×'
+      del.style.cssText =
+        'position:absolute;top:0;right:0;border:0;background:rgba(0,0,0,.55);color:#fff;width:16px;height:16px;font-size:11px;line-height:1;cursor:pointer;'
+      del.addEventListener('click', () => {
+        pendingImages.splice(index, 1)
+        renderImages()
+      })
+      wrap.append(thumb, del)
+      imgChips.appendChild(wrap)
+    })
+  }
+  pickBtn.addEventListener('click', () => fileInput.click())
+  fileInput.addEventListener('change', () => {
+    const files = (fileInput as unknown as { files?: ArrayLike<{ size: number; type: string; name?: string }> }).files
+    if (files === undefined || files === null) return
+    const picked = Array.from(files as ArrayLike<{ size: number; type: string }>)
+    for (const file of picked) {
+      if (pendingImages.length >= MAX_IMAGES) {
+        hint.textContent = '最多 3 张图'
+        break
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        hint.textContent = '单张图不能超过 5MB'
+        continue
+      }
+      const reader = new (globalThis as unknown as { FileReader: new () => FileReader }).FileReader()
+      reader.onload = () => {
+        const result = reader.result
+        if (typeof result !== 'string') return
+        pendingImages.push(result)
+        renderImages()
+      }
+      reader.readAsDataURL(file as unknown as Blob)
+    }
+    ;(fileInput as unknown as { value: string }).value = ''
+  })
   const inputWrap = doc.createElement('div')
   inputWrap.style.cssText = 'position:relative;'
   const input = doc.createElement('textarea')
@@ -232,8 +296,11 @@ midHead.append(midName, renameBtn, midMeta)
     'position:absolute;right:8px;bottom:8px;border:0;border-radius:8px;background:#1d4ed8;color:#fff;' +
     'padding:6px 16px;cursor:pointer;box-shadow:0 2px 6px rgba(29,78,216,.25);'
   inputWrap.append(input, sendBtn, atMenu)
+  const toolsRow = doc.createElement('div')
+  toolsRow.style.cssText = 'display:flex;gap:6px;align-items:center;'
+  toolsRow.append(pickBtn, fileInput)
   sendRow.append(hint)
-  composer.append(chips, inputWrap, sendRow)
+  composer.append(chips, imgChips, toolsRow, inputWrap, sendRow)
   mid.append(midHead, msgs, composer)
 
   /* 右栏 */
@@ -687,9 +754,19 @@ midHead.append(midName, renameBtn, midMeta)
     if (group === undefined || text === '') return
     sendBtn.disabled = true
     void (async () => {
-      const answer = await call(POST_ROUTE, { groupId: group.id, text, targets: [...targets] })
+      const images = [...pendingImages]
+      const answer = await call(POST_ROUTE, {
+        groupId: group.id,
+        text,
+        targets: [...targets],
+        ...(images.length > 0 ? { images } : {}),
+      })
       input.value = ''
       targets = new Set()
+      if (images.length > 0) {
+        pendingImages.length = 0
+        renderImages()
+      }
       hint.textContent = answer.ok === true ? HINT : '发送有问题：' + String(answer.message ?? '未知原因')
       await refresh()
       sendBtn.disabled = false
