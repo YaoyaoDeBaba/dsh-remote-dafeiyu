@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.170" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.171" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38052,6 +38052,10 @@ function createHandoffService(deps) {
     for (const victim of sorted.slice(0, jobs.size - MAX_JOBS)) jobs.delete(victim.id);
   };
   const nextRebirthGen = (base) => {
+    try {
+      mkdirSync6(deps.handoffDir, { recursive: true });
+    } catch {
+    }
     const file2 = path18.join(deps.handoffDir, "rebirth-gen.json");
     let map2 = {};
     try {
@@ -38063,11 +38067,18 @@ function createHandoffService(deps) {
     map2[base] = value;
     try {
       writeFileSync3(file2, JSON.stringify(map2, null, 2) + "\n", "utf8");
-    } catch {
+    } catch (error62) {
+      deps.log?.(
+        "\u8F6C\u751F\u5E8F\u53F7\u5199\u76D8\u5931\u8D25\uFF1A\u4E0B\u6B21\u4F1A\u91CD\u65B0\u4ECE 1 \u5F00\u59CB\uFF08\u8FD9\u662F 2026-11-25\u300C\u603B\u53EB\u8F6C\u4E161\u300D\u7684\u6839\u56E0\uFF09\uFF1A" + String(error62?.message ?? error62).slice(0, 120)
+      );
     }
     return value;
   };
   const nextBranchGen = (base) => {
+    try {
+      mkdirSync6(deps.handoffDir, { recursive: true });
+    } catch {
+    }
     const file2 = path18.join(deps.handoffDir, "branch-gen.json");
     let map2 = {};
     try {
