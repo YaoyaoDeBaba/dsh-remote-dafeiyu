@@ -31,6 +31,12 @@ export interface GroupMember {
   label?: string
   /** 用户给的身份（2026-11-19）：前端主程 / 后端主程 / 总经理……群内 agent 也读得到。 */
   role?: string
+  /**
+   * 头像（2026-11-25 用户 v2 需求④）：**data URL**（`data:image/png;base64,...`）。
+   * 为什么存 data URL 而不是文件路径：头像很小（限 ≤12KB），直接塞进群记录省掉一套文件读写与清理；
+   * 群记录本来就在 storages 里，备份/搬迁天然跟着走。
+   */
+  avatar?: string
   joinedAt: number
 }
 
@@ -127,6 +133,8 @@ export const DEFAULT_ROUND_TRIP_WINDOW_MS = 15 * 60_000
 export const DEFAULT_MAX_ROUND_TRIPS = 3
 /** 硬上限：同一对在窗口里**任何**往返超过这么多条，无论内容一律闸（防死循环）。 */
 export const DEFAULT_HARD_MAX_TRIPS = 20
+/** 每个 agent 的头像积分预算（用户定：60；转生换 sessionId 即重新计）。 */
+export const AVATAR_CREDIT_LIMIT = 60
 /**
  * 群聊纪律（2026-11-24）——**一份真源**：投递正文、入群通知、group_post 的工具描述都引它。
  *
@@ -792,6 +800,88 @@ export function createGroups(deps: GroupsDeps) {
         kind: 'system',
         from: 'system',
         text: shortId(member.sessionId) + (role === '' ? ' 的身份已清空' : ' 的身份设为「' + role + '」'),
+      })
+      return { ok: true, group }
+    },
+
+    /**
+     * 头像积分记账（2026-11-25 需求④）：**每个 agent 60 积分**，记在本群目录的 `avatar-budget.json`。
+     *
+     * 口径（用户定的）：① 不结转、按 sessionId 记；② agent 转生后是新 sessionId ⇒ 自然重新计 60；
+     * ③ 这是**软预算**——真正的停止条件是 xyq 账号余额不足（agent 先查 xyq_balance）；
+     * ④ 小云雀账号每月 28 日重置，临近重置那几天把余额花掉是允许的。
+     */
+    spendAvatarCredits(input: { sessionId: string; credits: number }): {
+      ok: boolean
+      used: number
+      limit: number
+      message?: string
+    } {
+      const limit = AVATAR_CREDIT_LIMIT
+      const id = String(input.sessionId ?? '').trim()
+      const spend = Math.max(0, Math.round(Number(input.credits) || 0))
+      if (id === '') return { ok: false, used: 0, limit, message: '缺少 sessionId' }
+      const file = path.join(deps.dir, 'avatar-budget.json')
+      let map: Record<string, number> = {}
+      try {
+        map = JSON.parse(readFileSync(file, 'utf8')) as Record<string, number>
+      } catch {
+        map = {}
+      }
+      const used = Number(map[id] ?? 0)
+      if (spend > 0 && used + spend > limit) {
+        return {
+          ok: false,
+          used,
+          limit,
+          message: '头像积分预算用完（' + used + '/' + limit + '）：别再加码，换更省的尺寸/档位，或就此收手',
+        }
+      }
+      if (spend > 0) {
+        map[id] = used + spend
+        try {
+          writeFileSync(file, JSON.stringify(map, null, 2) + '\n', 'utf8')
+        } catch {
+          /* 记账写不进去不阻断：软预算，别为了记账把功能搞挂 */
+        }
+      }
+      return { ok: true, used: map[id] ?? used, limit }
+    },
+
+    /**
+     * 设置成员头像（2026-11-25 需求④）。
+     *
+     * 只接受 data URL 且 ≤12KB——面板里是个 <img src>，直接内联最省事；超大图会让群记录膨胀，直接拒。
+     * 传空串 = 清空头像。
+     */
+    setMemberAvatar(input: {
+      id: string
+      sessionId: string
+      avatar: string
+    }): { ok: boolean; group?: GroupRecord; message?: string } {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, message: alive.message }
+      const group = alive.group
+      const member = group.members.find((row) => row.sessionId === input.sessionId) ??
+        group.members.find((row) => shortId(row.sessionId) === String(input.sessionId ?? '').trim())
+      if (member === undefined) return { ok: false, message: '这个人不在群里。' }
+      const avatar = String(input.avatar ?? '').trim()
+      if (avatar === '') {
+        delete member.avatar
+      } else {
+        if (!/^data:image\/(png|jpeg|webp);base64,/.test(avatar)) {
+          return { ok: false, message: '头像必须是 data:image/png|jpeg|webp 的 base64 data URL' }
+        }
+        if (avatar.length > 12_000) return { ok: false, message: '头像太大（>12KB）：请压缩到 128×128 左右' }
+        member.avatar = avatar
+      }
+      group.updatedAt = now()
+      save(group)
+      append(group.id, {
+        at: now(),
+        kind: 'system',
+        from: 'system',
+        text: shortId(member.sessionId) + (avatar === '' ? ' 清空了头像' : ' 换了头像'),
       })
       return { ok: true, group }
     },

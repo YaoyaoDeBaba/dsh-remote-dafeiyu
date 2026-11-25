@@ -20,6 +20,8 @@ interface MemberView {
   sessionId: string
   name?: string
   role?: string
+  /** 头像 data URL（2026-11-25 需求④）；没有就退回首字母。 */
+  avatar?: string
 }
 
 interface GroupView {
@@ -501,7 +503,15 @@ midHead.append(midName, renameBtn, midMeta)
       row.addEventListener('mouseenter', () => { row.style.background = '#eef4ff' })
       row.addEventListener('mouseleave', () => { row.style.background = 'transparent' })
       const name = member.name?.trim() || shortId(member.sessionId)
-      const avatar = el('div', 'width:26px;height:26px;border-radius:50%;background:#cfe0ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:0 0 auto;', name.slice(0, 1))
+      /*
+       * 头像（2026-11-25 需求④）：有 avatar（data URL）就画 <img>，没有就退回首字母圆形块。
+       * 用 background-image 而不是 <img>：假 DOM（判据）不支持 img 加载，样式属性对两边都安全。
+       */
+      const initial = el('div', 'width:26px;height:26px;border-radius:50%;background:#cfe0ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:0 0 auto;', name.slice(0, 1))
+      const avatar =
+        typeof member.avatar === 'string' && member.avatar.startsWith('data:image/')
+          ? el('div', 'width:26px;height:26px;border-radius:50%;background:#cfe0ff;background-image:url(' + JSON.stringify(member.avatar) + ');background-size:cover;background-position:center;flex:0 0 auto;')
+          : initial
       const info = el('div', 'min-width:0;flex:1;')
       const nameRow = el('div', 'font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', (group.owner === member.sessionId ? '👑 ' : '') + name)
       const roleRow = el('div', 'font-size:11px;color:#5b7bb5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',

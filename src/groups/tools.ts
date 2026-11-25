@@ -236,6 +236,43 @@ export function buildGroupTools(deps: {
       },
     },
     {
+      name: 'group_set_avatar',
+      description:
+        '给**自己**（或指定成员）设置群头像。只接受 data URL（`data:image/png|jpeg|webp;base64,...`），≤12KB（约 128×128）。\n' +
+        '**生成头像的规矩**（用户定的）：① 只走「小云雀」的**经济档**，不许升档；② 生成前先调 xyq_balance 看余额，**余额不足就停手并如实报告**，不重试；' +
+        '③ 每个 agent 的积分预算是 60（插件侧记账，转生后重置），累计超了会被拒；④ 小云雀账号每月 28 日重置、积分不结转——临近重置那几天把余额花在头像是允许甚至鼓励的。\n' +
+        'spentCredits：这次生成花了多少积分（记账用，不填按 0 记）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          groupId: { type: 'string', description: '群 id。' },
+          sessionId: { type: 'string', description: '给谁设头像；不填 = 自己（调用者）。' },
+          avatar: { type: 'string', description: 'data URL；空字符串 = 清空头像。' },
+          spentCredits: { type: 'number', description: '这次生成花了多少积分（默认 0）。' },
+        },
+        required: ['groupId', 'avatar'],
+      },
+      output: OUT,
+      timeoutMs: 30_000,
+      async execute(args: unknown, exec?: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown; sessionId?: unknown; avatar?: unknown; spentCredits?: unknown }
+        const groupId = asString(input.groupId)
+        const group = deps.groups.get(groupId)
+        if (group === undefined) return JSON.stringify({ ok: false, message: '没有这个群。' })
+        // 不填 sessionId 就当成"给自己设"：从 exec 里解析调用者（与 handoff 同一套形状归一）
+        let target = asString(input.sessionId)
+        if (target === '') target = resolveSessionId(exec) ?? ''
+        if (target === '') {
+          return JSON.stringify({ ok: false, message: '解析不到你的会话 id：请在参数里带 sessionId' })
+        }
+        const spend = Math.max(0, Math.round(Number(input.spentCredits) || 0))
+        const budget = deps.groups.spendAvatarCredits({ sessionId: target, credits: spend })
+        if (budget.ok !== true) return JSON.stringify(budget)
+        const result = deps.groups.setMemberAvatar({ id: groupId, sessionId: target, avatar: asString(input.avatar) })
+        return JSON.stringify({ ...result, credits: { used: budget.used, limit: budget.limit } })
+      },
+    },
+    {
       name: 'group_remove',
       description: '把某个成员移出群：他本人会收到「本群对你不再可用」，其余成员收到「XX 离开了本群」。',
       parameters: {

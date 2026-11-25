@@ -18,6 +18,7 @@ export const GROUPS_REMOVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/remove'
 export const GROUPS_OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 export const GROUPS_ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
 export const GROUPS_RENAME_ROUTE = '/api/dsh-remote-dafeiyu/groups/rename'
+export const GROUPS_AVATAR_ROUTE = '/api/dsh-remote-dafeiyu/groups/avatar'
 export const GROUPS_DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 /**
@@ -297,6 +298,16 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
           id: String(body.groupId ?? ''),
           sessionId: String(body.sessionId ?? ''),
           role: String(body.role ?? ''),
+        }),
+      ),
+    },
+    {
+      path: GROUPS_AVATAR_ROUTE,
+      handler: writeRoute((body) =>
+        deps.groups.setMemberAvatar({
+          id: String(body.groupId ?? ''),
+          sessionId: String(body.sessionId ?? ''),
+          avatar: String(body.avatar ?? ''),
         }),
       ),
     },
