@@ -13,6 +13,19 @@
  * 与识图 FAB 同一条：这个面板挂在 `document.body` 上，不属于任何槽位；用 react 反而
  * 要和宿主的分层、样式隔离打交道。纯 DOM 的另一个好处是：宿主整页重渲染也不会把它
  * 带走（它不在 React 树里）。
+ *
+ * ## 两条硬纪律（2026-11-25 真机事故后补的）
+ *
+ * 1. **全页单例**（见 `SubagentMonitorSingleton`）。双层的真正根因不是"同一个实例画了两遍"，
+ *    而是**本体 client 被装载了多份**：每份实例各自 `document.createElement` 一颗 FAB +
+ *    一个 `#dafeiyu-subagent-panel`，各有一份自己的 `items` 与自己的实时流。于是点开"派活
+ *    助手"时 N 份一起 open：新的那份拉到的是实时列表，旧的那份还挂着它装载那一刻的列表
+ *    （已归档 / 已结束的行都在，真正在跑的反而不在），两层叠在一起就是用户看到的那张截图。
+ *    ⇒ 单例只能落在 `globalThis` 上（模块作用域按包算，多份包各有一份，拦不住）。
+ *    **谁要再加一个 open 入口，先读这段：建 DOM 的路只能有一条。**
+ * 2. **实时优先**。列表只认宿主 live（`GET /subagents`，宿主那边读 `ctx.subagents` 的
+ *    `listChildren/listDescendants`）；本地那份只在 live 失败时当占位，并且必须挂
+ *    「离线快照 + 时间」的标注，不许冒充实时。
  */
 import { resolveHostUrl } from './host-url.js'
 import { makeDraggable } from './draggable.js'
@@ -67,7 +80,47 @@ const POLL_MS = 3_000
 /** 闲置自动归档的节拍：5 分钟一次，**只在开关打开时挂表**（2026-11-17）。 */
 const AUTO_ARCHIVE_MS = 5 * 60 * 1000
 
+/**
+ * 全页唯一的派活助手面板（挂在 `globalThis.__dafeiyuSubagentMonitor`）。
+ *
+ * 后来的挂载者只 `attach`（接上自己的 `expose`），**不再建第二块 DOM**；卸载走引用计数，
+ * 最后一个挂载者走的时候才拆。这正是 2026-11-19 群面板那条修法的同一套（`main.ts` 的
+ * `__dafeiyuGroupsPanel` 注释里也写了同一场真机）。
+ */
+export interface SubagentMonitorSingleton {
+  /** 已挂好的那一个面板节点（多份 client 实例共用同一块）。 */
+  readonly panel: HTMLElement
+  /** 复用 + 置前（重复 open 不许再叠一层）。 */
+  open(): void
+  close(): void
+  /** 后来的挂载者：把 expose 接过来、计一次引用；返回的清理器只减自己那一份。 */
+  attach(other: SubagentMonitorDeps): () => void
+}
+
+/** 挂单例句柄的入参形状：键名 `__dafeiyuSubagentMonitor` 必须跨「多份 client 包」共享。 */
+interface SingletonScope {
+  __dafeiyuSubagentMonitor?: SubagentMonitorSingleton
+}
+
 export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
+  const scope = globalThis as SingletonScope
+  /*
+   * ① 已经有一份在跑 ⇒ 只 attach（接上 expose + 置前），直接返回。
+   *
+   * 这一步必须在**任何一个 createElement 之前**：多层就是这样长出来的（见文件头纪律 1）。
+   * 也不能只用一个模块级 flag：模块作用域按包算，本体 client 被装载多份时每份各有一个
+   * flag ⇒ 拦不住。只有 globalThis 是全局的。
+   */
+  const singleton = scope.__dafeiyuSubagentMonitor
+  if (singleton !== undefined) {
+    try {
+      singleton.open()
+    } catch {
+      /* 置前失败不影响这棵老面板本身 */
+    }
+    return singleton.attach(deps)
+  }
+
   const doc = (globalThis as { document?: Document }).document
   if (!doc) return () => undefined
   // 客户端插件可能跑在 <body> 之前（loader immediately）：等 DOM 就绪再挂，
@@ -146,6 +199,14 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   #dafeiyu-subagent-panel .status.running { color: #b7791f !important; }
   #dafeiyu-subagent-panel .status.idle { color: #16803c !important; }
   #dafeiyu-subagent-panel .restoreRow { border-color: #dbe6fb !important; }
+  /* 分组标题：在跑 / 空闲（2026-11-25：把"还在跑"和"早就结束了"分开，别再混成一坨） */
+  #dafeiyu-subagent-panel .section { margin-top: 10px; font-size: 12px; font-weight: 600; color: #4a6bb3 !important; letter-spacing: .02em; }
+  /*
+   * 离线快照横幅（2026-11-25）：live 读不到、只剩本地那份时唯一的位置。
+   * 必须是**看得见**的黄条——旧列表挂着冒充实时，就是用户报的那个"22 小时前闲置的还在"。
+   */
+  #dafeiyu-subagent-panel .snapshot { margin-bottom: 8px; padding: 6px 9px; border-radius: 8px;
+    border: 1px solid #f0d9a0 !important; background: #fff8e6 !important; color: #8a5a00 !important; font-size: 12px; }
 `
   doc.head?.appendChild(style)
 
@@ -246,6 +307,18 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   foot.textContent = '闲置超过 2 小时的子代理会标黄，可一键归档（可恢复）。'
   panel.append(head, body, foot)
   doc.body.appendChild(panel)
+  /*
+   * 清孤儿：上一份 client 实例如果没走到自己的卸载（整页重载前被换掉 / 插件被重新装载），
+   * 它那块同 id 的 DOM 会留在 body 上，谁也管不着它——这就是"旧缓存那层"。
+   * 建新面板的这一条路上顺手把它们收掉（只收**不是自己**的那些）。
+   */
+  try {
+    for (const node of Array.from(doc.querySelectorAll('#dafeiyu-subagent-panel, #dafeiyu-subagent-fab'))) {
+      if (node !== panel && node !== fab) node.remove()
+    }
+  } catch {
+    /* 老宿主没有 querySelectorAll 也不该挂不上面板 */
+  }
   makeDraggable(panel, head, 'subagent')
 
   let items: SubagentRow[] = []
@@ -254,6 +327,16 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   let session = ''
   let timer = 0
   let busy = false
+  /**
+   * 上一次刷新是不是**宿主 live 成功**（2026-11-25）。
+   *
+   * live === false 且还有行 ⇒ 界面上必须挂一句「离线快照 + 时间」（见 render）。
+   * 以前这里没有这个概念：读不到宿主时只把底栏换一句「读取失败」，卡片照旧画、
+   * 看起来和实时一模一样 —— 用户就以为那批 22 小时前就结束的子代理还在跑。
+   */
+  let live = false
+  /** 最近一次 live 成功的时间戳（0 = 还没成功过）。快照标注用它报时刻。 */
+  let liveAt = 0
   /** 刷新撞上"正在刷新"时记一笔，等那次跑完补跑（见 refresh）。 */
   let pendingRefresh = false
   let opened = false
@@ -389,7 +472,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
    * 以前只靠按钮点击时写本地 ledger：换台设备/清了 localStorage 就找不回被归档的子代理，
    * 而且列表里那几行照样显示成「空闲」。现在以宿主的 archived 标记为准。
    */
-  const syncArchivedLedger = (): void => {
+  const syncArchivedLedger = (fromLive = false): void => {
     let changed = false
     for (const row of items) {
       if (row.archived !== true) continue
@@ -398,6 +481,20 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       const name = row.naming === 'ok' && row.name ? row.name : '已归档子代理'
       ledger.push({ id: row.id, name })
       changed = true
+    }
+    /*
+     * 反向剪枝（2026-11-25）：live 说"它没归档"（在别处恢复过 / 宿主那边压根没归档成功），
+     * 本地清单里就不许再留着它 —— 否则「恢复归档」那块列出来的是一批已经不在归档态的幽灵。
+     * 只在 fromLive 时剪：乐观更新那份数据是本地自己标的 archived，拿它剪等于自己删自己。
+     */
+    if (fromLive) {
+      // 只剪"宿主这次明确报了、且没归档"的：归档中的行本来就该留在清单里（那也是恢复入口）。
+      const unarchived = new Set(items.filter((row) => row.archived !== true).map((row) => row.id))
+      const next = ledger.filter((entry) => !unarchived.has(entry.id))
+      if (next.length !== ledger.length) {
+        ledger = next
+        changed = true
+      }
     }
     if (changed) saveLedger()
   }
@@ -408,6 +505,17 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   let openedAt = 0
   const setOpen = (next: boolean): void => {
     opened = next
+    /*
+     * 置前：appendChild 一个已经在 body 里的节点等于"移到末尾"，z-index 相同的一堆里
+     * 它就在最上面——这也是"重复 open 只复用一层"的落点（不许再 createElement）。
+     */
+    if (next) {
+      try {
+        doc.body.appendChild(panel)
+      } catch {
+        /* 置前失败也还能用 */
+      }
+    }
     panel.classList.toggle('open', next)
     fab.classList.toggle('open', next)
     if (next) {
@@ -417,8 +525,126 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
   }
   deps.expose?.({ open: () => setOpen(true), close: () => setOpen(false) })
 
+  /*
+   * 登记单例（2026-11-25）。**只有走到这里的那一份**才建了 DOM，所以由它当 owner；
+   * 后来的挂载者走上面的 attach 分支，只接 expose、不再建节点，也不改判定
+   * （showFab / shouldShowFab 用第一份的：按钮归它管，多份各判一次会互相把按钮翻来翻去）。
+   *
+   * 卸载走引用计数：一份包卸载了但另一份还活着时，面板必须留着——它属于"全页"，
+   * 不属于某个包实例。最后一个挂载者走的时候才拆。
+   */
+  let refs = 1
+  let dismantled = false
+  const dismantle = (): void => {
+    if (dismantled) return
+    dismantled = true
+    if (scope.__dafeiyuSubagentMonitor === singletonHandle) delete scope.__dafeiyuSubagentMonitor
+    teardown()
+  }
+  const singletonHandle: SubagentMonitorSingleton = {
+    panel,
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+    attach: (other) => {
+      refs += 1
+      try {
+        other.expose?.({ open: () => setOpen(true), close: () => setOpen(false) })
+      } catch {
+        /* 外部回调自己抛错，不许带走面板 */
+      }
+      return () => {
+        refs -= 1
+        if (refs <= 0) dismantle()
+      }
+    },
+  }
+  scope.__dafeiyuSubagentMonitor = singletonHandle
+
+  /** HH:MM:SS（快照标注用；本地时区，跟界面上别的时间口径一致）。 */
+  const clockText = (at: number): string => {
+    const date = new Date(at)
+    const two = (value: number): string => (value < 10 ? '0' + String(value) : String(value))
+    return two(date.getHours()) + ':' + two(date.getMinutes()) + ':' + two(date.getSeconds())
+  }
+
+  /**
+   * 离线快照横幅：只在"有行、但这轮没读到宿主"时出现。
+   *
+   * 纪律（2026-11-25）：live 失败**不许静默**，也不许让旧列表冒充实时——列表照旧画
+   * （免得用户以为全没了），但顶上必须有一行说明它是什么时候的快照。
+   */
+  const snapshotBanner = (): void => {
+    const banner = doc.createElement('div')
+    banner.className = 'snapshot'
+    banner.setAttribute('data-role', 'snapshot')
+    banner.textContent =
+      liveAt > 0
+        ? '离线快照 · 最后更新 ' + clockText(liveAt) + ' · 不是实时（这次没读到宿主）'
+        : '离线快照 · 不是实时（还没成功读到过宿主）'
+    body.appendChild(banner)
+  }
+
+  /** 一张子代理卡片（在跑 / 空闲共用；只有空闲那组才给「归档」按钮）。 */
+  const buildCard = (row: SubagentRow): HTMLElement => {
+    const card = doc.createElement('div')
+    card.className = 'card'
+    // 判据用：哪一行、什么状态（node:test 直接数这两个属性，不靠文案）。
+    card.setAttribute('data-agent-id', String(row.id))
+    card.setAttribute('data-status', row.status === 'running' ? 'running' : 'idle')
+    const top = doc.createElement('div')
+    top.className = 'top'
+    const nameSpan = doc.createElement('span')
+    nameSpan.className = 'name'
+    nameSpan.textContent = displayName(row)
+    const status = doc.createElement('span')
+    status.className = 'status ' + (row.status === 'running' ? 'running' : 'idle')
+    status.textContent = row.status === 'running' ? '工作中' : '空闲'
+    top.append(nameSpan, status)
+    card.appendChild(top)
+    const summary = doc.createElement('div')
+    summary.className = 'summary'
+    summary.textContent =
+      row.naming === 'ok' && row.summary
+        ? row.summary
+        : '未按要求填写 · 正确格式：名称｜一句话简述'
+    card.appendChild(summary)
+    const stale = isStale(row, idleWarnMs)
+    const time = doc.createElement('div')
+    time.className = 'time' + (stale ? ' stale' : '')
+    // 文案口径在 ../subagents/idle.ts（与宿主同源，由 node 判据钉住）：
+    // 不知道闲置多久 → 「闲置时间 —」；只有创建时间 → 「已创建 …（无活动记录）」。
+    time.textContent = subagentTimeText(row, idleWarnMs)
+    // 孙辈（descendants=1 才有的行）要标出层级：不然"谁派的谁"在列表里看不出来。
+    if (typeof row.depth === 'number' && row.depth > 1) time.textContent += ' · 第' + String(row.depth) + '层'
+    card.appendChild(time)
+    if (row.status !== 'running') {
+      const acts = doc.createElement('div')
+      acts.className = 'acts'
+      const archive = doc.createElement('button')
+      archive.textContent = '归档'
+      archive.addEventListener('click', (event) => {
+        event.stopPropagation()
+        void archiveRow(row.id, archive)
+      })
+      acts.appendChild(archive)
+      card.appendChild(acts)
+    }
+    return card
+  }
+
+  /** 分组标题（在跑 / 空闲）。 */
+  const sectionLine = (text: string, count: number): HTMLElement => {
+    const line = doc.createElement('div')
+    line.className = 'section'
+    line.setAttribute('data-role', 'section')
+    line.textContent = text + ' · ' + String(count)
+    return line
+  }
+
   const render = (): void => {
     body.textContent = ''
+    // 快照标注放在最前面：无论下面画的是列表还是「恢复归档」清单，都得先说清数据来自哪。
+    if (!live && items.length > 0) snapshotBanner()
     if (restoring) {
       const titleLine = doc.createElement('div')
       titleLine.className = 'empty'
@@ -442,6 +668,7 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       return
     }
     // 已归档的一律不进主列表（隐藏），只在底部报个数；它们的完整清单在「恢复归档子代理」里。
+    // 「已结束」按宿主给的状态算：只有 status === running 才算**在跑**（2026-11-25）。
     const active = items.filter((row) => row.archived !== true)
     const archivedCount = items.length - active.length
     if (active.length === 0) {
@@ -452,47 +679,17 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       foot.textContent = footText()
       return
     }
-    for (const row of active) {
-      const card = doc.createElement('div')
-      card.className = 'card'
-      const top = doc.createElement('div')
-      top.className = 'top'
-      const nameSpan = doc.createElement('span')
-      nameSpan.className = 'name'
-      nameSpan.textContent = displayName(row)
-      const status = doc.createElement('span')
-      status.className = 'status ' + (row.status === 'running' ? 'running' : 'idle')
-      status.textContent = row.status === 'running' ? '工作中' : '空闲'
-      top.append(nameSpan, status)
-      card.appendChild(top)
-      const summary = doc.createElement('div')
-      summary.className = 'summary'
-      summary.textContent =
-        row.naming === 'ok' && row.summary
-          ? row.summary
-          : '未按要求填写 · 正确格式：名称｜一句话简述'
-      card.appendChild(summary)
-      const stale = isStale(row, idleWarnMs)
-      const time = doc.createElement('div')
-      time.className = 'time' + (stale ? ' stale' : '')
-      // 文案口径在 `../subagents/idle.ts`（与宿主同源，由 node 判据钉住）：
-      // 不知道闲置多久 → 「闲置时间 —」；只有创建时间 → 「已创建 …（无活动记录）」。
-      time.textContent = subagentTimeText(row, idleWarnMs)
-      card.appendChild(time)
-      if (row.status !== 'running') {
-        const acts = doc.createElement('div')
-        acts.className = 'acts'
-        const archive = doc.createElement('button')
-        archive.textContent = '归档'
-        archive.addEventListener('click', (event) => {
-          event.stopPropagation()
-          void archiveRow(row.id, archive)
-        })
-        acts.appendChild(archive)
-        card.appendChild(acts)
-      }
-      body.appendChild(card)
-    }
+    /*
+     * 分开画：在跑的排最前，空闲（含早就结束的）在后。
+     * 以前这两批混在一个平铺列表里，加上"读不到 live 也不标注"，用户看到的就是
+     * "已结束的还在、在跑的反而没影"——分组 + 状态列，才让"在跑"这个词有定义。
+     */
+    const running = active.filter((row) => row.status === 'running')
+    const resting = active.filter((row) => row.status !== 'running')
+    if (running.length > 0) body.appendChild(sectionLine('在跑', running.length))
+    for (const row of running) body.appendChild(buildCard(row))
+    if (resting.length > 0) body.appendChild(sectionLine('空闲 / 已结束', resting.length))
+    for (const row of resting) body.appendChild(buildCard(row))
     const idleCount = active.filter((row) => isStale(row, idleWarnMs)).length
     // 2026-11-13：这里原来是 `disabled = idleCount === 0`，而 `idleMs` 恒为 0（宿主
     // 用 `now` 兜底）⇒ idleCount 恒为 0 ⇒ 按钮**永久 disabled**，用户点了连 click
@@ -641,9 +838,18 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     }
   }
 
-  const apply = (next: SubagentRow[]): void => {
+  /**
+   * 把一份列表画上去。
+   *
+   * `fromLive`（2026-11-25）：这份数据是不是宿主 live 回的真表。
+   * - true  ⇒ **整表替换**（本地那份一行不留），同时把"宿主说没归档"的从本地归档清单里删掉；
+   * - false ⇒ 只用于"点完归档先在本地标一下"的乐观更新，不碰 live 标记。
+   *
+   * 缓存纪律就落在这里：实时数据永远是整表覆盖，本地从来不是"第二个真源"。
+   */
+  const apply = (next: SubagentRow[], fromLive = false): void => {
     items = next
-    syncArchivedLedger()
+    syncArchivedLedger(fromLive)
     // 徽标与 FAB 只算"还在用的"：全归档了就别再挂个 🐝 在那儿。
     const has = items.some((row) => row.archived !== true)
     fab.classList.toggle('has-items', has)
@@ -731,8 +937,11 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
       return
     }
     if (current !== session) {
+      // 换了会话：上一条会话的那份列表与它的"live 时刻"一起作废（别把别人的快照标成本会话的）。
       session = current
       items = []
+      live = false
+      liveAt = 0
       numbering = new Map()
       nextNumber = 1
       restoring = false
@@ -741,9 +950,15 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     }
     busy = true
     try {
+      /*
+       * descendants=1（2026-11-25）：**包工头派的活常常是孙辈在跑**（主程 → 子代理 → 它自己的子代理）。
+       * 以前只问直接子级，于是"直接子级们都闲着、真正在干活的孙辈一个都不在列表里"——
+       * 用户报的"真正在跑的反而不在"就是这一条。宿主那条路由本来就支持 descendants（读
+       * ctx.subagents.listDescendants），面板这一侧以前没要过。
+       */
       const response = await fetch(
         resolveHostUrl(
-          '/api/dsh-remote-dafeiyu/subagents?includeArchived=1&sessionId=' + encodeURIComponent(current),
+          '/api/dsh-remote-dafeiyu/subagents?descendants=1&includeArchived=1&sessionId=' + encodeURIComponent(current),
         ),
       )
       const answer = (await response.json()) as {
@@ -756,14 +971,23 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
         idleWarnMs = answer.config.idleWarnMs
       }
       if (answer.ok === true && Array.isArray(answer.items)) {
-        apply(answer.items)
+        // live 成功：整表替换 + 记住这一刻，界面回到"实时"（快照横幅自己消失）。
+        live = true
+        liveAt = Date.now()
+        apply(answer.items, true)
         foot.textContent = footText()
       } else {
-        // 列表失败必须在界面上说清楚；悄悄清空会让人以为“没有子代理”。
-        foot.textContent = `读取失败：${String(answer.error ?? '宿主没有返回数据')}`
+        // 读不到 live：列表照旧留着（别让人以为全没了），但**必须**掉进"离线快照"的标注模式。
+        live = false
+        render()
+        foot.textContent =
+          '读取失败：' + String(answer.error ?? '宿主没有返回数据') + (items.length > 0 ? '（下面是离线快照，不是实时）' : '')
       }
     } catch (error) {
-      foot.textContent = `读取失败：${String((error as Error)?.message ?? error)}`
+      live = false
+      render()
+      foot.textContent =
+        '读取失败：' + String((error as Error)?.message ?? error) + (items.length > 0 ? '（下面是离线快照，不是实时）' : '')
     } finally {
       busy = false
       // 手里这次跑完了：把"期间被挡掉的那一次"补上（尾随合并，只补一次）。
@@ -966,7 +1190,8 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     }
   })()
 
-  return () => {
+  /** 真拆（只由最后一个挂载者 / 拥有者触发；见上面的 refs）。 */
+  const teardown = (): void => {
     if (autoArchiveTimer !== undefined) clearInterval(autoArchiveTimer)
     if (fallbackTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(fallbackTimer as unknown as number)
     if (refreshTimer) (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(refreshTimer as unknown as number)
@@ -981,5 +1206,10 @@ export function mountSubagentMonitor(deps: SubagentMonitorDeps): () => void {
     fab.remove()
     panel.remove()
     style.remove()
+  }
+
+  return () => {
+    refs -= 1
+    if (refs <= 0) dismantle()
   }
 }

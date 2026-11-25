@@ -450,7 +450,15 @@ export function createServicesKernel(services: ServicesBundle, options: Services
    * 不会因此看不见新子代理：`noteSubagentKnown(..., true)`（来自 `agent/status`）会
    * 立刻清掉这两处缓存。
    */
-  const CATALOG_FAIL_TTL_MS = 300_000
+  /*
+   * 失败缓存（2026-11-25 用户真机：派活助手「读不出正在跑的子代理」的另一半原因）。
+   *
+   * 原来是 5 分钟：**一次探测失败就把列表钉死 5 分钟**，用户点刷新也救不回来——
+   * 表现就是「真正在跑的反而不在，显示的是残留缓存」。
+   * 现在降到 3 秒：失败仍然不放大重试压力（3 秒一次本来就是这个面板的刷新节距），
+   * 但一次抖动不会演变成 5 分钟的假空列表。成功路径的 TTL 是另一条（CATALOG_TTL_MS = 2s）。
+   */
+  const CATALOG_FAIL_TTL_MS = 3_000
   const catalogCache = new Map<string, { at: number; value: SubagentCatalogRead; ttl: number }>()
 
   /**
