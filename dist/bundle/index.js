@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.175" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.176" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38748,6 +38748,11 @@ function memoryEntryCount(memoryDir2) {
     return 0;
   }
 }
+function parseGenSuffix(title) {
+  const hit = /^(.*?)\s*(转世|分身)\s*(\d+)\s*$/.exec(String(title ?? ""));
+  if (hit === null) return { base: String(title ?? "").trim(), gen: 0 };
+  return { base: hit[1] ?? "", kind: hit[2], gen: Number(hit[3] ?? 0) };
+}
 function createHandoffService(deps) {
   const now = deps.now ?? (() => Date.now());
   const pollMs = deps.pollMs ?? 1e3;
@@ -38931,8 +38936,10 @@ function createHandoffService(deps) {
       const parentTitle = String(await deps.sessionTitle?.(job.sessionId) ?? "").trim();
       const rename2 = deps.renameSession;
       if (parentTitle !== "" && rename2 !== void 0) {
-        const base = stripGenSuffix(parentTitle);
-        const next = isBranch ? base + "\u5206\u8EAB" + String(nextBranchGen(base)) : base + "\u8F6C\u4E16" + String(nextRebirthGen(base));
+        const parsed = parseGenSuffix(parentTitle);
+        const keyword = isBranch ? "\u5206\u8EAB" : "\u8F6C\u4E16";
+        const gen = parsed.kind === keyword ? parsed.gen + 1 : 1;
+        const next = parsed.base + keyword + String(gen);
         const renamed = await rename2(childId, next);
         if (renamed.ok) title = next;
         else notes.push("\u6539\u540D\u5931\u8D25\uFF1A" + String(renamed.message ?? "\u672A\u77E5\u539F\u56E0"));
