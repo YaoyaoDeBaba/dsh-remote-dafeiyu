@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.177" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.178" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -38573,10 +38573,9 @@ function createGroups(deps) {
       if (avatar === "") {
         delete member.avatar;
       } else {
-        if (!/^data:image\/(png|jpeg|webp);base64,/.test(avatar)) {
-          return { ok: false, message: "\u5934\u50CF\u5FC5\u987B\u662F data:image/png|jpeg|webp \u7684 base64 data URL" };
-        }
         if (avatar.length > 12e3) return { ok: false, message: "\u5934\u50CF\u592A\u5927\uFF08>12KB\uFF09\uFF1A\u8BF7\u538B\u7F29\u5230 128\xD7128 \u5DE6\u53F3" };
+        const problem = avatarProblem(avatar);
+        if (problem !== void 0) return { ok: false, message: problem };
         member.avatar = avatar;
       }
       group.updatedAt = now();
@@ -38750,6 +38749,35 @@ function createGroups(deps) {
     list: () => listGroups(deps.dir),
     get: (id) => readGroup(deps.dir, id)
   };
+}
+var AVATAR_PREFIX = /^data:image\/(png|jpeg|webp);base64,/;
+function avatarProblem(avatar) {
+  const prefix = AVATAR_PREFIX.exec(avatar);
+  if (prefix === null) return "\u5934\u50CF\u5FC5\u987B\u662F data:image/png|jpeg|webp \u7684 base64 data URL";
+  const payload = avatar.slice(prefix[0].length);
+  if (payload === "") return "\u5934\u50CF\u662F\u7A7A\u7684";
+  if (/[^A-Za-z0-9+/=]/.test(payload)) return "\u5934\u50CF base64 \u542B\u975E\u6CD5\u5B57\u7B26\uFF08\u88AB\u622A\u65AD\u6216\u8F6C\u4E49\u8FC7\uFF09\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  const padAt = payload.indexOf("=");
+  if (padAt !== -1 && padAt < payload.length - 2) return "\u5934\u50CF base64 \u7684\u586B\u5145\u7B26\u4F4D\u7F6E\u4E0D\u5BF9\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  if (payload.length % 4 !== 0) return "\u5934\u50CF base64 \u957F\u5EA6\u4E0D\u662F 4 \u7684\u500D\u6570\uFF08\u6570\u636E\u88AB\u622A\u65AD\u4E86\uFF09\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  const bytes = Buffer.from(payload, "base64");
+  if (bytes.length < 64) return "\u5934\u50CF\u5185\u5BB9\u592A\u77ED\uFF0C\u4E0D\u662F\u80FD\u663E\u793A\u7684\u56FE\u7247";
+  const mime = prefix[1];
+  const isPng = bytes.length > 8 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71;
+  const isJpeg = bytes.length > 3 && bytes[0] === 255 && bytes[1] === 216;
+  const isWebp = bytes.length > 12 && bytes.subarray(0, 4).toString("latin1") === "RIFF" && bytes.subarray(8, 12).toString("latin1") === "WEBP";
+  if (mime === "png" && !isPng) return "\u58F0\u660E\u662F PNG \u4F46\u5185\u5BB9\u4E0D\u662F PNG\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  if (mime === "jpeg" && !isJpeg) return "\u58F0\u660E\u662F JPEG \u4F46\u5185\u5BB9\u4E0D\u662F JPEG\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  if (mime === "webp" && !isWebp) return "\u58F0\u660E\u662F WebP \u4F46\u5185\u5BB9\u4E0D\u662F WebP\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  if (isJpeg && !(bytes[bytes.length - 2] === 255 && bytes[bytes.length - 1] === 217)) {
+    return "\u5934\u50CF JPEG \u7F3A\u7ED3\u675F\u6807\u8BB0\uFF08\u6570\u636E\u88AB\u622A\u65AD\uFF09\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  }
+  if (isPng && bytes.length > 8) {
+    const tail = bytes.subarray(bytes.length - 8);
+    const iend = Buffer.from([73, 69, 78, 68, 174, 66, 96, 130]);
+    if (!tail.equals(iend)) return "\u5934\u50CF PNG \u7F3A IEND \u7ED3\u675F\u5757\uFF08\u6570\u636E\u88AB\u622A\u65AD\uFF09\uFF1A\u8BF7\u91CD\u65B0\u5BFC\u51FA\u540E\u4E0A\u4F20";
+  }
+  return void 0;
 }
 
 // src/handoff/service.ts
