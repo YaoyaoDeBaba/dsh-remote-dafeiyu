@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.176" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.177" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -37991,6 +37991,9 @@ import { appendFileSync, existsSync, mkdirSync as mkdirSync6, readFileSync as re
 import path18 from "node:path";
 var MAX_MEMBERS = 12;
 var MAX_MESSAGE_CHARS = 4e3;
+var MAX_ANNOUNCEMENT_CHARS = 500;
+var ANNOUNCEMENT_BRIEF_CHARS = 60;
+var ANNOUNCEMENT_BRIEF_HINT = "\u2026\u2026\uFF08\u5B8C\u6574\u516C\u544A\u89C1 group_read\uFF09";
 var MAX_DISPATCH_TARGETS = 5;
 var PEER_ACTIVITY_TAG = "\u3010\u7FA4\u53CB\u52A8\u6001\xB7\u53EA\u8BFB\u3011";
 var JOIN_NOTICE_TAG = "\u3010\u5165\u7FA4\u901A\u77E5\xB7\u53EA\u8BFB\u3011";
@@ -38072,7 +38075,9 @@ function readGroup(dir, id) {
       updatedAt: Number(parsed.updatedAt ?? 0),
       ...typeof parsed.ownerSessionId === "string" && parsed.ownerSessionId.trim() !== "" ? { ownerSessionId: parsed.ownerSessionId.trim() } : {},
       ...parsed.briefed !== null && typeof parsed.briefed === "object" ? { briefed: parsed.briefed } : {},
-      ...Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}
+      ...Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {},
+      // 旧群文件没有 announcement：判类型 + 判空，读不到就当没有公告（不写空字段）
+      ...typeof parsed.announcement === "string" && parsed.announcement.trim() !== "" ? { announcement: normalizeAnnouncement(parsed.announcement) } : {}
     };
   } catch {
     return void 0;
@@ -38100,6 +38105,18 @@ function rosterLine(group, titleOf) {
     return crown + name2 + role;
   }).join("\u3001");
 }
+function normalizeAnnouncement(text) {
+  const raw = typeof text === "string" ? text : "";
+  const trimmed = raw.replace(/\r\n/g, "\n").trim();
+  if (trimmed === "") return "";
+  return trimmed.length > MAX_ANNOUNCEMENT_CHARS ? trimmed.slice(0, MAX_ANNOUNCEMENT_CHARS) : trimmed;
+}
+function announcementBlock(group, brief = false) {
+  const body = normalizeAnnouncement(group?.announcement);
+  if (body === "") return "";
+  if (brief !== true || body.length <= ANNOUNCEMENT_BRIEF_CHARS) return "\u3010\u7FA4\u516C\u544A\u3011" + body;
+  return "\u3010\u7FA4\u516C\u544A\u3011" + body.slice(0, ANNOUNCEMENT_BRIEF_CHARS) + ANNOUNCEMENT_BRIEF_HINT;
+}
 function summarize(text) {
   const raw = String(text ?? "");
   const firstLine2 = raw.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== "") ?? "";
@@ -38114,11 +38131,15 @@ function summarize(text) {
 function deliveryText(group, from, text, others, titleOf, recipient, brief, sectionReady) {
   const peers = others.filter((sessionId) => sessionId !== from && sessionId !== recipient).map((sessionId) => titleOf?.(sessionId)?.trim() || shortId2(sessionId));
   const ownerLabel = group.ownerSessionId === void 0 ? "" : titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId);
-  if (brief === true || sectionReady === true) {
+  const isBriefTail = brief === true || sectionReady === true;
+  const announcement = announcementBlock(group, isBriefTail);
+  const announcementLines = announcement === "" ? [] : [announcement];
+  if (isBriefTail) {
     return [
       "\u3010\u7FA4 " + group.name + " \xB7 \u6765\u81EA " + (from === "user" ? "\u7528\u6237" : shortId2(from)) + "\u3011",
       text.trim(),
       "\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel),
+      ...announcementLines,
       ECHO_DISCIPLINE_BRIEF
     ].join("\n");
   }
@@ -38127,6 +38148,7 @@ function deliveryText(group, from, text, others, titleOf, recipient, brief, sect
     text.trim(),
     "",
     "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (ownerLabel === "" ? "" : "\uFF5C\u7FA4\u4E3B " + ownerLabel),
+    ...announcementLines,
     peers.length > 0 ? "\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\uFF1A" + peers.join("\u3001") : "\u672C\u8F6E\u53EA\u6709\u4F60\u3002",
     ECHO_DISCIPLINE,
     "\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u6574\u6BB5\u8BB0\u5F55\uFF08\u63D2\u4EF6\u53EA\u6295\u7ED9\u4F60\u88AB @ \u7684\u90E8\u5206\uFF09\u3002\u8981\u8BF4\u70B9\u4EC0\u4E48\u5C31\u8C03 group_post\uFF1AgroupId=" + group.id + "\uFF0Ctext \u5199\u6B63\u6587\uFF1B\u8981\u76F4\u63A5\u627E\u67D0\u4E2A\u6210\u5458\uFF0C\u628A to \u586B\u6210\u5BF9\u65B9\u7684\u77ED\u53F7\u6216\u4F1A\u8BDD id\u3002",
@@ -38135,10 +38157,13 @@ function deliveryText(group, from, text, others, titleOf, recipient, brief, sect
 }
 function joinNoticeForNewcomer(group, titleOf) {
   const owner = group.ownerSessionId === void 0 ? "" : titleOf?.(group.ownerSessionId)?.trim() || shortId2(group.ownerSessionId);
+  const announcement = announcementBlock(group);
   return [
     "\u3010\u5165\u7FA4\u901A\u77E5 \xB7 " + group.name + " \xB7 " + group.id + "\u3011",
     "\u4F60\u88AB\u62C9\u8FDB\u8FD9\u4E2A\u7FA4\u4E86\uFF08\u8FD9\u662F\u4E00\u6B21\u5524\u9192\uFF1A\u4E0D\u7528\u7B49\u7528\u6237\u518D\u558A\u4F60\uFF09\u3002",
     "\u7FA4\u6210\u5458\uFF1A" + rosterLine(group, titleOf) + (owner === "" ? "" : "\uFF5C\u7FA4\u4E3B " + owner + "\uFF08\u7528\u6237 @ \u591A\u4EBA\u65F6\u7531\u7FA4\u4E3B\u5206\u5DE5\uFF09"),
+    // 新人最容易越界：规矩在公告里，进群那一刻就得看到（没有公告就不加这一行）
+    ...announcement === "" ? [] : ["", announcement],
     "",
     "\u7528\u6CD5\uFF08\u4E4B\u540E\u7684\u6D88\u606F\u53EA\u5E26\u6781\u77ED\u5934\u90E8\uFF0C\u8FD9\u4EFD\u8BF4\u660E\u4E0D\u518D\u91CD\u590D\uFF1B\u5FD8\u4E86\u53EF\u4EE5\u8C03 groups_guide\uFF09\uFF1A",
     "\xB7 \u6709\u4EBA @ \u4F60\u65F6\u4F60\u4F1A\u6536\u5230\u4E00\u6761\u72EC\u7ACB\u6D88\u606F\uFF0C\u5E26\u300C\u672C\u8F6E\u534F\u4F5C\u5BF9\u8C61\u300D\u2014\u2014\u4F60\u770B\u4E0D\u5230\u7FA4\u91CC\u7684\u5176\u4ED6\u6D88\u606F\uFF1B",
@@ -38447,6 +38472,33 @@ function createGroups(deps) {
         text: "\u7FA4\u540D\uFF1A\u300C" + before + "\u300D\u2192\u300C" + next + "\u300D" + (input2.by === void 0 ? "" : "\uFF08" + shortId2(input2.by) + "\uFF09")
       });
       return { ok: true, group };
+    },
+    /**
+     * 设置群公告（2026-11-26 用户需求）：群员老越界，所以把规矩写死一次、挂在每条群消息尾巴上。
+     *
+     * 口径：≤500 字（超了截断，不报错）、去首尾空白；**空串 = 清除**（字段直接删掉）。
+     * 只由群主调用（写入口径由 group_set_announcement 的 description 把关，与 group_rename 同一套）。
+     * 落盘随群记录走；改完写一条 system 记录，群里能看到「规矩换了」。
+     */
+    setAnnouncement(input2) {
+      const alive = live(input2.id);
+      if (alive.group === void 0) return { ok: false, announcement: "", message: alive.message };
+      const group = alive.group;
+      const next = normalizeAnnouncement(input2.text);
+      if (next === "") delete group.announcement;
+      else group.announcement = next;
+      group.updatedAt = now();
+      if (!save(group)) {
+        return { ok: false, announcement: group.announcement ?? "", message: "\u516C\u544A\u6CA1\u5199\u8FDB\u53BB\uFF08\u76EE\u5F55\u4E0D\u53EF\u5199\uFF09\u3002" };
+      }
+      append(group.id, {
+        at: now(),
+        kind: "system",
+        from: "system",
+        text: next === "" ? "\u516C\u544A\u5DF2\u6E05\u9664" : "\u516C\u544A\u5DF2\u66F4\u65B0\uFF08" + next.length + " \u5B57\uFF09" + (typeof input2.by === "string" && input2.by.trim() !== "" ? "\uFF08" + shortId2(input2.by) + "\uFF09" : "")
+      });
+      deps.log("\u7FA4\u516C\u544A\u66F4\u65B0", { id: group.id, chars: next.length });
+      return { ok: true, announcement: next, group };
     },
     /** 设置某个成员的身份（用户可在面板改；agent 走 group_set_role 工具，权限由调用方把关）。 */
     setMemberRole(input2) {
@@ -39618,6 +39670,32 @@ function buildGroupTools(deps) {
       }
     },
     {
+      name: "group_set_announcement",
+      description: "\u5199 / \u6539\u7FA4\u516C\u544A\uFF08\u2264500 \u5B57\uFF0C\u8D85\u957F\u6309 500 \u622A\u65AD\uFF09\uFF1A\u628A**\u7FA4\u91CC\u7684\u89C4\u77E9**\u5199\u6B7B\u4E00\u6B21\uFF0C\u4E4B\u540E\u6BCF\u6761\u7FA4\u6D88\u606F\u7684\u5C3E\u5DF4\u91CC\u90FD\u4F1A\u5E26\u4E0A\u300C\u3010\u7FA4\u516C\u544A\u3011\u6B63\u6587\u300D\uFF08\u4F4D\u7F6E\u5728\u6210\u5458\u8868\u90A3\u884C\u4E4B\u540E\uFF09\uFF1B\u5B8C\u6574\u7248\u5C3E\u5DF4\u5E26\u5168\u6587\uFF0C\u5DF2\u6302\u5E38\u9A7B\u6BB5\u4E4B\u540E\u7684\u7CBE\u7B80\u7248\u53EA\u5E26\u524D 60 \u5B57 + \u300C\u2026\u2026\uFF08\u5B8C\u6574\u516C\u544A\u89C1 group_read\uFF09\u300D\u3002\u65B0\u4EBA\u5165\u7FA4\u901A\u77E5\u91CC\u5E26\u5168\u6587\u2014\u2014\u7701\u5F97\u6BCF\u8F6E\u90FD\u9760\u4EBA\u91CD\u590D\u8BB2\u3002\n\u53EA\u5E94\u7531**\u7FA4\u4E3B**\u8C03\u7528\u3002\u4F20\u7A7A\u5B57\u7B26\u4E32 = \u6E05\u9664\u516C\u544A\u3002\u8FD4\u56DE {ok, announcement}\uFF1B\u5199\u4E00\u6761 system \u8BB0\u5F55\u300C\u516C\u544A\u5DF2\u66F4\u65B0\uFF08N \u5B57\uFF09\u300D\u3002\n\u522B\u628A\u4E00\u6B21\u6027\u4EFB\u52A1\u5199\u8FDB\u516C\u544A\uFF08\u90A3\u8BE5\u8D70 group_post\uFF09\uFF1B\u516C\u544A\u53EA\u653E\u957F\u671F\u6709\u6548\u7684\u7EAA\u5F8B/\u53E3\u5F84\u3002",
+      parameters: {
+        type: "object",
+        properties: {
+          groupId: { type: "string", description: "\u7FA4 id\u3002" },
+          text: { type: "string", description: "\u516C\u544A\u6B63\u6587\uFF0C\u2264500 \u5B57\uFF1B\u7A7A\u5B57\u7B26\u4E32 = \u6E05\u9664\u516C\u544A\u3002" }
+        },
+        required: ["groupId", "text"]
+      },
+      output: OUT3,
+      timeoutMs: 15e3,
+      async execute(args) {
+        const input2 = args ?? {};
+        const result2 = deps.groups.setAnnouncement({
+          id: asString(input2.groupId),
+          text: typeof input2.text === "string" ? input2.text : ""
+        });
+        return JSON.stringify({
+          ok: result2.ok,
+          announcement: result2.announcement,
+          ...result2.message === void 0 ? {} : { message: result2.message }
+        });
+      }
+    },
+    {
       name: "group_set_role",
       description: "\u7ED9\u7FA4\u6210\u5458\u5199/\u6539\u300C\u8EAB\u4EFD\u5907\u6CE8\u300D\uFF08\u226420 \u5B57\uFF0C\u4F8B\u5982\u300C\u524D\u7AEF\u4E3B\u7A0B\u300D\u300C\u53EA\u8BFB\u8C03\u8BD5\u53E3\u300D\uFF09\u3002\u53EA\u5E94\u7531**\u7FA4\u4E3B**\u8C03\u7528\u3002\n\u4F20\u7A7A\u5B57\u7B26\u4E32 = \u6E05\u7A7A\u5907\u6CE8\u3002\u5907\u6CE8\u53EA\u5F71\u54CD\u663E\u793A\u4E0E\u6D88\u606F\u5934\u4E0A\u7684\u8EAB\u4EFD\u6807\u6CE8\uFF0C\u4E0D\u6539\u4EFB\u4F55\u6743\u9650\u3002",
       parameters: {
@@ -39762,6 +39840,7 @@ var GROUPS_REMOVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/remove";
 var GROUPS_OWNER_ROUTE = "/api/dsh-remote-dafeiyu/groups/owner";
 var GROUPS_ROLE_ROUTE = "/api/dsh-remote-dafeiyu/groups/role";
 var GROUPS_RENAME_ROUTE = "/api/dsh-remote-dafeiyu/groups/rename";
+var GROUPS_ANNOUNCEMENT_ROUTE = "/api/dsh-remote-dafeiyu/groups/announcement";
 var GROUPS_AVATAR_ROUTE = "/api/dsh-remote-dafeiyu/groups/avatar";
 var GROUPS_DISSOLVE_ROUTE = "/api/dsh-remote-dafeiyu/groups/dissolve";
 var GROUPS_SESSIONS_ROUTE = "/api/dsh-remote-dafeiyu/groups/sessions";
@@ -39881,6 +39960,8 @@ function groupsHandlers(deps) {
             owner: group.ownerSessionId,
             ownerName: group.ownerSessionId === void 0 ? void 0 : group.members.find((member) => member.sessionId === group.ownerSessionId)?.label?.trim() || titles.get(group.ownerSessionId)?.trim() || short(group.ownerSessionId),
             updatedAt: group.updatedAt,
+            // 群公告（2026-11-26）：面板中栏顶部那行灰字要它；没有就不带这个字段
+            ...typeof group.announcement === "string" && group.announcement.trim() !== "" ? { announcement: group.announcement } : {},
             members: group.members.map((member) => ({
               sessionId: member.sessionId,
               role: member.role,
@@ -40034,6 +40115,20 @@ function groupsHandlers(deps) {
           ...typeof body.sessionId === "string" && body.sessionId !== "" ? { by: body.sessionId } : {}
         })
       )
+    },
+    {
+      path: GROUPS_ANNOUNCEMENT_ROUTE,
+      handler: writeRoute((body) => {
+        const result2 = deps.groups.setAnnouncement({
+          id: String(body.groupId ?? ""),
+          text: typeof body.text === "string" ? body.text : ""
+        });
+        return {
+          ok: result2.ok,
+          announcement: result2.announcement,
+          ...result2.message === void 0 ? {} : { message: result2.message }
+        };
+      })
     },
     {
       path: GROUPS_DISSOLVE_ROUTE,
