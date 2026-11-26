@@ -996,10 +996,9 @@ export function createGroups(deps: GroupsDeps) {
       if (avatar === '') {
         delete member.avatar
       } else {
-        if (!/^data:image\/(png|jpeg|webp);base64,/.test(avatar)) {
-          return { ok: false, message: '头像必须是 data:image/png|jpeg|webp 的 base64 data URL' }
-        }
         if (avatar.length > 12_000) return { ok: false, message: '头像太大（>12KB）：请压缩到 128×128 左右' }
+        const problem = avatarProblem(avatar)
+        if (problem !== undefined) return { ok: false, message: problem }
         member.avatar = avatar
       }
       group.updatedAt = now()
@@ -1250,3 +1249,43 @@ export function createGroups(deps: GroupsDeps) {
 }
 
 export type Groups = ReturnType<typeof createGroups>
+
+/** 头像 data URL 的三种可接受 MIME（面板里直接塞 <img>/background-image）。 */
+const AVATAR_PREFIX = /^data:image\/(png|jpeg|webp);base64,/
+
+/**
+ * 头像 data URL 的完整性校验（2026-11-26）。返回中文原因，`undefined` = 通过。
+ *
+ * 为什么要有：真实事故——某会话传上来的 base64 被截断（长度 %4==1、解码后缺 JPEG 尾标 `FF D9`），
+ * 后端照收，浏览器 `background-image` 直接不画，面板里只剩个空方块，界面上看是「设了但没显示」。
+ * Node 的 `Buffer.from(...,'base64')` 很宽容，截断也能吐出字节，**不能拿它当校验**。
+ */
+export function avatarProblem(avatar: string): string | undefined {
+  const prefix = AVATAR_PREFIX.exec(avatar)
+  if (prefix === null) return '头像必须是 data:image/png|jpeg|webp 的 base64 data URL'
+  const payload = avatar.slice(prefix[0].length)
+  if (payload === '') return '头像是空的'
+  if (/[^A-Za-z0-9+/=]/.test(payload)) return '头像 base64 含非法字符（被截断或转义过）：请重新导出后上传'
+  const padAt = payload.indexOf('=')
+  if (padAt !== -1 && padAt < payload.length - 2) return '头像 base64 的填充符位置不对：请重新导出后上传'
+  if (payload.length % 4 !== 0) return '头像 base64 长度不是 4 的倍数（数据被截断了）：请重新导出后上传'
+  const bytes = Buffer.from(payload, 'base64')
+  if (bytes.length < 64) return '头像内容太短，不是能显示的图片'
+  const mime = prefix[1]
+  const isPng = bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+  const isJpeg = bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8
+  const isWebp = bytes.length > 12 && bytes.subarray(0, 4).toString('latin1') === 'RIFF' && bytes.subarray(8, 12).toString('latin1') === 'WEBP'
+  if (mime === 'png' && !isPng) return '声明是 PNG 但内容不是 PNG：请重新导出后上传'
+  if (mime === 'jpeg' && !isJpeg) return '声明是 JPEG 但内容不是 JPEG：请重新导出后上传'
+  if (mime === 'webp' && !isWebp) return '声明是 WebP 但内容不是 WebP：请重新导出后上传'
+  // 尾部：图片没写完浏览器就不画（JPEG 的 FFD9 / PNG 的 IEND+CRC）
+  if (isJpeg && !(bytes[bytes.length - 2] === 0xff && bytes[bytes.length - 1] === 0xd9)) {
+    return '头像 JPEG 缺结束标记（数据被截断）：请重新导出后上传'
+  }
+  if (isPng && bytes.length > 8) {
+    const tail = bytes.subarray(bytes.length - 8)
+    const iend = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
+    if (!tail.equals(iend)) return '头像 PNG 缺 IEND 结束块（数据被截断）：请重新导出后上传'
+  }
+  return undefined
+}
