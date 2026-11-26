@@ -198,6 +198,18 @@ export interface HandoffService {
   stop(): void
 }
 
+/**
+ * 解析名字里的代号（2026-11-26 用户口径：序号**从前世名字解析**，不再依赖计数器文件）。
+ *
+ * `2-3总工-转世3` → `{ base: '2-3总工-', kind: '转世', gen: 3 }`；没后缀 → `{ base: 原名, gen: 0 }`。
+ * 只认「紧贴末尾 + 带数字」的写法：群名里自带「转世部」这种字样不会被误判。
+ */
+export function parseGenSuffix(title: string): { base: string; kind?: '转世' | '分身'; gen: number } {
+  const hit = /^(.*?)\s*(转世|分身)\s*(\d+)\s*$/.exec(String(title ?? ''))
+  if (hit === null) return { base: String(title ?? '').trim(), gen: 0 }
+  return { base: hit[1] ?? '', kind: hit[2] as '转世' | '分身', gen: Number(hit[3] ?? 0) }
+}
+
 export function createHandoffService(deps: HandoffDeps): HandoffService {
   const now = deps.now ?? (() => Date.now())
   const pollMs = deps.pollMs ?? 1_000
@@ -287,6 +299,8 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
 
   /** 剥掉「转世N / 分身N」后缀：分身的分身、转世的转世都不许叠名字。 */
   const stripGenSuffix = (title: string): string => title.replace(/\s*(?:转世|分身)\d+$/, '').trim()
+
+
 
   /** 群身份最多这么长：群成员表只有一行，写不下整段职责。 */
   const ROLE_MAX = 24
@@ -470,10 +484,18 @@ export function createHandoffService(deps: HandoffDeps): HandoffService {
       const parentTitle = String((await deps.sessionTitle?.(job.sessionId)) ?? '').trim()
       const rename = deps.renameSession
       if (parentTitle !== '' && rename !== undefined) {
-        const base = stripGenSuffix(parentTitle)
-        const next = isBranch
-          ? base + '分身' + String(nextBranchGen(base))
-          : base + '转世' + String(nextRebirthGen(base))
+        /*
+         * 2026-11-26 用户口径：**序号从前世名字里解析**，不再依赖计数器文件。
+         *
+         * 为什么改成解析：计数器要落盘（handoffDir 不存在时写失败被静默吞掉 → 永远从 1 开始），
+         * 而名字本身已经是权威状态——`2-3总工-转世3` 的下一世就该叫 `转世4`，不查任何文件。
+         * 规则：抓到「转世N / 分身N」就 +1；抓不到就补 `转世1 / 分身1`。
+         * 两条序列互不相干：转世只认「转世」，分身只认「分身」（`X分身2` 去转生 → `X转世1`）。
+         */
+        const parsed = parseGenSuffix(parentTitle)
+        const keyword = isBranch ? '分身' : '转世'
+        const gen = parsed.kind === keyword ? parsed.gen + 1 : 1
+        const next = parsed.base + keyword + String(gen)
         const renamed = await rename(childId, next)
         if (renamed.ok) title = next
         else notes.push('改名失败：' + String(renamed.message ?? '未知原因'))
