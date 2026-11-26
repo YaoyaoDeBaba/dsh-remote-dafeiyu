@@ -347,7 +347,8 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     // 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 2 = 19。
     // 33 → 35（2026-11-20）：联网搜索那两条（配置读写 + 测一下）也是本仓挂的路由。
     // 这条是「webServer 晚到」的场景：本机中继域走的是 500ms 轮询，这一拍还没轮到它 ⇒ 仍是 35。
-  assert.equal(late.registerCalls.length, 37, '三十六条一起挂（子代理 5 + 转生/分身 3 + 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 3 + 联网搜索 2 + 群改名 1；形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包搬走）')
+  // 2026-11-26：群公告路由 +1（37 → 38）。
+  assert.equal(late.registerCalls.length, 38, '三十七条一起挂（子代理 5 + 转生/分身 3 + 配对/配置/自报/放行/备份 8 + 记忆 1 + 扩展列表 3 + 联网搜索 2 + 群改名 1 + 群公告 1；形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包搬走）')
     assert.equal(
       pillProblem(state),
       undefined,
@@ -356,7 +357,8 @@ test('webServer 晚到（注入回调在 apply 返回之后才触发）：挂上
     late.dispose()
     // 33 → 35（2026-11-20）：同上，联网搜索那两条也要注销。
     // 2026-11-25：群改名/头像路由 +2（35 → 37）。
-  assert.equal(late.unregistered(), 37, '晚到挂上的路由（子代理/转生分身/记忆/扩展列表/配对/联网搜索/群改名），停机时同样要注销干净')
+  // 2026-11-26：群公告路由 +1（37 → 38）。
+  assert.equal(late.unregistered(), 38, '晚到挂上的路由（子代理/转生分身/记忆/扩展列表/配对/联网搜索/群改名/群公告），停机时同样要注销干净')
   } finally {
     late.dispose()
   }
@@ -443,7 +445,8 @@ test('对照：主链路字段逐个相等、字段集合逐个相同，差别�
     // 30 → 19（2026-11-16）：识图 3 条 + 小云雀 8 条随 `dsh-vision-dafeiyu` 迁出；
     // 本仓这 19 条一条都不能漏注销（漏了换宿主就撞"路由名已占用"，表现是 pill 再也不出现）。
     // 33 → 35（2026-11-20）：多了联网搜索那两条（配置读写 + 测一下）。
-    assert.equal(withWeb.unregistered(), 41, '八条配对路由 + 五条子代理 + 三条转生/分身 + 一条记忆 + 两条扩展列表 + 两条联网搜索 + 四条本机中继 + 一条群改名都要注销（形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包）')
+    // 2026-11-26：群公告路由 +1（41 → 42）。
+    assert.equal(withWeb.unregistered(), 42, '八条配对路由 + 五条子代理 + 三条转生/分身 + 一条记忆 + 两条扩展列表 + 两条联网搜索 + 四条本机中继 + 一条群改名 + 一条群公告都要注销（形象 3 条随 dsh-avatar-dafeiyu、识图 3 条 + 小云雀 8 条随 dsh-vision-dafeiyu 拆包）')
   } finally {
     without.dispose()
     withWeb.dispose()

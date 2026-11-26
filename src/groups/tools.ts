@@ -203,6 +203,37 @@ export function buildGroupTools(deps: {
       },
     },
     {
+      name: 'group_set_announcement',
+      description:
+        '写 / 改群公告（≤500 字，超长按 500 截断）：把**群里的规矩**写死一次，之后每条群消息的尾巴里都会带上「【群公告】正文」' +
+        '（位置在成员表那行之后）；完整版尾巴带全文，已挂常驻段之后的精简版只带前 60 字 + 「……（完整公告见 group_read）」。' +
+        '新人入群通知里带全文——省得每轮都靠人重复讲。\n' +
+        '只应由**群主**调用。传空字符串 = 清除公告。返回 {ok, announcement}；写一条 system 记录「公告已更新（N 字）」。\n' +
+        '别把一次性任务写进公告（那该走 group_post）；公告只放长期有效的纪律/口径。',
+      parameters: {
+        type: 'object',
+        properties: {
+          groupId: { type: 'string', description: '群 id。' },
+          text: { type: 'string', description: '公告正文，≤500 字；空字符串 = 清除公告。' },
+        },
+        required: ['groupId', 'text'],
+      },
+      output: OUT,
+      timeoutMs: 15_000,
+      async execute(args: unknown): Promise<string> {
+        const input = (args ?? {}) as { groupId?: unknown; text?: unknown }
+        const result = deps.groups.setAnnouncement({
+          id: asString(input.groupId),
+          text: typeof input.text === 'string' ? input.text : '',
+        })
+        return JSON.stringify({
+          ok: result.ok,
+          announcement: result.announcement,
+          ...(result.message === undefined ? {} : { message: result.message }),
+        })
+      },
+    },
+    {
       name: 'group_set_role',
       description:
         '给群成员写/改「身份备注」（≤20 字，例如「前端主程」「只读调试口」）。只应由**群主**调用。\n' +

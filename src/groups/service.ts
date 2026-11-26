@@ -65,6 +65,14 @@ export interface GroupRecord {
   briefed?: Record<string, number>
   /** 解散时刻（2026-11-19）：解散后群对成员不可用，记录保留给用户看。 */
   dissolvedAt?: number
+  /**
+   * 群公告（2026-11-26 用户需求）：用户想把**群里的规矩**写死一次，别每次靠人重复讲。
+   *
+   * 口径：≤500 字；空串/空 = 没有公告（字段直接删掉，不落空标题）；
+   * 只随群记录走、**不进常驻 system 段**——system 段是全局的，塞进去会串群。
+   * 旧群文件没有这个字段必须能照常读（可选字段 + readGroup 里判类型）。
+   */
+  announcement?: string
 }
 
 export type EntryKind = 'user' | 'agent' | 'system'
@@ -132,6 +140,17 @@ export interface DeliveryResult {
 
 export const MAX_MEMBERS = 12
 export const MAX_MESSAGE_CHARS = 4_000
+/** 群公告上限（2026-11-26）：超了按 500 截断，不报错——省得用户被字数卡住。 */
+export const MAX_ANNOUNCEMENT_CHARS = 500
+/**
+ * 精简版尾巴里公告只留前 60 字（2026-11-26 用户口径）。
+ *
+ * 理由：精简版本身就代表「规矩已经静默挂上了」——长纪律能省，公告也该跟着省。
+ * 但公告是**群级**的、进不了全局 system 段，所以不能整段省略，最多压成一行 + 指向 group_read。
+ */
+export const ANNOUNCEMENT_BRIEF_CHARS = 60
+/** 精简版公告被截断后那句提示（group_read 是真叫人去读，不是装饰）。 */
+export const ANNOUNCEMENT_BRIEF_HINT = '……（完整公告见 group_read）'
 /** 群主一轮最多派几个活（防它一次把整群人点一遍）。 */
 export const MAX_DISPATCH_TARGETS = 5
 /**
@@ -288,6 +307,10 @@ export function readGroup(dir: string, id: string): GroupRecord | undefined {
       ...(typeof parsed.ownerSessionId === 'string' && parsed.ownerSessionId.trim() !== '' ? { ownerSessionId: parsed.ownerSessionId.trim() } : {}),
       ...(parsed.briefed !== null && typeof parsed.briefed === 'object' ? { briefed: parsed.briefed as Record<string, number> } : {}),
       ...(Number(parsed.dissolvedAt ?? 0) > 0 ? { dissolvedAt: Number(parsed.dissolvedAt) } : {}),
+      // 旧群文件没有 announcement：判类型 + 判空，读不到就当没有公告（不写空字段）
+      ...(typeof parsed.announcement === 'string' && parsed.announcement.trim() !== ''
+        ? { announcement: normalizeAnnouncement(parsed.announcement) }
+        : {}),
     }
   } catch {
     return undefined
@@ -319,6 +342,37 @@ export function rosterLine(group: GroupRecord, titleOf?: (sessionId: string) => 
       return crown + name + role
     })
     .join('、')
+}
+
+/**
+ * 群公告归一化（2026-11-26）：去首尾空白、`\r\n` 统一成 `\n`、超 500 按 500 截断。
+ *
+ * 空串 = 没有公告（调用方据此决定「加不加这一段」「删不删字段」）。
+ * 传非字符串（老记录、手写 json）也当空——读侧不许因为这个字段报错。
+ */
+export function normalizeAnnouncement(text: unknown): string {
+  const raw = typeof text === 'string' ? text : ''
+  const trimmed = raw.replace(/\r\n/g, '\n').trim()
+  if (trimmed === '') return ''
+  return trimmed.length > MAX_ANNOUNCEMENT_CHARS ? trimmed.slice(0, MAX_ANNOUNCEMENT_CHARS) : trimmed
+}
+
+/**
+ * 投递尾巴里的公告段：`【群公告】<正文>`；没有公告就返回空串（**不许出现空标题**）。
+ *
+ * 位置有讲究：放在**成员表那行之后**——先给「谁在群里」，再给「这个群里的规矩」。
+ * 只在群消息尾巴里出现，**不进常驻 system 段**（那是全局的，塞进去会串群）。
+ *
+ * 两档跟着尾巴的量走（2026-11-26 用户口径，与纪律那套同一逻辑）：
+ * - 完整版尾巴：公告**完整**带出（≤500 字）；
+ * - 精简版尾巴（纪律已常驻 system 段）：公告只带前 60 字 + 「……（完整公告见 group_read）」——
+ *   公告是群级的、塞不进全局 system 段，所以不能整段省略，最多压成一行提示。
+ */
+export function announcementBlock(group: GroupRecord | undefined, brief = false): string {
+  const body = normalizeAnnouncement(group?.announcement)
+  if (body === '') return ''
+  if (brief !== true || body.length <= ANNOUNCEMENT_BRIEF_CHARS) return '【群公告】' + body
+  return '【群公告】' + body.slice(0, ANNOUNCEMENT_BRIEF_CHARS) + ANNOUNCEMENT_BRIEF_HINT
 }
 
 /**
@@ -357,12 +411,20 @@ export function deliveryText(
     .filter((sessionId) => sessionId !== from && sessionId !== recipient)
     .map((sessionId) => titleOf?.(sessionId)?.trim() || shortId(sessionId))
   const ownerLabel = group.ownerSessionId === undefined ? '' : titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)
+  /*
+   * 群公告（2026-11-26）：位置固定在成员表那行之后，**强度跟尾巴的量走**——
+   * 完整版带全文，精简版只留前 60 字 + 指向 group_read；没有公告时这一段整个不存在。
+   */
+  const isBriefTail = brief === true || sectionReady === true
+  const announcement = announcementBlock(group, isBriefTail)
+  const announcementLines = announcement === '' ? [] : [announcement]
   // 段已常驻 ⇒ 不论第几次都只带一行；段没挂上 ⇒ 老老实实带全文（老方法）。
-  if (brief === true || sectionReady === true) {
+  if (isBriefTail) {
     return [
       '【群 ' + group.name + ' · 来自 ' + (from === 'user' ? '用户' : shortId(from)) + '】',
       text.trim(),
       '成员：' + rosterLine(group, titleOf) + (ownerLabel === '' ? '' : '｜群主 ' + ownerLabel),
+      ...announcementLines,
       ECHO_DISCIPLINE_BRIEF,
     ].join('\n')
   }
@@ -371,6 +433,7 @@ export function deliveryText(
     text.trim(),
     '',
     '群成员：' + rosterLine(group, titleOf) + (ownerLabel === '' ? '' : '｜群主 ' + ownerLabel),
+    ...announcementLines,
     peers.length > 0 ? '本轮协作对象：' + peers.join('、') : '本轮只有你。',
     ECHO_DISCIPLINE,
     '你看不到群里的整段记录（插件只投给你被 @ 的部分）。要说点什么就调 group_post：groupId=' +
@@ -390,10 +453,13 @@ export function deliveryText(
  */
 export function joinNoticeForNewcomer(group: GroupRecord, titleOf?: (sessionId: string) => string | undefined): string {
   const owner = group.ownerSessionId === undefined ? '' : titleOf?.(group.ownerSessionId)?.trim() || shortId(group.ownerSessionId)
+  const announcement = announcementBlock(group)
   return [
     '【入群通知 · ' + group.name + ' · ' + group.id + '】',
     '你被拉进这个群了（这是一次唤醒：不用等用户再喊你）。',
     '群成员：' + rosterLine(group, titleOf) + (owner === '' ? '' : '｜群主 ' + owner + '（用户 @ 多人时由群主分工）'),
+    // 新人最容易越界：规矩在公告里，进群那一刻就得看到（没有公告就不加这一行）
+    ...(announcement === '' ? [] : ['', announcement]),
     '',
     '用法（之后的消息只带极短头部，这份说明不再重复；忘了可以调 groups_guide）：',
     '· 有人 @ 你时你会收到一条独立消息，带「本轮协作对象」——你看不到群里的其他消息；',
@@ -804,6 +870,43 @@ export function createGroups(deps: GroupsDeps) {
         text: '群名：「' + before + '」→「' + next + '」' + (input.by === undefined ? '' : '（' + shortId(input.by) + '）'),
       })
       return { ok: true, group }
+    },
+
+    /**
+     * 设置群公告（2026-11-26 用户需求）：群员老越界，所以把规矩写死一次、挂在每条群消息尾巴上。
+     *
+     * 口径：≤500 字（超了截断，不报错）、去首尾空白；**空串 = 清除**（字段直接删掉）。
+     * 只由群主调用（写入口径由 group_set_announcement 的 description 把关，与 group_rename 同一套）。
+     * 落盘随群记录走；改完写一条 system 记录，群里能看到「规矩换了」。
+     */
+    setAnnouncement(input: { id: string; text: string; by?: string }): {
+      ok: boolean
+      announcement: string
+      group?: GroupRecord
+      message?: string
+    } {
+      const alive = live(input.id)
+      if (alive.group === undefined) return { ok: false, announcement: '', message: alive.message }
+      const group = alive.group
+      const next = normalizeAnnouncement(input.text)
+      if (next === '') delete group.announcement
+      else group.announcement = next
+      group.updatedAt = now()
+      if (!save(group)) {
+        return { ok: false, announcement: group.announcement ?? '', message: '公告没写进去（目录不可写）。' }
+      }
+      append(group.id, {
+        at: now(),
+        kind: 'system',
+        from: 'system',
+        text:
+          next === ''
+            ? '公告已清除'
+            : '公告已更新（' + next.length + ' 字）' +
+              (typeof input.by === 'string' && input.by.trim() !== '' ? '（' + shortId(input.by) + '）' : ''),
+      })
+      deps.log('群公告更新', { id: group.id, chars: next.length })
+      return { ok: true, announcement: next, group }
     },
 
     /** 设置某个成员的身份（用户可在面板改；agent 走 group_set_role 工具，权限由调用方把关）。 */

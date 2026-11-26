@@ -32,6 +32,8 @@ interface GroupView {
   ownerName?: string
   members: MemberView[]
   updatedAt?: number
+  /** 群公告（2026-11-26）：中栏标题下的横幅里显示，点开就地编辑。没有就是 undefined。 */
+  announcement?: string
 }
 
 interface EntryView {
@@ -59,6 +61,8 @@ const OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 const ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
 const RENAME_ROUTE = '/api/dsh-remote-dafeiyu/groups/rename'
 const AVATAR_ROUTE = '/api/dsh-remote-dafeiyu/groups/avatar'
+/** 群公告（2026-11-26）：中栏标题旁 📢 的保存口子。 */
+const ANNOUNCEMENT_ROUTE = '/api/dsh-remote-dafeiyu/groups/announcement'
 const SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
 const POLL_MS = 3_000
 
@@ -198,8 +202,43 @@ renameBtn.addEventListener('click', () => {
   })
   box.addEventListener('blur', () => void finish(true))
 })
-midHead.append(midName, renameBtn, midMeta)
-  const msgs = doc.createElement('div')
+/*
+ * 群公告入口（2026-11-26 用户需求）：中栏标题旁一颗 📢，点开一个不大的编辑框（≤500 字、显示字数）。
+ * 公告带在每条群消息的尾巴里（成员表那行之后），新人入群通知里也带——规矩不用每轮重复讲。
+ */
+const annoBtn = doc.createElement('button')
+annoBtn.textContent = '📢'
+annoBtn.title = '群公告（≤500 字，带在每条群消息尾巴上）'
+annoBtn.style.cssText = 'border:0;background:transparent;color:#1d4ed8;cursor:pointer;font-size:12px;padding:0 2px;'
+midHead.append(midName, renameBtn, annoBtn, midMeta)
+/*
+ * 群公告横幅（2026-11-26 用户口径：对标 QQ 会话的公告区）：
+ * 中栏标题**下方**一条通栏横幅——浅色底、左侧 📢、单行截断、右侧「编辑」。
+ * 空态也占位（「点击设置群公告」），否则用户找不到入口；点横幅或「编辑」就地展开编辑区。
+ */
+const ANNO_PLACEHOLDER = '点击设置群公告'
+const annoBanner = doc.createElement('div')
+annoBanner.setAttribute('data-role', 'group-announcement-banner')
+annoBanner.style.cssText =
+  'display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;box-sizing:border-box;' +
+  'border-bottom:1px solid #e4ecfb;background:#f3f7ff;font-size:12px;flex:0 0 auto;cursor:pointer;'
+const annoIcon = doc.createElement('span')
+annoIcon.textContent = '📢'
+annoIcon.style.cssText = 'flex:0 0 auto;'
+const annoText = doc.createElement('span')
+annoText.setAttribute('data-role', 'group-announcement-text')
+annoText.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#93a9cf;'
+const annoEdit = doc.createElement('button')
+annoEdit.textContent = '编辑'
+annoEdit.title = '编辑群公告（只有群主能改）'
+annoEdit.style.cssText = 'flex:0 0 auto;border:0;background:transparent;color:#1d4ed8;font-size:11.5px;cursor:pointer;padding:0 2px;'
+annoBanner.append(annoIcon, annoText, annoEdit)
+/* 编辑区：就地展开在横幅**下方**（不是弹窗），保存/取消后收起 */
+const annoEditor = doc.createElement('div')
+annoEditor.setAttribute('data-role', 'group-announcement-editor')
+annoEditor.style.cssText =
+  'display:none;padding:8px 12px;border-bottom:1px solid #e4ecfb;background:#fbfdff;flex:0 0 auto;'
+const msgs = doc.createElement('div')
   msgs.style.cssText = 'flex:1 1 0;min-height:0;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:9px;background:#fbfdff;min-width:0;'
   const composer = doc.createElement('div')
   composer.style.cssText = 'position:relative;border-top:1px solid #dbe6fb;padding:8px 12px;background:#fff;flex:0 0 auto;'
@@ -302,7 +341,7 @@ midHead.append(midName, renameBtn, midMeta)
   toolsRow.append(pickBtn, fileInput)
   sendRow.append(hint)
   composer.append(chips, imgChips, toolsRow, inputWrap, sendRow)
-  mid.append(midHead, msgs, composer)
+  mid.append(midHead, annoBanner, annoEditor, msgs, composer)
 
   /* 右栏 */
   const right = doc.createElement('div')
@@ -451,6 +490,31 @@ midHead.append(midName, renameBtn, midMeta)
   roleRow.append(roleCancel, roleSave)
   roleBox.append(roleTitle, roleInput, roleRow)
 
+  /* 群公告编辑区内容（2026-11-26）：textarea ≤500 字 + 字数 + 保存/取消；回车换行、Ctrl+Enter 提交 */
+  const annoInput = doc.createElement('textarea')
+  annoInput.setAttribute('data-role', 'group-announcement-input')
+  annoInput.placeholder = '群里长期有效的规矩（≤500 字，留空 = 清除）。例如：只说结论；改动先报路径；不许替别人转生。'
+  annoInput.maxLength = 500
+  annoInput.style.cssText =
+    'width:100%;min-height:88px;max-height:200px;box-sizing:border-box;padding:8px 9px;border:1px solid #c7d9f7;border-radius:8px;' +
+    'font:inherit;color:#1d3f8f;line-height:1.5;resize:vertical;'
+  const annoCount = doc.createElement('span')
+  annoCount.style.cssText = 'font-size:11.5px;color:#93a9cf;'
+  const annoFoot = doc.createElement('div')
+  annoFoot.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:6px;'
+  const annoBtns = doc.createElement('div')
+  annoBtns.style.cssText = 'display:flex;gap:8px;'
+  const annoCancel = doc.createElement('button')
+  annoCancel.textContent = '取消'
+  annoCancel.style.cssText = 'border:1px solid #dbe6fb;background:#fff;color:#1d3f8f;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:12px;'
+  const annoSave = doc.createElement('button')
+  annoSave.textContent = '保存'
+  annoSave.title = 'Ctrl+Enter 也能保存'
+  annoSave.style.cssText = 'border:0;background:#1d4ed8;color:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:12px;'
+  annoBtns.append(annoCancel, annoSave)
+  annoFoot.append(annoCount, annoBtns)
+  annoEditor.append(annoInput, annoFoot)
+
   /* 右键菜单 */
   const ctxMenu = doc.createElement('div')
   ctxMenu.style.cssText =
@@ -572,6 +636,26 @@ midHead.append(midName, renameBtn, midMeta)
     barTitle.textContent = group === undefined ? '肥鱼拉群' : '肥鱼拉群 · ' + group.name
     dissolveBtn.disabled = group === undefined
     addMemberBtn.disabled = group === undefined
+    annoBtn.disabled = group === undefined
+    /*
+     * 公告横幅（2026-11-26）：没有群时不显示；**空态也要占位**（否则用户找不到入口），
+     * 有公告就把换行压成空格、单行截断（CSS ellipsis 兜底），整段挂在 title 上。
+     */
+    if (group === undefined) {
+      annoBanner.style.display = 'none'
+    } else {
+      annoBanner.style.display = 'flex'
+      const announcement = (group.announcement ?? '').replace(/\s+/g, ' ').trim()
+      if (announcement === '') {
+        annoText.textContent = ANNO_PLACEHOLDER
+        annoText.style.color = '#93a9cf'
+        annoBanner.title = '点击设置群公告'
+      } else {
+        annoText.textContent = announcement
+        annoText.style.color = '#365a96'
+        annoBanner.title = announcement
+      }
+    }
   }
 
   const roleTag = (group: GroupView, member: MemberView): HTMLElement | undefined => {
@@ -777,6 +861,64 @@ midHead.append(midName, renameBtn, midMeta)
     ctxMenu.style.display = 'block'
   }
   doc.addEventListener('click', hideCtx)
+
+  /*
+   * 群公告（2026-11-26 用户口径，对标 QQ）：横幅本身就是入口——点横幅 / 「编辑」/ 标题旁 📢
+   * 都就地展开编辑区（不是弹窗）；回车**不提交**（多行公告要换行），Ctrl+Enter 或点「保存」才提交。
+   * 保存失败时把后端原话显示在编辑区里，不静默。
+   */
+  const openAnnouncement = (): void => {
+    const group = current()
+    if (group === undefined) return
+    annoInput.value = group.announcement ?? ''
+    annoCount.textContent = annoInput.value.length + ' / 500'
+    annoEditor.style.display = 'block'
+    annoInput.focus()
+  }
+  const closeAnnouncement = (): void => {
+    annoEditor.style.display = 'none'
+  }
+  const submitAnnouncement = (): void => {
+    const group = current()
+    if (group === undefined) {
+      closeAnnouncement()
+      return
+    }
+    void (async () => {
+      const answer = await call(ANNOUNCEMENT_ROUTE, { groupId: group.id, text: annoInput.value.trim() })
+      if (answer.ok === true) {
+        closeAnnouncement()
+        hint.textContent =
+          String(answer.announcement ?? '') === '' ? '公告已清除' : '公告已保存，之后每条群消息都会带上它'
+        await refresh()
+        return
+      }
+      // 失败（不是群主 / 群已解散 / 目录不可写…）：把后端原话留在编辑区，别让用户以为存上了
+      annoCount.textContent = '保存失败：' + String(answer.message ?? '未知原因')
+      hint.textContent = '公告没保存上：' + String(answer.message ?? '未知原因')
+    })()
+  }
+  annoBanner.addEventListener('click', () => openAnnouncement())
+  annoEdit.addEventListener('click', (event) => {
+    ;(event as { stopPropagation?: () => void }).stopPropagation?.()
+    openAnnouncement()
+  })
+  annoBtn.addEventListener('click', () => openAnnouncement())
+  annoInput.addEventListener('input', () => {
+    annoCount.textContent = annoInput.value.length + ' / 500'
+  })
+  annoInput.addEventListener('keydown', (event) => {
+    const key = (event as { key?: string }).key
+    const withModifier =
+      (event as { ctrlKey?: boolean }).ctrlKey === true || (event as { metaKey?: boolean }).metaKey === true
+    // 单独回车 = 换行（不提交）；Ctrl/⌘+Enter = 保存
+    if (key === 'Enter' && withModifier) {
+      ;(event as { preventDefault?: () => void }).preventDefault?.()
+      submitAnnouncement()
+    }
+  })
+  annoCancel.addEventListener('click', () => closeAnnouncement())
+  annoSave.addEventListener('click', () => submitAnnouncement())
 
   roleCancel.addEventListener('click', () => { roleBox.style.display = 'none' })
   roleSave.addEventListener('click', () => {

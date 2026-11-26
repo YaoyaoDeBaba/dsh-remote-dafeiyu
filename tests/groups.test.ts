@@ -341,7 +341,7 @@ test('@全体：群主收到的是「分工请求」（带所有被 @ 的人 + �
     rmSync(dir, { recursive: true, force: true })
   }
 })
-test('工具形状：十三个工具、六键齐、output 是 {schema:{type:string},render}', () => {
+test('工具形状：十四个工具、六键齐、output 是 {schema:{type:string},render}', () => {
   const { dir, groups } = makeDeps()
   try {
     const tools = buildGroupTools({ groups, guideBody: () => '# guide', log: () => {} })
@@ -355,6 +355,7 @@ test('工具形状：十三个工具、六键齐、output 是 {schema:{type:stri
         'group_post',
         'group_set_owner',
         'group_rename',
+        'group_set_announcement',
         'group_set_role',
         'group_set_avatar',
         'group_remove',

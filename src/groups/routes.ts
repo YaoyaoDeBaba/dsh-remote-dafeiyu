@@ -18,6 +18,8 @@ export const GROUPS_REMOVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/remove'
 export const GROUPS_OWNER_ROUTE = '/api/dsh-remote-dafeiyu/groups/owner'
 export const GROUPS_ROLE_ROUTE = '/api/dsh-remote-dafeiyu/groups/role'
 export const GROUPS_RENAME_ROUTE = '/api/dsh-remote-dafeiyu/groups/rename'
+/** 群公告（2026-11-26）：/groups/announcement，写路由同一套回环 + x-drc-pair 守卫。 */
+export const GROUPS_ANNOUNCEMENT_ROUTE = '/api/dsh-remote-dafeiyu/groups/announcement'
 export const GROUPS_AVATAR_ROUTE = '/api/dsh-remote-dafeiyu/groups/avatar'
 export const GROUPS_DISSOLVE_ROUTE = '/api/dsh-remote-dafeiyu/groups/dissolve'
 export const GROUPS_SESSIONS_ROUTE = '/api/dsh-remote-dafeiyu/groups/sessions'
@@ -179,6 +181,10 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
                   titles.get(group.ownerSessionId)?.trim() ||
                   short(group.ownerSessionId),
             updatedAt: group.updatedAt,
+            // 群公告（2026-11-26）：面板中栏顶部那行灰字要它；没有就不带这个字段
+            ...(typeof group.announcement === 'string' && group.announcement.trim() !== ''
+              ? { announcement: group.announcement }
+              : {}),
             members: group.members.map((member) => ({
               sessionId: member.sessionId,
               role: member.role,
@@ -333,6 +339,20 @@ export function groupsHandlers(deps: GroupsRouteDeps): Array<{ path: string; han
           ...(typeof body.sessionId === 'string' && body.sessionId !== '' ? { by: body.sessionId } : {}),
         }),
       ),
+    },
+    {
+      path: GROUPS_ANNOUNCEMENT_ROUTE,
+      handler: writeRoute((body) => {
+        const result = deps.groups.setAnnouncement({
+          id: String(body.groupId ?? ''),
+          text: typeof body.text === 'string' ? body.text : '',
+        })
+        return {
+          ok: result.ok,
+          announcement: result.announcement,
+          ...(result.message === undefined ? {} : { message: result.message }),
+        }
+      }),
     },
     {
       path: GROUPS_DISSOLVE_ROUTE,
