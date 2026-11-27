@@ -23,6 +23,30 @@ function asStringList(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => asString(item)).filter((item) => item !== '') : []
 }
 
+/**
+ * 写操作只回摘要（2026-11-27）。
+ *
+ * service 的返回值里 `group` 是**整份群记录**，而成员头像就是 base64 data URL（一张 5k~12k 字符）。
+ * 工具侧原样吐出去，一次 group_set_avatar 就能吃掉上万字符上下文（实测 12,000+）。
+ * 所以工具层统一把 `group` 折叠成 {id, name, members:N, owner}；要看细节用 group_list / group_read。
+ */
+function summarize(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') return value
+  const record = value as Record<string, unknown>
+  const group = record.group
+  if (group === null || group === undefined || typeof group !== 'object') return value
+  const raw = group as { id?: unknown; name?: unknown; members?: unknown; ownerSessionId?: unknown }
+  return {
+    ...record,
+    group: {
+      id: raw.id,
+      name: raw.name,
+      members: Array.isArray(raw.members) ? raw.members.length : undefined,
+      ...(typeof raw.ownerSessionId === 'string' ? { owner: raw.ownerSessionId } : {}),
+    },
+  }
+}
+
 export function buildGroupTools(deps: {
   groups: Groups
   /** skill 正文（单一真源，别在这里复制文案）。 */
@@ -59,7 +83,7 @@ export function buildGroupTools(deps: {
         // 建完就唤醒成员（否则他们不知道自己进了群，要用户手动喊一声）
         if (created.ok && created.group !== undefined) {
           const announced = await deps.groups.announce({ id: created.group.id, ...(me === undefined ? {} : { except: me }) })
-          return JSON.stringify({ ...created, announced })
+          return JSON.stringify(summarize({ ...created, announced }))
         }
         return JSON.stringify(created)
       },
@@ -83,7 +107,7 @@ export function buildGroupTools(deps: {
           id: asString(input.groupId),
           members: asStringList(input.sessionIds),
         })
-        return JSON.stringify(result)
+        return JSON.stringify(summarize(result))
       },
     },
     {
@@ -176,7 +200,7 @@ export function buildGroupTools(deps: {
       timeoutMs: 15_000,
       async execute(args: unknown): Promise<string> {
         const input = (args ?? {}) as { groupId?: unknown; sessionId?: unknown }
-        return JSON.stringify(deps.groups.setOwner({ id: asString(input.groupId), sessionId: asString(input.sessionId) }))
+        return JSON.stringify(summarize(deps.groups.setOwner({ id: asString(input.groupId), sessionId: asString(input.sessionId) })))
       },
     },
     {
@@ -199,7 +223,7 @@ export function buildGroupTools(deps: {
         const groupId = asString(input.groupId)
         const group = deps.groups.get(groupId)
         if (group === undefined) return JSON.stringify({ ok: false, message: '没有这个群。' })
-        return JSON.stringify(deps.groups.renameGroup({ id: groupId, name: asString(input.name) }))
+        return JSON.stringify(summarize(deps.groups.renameGroup({ id: groupId, name: asString(input.name) })))
       },
     },
     {
@@ -259,7 +283,7 @@ export function buildGroupTools(deps: {
           if (hit !== undefined) target = hit.sessionId
         }
         return JSON.stringify(
-          deps.groups.setMemberRole({ id: groupId, sessionId: target, role: asString(input.role) }),
+          summarize(deps.groups.setMemberRole({ id: groupId, sessionId: target, role: asString(input.role) })),
         )
       },
     },
@@ -297,7 +321,7 @@ export function buildGroupTools(deps: {
         const budget = deps.groups.spendAvatarCredits({ sessionId: target, credits: spend })
         if (budget.ok !== true) return JSON.stringify(budget)
         const result = deps.groups.setMemberAvatar({ id: groupId, sessionId: target, avatar: asString(input.avatar) })
-        return JSON.stringify({ ...result, credits: { used: budget.used, limit: budget.limit } })
+        return JSON.stringify(summarize({ ...result, credits: { used: budget.used, limit: budget.limit } }))
       },
     },
     {
@@ -321,7 +345,7 @@ export function buildGroupTools(deps: {
           const hit = group.members.find((member) => shortId(member.sessionId) === target)
           if (hit !== undefined) target = hit.sessionId
         }
-        return JSON.stringify(await deps.groups.remove({ id: asString(input.groupId), sessionId: target }))
+        return JSON.stringify(summarize(await deps.groups.remove({ id: asString(input.groupId), sessionId: target })))
       },
     },
     {
@@ -336,7 +360,7 @@ export function buildGroupTools(deps: {
       timeoutMs: 30_000,
       async execute(args: unknown): Promise<string> {
         const input = (args ?? {}) as { groupId?: unknown }
-        return JSON.stringify(await deps.groups.dissolve({ id: asString(input.groupId) }))
+        return JSON.stringify(summarize(await deps.groups.dissolve({ id: asString(input.groupId) })))
       },
     },
     {

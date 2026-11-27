@@ -93,3 +93,30 @@ test('设置头像：坏数据不落盘、好数据落盘、空串清空', () =>
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('工具层写操作只回摘要：返回体里不许出现头像 data URL', async () => {
+  const { buildGroupTools } = await import('../src/groups/tools.js')
+  const dir = mkdtempSync(path.join(tmpdir(), 'drc-group-tools-'))
+  const groups = createGroups({ dir, deliver: async () => ({ ok: true }), log: () => {} })
+  try {
+    const created = groups.create({ name: '摘要判据', me: 'session-a', members: ['session-b'] })
+    const id = created.group!.id
+    const tools = buildGroupTools({ groups, guideBody: () => '# guide', log: () => {} })
+    const call = async (name: string, args: Record<string, unknown>): Promise<any> => {
+      const tool = tools.find((row) => (row as { name?: string }).name === name) as { execute: (a: unknown) => Promise<string> }
+      return JSON.parse(await tool.execute(args))
+    }
+    const avatar = 'data:image/jpeg;base64,' + jpegBytes().toString('base64')
+    const set = await call('group_set_avatar', { groupId: id, sessionId: 'session-a', avatar, spentCredits: 0 })
+    assert.equal(set.ok, true)
+    const body = JSON.stringify(set)
+    assert.ok(!body.includes('data:image'), '写操作返回体不许带头像全文（会吃掉上万字符上下文）')
+    assert.equal(typeof set.group.members, 'number', 'group 要折成 {id,name,members,owner} 摘要')
+    assert.equal(set.group.members, 2)
+    const renamed = await call('group_rename', { groupId: id, name: '改过名' })
+    assert.ok(!JSON.stringify(renamed).includes('data:image'))
+    assert.equal(renamed.group.name, '改过名')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
