@@ -27671,7 +27671,7 @@ function saveFileAttachments(options) {
 }
 
 // src/version.ts
-var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.178" : "dev";
+var PLUGIN_VERSION = true ? "0.9.0-dafeiyu.179" : "dev";
 
 // src/core/capabilities.ts
 function imageAttachmentsSupported(probe) {
@@ -39533,6 +39533,22 @@ function asString(value) {
 function asStringList(value) {
   return Array.isArray(value) ? value.map((item) => asString(item)).filter((item) => item !== "") : [];
 }
+function summarize2(value) {
+  if (value === null || typeof value !== "object") return value;
+  const record2 = value;
+  const group = record2.group;
+  if (group === null || group === void 0 || typeof group !== "object") return value;
+  const raw = group;
+  return {
+    ...record2,
+    group: {
+      id: raw.id,
+      name: raw.name,
+      members: Array.isArray(raw.members) ? raw.members.length : void 0,
+      ...typeof raw.ownerSessionId === "string" ? { owner: raw.ownerSessionId } : {}
+    }
+  };
+}
 function buildGroupTools(deps) {
   return [
     {
@@ -39561,7 +39577,7 @@ function buildGroupTools(deps) {
         deps.log("agent \u5EFA\u7FA4", { ok: String(created.ok) });
         if (created.ok && created.group !== void 0) {
           const announced = await deps.groups.announce({ id: created.group.id, ...me === void 0 ? {} : { except: me } });
-          return JSON.stringify({ ...created, announced });
+          return JSON.stringify(summarize2({ ...created, announced }));
         }
         return JSON.stringify(created);
       }
@@ -39585,7 +39601,7 @@ function buildGroupTools(deps) {
           id: asString(input2.groupId),
           members: asStringList(input2.sessionIds)
         });
-        return JSON.stringify(result2);
+        return JSON.stringify(summarize2(result2));
       }
     },
     {
@@ -39673,7 +39689,7 @@ function buildGroupTools(deps) {
       timeoutMs: 15e3,
       async execute(args) {
         const input2 = args ?? {};
-        return JSON.stringify(deps.groups.setOwner({ id: asString(input2.groupId), sessionId: asString(input2.sessionId) }));
+        return JSON.stringify(summarize2(deps.groups.setOwner({ id: asString(input2.groupId), sessionId: asString(input2.sessionId) })));
       }
     },
     {
@@ -39694,7 +39710,7 @@ function buildGroupTools(deps) {
         const groupId = asString(input2.groupId);
         const group = deps.groups.get(groupId);
         if (group === void 0) return JSON.stringify({ ok: false, message: "\u6CA1\u6709\u8FD9\u4E2A\u7FA4\u3002" });
-        return JSON.stringify(deps.groups.renameGroup({ id: groupId, name: asString(input2.name) }));
+        return JSON.stringify(summarize2(deps.groups.renameGroup({ id: groupId, name: asString(input2.name) })));
       }
     },
     {
@@ -39747,7 +39763,7 @@ function buildGroupTools(deps) {
           if (hit !== void 0) target = hit.sessionId;
         }
         return JSON.stringify(
-          deps.groups.setMemberRole({ id: groupId, sessionId: target, role: asString(input2.role) })
+          summarize2(deps.groups.setMemberRole({ id: groupId, sessionId: target, role: asString(input2.role) }))
         );
       }
     },
@@ -39780,7 +39796,7 @@ function buildGroupTools(deps) {
         const budget = deps.groups.spendAvatarCredits({ sessionId: target, credits: spend });
         if (budget.ok !== true) return JSON.stringify(budget);
         const result2 = deps.groups.setMemberAvatar({ id: groupId, sessionId: target, avatar: asString(input2.avatar) });
-        return JSON.stringify({ ...result2, credits: { used: budget.used, limit: budget.limit } });
+        return JSON.stringify(summarize2({ ...result2, credits: { used: budget.used, limit: budget.limit } }));
       }
     },
     {
@@ -39804,7 +39820,7 @@ function buildGroupTools(deps) {
           const hit = group.members.find((member) => shortId2(member.sessionId) === target);
           if (hit !== void 0) target = hit.sessionId;
         }
-        return JSON.stringify(await deps.groups.remove({ id: asString(input2.groupId), sessionId: target }));
+        return JSON.stringify(summarize2(await deps.groups.remove({ id: asString(input2.groupId), sessionId: target })));
       }
     },
     {
@@ -39819,7 +39835,7 @@ function buildGroupTools(deps) {
       timeoutMs: 3e4,
       async execute(args) {
         const input2 = args ?? {};
-        return JSON.stringify(await deps.groups.dissolve({ id: asString(input2.groupId) }));
+        return JSON.stringify(summarize2(await deps.groups.dissolve({ id: asString(input2.groupId) })));
       }
     },
     {
